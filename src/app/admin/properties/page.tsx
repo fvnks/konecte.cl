@@ -1,3 +1,4 @@
+
 // src/app/admin/properties/page.tsx
 'use client';
 
@@ -6,7 +7,7 @@ import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { PropertyListing } from '@/lib/types';
@@ -52,7 +53,7 @@ export default function AdminPropertiesPage() {
 
   useEffect(() => {
     fetchProperties();
-  }, []); // Removed toast from dependency array
+  }, []); 
 
   const handleToggleStatus = async (propertyId: string, currentStatus: boolean) => {
     startTransition(async () => {
