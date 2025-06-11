@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,13 +38,16 @@ export default function SignInPage() {
         title: "Inicio de Sesión Exitoso",
         description: `¡Bienvenido de nuevo, ${result.user.name}!`,
       });
-      // Guardar información del usuario en localStorage (simplificado)
+      // Guardar información del usuario en localStorage
       localStorage.setItem('loggedInUser', JSON.stringify({ 
         id: result.user.id, 
         name: result.user.name, 
         email: result.user.email,
         roleId: result.user.role_id,
-        roleName: result.user.role_name 
+        roleName: result.user.role_name,
+        planId: result.user.plan_id, // Añadido
+        planName: result.user.plan_name, // Añadido
+        avatarUrl: result.user.avatarUrl // Añadido para consistencia con Navbar
       }));
       // Disparar un evento para que el Navbar pueda actualizarse
       window.dispatchEvent(new Event('storage')); 
@@ -115,13 +119,6 @@ export default function SignInPage() {
           </form>
         </Form>
         <CardFooter className="flex flex-col gap-3 text-center">
-           {/* <p className="text-xs text-muted-foreground">
-            O inicia sesión con
-          </p>
-          <div className="flex gap-2 w-full">
-            <Button variant="outline" className="w-full">Google</Button>
-            <Button variant="outline" className="w-full">Facebook</Button>
-          </div> */}
           <p className="mt-4 text-sm text-muted-foreground">
             ¿No tienes una cuenta?{" "}
             <Link href="/auth/signup" className="font-medium text-primary hover:underline">

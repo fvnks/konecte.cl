@@ -4,17 +4,23 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, ListTree, SearchCheck, Building, UserCircle, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { PlusCircle, ListTree, SearchCheck, Building, UserCircle, Loader2, CreditCard } from 'lucide-react';
 import PropertyListItem from '@/components/property/PropertyListItem';
-import RequestCard from '@/components/request/RequestCard';
-import type { PropertyListing, SearchRequest, User as StoredUser } from '@/lib/types';
+import RequestCard from '@/components/request/RequestCard'; // RequestCard para una vista más detallada en el dashboard
+import type { PropertyListing, SearchRequest, User as StoredUserType } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { getUserPropertiesAction } from '@/actions/propertyActions';
-import { getUserRequestsAction } from '@/actions/requestActions'; // Importar la nueva acción
+import { getUserRequestsAction } from '@/actions/requestActions'; 
+
+// Extender StoredUser para incluir planId y planName, si no están ya en StoredUserType
+interface DashboardUser extends StoredUserType {
+  planId?: string | null;
+  planName?: string | null;
+}
 
 export default function DashboardPage() {
-  const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
+  const [loggedInUser, setLoggedInUser] = useState<DashboardUser | null>(null);
   const [userProperties, setUserProperties] = useState<PropertyListing[]>([]);
   const [userRequests, setUserRequests] = useState<SearchRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,7 +29,7 @@ export default function DashboardPage() {
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
-        const user: StoredUser = JSON.parse(userJson);
+        const user: DashboardUser = JSON.parse(userJson);
         setLoggedInUser(user);
       } catch (error) {
         console.error("Error parsing user from localStorage", error);
@@ -38,13 +44,17 @@ export default function DashboardPage() {
         setIsLoading(true);
         const [properties, requests] = await Promise.all([
           getUserPropertiesAction(loggedInUser.id),
-          getUserRequestsAction(loggedInUser.id) // Usar la acción real
+          getUserRequestsAction(loggedInUser.id)
         ]);
         setUserProperties(properties);
         setUserRequests(requests);
         setIsLoading(false);
       } else {
-        setIsLoading(false);
+        // Si no hay loggedInUser después del primer chequeo, paramos la carga
+        // esto puede pasar si el usuario llega directamente y no hay nada en localStorage aún
+        if (localStorage.getItem('loggedInUser') === null) {
+            setIsLoading(false);
+        }
         setUserProperties([]);
         setUserRequests([]);
       }
@@ -71,21 +81,37 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <Card className="shadow-md">
         <CardHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <UserCircle className="h-10 w-10 text-primary" />
-            <div>
-              <CardTitle className="text-3xl font-headline">Panel de {userName}</CardTitle>
-              <CardDescription className="text-lg">Bienvenido de nuevo. Aquí puedes gestionar tus publicaciones.</CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+            <div className="flex items-center gap-3">
+              <UserCircle className="h-10 w-10 text-primary flex-shrink-0" />
+              <div>
+                <CardTitle className="text-3xl font-headline">Panel de {userName}</CardTitle>
+                <CardDescription className="text-lg">Bienvenido. Aquí puedes gestionar tus publicaciones y tu cuenta.</CardDescription>
+              </div>
             </div>
+            {loggedInUser && (
+                 <div className="text-sm bg-secondary/50 p-3 rounded-md text-right sm:text-left">
+                    <p className="font-semibold">Tu Plan Actual:</p>
+                    <p className="text-primary flex items-center gap-1">
+                        <CreditCard className="h-4 w-4" /> 
+                        {loggedInUser.planName || "Gratuito (o sin plan asignado)"}
+                    </p>
+                    {!loggedInUser.planName && (
+                         <Button variant="link" size="sm" className="p-0 h-auto mt-1 text-xs" disabled> {/* TODO: Link to plans page */}
+                            Ver Planes
+                        </Button>
+                    )}
+                </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Button asChild size="lg" variant="outline">
+          <Button asChild size="lg" variant="default">
             <Link href="/properties/submit" className="flex items-center gap-2">
               <PlusCircle className="h-5 w-5" /> Publicar Nueva Propiedad
             </Link>
           </Button>
-          <Button asChild size="lg" variant="outline">
+          <Button asChild size="lg" variant="secondary">
             <Link href="/requests/submit" className="flex items-center gap-2">
               <PlusCircle className="h-5 w-5" /> Publicar Nueva Solicitud
             </Link>
@@ -125,6 +151,13 @@ export default function DashboardPage() {
                   </div>
                 )}
               </CardContent>
+               {userProperties.length > 0 && (
+                 <CardFooter>
+                    <Button variant="outline" className="mx-auto" asChild>
+                        <Link href="/properties">Ver todas mis propiedades</Link> {/* TODO: Link to a filtered user properties page */}
+                    </Button>
+                </CardFooter>
+               )}
             </Card>
           </section>
 
@@ -153,6 +186,13 @@ export default function DashboardPage() {
                   </div>
                 )}
               </CardContent>
+               {userRequests.length > 0 && (
+                <CardFooter>
+                    <Button variant="outline" className="mx-auto" asChild>
+                        <Link href="/requests">Ver todas mis solicitudes</Link> {/* TODO: Link to a filtered user requests page */}
+                    </Button>
+                </CardFooter>
+               )}
             </Card>
           </section>
         </>
@@ -160,4 +200,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

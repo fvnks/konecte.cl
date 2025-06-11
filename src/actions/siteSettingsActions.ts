@@ -24,6 +24,10 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
     
     revalidatePath('/'); 
     revalidatePath('/admin/appearance');
+    // Dispatch a storage event to notify other tabs/components (like Navbar) to update if needed
+    // This is a client-side concept, so we can't directly do it here.
+    // Instead, components like Navbar should re-fetch settings if they detect a relevant path revalidation
+    // or based on other triggers. Or simply on next load.
     return { success: true, message: "Configuración del sitio guardada exitosamente." };
   } catch (error: any) {
     console.error("Error al guardar la configuración del sitio en la BD:", error);
@@ -55,4 +59,3 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     logoUrl: null,
   };
 }
-```

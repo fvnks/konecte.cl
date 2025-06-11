@@ -89,11 +89,15 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
   console.log(`[AuthAction] Attempting sign-in for email: ${email}`);
 
   try {
-    // Fetch user including role name
+    // Fetch user including role name and plan name
     const usersFound: any[] = await query(
-        `SELECT u.id, u.name, u.email, u.password_hash, u.avatar_url, u.role_id, r.name as role_name
+        `SELECT 
+            u.id, u.name, u.email, u.password_hash, u.avatar_url, 
+            u.role_id, r.name as role_name,
+            u.plan_id, p.name as plan_name, u.plan_expires_at
          FROM users u
          LEFT JOIN roles r ON u.role_id = r.id
+         LEFT JOIN plans p ON u.plan_id = p.id
          WHERE u.email = ?`,
         [email]
     );
@@ -113,19 +117,6 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
         return { success: false, message: "Error de cuenta de usuario. Contacte al administrador." };
     }
     
-    // --- START DEBUGGING ---
-    // Test bcrypt's internal consistency
-    const testPassword = "testpassword123";
-    const selfGeneratedHash = await bcrypt.hash(testPassword, 10);
-    const selfComparison = await bcrypt.compare(testPassword, selfGeneratedHash);
-    console.log(`[AuthAction] bcrypt self-consistency check (hash/compare '${testPassword}'): ${selfComparison}`);
-
-    // Test comparison with the known pre-generated hash for 'admin123'
-    const knownHashForAdmin123 = '$2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS';
-    const directComparisonWithKnownHash = await bcrypt.compare('admin123', knownHashForAdmin123);
-    console.log(`[AuthAction] Direct comparison with known hash for 'admin123': ${directComparisonWithKnownHash}`);
-    // --- END DEBUGGING ---
-
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     console.log(`[AuthAction] Password match result for ${user.email}: ${passwordMatch}`);
 
@@ -134,7 +125,6 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
       return { success: false, message: "Credenciales inválidas." };
     }
 
-    // Do not return password_hash to the client
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password_hash, ...userWithoutPasswordHash } = user;
     console.log(`[AuthAction] Sign-in successful for ${user.email}`);

@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut } from 'lucide-react';
+import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard } from 'lucide-react'; // Added CreditCard
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -26,6 +26,9 @@ interface StoredUser {
   email: string;
   roleId: string;
   roleName?: string;
+  planId?: string | null; // Añadido
+  planName?: string | null; // Añadido
+  avatarUrl?: string; // Añadido
 }
 
 export default function Navbar() {
@@ -41,7 +44,6 @@ export default function Navbar() {
       setSiteSettings(settings);
     } catch (error) {
       console.error("Error fetching site settings for Navbar:", error);
-      // Fallback a null para que use el logo por defecto
       setSiteSettings(null);
     }
   }, []);
@@ -73,15 +75,7 @@ export default function Navbar() {
       if (event.key === 'loggedInUser') {
         updateLoginState();
       }
-      // Si los site_settings cambian (ej. desde el panel de admin en otra pestaña),
-      // podríamos necesitar una forma de notificar al Navbar para que recargue.
-      // Por simplicidad, recargamos las config del sitio si el storage cambia (aunque no sea 'siteSettings').
-      // O podemos añadir un listener específico si 'siteSettings' se guarda en localStorage.
-      // Por ahora, lo más simple es que se actualice en la próxima carga o si el usuario navega.
-      // O, si 'siteSettings' se guarda en BD y se invalida caché de Next.js, la próxima carga lo tomará.
-      // Para un efecto inmediato, podríamos llamar fetchSiteSettings() aquí también si detectamos un cambio relevante.
-      // Por ahora, el logo se cargará al inicio y se mantendrá.
-       if (event.key === 'siteSettingsUpdated') { // Evento personalizado que dispararíamos desde la página de admin
+       if (event.key === 'siteSettingsUpdated') { 
         fetchSiteSettings();
       }
     };
@@ -158,12 +152,26 @@ export default function Navbar() {
           {loggedInUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <UserCircle className="h-6 w-6" />
-                  <span className="sr-only">Menú de Usuario</span>
-                </Button>
+                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/40x40.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona"/>
+                      <AvatarFallback>{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                 <DropdownMenuItem disabled>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{loggedInUser.name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {loggedInUser.email}
+                      </p>
+                       {loggedInUser.planName && (
+                        <p className="text-xs leading-none text-primary mt-1">Plan: {loggedInUser.planName}</p>
+                      )}
+                    </div>
+                  </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/profile">Perfil</Link>
                 </DropdownMenuItem>
@@ -264,4 +272,6 @@ export default function Navbar() {
 }
 
 const MobileSeparator = () => <Separator className="my-2" />;
-```
+
+// Added for consistency in Navbar user display
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
