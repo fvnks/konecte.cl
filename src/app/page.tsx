@@ -1,16 +1,82 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Search as SearchIcon } from "lucide-react";
+import { PlusCircle, Search as SearchIcon, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import PropertyCard from "@/components/property/PropertyCard";
+import PropertyListItem from "@/components/property/PropertyListItem"; // Cambiado de PropertyCard
 import RequestCard from "@/components/request/RequestCard";
-import { sampleProperties, sampleRequests } from "@/lib/types"; // Using placeholder data
+import { sampleProperties, sampleRequests } from "@/lib/types"; // Usando datos de ejemplo
+import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+async function GoogleSheetSection() {
+  const config = await getGoogleSheetConfigAction();
+  
+  if (!config || !config.isConfigured) {
+    return (
+      <Card className="mt-10 bg-muted/30">
+        <CardHeader>
+          <CardTitle className="flex items-center"><AlertTriangle className="h-5 w-5 mr-2 text-yellow-500" /> Sección de Google Sheets no configurada</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            La sección para mostrar datos de Google Sheets aún no ha sido configurada por un administrador.
+            Por favor, ve a <Link href="/admin/settings" className="text-primary hover:underline">la página de configuración</Link> para añadir los detalles de la hoja de cálculo.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  const sheetData = await fetchGoogleSheetDataAction();
+
+  if (!sheetData || sheetData.rows.length === 0) {
+    return (
+       <Card className="mt-10">
+        <CardHeader>
+          <CardTitle>Datos de Google Sheets</CardTitle>
+           <CardDescription>No se pudieron cargar los datos de la hoja de cálculo o está vacía. Verifica la configuración.</CardDescription>
+        </CardHeader>
+         <CardContent>
+           <p className="text-sm text-muted-foreground">Asegúrate de que el ID de la hoja, el nombre de la pestaña y las columnas sean correctos, y que la hoja esté compartida públicamente.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <section className="py-10 bg-card rounded-lg shadow-md mt-12">
+      <div className="container mx-auto px-4">
+        <h2 className="text-3xl font-headline font-semibold text-center mb-6">Datos de Nuestra Hoja de Cálculo</h2>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {sheetData.headers.map((header) => (
+                <TableHead key={header}>{header}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sheetData.rows.map((row, rowIndex) => (
+              <TableRow key={rowIndex}>
+                {sheetData.headers.map((header) => (
+                  <TableCell key={`${rowIndex}-${header}`}>{row[header]}</TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </section>
+  );
+}
+
 
 export default function HomePage() {
-  // In a real app, fetch this data
-  const featuredProperties = sampleProperties.slice(0, 4);
-  const recentRequests = sampleRequests.slice(0, 4);
+  // En una aplicación real, obtendrías estos datos
+  const featuredProperties = sampleProperties.slice(0, 3); // Ajustado a 3 para diseño de lista
+  const recentRequests = sampleRequests.slice(0, 2); // Ajustado para consistencia
 
   return (
     <div className="space-y-12">
@@ -52,9 +118,9 @@ export default function HomePage() {
           <TabsTrigger value="requests" className="text-base py-2.5">Solicitudes Recientes</TabsTrigger>
         </TabsList>
         <TabsContent value="properties" className="mt-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-6"> {/* Cambiado a space-y-6 para lista */}
             {featuredProperties.map((property) => (
-              <PropertyCard key={property.id} property={property} />
+              <PropertyListItem key={property.id} property={property} />
             ))}
           </div>
           {featuredProperties.length === 0 && <p className="text-center text-muted-foreground py-8">Aún no hay propiedades destacadas.</p>}
@@ -65,7 +131,7 @@ export default function HomePage() {
           </div>
         </TabsContent>
         <TabsContent value="requests" className="mt-8">
-          <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:gap-x-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Mantenido grid para requests */}
             {recentRequests.map((request) => (
               <RequestCard key={request.id} request={request} />
             ))}
@@ -86,11 +152,15 @@ export default function HomePage() {
             <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">
                 Nuestra IA inteligente te ayuda a encontrar la propiedad o el comprador/inquilino perfecto al relacionar inteligentemente los listados con las solicitudes de búsqueda.
             </p>
-            <Button size="lg" className="mt-6" disabled>
-                Descubrir Coincidencias (Próximamente)
+            <Button size="lg" className="mt-6" asChild>
+                <Link href="/ai-matching">Descubrir Coincidencias</Link>
             </Button>
          </div>
       </section>
+
+      {/* Nueva sección para Google Sheets */}
+      <GoogleSheetSection />
+
     </div>
   );
 }

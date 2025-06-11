@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -63,6 +64,13 @@ export interface Comment {
   upvotes: number;
 }
 
+export interface GoogleSheetConfig {
+  sheetId: string;
+  sheetName: string;
+  columnsToDisplay: string; // Comma-separated column letters or headers e.g., "A,B,C" or "Nombre,Email,Telefono"
+  isConfigured: boolean;
+}
+
 // Placeholder data for initial UI rendering
 export const placeholderUser: User = {
   id: 'user1',
@@ -73,81 +81,112 @@ export const placeholderUser: User = {
 export const sampleProperties: PropertyListing[] = [
   {
     id: 'prop1',
-    title: 'Spacious 3-Bedroom Apartment in Downtown',
-    slug: 'spacious-3-bedroom-apartment-downtown',
-    description: 'A beautiful and spacious apartment located in the heart of downtown, perfect for families or professionals. Features modern amenities and stunning city views.',
+    title: 'Amplio Apartamento de 3 Habitaciones en el Centro',
+    slug: 'amplio-apartamento-3-habitaciones-centro',
+    description: 'Un hermoso y espacioso apartamento ubicado en el corazón del centro de la ciudad, perfecto para familias o profesionales. Cuenta con comodidades modernas y impresionantes vistas de la ciudad.',
     propertyType: 'rent',
     category: 'apartment',
     price: 2500,
     currency: 'USD',
-    address: '123 Main St, Apt 4B',
-    city: 'Metropolis',
-    country: 'USA',
+    address: 'Calle Principal 123, Apto 4B',
+    city: 'Metrópolis',
+    country: 'EE.UU.',
     bedrooms: 3,
     bathrooms: 2,
     areaSqMeters: 120,
-    images: ['https://placehold.co/600x400.png?text=Living+Room', 'https://placehold.co/600x400.png?text=Bedroom+1', 'https://placehold.co/600x400.png?text=Kitchen'],
+    images: ['https://placehold.co/600x400.png?text=Sala+de+Estar', 'https://placehold.co/600x400.png?text=Habitacion+1', 'https://placehold.co/600x400.png?text=Cocina'],
     author: placeholderUser,
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
-    updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(), // 1 day ago
+    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), // Hace 2 días
+    updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(), // Hace 1 día
     upvotes: 120,
     commentsCount: 15,
-    features: ['Pet-friendly', 'Gym Access', 'Parking Spot'],
+    features: ['Admite mascotas', 'Acceso al gimnasio', 'Plaza de aparcamiento'],
   },
   {
     id: 'prop2',
-    title: 'Modern House with Garden for Sale',
-    slug: 'modern-house-with-garden-for-sale',
-    description: 'Newly renovated modern house with a beautiful garden and outdoor space. Ideal for those looking for a quiet and comfortable living environment.',
+    title: 'Casa Moderna con Jardín en Venta',
+    slug: 'casa-moderna-con-jardin-en-venta',
+    description: 'Casa moderna recientemente renovada con un hermoso jardín y espacio al aire libre. Ideal para quienes buscan un entorno de vida tranquilo y confortable.',
     propertyType: 'sale',
     category: 'house',
     price: 450000,
     currency: 'USD',
-    address: '456 Oak Avenue',
+    address: 'Avenida del Roble 456',
     city: 'Suburbia',
-    country: 'USA',
+    country: 'EE.UU.',
     bedrooms: 4,
     bathrooms: 3,
     areaSqMeters: 200,
-    images: ['https://placehold.co/600x400.png?text=Exterior+View', 'https://placehold.co/600x400.png?text=Garden', 'https://placehold.co/600x400.png?text=Master+Bedroom'],
+    images: ['https://placehold.co/600x400.png?text=Vista+Exterior', 'https://placehold.co/600x400.png?text=Jardin', 'https://placehold.co/600x400.png?text=Habitacion+Principal'],
     author: { id: 'user2', name: 'John Smith', avatarUrl: 'https://placehold.co/40x40.png' },
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(), // 5 days ago
-    updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
+    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(), // Hace 5 días
+    updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(), // Hace 2 días
     upvotes: 250,
     commentsCount: 30,
-    features: ['Large Garden', 'Garage', 'Solar Panels'],
+    features: ['Gran jardín', 'Garaje', 'Paneles solares'],
   },
 ];
 
 export const sampleRequests: SearchRequest[] = [
   {
     id: 'req1',
-    title: 'Looking for a 2-bedroom pet-friendly apartment to rent near city center',
-    slug: 'looking-for-2-bedroom-pet-friendly-apartment',
-    description: 'My partner and I are looking for a 2-bedroom apartment, must be pet-friendly (we have a small dog). Preferably close to public transport and parks. Our budget is around $1800/month.',
+    title: 'Busco apartamento de 2 habitaciones que admita mascotas para alquilar cerca del centro',
+    slug: 'busco-apartamento-2-habitaciones-admite-mascotas',
+    description: 'Mi pareja y yo buscamos un apartamento de 2 habitaciones, debe admitir mascotas (tenemos un perro pequeño). Preferiblemente cerca del transporte público y parques. Nuestro presupuesto es de alrededor de $1800/mes.',
     desiredPropertyType: ['rent'],
     desiredCategories: ['apartment', 'condo'],
-    desiredLocation: { city: 'Metropolis', neighborhood: 'Downtown' },
+    desiredLocation: { city: 'Metrópolis', neighborhood: 'Centro' },
     minBedrooms: 2,
     budgetMax: 1800,
     author: { id: 'user3', name: 'Alice Brown', avatarUrl: 'https://placehold.co/40x40.png' },
-    createdAt: new Date(Date.now() - 86400000 * 1).toISOString(), // 1 day ago
+    createdAt: new Date(Date.now() - 86400000 * 1).toISOString(), // Hace 1 día
     updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
     commentsCount: 5,
   },
   {
     id: 'req2',
-    title: 'Seeking a family house with 3+ bedrooms for purchase in Suburbia',
-    slug: 'seeking-family-house-3-bedrooms-suburbia',
-    description: 'We are a family of four looking to buy a house in a family-friendly neighborhood in Suburbia. Need at least 3 bedrooms, a yard for kids, and good school district. Budget up to $500,000.',
+    title: 'Busco casa familiar con más de 3 habitaciones para comprar en Suburbia',
+    slug: 'busco-casa-familiar-3-habitaciones-suburbia',
+    description: 'Somos una familia de cuatro que busca comprar una casa en un barrio familiar en Suburbia. Necesitamos al menos 3 habitaciones, un patio para los niños y un buen distrito escolar. Presupuesto hasta $500,000.',
     desiredPropertyType: ['sale'],
     desiredCategories: ['house'],
     desiredLocation: { city: 'Suburbia' },
     minBedrooms: 3,
     budgetMax: 500000,
     author: placeholderUser,
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
+    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), // Hace 3 días
     updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
     commentsCount: 12,
   },
 ];
+
+// Simulación de la configuración de Google Sheet que se guardaría
+// En una aplicación real, esto se almacenaría en una base de datos o archivo de configuración seguro.
+export const MOCK_SHEET_CONFIG_KEY = 'mockGoogleSheetConfig';
+
+export function getMockSheetConfig(): GoogleSheetConfig | null {
+  if (typeof window !== 'undefined') {
+    const storedConfig = localStorage.getItem(MOCK_SHEET_CONFIG_KEY);
+    if (storedConfig) {
+      try {
+        return JSON.parse(storedConfig) as GoogleSheetConfig;
+      } catch (error) {
+        console.error("Error parsing mock sheet config from localStorage", error);
+        return null;
+      }
+    }
+  }
+  // Retorna una configuración por defecto si no hay nada o si es SSR
+  return {
+    sheetId: 'TU_SHEET_ID_POR_DEFECTO_AQUI',
+    sheetName: 'Hoja1',
+    columnsToDisplay: 'Nombre,Email,Teléfono', // Nombres de encabezados esperados
+    isConfigured: false, // Inicialmente no configurado para forzar la configuración en el admin
+  };
+}
+
+export function saveMockSheetConfig(config: GoogleSheetConfig) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(MOCK_SHEET_CONFIG_KEY, JSON.stringify({...config, isConfigured: true}));
+  }
+}

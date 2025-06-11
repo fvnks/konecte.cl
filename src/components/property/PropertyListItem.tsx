@@ -1,3 +1,7 @@
+// src/components/property/PropertyListItem.tsx
+// Este es el contenido que antes estaba en PropertyCard.tsx, movido a un nuevo archivo
+// para representar mejor su propósito como un item de lista.
+
 import Link from 'next/link';
 import Image from 'next/image';
 import type { PropertyListing, ListingCategory } from '@/lib/types';
@@ -7,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowBigUp, MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag } from 'lucide-react';
 
-interface PropertyCardProps {
+interface PropertyListItemProps {
   property: PropertyListing;
 }
 
@@ -29,11 +33,7 @@ const translateCategoryBadge = (category: ListingCategory): string => {
   }
 }
 
-// Este componente ahora se llamará PropertyListItem y tendrá un layout horizontal.
-// El nombre del archivo sigue siendo PropertyCard.tsx por ahora para simplificar el diff,
-// pero idealmente se renombraría a PropertyListItem.tsx.
-
-export default function PropertyListItem({ property }: PropertyCardProps) {
+export default function PropertyListItem({ property }: PropertyListItemProps) {
   const {
     title,
     slug,
@@ -49,12 +49,11 @@ export default function PropertyListItem({ property }: PropertyCardProps) {
     commentsCount,
     propertyType,
     areaSqMeters,
-    description, // Añadido para un breve resumen
+    description,
   } = property;
 
   return (
     <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg w-full flex flex-col md:flex-row">
-      {/* Sección de Imagen */}
       <Link href={`/properties/${slug}`} className="md:w-1/3 lg:w-1/4 block flex-shrink-0 group">
         <div className="relative aspect-video md:aspect-square w-full h-full overflow-hidden">
           <Image
@@ -63,7 +62,7 @@ export default function PropertyListItem({ property }: PropertyCardProps) {
             fill
             sizes="(max-width: 767px) 100vw, (max-width: 1023px) 33vw, 25vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
-            data-ai-hint="exterior de propiedad"
+            data-ai-hint="exterior propiedad"
           />
           <Badge variant="secondary" className="absolute top-2 left-2 capitalize">
             {translatePropertyTypeBadge(propertyType)}
@@ -71,7 +70,6 @@ export default function PropertyListItem({ property }: PropertyCardProps) {
         </div>
       </Link>
 
-      {/* Sección de Contenido */}
       <div className="flex flex-1 flex-col p-4">
         <CardHeader className="p-0 mb-2">
           <Link href={`/properties/${slug}`} className="block">
@@ -136,16 +134,3 @@ export default function PropertyListItem({ property }: PropertyCardProps) {
     </Card>
   );
 }
-
-// Crearemos un nuevo componente PropertyListItem.tsx para el formato de lista,
-// y el PropertyCard.tsx original puede mantenerse si se necesita un formato de tarjeta en cuadrícula en otro lugar.
-// Por ahora, renombramos este internamente y ajustamos su layout.
-// Para hacer el cambio completo, el archivo debería renombrarse a PropertyListItem.tsx
-// y las importaciones actualizadas. Aquí solo ajustamos el contenido.
-// El nombre de la función exportada ya es PropertyListItem
-export { PropertyListItem };
-
-// Dejaremos el export default como estaba para evitar romper otras importaciones si existen,
-// aunque la intención es usar PropertyListItem
-const PropertyCard = PropertyListItem;
-// export default PropertyCard; // Comentado para priorizar PropertyListItem si se importa directamente

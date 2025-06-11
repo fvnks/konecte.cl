@@ -1,14 +1,14 @@
 // src/app/properties/page.tsx
-import PropertyCard from "@/components/property/PropertyCard";
+import PropertyListItem from "@/components/property/PropertyListItem"; // Cambiado de PropertyCard
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { sampleProperties } from "@/lib/types"; // Using placeholder data
+import { sampleProperties } from "@/lib/types"; // Usando datos de ejemplo
 import { Filter, ListFilter, Search } from "lucide-react";
 import Link from "next/link";
 
 export default function PropertiesPage() {
-  // In a real app, fetch and filter this data
+  // En una aplicación real, obtendrías y filtrarías estos datos
   const properties = sampleProperties;
 
   return (
@@ -55,9 +55,9 @@ export default function PropertiesPage() {
       </div>
       
       {properties.length > 0 ? (
-        <div className="space-y-6">
+        <div className="space-y-6"> {/* Cambiado a space-y-6 para un layout de lista */}
           {properties.map((property) => (
-            <PropertyCard key={property.id} property={property} />
+            <PropertyListItem key={property.id} property={property} />
           ))}
         </div>
       ) : (
@@ -72,7 +72,7 @@ export default function PropertiesPage() {
           </Button>
         </div>
       )}
-       {/* Pagination Placeholder */}
+       {/* Placeholder de Paginación */}
       <div className="flex justify-center mt-8">
         <Button variant="outline" className="mr-2" disabled>Anterior</Button>
         <Button variant="outline">Siguiente</Button>
