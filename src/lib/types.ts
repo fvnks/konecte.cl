@@ -6,6 +6,21 @@ export interface Role {
   description?: string;
 }
 
+export interface Plan {
+  id: string;
+  name: string;
+  description?: string | null;
+  price_monthly: number;
+  price_currency: string;
+  max_properties_allowed: number | null; // null para ilimitado
+  max_requests_allowed: number | null;   // null para ilimitado
+  can_feature_properties: boolean;
+  property_listing_duration_days: number | null; // null para indefinido
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -14,6 +29,9 @@ export interface User {
   password_hash?: string; // Only present when fetched from DB, should not be sent to client
   role_id: string; // FK a Role.id
   role_name?: string; // Nombre del rol (para mostrar en UI, obtenido de un JOIN)
+  plan_id?: string | null; // FK a Plan.id
+  plan_name?: string | null; // Nombre del plan (para mostrar en UI)
+  plan_expires_at?: string | null; // Fecha de expiración del plan
   created_at?: string;
   updated_at?: string;
 }

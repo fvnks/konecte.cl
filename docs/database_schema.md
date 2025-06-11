@@ -32,6 +32,32 @@ INSERT INTO roles (id, name, description) VALUES
 ```
 
 ---
+## Tabla: `plans` (Planes de Suscripción)
+
+Almacena los detalles de los diferentes planes de suscripción o uso.
+
+```sql
+CREATE TABLE plans (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    price_monthly DECIMAL(10,2) DEFAULT 0.00,
+    price_currency VARCHAR(3) DEFAULT 'CLP',
+    max_properties_allowed INT DEFAULT NULL,         -- NULL para ilimitado
+    max_requests_allowed INT DEFAULT NULL,           -- NULL para ilimitado
+    can_feature_properties BOOLEAN DEFAULT FALSE,
+    property_listing_duration_days INT DEFAULT NULL, -- NULL para indefinido
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Insertar plan gratuito por defecto (opcional, puede ser gestionado desde la app)
+INSERT INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days) VALUES
+(UUID(), 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30);
+```
+
+---
 
 ## Tabla: `users` (Usuarios)
 
@@ -52,15 +78,19 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,                 -- Hash de la contraseña
     avatar_url VARCHAR(2048),
     role_id VARCHAR(36) NOT NULL,                        -- FK a roles.id
+    plan_id VARCHAR(36) DEFAULT NULL,                    -- FK a plans.id, NULL si no tiene plan o para plan por defecto no asignado explícitamente
+    plan_expires_at TIMESTAMP DEFAULT NULL,              -- Fecha de expiración del plan actual
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT -- O SET DEFAULT si tienes un rol por defecto seguro
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT, -- O SET DEFAULT si tienes un rol por defecto seguro
+    FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE SET NULL  -- Si se elimina un plan, el usuario queda sin plan o se le podría asignar uno por defecto vía lógica de app.
 );
 
 -- Índices
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role_id ON users(role_id);
+CREATE INDEX idx_users_plan_id ON users(plan_id);
 
 -- Ejemplo para insertar un usuario administrador (ejecutar después de crear las tablas 'roles' y 'users'):
 -- Contraseña: "admin123" (hasheada con bcrypt, salt rounds: 10)
@@ -218,5 +248,3 @@ ON DUPLICATE KEY UPDATE id = 1; -- Para evitar error si se ejecuta múltiples ve
 
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
-
-```
