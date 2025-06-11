@@ -11,7 +11,8 @@ let pool: Pool;
 
 export function getDbPool(): Pool {
   if (!pool) {
-    const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
+    // Updated to use MYSQL_ prefix
+    const requiredEnvVars = ['MYSQL_HOST', 'MYSQL_PORT', 'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE'];
     for (const varName of requiredEnvVars) {
       if (!process.env[varName]) {
         const errorMessage = `Missing environment variable: ${varName}. Please ensure it is set in your .env file in the project root and the server was restarted.`;
@@ -20,19 +21,19 @@ export function getDbPool(): Pool {
       }
     }
 
-    const port = Number(process.env.DB_PORT);
+    const port = Number(process.env.MYSQL_PORT); // Updated to MYSQL_PORT
     if (isNaN(port) || port <= 0) {
-        const portErrorMessage = `Invalid DB_PORT: '${process.env.DB_PORT}'. Must be a positive number.`;
+        const portErrorMessage = `Invalid MYSQL_PORT: '${process.env.MYSQL_PORT}'. Must be a positive number.`; // Updated to MYSQL_PORT
         console.error(portErrorMessage);
         throw new Error(portErrorMessage);
     }
 
     const connectionConfig = {
-      host: process.env.DB_HOST,
+      host: process.env.MYSQL_HOST, // Updated to MYSQL_HOST
       port: port,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      user: process.env.MYSQL_USER, // Updated to MYSQL_USER
+      password: process.env.MYSQL_PASSWORD, // Updated to MYSQL_PASSWORD
+      database: process.env.MYSQL_DATABASE, // Updated to MYSQL_DATABASE
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
