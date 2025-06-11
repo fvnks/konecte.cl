@@ -3,6 +3,10 @@
 import mysql from 'mysql2/promise';
 import type { Pool } from 'mysql2/promise';
 
+// Explicitly load environment variables from .env file
+import { config } from 'dotenv';
+config(); // This will load variables from .env into process.env
+
 let pool: Pool;
 
 export function getDbPool(): Pool {
