@@ -33,13 +33,17 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = randomUUID();
-    const defaultUserRoleId = 'user';
+    const defaultUserRoleId = 'user'; // Make sure 'user' role exists in your 'roles' table
 
+    // Verify default role exists
     const userRoleRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [defaultUserRoleId]);
     if (userRoleRows.length === 0) {
         console.error(`[AuthAction] CRITICAL Sign-up Error: Default role '${defaultUserRoleId}' not found in DB.`);
+        // Consider creating the 'user' role if it's guaranteed to be needed and might not exist
+        // For now, we'll return an error.
         return { success: false, message: "Error de configuración del sistema: No se pudo asignar el rol por defecto. Contacte al administrador."};
     }
+
 
     await query(
       'INSERT INTO users (id, name, email, password_hash, role_id) VALUES (?, ?, ?, ?, ?)',
@@ -52,11 +56,15 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
       name,
       email,
       role_id: defaultUserRoleId,
+      // role_name will not be available immediately here without another query,
+      // but the Navbar logic can fetch it or handle its absence.
     };
 
     return { success: true, message: "Usuario registrado exitosamente.", user: newUser };
   } catch (error: any) {
     console.error("[AuthAction] Error in signUpAction:", error);
+    // Check for duplicate email specifically, as the previous check might have a race condition
+    // or if the UNIQUE constraint on email column triggers the error.
     if (error.code === 'ER_DUP_ENTRY' && error.message.includes('users.email')) {
         return { success: false, message: "Ya existe un usuario con este correo electrónico." };
     }
@@ -68,7 +76,7 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
 // --- Sign In ---
 const signInSchema = z.object({
   email: z.string().email("Correo electrónico inválido."),
-  password: z.string().min(1, "La contraseña es requerida."),
+  password: z.string().min(1, "La contraseña es requerida."), // Min 1, as bcrypt handles empty strings
 });
 export type SignInFormValues = z.infer<typeof signInSchema>;
 
@@ -82,6 +90,7 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
   console.log(`[AuthAction] Attempting sign-in for email: ${email}`);
 
   try {
+    // Fetch user including role name
     const usersFound: any[] = await query(
         `SELECT u.id, u.name, u.email, u.password_hash, u.avatar_url, u.role_id, r.name as role_name
          FROM users u
@@ -95,14 +104,22 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
       return { success: false, message: "Credenciales inválidas." };
     }
 
-    const user = usersFound[0] as User & { password_hash: string };
-    console.log(`[AuthAction] User found: ${user.email}. Stored hash: ${user.password_hash ? user.password_hash.substring(0, 10) + "..." : "NOT FOUND"}`);
+    const user = usersFound[0] as User & { password_hash: string }; // Ensure password_hash is expected
+    console.log(`[AuthAction] User found: ${user.email}. Stored hash: ${user.password_hash ? user.password_hash.substring(0, 10) + "..." : "NOT FOUND"}, Length: ${user.password_hash?.length}`);
+
 
     if (!user.password_hash) {
+        // This case should ideally not happen if password_hash is NOT NULL in DB schema
         console.error(`[AuthAction] CRITICAL Sign-in Error: password_hash is missing for user ${user.email}.`);
         return { success: false, message: "Error de cuenta de usuario. Contacte al administrador." };
     }
     
+    // --- DEBUGGING: Direct comparison with known hash ---
+    const knownHash = '$2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS';
+    const directComparisonWithKnownHash = await bcrypt.compare('admin123', knownHash);
+    console.log(`[AuthAction] Direct comparison with known hash for 'admin123': ${directComparisonWithKnownHash}`);
+    // --- END DEBUGGING ---
+
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     console.log(`[AuthAction] Password match result for ${user.email}: ${passwordMatch}`);
 
@@ -111,7 +128,7 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
       return { success: false, message: "Credenciales inválidas." };
     }
 
-    // No devolver el password_hash al cliente
+    // Do not return password_hash to the client
     const { password_hash, ...userWithoutPasswordHash } = user;
     console.log(`[AuthAction] Sign-in successful for ${user.email}`);
 
