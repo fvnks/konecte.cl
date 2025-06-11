@@ -39,7 +39,6 @@ export default function Navbar() {
           </Link>
         </Button>
       ))}
-      {/* El enlace directo a Admin en la barra principal se elimina según la solicitud */}
     </>
   );
 
@@ -91,13 +90,12 @@ export default function Navbar() {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2">
+                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 cursor-pointer">
                   <LogOut className="h-4 w-4" /> Cerrar Sesión
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            // Botón para simular inicio de sesión de admin en desktop
             <Button variant="outline" size="sm" onClick={handleSimulateLogin} className="hidden md:flex items-center gap-2">
               <LogIn className="h-4 w-4" /> Simular Inicio (Admin)
             </Button>
@@ -126,7 +124,6 @@ export default function Navbar() {
                       </Link>
                     </Button>
                   ))}
-                  {/* No hay enlace Admin directo en móvil aquí tampoco */}
                   <MobileSeparator />
                    <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
                       <Link href="/properties/submit" className="flex items-center gap-3 w-full">
@@ -158,12 +155,11 @@ export default function Navbar() {
                             </Link>
                         </Button>
                        )}
-                      <Button variant="ghost" onClick={handleLogout} className="justify-start text-base px-4 py-3 w-full text-left flex items-center gap-3">
+                      <Button variant="ghost" onClick={handleLogout} className="justify-start text-base px-4 py-3 w-full text-left flex items-center gap-3 cursor-pointer">
                         <LogOut className="h-4 w-4" /> Cerrar Sesión
                       </Button>
                     </>
                   ) : (
-                    // Botón para simular inicio de sesión de admin en móvil
                     <Button variant="outline" onClick={handleSimulateLogin} className="mx-4 mt-2 flex items-center gap-2 justify-center">
                       <LogIn className="h-4 w-4" /> Simular Inicio (Admin)
                     </Button>
