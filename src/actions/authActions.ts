@@ -1,3 +1,4 @@
+
 // src/actions/authActions.ts
 'use server';
 
@@ -38,9 +39,7 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
     // Verify default role exists
     const userRoleRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [defaultUserRoleId]);
     if (userRoleRows.length === 0) {
-        console.error(`[AuthAction] CRITICAL Sign-up Error: Default role '${defaultUserRoleId}' not found in DB.`);
-        // Consider creating the 'user' role if it's guaranteed to be needed and might not exist
-        // For now, we'll return an error.
+        console.error(`[AuthAction] CRITICAL Sign-up Error: Default role '${defaultUserRoleId}' not found in DB. Please ensure the 'roles' table is populated, for example with: INSERT INTO roles (id, name) VALUES ('user', 'Usuario'), ('admin', 'Administrador');`);
         return { success: false, message: "Error de configuración del sistema: No se pudo asignar el rol por defecto. Contacte al administrador."};
     }
 
@@ -114,9 +113,16 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
         return { success: false, message: "Error de cuenta de usuario. Contacte al administrador." };
     }
     
-    // --- DEBUGGING: Direct comparison with known hash ---
-    const knownHash = '$2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS';
-    const directComparisonWithKnownHash = await bcrypt.compare('admin123', knownHash);
+    // --- START DEBUGGING ---
+    // Test bcrypt's internal consistency
+    const testPassword = "testpassword123";
+    const selfGeneratedHash = await bcrypt.hash(testPassword, 10);
+    const selfComparison = await bcrypt.compare(testPassword, selfGeneratedHash);
+    console.log(`[AuthAction] bcrypt self-consistency check (hash/compare '${testPassword}'): ${selfComparison}`);
+
+    // Test comparison with the known pre-generated hash for 'admin123'
+    const knownHashForAdmin123 = '$2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS';
+    const directComparisonWithKnownHash = await bcrypt.compare('admin123', knownHashForAdmin123);
     console.log(`[AuthAction] Direct comparison with known hash for 'admin123': ${directComparisonWithKnownHash}`);
     // --- END DEBUGGING ---
 
@@ -138,3 +144,4 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
     return { success: false, message: `Error al iniciar sesión: ${error.message}` };
   }
 }
+
