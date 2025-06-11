@@ -1,15 +1,17 @@
+
 // src/app/requests/page.tsx
 import RequestCard from "@/components/request/RequestCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { sampleRequests } from "@/lib/types"; // Using placeholder data
+import type { SearchRequest } from "@/lib/types"; // Import type
 import { Filter, ListFilter, Search as SearchIconLucide } from "lucide-react";
 import Link from "next/link";
 
 export default function RequestsPage() {
-  // In a real app, fetch and filter this data
-  const requests = sampleRequests;
+  // TODO: Implementar carga desde BD
+  // En una aplicación real, aquí obtendrías y filtrarías estos datos desde tu backend/DB.
+  const requests: SearchRequest[] = []; 
 
   return (
     <div className="space-y-8">
@@ -56,7 +58,7 @@ export default function RequestsPage() {
           <SearchIconLucide className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-2 text-xl font-semibold">No se Encontraron Solicitudes</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Intenta ajustar tu búsqueda o filtros. ¡O sé el primero en publicar una!
+            Actualmente no hay solicitudes publicadas. ¡O sé el primero en publicar una!
           </p>
           <Button className="mt-6" asChild>
             <Link href="/requests/submit">Publicar una Solicitud</Link>
@@ -64,11 +66,13 @@ export default function RequestsPage() {
         </div>
       )}
 
-      {/* Pagination Placeholder */}
-      <div className="flex justify-center mt-8">
-        <Button variant="outline" className="mr-2" disabled>Anterior</Button>
-        <Button variant="outline">Siguiente</Button>
-      </div>
+      {/* Pagination Placeholder - Consider removing or implementing if not used soon */}
+      {requests.length > 10 && ( // Show pagination only if there are enough items
+        <div className="flex justify-center mt-8">
+          <Button variant="outline" className="mr-2" disabled>Anterior</Button>
+          <Button variant="outline">Siguiente</Button>
+        </div>
+      )}
     </div>
   );
 }

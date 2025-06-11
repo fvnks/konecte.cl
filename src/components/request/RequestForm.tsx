@@ -1,3 +1,4 @@
+
 // src/components/request/RequestForm.tsx
 'use client';
 
@@ -75,11 +76,13 @@ export default function RequestForm() {
         budgetMax: values.budgetMax === '' ? undefined : values.budgetMax,
     };
 
+    // TODO: Conectar esta acción con la base de datos cuando se implemente el backend para solicitudes.
+    // Por ahora, la acción submitRequestAction es simulada y no guarda en la BD.
     const result = await submitRequestAction(dataToSubmit);
     if (result.success) {
       toast({
-        title: "Solicitud Publicada",
-        description: "Tu solicitud de propiedad ha sido enviada exitosamente.",
+        title: "Solicitud Publicada (Simulación)",
+        description: "Tu solicitud de propiedad ha sido enviada (actualmente es una simulación y no se guarda en la base de datos).",
       });
       form.reset();
     } else {

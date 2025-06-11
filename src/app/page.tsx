@@ -6,7 +6,7 @@ import { PlusCircle, Search as SearchIcon, AlertTriangle, Building } from "lucid
 import Link from "next/link";
 import PropertyListItem from "@/components/property/PropertyListItem";
 import RequestCard from "@/components/request/RequestCard";
-import { sampleRequests, type PropertyListing } from "@/lib/types"; // Remove sampleProperties
+import type { PropertyListing, SearchRequest } from "@/lib/types"; // Removed sampleRequests, added SearchRequest
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import { getPropertiesAction } from "@/actions/propertyActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -78,7 +78,9 @@ async function GoogleSheetSection() {
 export default async function HomePage() {
   const allProperties: PropertyListing[] = await getPropertiesAction();
   const featuredProperties = allProperties.slice(0, 3); // Get first 3 or fewer
-  const recentRequests = sampleRequests.slice(0, 2); // Still using sample data for requests
+  // TODO: Implementar carga desde BD para solicitudes recientes.
+  // Por ahora, mostramos un array vacío, lo que resultará en un mensaje de "Aún no hay solicitudes recientes."
+  const recentRequests: SearchRequest[] = []; 
 
   return (
     <div className="space-y-12">

@@ -1,20 +1,23 @@
 
-import { sampleRequests, placeholderUser, Comment as CommentType, PropertyType, ListingCategory, SearchRequest } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+
+import { placeholderUser, type Comment as CommentType, type PropertyType, type ListingCategory, type SearchRequest } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, BedDouble, Bath, DollarSign, Tag, ThumbsUp, MessageSquare, Send, UserCircle, SearchIcon } from "lucide-react";
-import Link from "next/link";
+import { MapPin, BedDouble, Bath, DollarSign, Tag, ThumbsUp, MessageSquare, Send, UserCircle, SearchIcon, AlertTriangle } from "lucide-react";
 
+// TODO: Implementar carga desde BD
 async function getRequestData(slug: string): Promise<SearchRequest | undefined> {
-  return sampleRequests.find(p => p.slug === slug) || sampleRequests[0];
+  // Esta función debería obtener los datos de la solicitud desde la base de datos usando el slug.
+  console.log(`TODO: Cargar datos para la solicitud con slug: ${slug} desde la BD.`);
+  // Por ahora, devolvemos undefined, lo que mostrará "Solicitud no encontrada".
+  return undefined; 
 }
 
-const sampleComments: CommentType[] = [
-  { id: 'comment1', content: '¡Podría tener un lugar que se ajuste a tus criterios! Te envío un MD.', author: placeholderUser, created_at: new Date(Date.now() - 86400000 * 0.3).toISOString(), upvotes: 3, updated_at: new Date().toISOString() },
-];
+// TODO: Implementar carga de comentarios desde BD
+const sampleComments: CommentType[] = []; 
 
 const translatePropertyType = (type: PropertyType): string => {
   if (type === 'rent') return 'Arriendo';
@@ -38,7 +41,13 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
   const request = await getRequestData(params.slug);
 
   if (!request) {
-    return <div className="text-center py-10">Solicitud no encontrada.</div>;
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Solicitud No Encontrada</h1>
+            <p className="text-muted-foreground">La solicitud que buscas no existe o no está disponible.</p>
+        </div>
+    );
   }
   
   const locationCity = request.desiredLocation?.city || 'No especificada';

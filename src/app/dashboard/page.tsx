@@ -8,20 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PlusCircle, ListTree, SearchCheck, Building, UserCircle, Loader2 } from 'lucide-react';
 import PropertyListItem from '@/components/property/PropertyListItem';
 import RequestCard from '@/components/request/RequestCard';
-import { sampleRequests, placeholderUser } from '@/lib/types'; // User type for StoredUser
+import { placeholderUser } from '@/lib/types'; // User type for StoredUser
 import type { PropertyListing, SearchRequest, User as StoredUser } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { getUserPropertiesAction } from '@/actions/propertyActions';
 
 // Simulación: En una app real, obtendrías estos datos del usuario autenticado desde tu backend.
-// async function getUserProperties(): Promise<PropertyListing[]> {
-//   // Filtra las propiedades para que solo muestre las del placeholderUser
-//   return sampleProperties.filter(prop => prop.author.id === placeholderUser.id);
-// }
-
 async function getUserSampleRequests(): Promise<SearchRequest[]> {
-  // Filtra las solicitudes para que solo muestre las del placeholderUser
-  return sampleRequests.filter(req => req.author?.id === placeholderUser.id);
+  // TODO: Implementar carga desde BD para las solicitudes del usuario
+  return []; 
 }
 
 export default function DashboardPage() {
@@ -49,7 +44,7 @@ export default function DashboardPage() {
         setIsLoading(true);
         const [properties, requests] = await Promise.all([
           getUserPropertiesAction(loggedInUser.id),
-          getUserSampleRequests() // Still using sample requests for now
+          getUserSampleRequests() // Ahora devuelve array vacío
         ]);
         setUserProperties(properties);
         setUserRequests(requests);
@@ -146,7 +141,7 @@ export default function DashboardPage() {
                 <CardTitle className="text-2xl font-headline flex items-center gap-2">
                   <SearchCheck className="h-6 w-6 text-primary" /> Mis Solicitudes Activas ({userRequests.length})
                 </CardTitle>
-                <CardDescription>Revisa y gestiona tus solicitudes de búsqueda de propiedades. (Datos de ejemplo)</CardDescription>
+                <CardDescription>Revisa y gestiona tus solicitudes de búsqueda de propiedades.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {userRequests.length > 0 ? (

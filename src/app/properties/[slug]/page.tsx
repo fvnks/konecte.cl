@@ -1,6 +1,6 @@
 
 import { getPropertyBySlugAction } from "@/actions/propertyActions";
-import { placeholderUser, Comment as CommentType, PropertyListing, ListingCategory } from "@/lib/types";
+import { placeholderUser, type Comment as CommentType, type PropertyListing, type ListingCategory } from "@/lib/types";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,10 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapPin, BedDouble, Bath, HomeIcon, Tag, ThumbsUp, MessageSquare, Send, UserCircle, AlertTriangle } from "lucide-react";
 
 // Simulación de comentarios, reemplazar con carga desde BD más adelante
-const sampleComments: CommentType[] = [
-  { id: 'comment1', user_id: placeholderUser.id, content: '¡Este lugar se ve genial! ¿Está cerca del transporte público?', author: placeholderUser, created_at: new Date(Date.now() - 86400000 * 0.5).toISOString(), upvotes: 5, updated_at: new Date(Date.now() - 86400000 * 0.5).toISOString() },
-  { id: 'comment2', user_id: 'user4', content: '¿Cómo son los gastos comunes?', author: {id: 'user4', name: 'Bob Johnson', avatarUrl: 'https://placehold.co/40x40.png?text=BJ', role_id: 'user'}, created_at: new Date(Date.now() - 86400000 * 0.2).toISOString(), upvotes: 2, updated_at: new Date(Date.now() - 86400000 * 0.2).toISOString()},
-];
+const sampleComments: CommentType[] = []; // TODO: Implementar carga de comentarios desde BD
 
 const translatePropertyType = (type: 'rent' | 'sale'): string => {
   if (type === 'rent') return 'En Arriendo';
