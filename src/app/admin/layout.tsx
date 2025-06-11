@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Home, Settings, Users, LayoutDashboard } from 'lucide-react'; // Ajusta según los íconos necesarios
+import { Home, Settings, Users, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -11,8 +11,8 @@ interface AdminLayoutProps {
 const adminNavItems = [
   { href: '/admin', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
   { href: '/admin/settings', label: 'Configuración Google Sheets', icon: <Settings className="h-5 w-5" /> },
+  { href: '/admin/users', label: 'Gestión de Usuarios', icon: <Users className="h-5 w-5" /> },
   // Agrega más items de navegación para el admin aquí
-  // { href: '/admin/users', label: 'Usuarios', icon: <Users className="h-5 w-5" /> },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {

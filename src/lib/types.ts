@@ -1,9 +1,13 @@
 
+
+export type UserRole = 'user' | 'admin';
+
 export interface User {
   id: string;
   name: string;
   avatarUrl?: string;
   email?: string;
+  role: UserRole;
 }
 
 export type PropertyType = 'rent' | 'sale';
@@ -75,7 +79,42 @@ export const placeholderUser: User = {
   id: 'user1',
   name: 'Juanita Pérez',
   avatarUrl: 'https://placehold.co/40x40.png',
+  email: 'juanita.perez@example.com',
+  role: 'admin', // Juanita será admin para testing
 };
+
+export const sampleUsers: User[] = [
+  placeholderUser,
+  {
+    id: 'user2',
+    name: 'Pedro Soto',
+    avatarUrl: 'https://placehold.co/40x40.png?text=PS',
+    email: 'pedro.soto@example.com',
+    role: 'user',
+  },
+  {
+    id: 'user3',
+    name: 'Ana González',
+    avatarUrl: 'https://placehold.co/40x40.png?text=AG',
+    email: 'ana.gonzalez@example.com',
+    role: 'user',
+  },
+    {
+    id: 'user4',
+    name: 'Carlos López',
+    avatarUrl: 'https://placehold.co/40x40.png?text=CL',
+    email: 'carlos.lopez@example.com',
+    role: 'user',
+  },
+   {
+    id: 'user5',
+    name: 'Laura Fernández',
+    avatarUrl: 'https://placehold.co/40x40.png?text=LF',
+    email: 'laura.fernandez@example.com',
+    role: 'admin',
+  }
+];
+
 
 export const sampleProperties: PropertyListing[] = [
   {
@@ -94,7 +133,7 @@ export const sampleProperties: PropertyListing[] = [
     bathrooms: 2,
     areaSqMeters: 120,
     images: ['https://placehold.co/600x400.png?text=Living+Comedor', 'https://placehold.co/600x400.png?text=Dormitorio+1', 'https://placehold.co/600x400.png?text=Cocina'],
-    author: placeholderUser,
+    author: sampleUsers.find(u => u.id === 'user2')!, // Pedro Soto
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
     updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
     upvotes: 120,
@@ -117,7 +156,7 @@ export const sampleProperties: PropertyListing[] = [
     bathrooms: 3,
     areaSqMeters: 200,
     images: ['https://placehold.co/600x400.png?text=Fachada', 'https://placehold.co/600x400.png?text=Jardin+Quincho', 'https://placehold.co/600x400.png?text=Dormitorio+Principal'],
-    author: { id: 'user2', name: 'Pedro Soto', avatarUrl: 'https://placehold.co/40x40.png' },
+    author: placeholderUser, // Juanita Pérez (admin)
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
     updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
     upvotes: 250,
@@ -137,7 +176,7 @@ export const sampleRequests: SearchRequest[] = [
     desiredLocation: { city: 'Providencia', neighborhood: 'Sector Pedro de Valdivia' },
     minBedrooms: 2,
     budgetMax: 650000,
-    author: { id: 'user3', name: 'Ana González', avatarUrl: 'https://placehold.co/40x40.png' },
+    author: sampleUsers.find(u => u.id === 'user3')!, // Ana González
     createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
     updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
     commentsCount: 5,
@@ -152,7 +191,7 @@ export const sampleRequests: SearchRequest[] = [
     desiredLocation: { city: 'Ñuñoa' }, // Podría ser más específico en la descripción
     minBedrooms: 3,
     budgetMax: 10000, // Asumiendo UF
-    author: placeholderUser,
+    author: placeholderUser, // Juanita Pérez (admin)
     createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
     updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
     commentsCount: 12,
@@ -168,7 +207,7 @@ export function getMockSheetConfig(): GoogleSheetConfig | null {
       try {
         return JSON.parse(storedConfig) as GoogleSheetConfig;
       } catch (error) {
-        console.error("Error parsing mock sheet config from localStorage", error);
+        console.error("Error al parsear la configuración de la hoja de cálculo desde localStorage", error);
         return null;
       }
     }
