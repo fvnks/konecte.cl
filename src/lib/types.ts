@@ -134,5 +134,3 @@ export const placeholderUser: User = {
 
 // Los datos de ejemplo como sampleProperties, sampleRequests, sampleUsers, sampleComments han sido eliminados.
 // La aplicación ahora dependerá de los datos de la base de datos o mostrará estados vacíos/mensajes apropiados.
-
-```

@@ -1,3 +1,4 @@
+
 // src/app/admin/users/page.tsx
 'use client';
 
@@ -8,41 +9,48 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { User, Role } from "@/lib/types";
-import { getUsersAction, updateUserRoleAction } from '@/actions/userActions';
+import type { User, Role, Plan } from "@/lib/types";
+import { getUsersAction, updateUserRoleAction, updateUserPlanAction } from '@/actions/userActions';
 import { getRolesAction } from '@/actions/roleActions';
-import { PlusCircle, UserCog, Users, Loader2 } from 'lucide-react';
+import { getPlansAction } from '@/actions/planActions';
+import { PlusCircle, UserCog, Users, Loader2, ShieldAlert, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const getRoleBadgeVariant = (roleId: string) => {
-  if (roleId === 'admin') return 'default'; // Primary color for admin
-  // Puedes añadir más variantes si quieres colores específicos para otros roles
+  if (roleId === 'admin') return 'default';
   return 'secondary';
 };
+
+const getPlanBadgeVariant = (planId?: string | null) => {
+  if (!planId) return 'outline'; // Para "Sin Plan"
+  // Puedes añadir lógica para diferentes colores de planes si lo deseas
+  return 'default'; // Usamos 'default' para planes asignados por ahora
+};
+
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
-  const [isLoadingRoles, setIsLoadingRoles] = useState(true);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   const fetchData = async () => {
-    setIsLoadingUsers(true);
-    setIsLoadingRoles(true);
+    setIsLoadingData(true);
     try {
-      const [fetchedUsers, fetchedRoles] = await Promise.all([
+      const [fetchedUsers, fetchedRoles, fetchedPlans] = await Promise.all([
         getUsersAction(),
-        getRolesAction()
+        getRolesAction(),
+        getPlansAction()
       ]);
       setUsers(fetchedUsers);
       setRoles(fetchedRoles);
+      setPlans(fetchedPlans.filter(plan => plan.is_active)); // Solo mostrar planes activos para asignación
     } catch (error) {
-      toast({ title: "Error", description: "No se pudieron cargar los datos de usuarios o roles.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudieron cargar los datos de usuarios, roles o planes.", variant: "destructive" });
     } finally {
-      setIsLoadingUsers(false);
-      setIsLoadingRoles(false);
+      setIsLoadingData(false);
     }
   };
 
@@ -54,29 +62,38 @@ export default function AdminUsersPage() {
     startTransition(async () => {
       const result = await updateUserRoleAction(userId, newRoleId);
       if (result.success) {
-        toast({
-          title: "Rol Actualizado",
-          description: result.message,
-        });
-        // Actualizar el rol localmente para reflejar el cambio inmediatamente
+        toast({ title: "Rol Actualizado", description: result.message });
         setUsers(prevUsers =>
           prevUsers.map(user =>
             user.id === userId ? { ...user, role_id: newRoleId, role_name: roles.find(r => r.id === newRoleId)?.name } : user
           )
         );
       } else {
-        toast({
-          title: "Error al Actualizar Rol",
-          description: result.message,
-          variant: "destructive",
-        });
+        toast({ title: "Error al Actualizar Rol", description: result.message, variant: "destructive" });
       }
     });
   };
 
-  const isLoading = isLoadingUsers || isLoadingRoles;
+  const handlePlanChange = (userId: string, newPlanId: string) => {
+    startTransition(async () => {
+      // El valor 'none' se convierte a null para la acción
+      const planIdToSet = newPlanId === 'none' ? null : newPlanId;
+      const result = await updateUserPlanAction(userId, planIdToSet);
+      if (result.success) {
+        toast({ title: "Plan Actualizado", description: result.message });
+        setUsers(prevUsers =>
+          prevUsers.map(user =>
+            user.id === userId ? { ...user, plan_id: planIdToSet, plan_name: plans.find(p => p.id === planIdToSet)?.name } : user
+          )
+        );
+      } else {
+        toast({ title: "Error al Actualizar Plan", description: result.message, variant: "destructive" });
+      }
+    });
+  };
 
-  if (isLoading && users.length === 0) {
+
+  if (isLoadingData && users.length === 0) {
      return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -93,82 +110,105 @@ export default function AdminUsersPage() {
             <CardTitle className="text-2xl font-headline flex items-center">
               <Users className="h-6 w-6 mr-2 text-primary" /> Gestión de Usuarios
             </CardTitle>
-            <CardDescription>Administra los usuarios y sus roles en la plataforma.</CardDescription>
+            <CardDescription>Administra los usuarios, sus roles y planes en la plataforma.</CardDescription>
           </div>
-          <Button disabled> {/* Deshabilitado ya que no implementaremos la creación real de usuarios por ahora */}
+          <Button disabled>
             <PlusCircle className="h-4 w-4 mr-2" /> Añadir Nuevo Usuario
           </Button>
         </CardHeader>
         <CardContent>
-          {isLoading && users.length > 0 && <p className="text-sm text-muted-foreground mb-2">Actualizando lista de usuarios...</p>}
+          {isLoadingData && users.length > 0 && <p className="text-sm text-muted-foreground mb-2">Actualizando lista de usuarios...</p>}
           {users.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Avatar</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Rol Actual</TableHead>
-                  <TableHead className="text-right">Cambiar Rol</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <Avatar>
-                        <AvatarImage src={user.avatarUrl || `https://placehold.co/40x40.png?text=${user.name.substring(0,1)}`} alt={user.name} data-ai-hint="persona" />
-                        <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleBadgeVariant(user.role_id)} className="capitalize">
-                        {user.role_name || user.role_id} 
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                       <div className="flex justify-end items-center">
-                        <UserCog className="h-5 w-5 mr-2 text-muted-foreground" />
-                        {roles.length > 0 ? (
-                            <Select
-                            defaultValue={user.role_id}
-                            onValueChange={(newRole: string) => handleRoleChange(user.id, newRole)}
-                            disabled={isPending || isLoadingRoles}
-                            >
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Seleccionar rol" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {roles.map(role => (
-                                <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                            </Select>
-                        ) : (
-                            <span className="text-xs text-muted-foreground">Cargando roles...</span>
-                        )}
-                       </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[150px]">Usuario</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Rol</TableHead>
+                    <TableHead className="min-w-[220px]">Asignar Rol</TableHead>
+                    <TableHead>Plan Actual</TableHead>
+                    <TableHead className="min-w-[220px]">Asignar Plan</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={user.avatarUrl || `https://placehold.co/40x40.png?text=${user.name.substring(0,1)}`} alt={user.name} data-ai-hint="persona" />
+                            <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium text-sm">{user.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{user.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleBadgeVariant(user.role_id)} className="capitalize text-xs">
+                          {user.role_name || user.role_id} 
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                         <div className="flex items-center">
+                          <ShieldAlert className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+                          {roles.length > 0 ? (
+                              <Select
+                              value={user.role_id}
+                              onValueChange={(newRole: string) => handleRoleChange(user.id, newRole)}
+                              disabled={isPending || isLoadingData}
+                              >
+                              <SelectTrigger className="w-full max-w-[180px] h-9 text-xs">
+                                  <SelectValue placeholder="Seleccionar rol" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  {roles.map(role => (
+                                  <SelectItem key={role.id} value={role.id} className="text-xs">{role.name}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                              </Select>
+                          ) : (
+                              <span className="text-xs text-muted-foreground">Cargando...</span>
+                          )}
+                         </div>
+                      </TableCell>
+                       <TableCell>
+                        <Badge variant={getPlanBadgeVariant(user.plan_id)} className="capitalize text-xs">
+                          {user.plan_name || (user.plan_id ? user.plan_id : 'Sin Plan')}
+                        </Badge>
+                      </TableCell>
+                       <TableCell>
+                         <div className="flex items-center">
+                          <CreditCard className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+                          {plans.length > 0 || !isLoadingData ? ( // Mostrar Select si hay planes o si ya terminó de cargar y no hay
+                              <Select
+                              value={user.plan_id || 'none'} // 'none' para representar Sin Plan
+                              onValueChange={(newPlan: string) => handlePlanChange(user.id, newPlan)}
+                              disabled={isPending || isLoadingData}
+                              >
+                              <SelectTrigger className="w-full max-w-[180px] h-9 text-xs">
+                                  <SelectValue placeholder="Seleccionar plan" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="none" className="text-xs italic">Sin Plan</SelectItem>
+                                  {plans.map(plan => (
+                                  <SelectItem key={plan.id} value={plan.id} className="text-xs">{plan.name} (${plan.price_monthly.toLocaleString('es-CL')})</SelectItem>
+                                  ))}
+                              </SelectContent>
+                              </Select>
+                          ) : (
+                              <span className="text-xs text-muted-foreground">Cargando...</span>
+                          )}
+                         </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
-            !isLoading && <p className="text-muted-foreground text-center py-4">No hay usuarios para mostrar.</p>
+            !isLoadingData && <p className="text-muted-foreground text-center py-4">No hay usuarios para mostrar.</p>
           )}
-        </CardContent>
-      </Card>
-       <Card className="mt-6">
-        <CardHeader>
-            <CardTitle className="text-xl">Sobre los Roles</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-            {roles.length > 0 ? roles.map(role => (
-                <p key={role.id}><strong>{role.name}:</strong> {role.description || 'Rol de usuario.'}</p>
-            )) : <p>Cargando descripciones de roles...</p>}
-            <p className="mt-2 italic">Nota: La creación de usuarios no está implementada. Los cambios de rol se guardarán en la base de datos.</p>
         </CardContent>
       </Card>
     </div>
