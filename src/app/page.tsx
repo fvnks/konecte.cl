@@ -10,7 +10,7 @@ import type { PropertyListing, SearchRequest } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import { getPropertiesAction } from "@/actions/propertyActions";
 import { getRequestsAction } from "@/actions/requestActions";
-import { getSiteSettingsAction } from "@/actions/siteSettingsActions"; // Nueva importación
+import { getSiteSettingsAction } from "@/actions/siteSettingsActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable"; 
 
@@ -96,6 +96,11 @@ export default async function HomePage() {
   const siteSettings = await getSiteSettingsAction();
   const siteTitle = siteSettings?.siteTitle || 'Encuentra Tu Próxima Propiedad';
 
+  const showFeaturedListings = siteSettings?.show_featured_listings_section === undefined ? true : siteSettings.show_featured_listings_section;
+  const showAiMatching = siteSettings?.show_ai_matching_section === undefined ? true : siteSettings.show_ai_matching_section;
+  const showGoogleSheet = siteSettings?.show_google_sheet_section === undefined ? true : siteSettings.show_google_sheet_section;
+
+
   return (
     <div className="space-y-12">
       <section className="text-center py-10 bg-card rounded-lg shadow-md">
@@ -131,64 +136,70 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <Tabs defaultValue="properties" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:w-1/2 mx-auto">
-          <TabsTrigger value="properties" className="text-base py-2.5">Propiedades Destacadas</TabsTrigger>
-          <TabsTrigger value="requests" className="text-base py-2.5">Solicitudes Recientes</TabsTrigger>
-        </TabsList>
-        <TabsContent value="properties" className="mt-8">
-          {featuredProperties.length > 0 ? (
-            <div className="space-y-6">
-              {featuredProperties.map((property) => (
-                <PropertyListItem key={property.id} property={property} />
-              ))}
+      {showFeaturedListings && (
+        <Tabs defaultValue="properties" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 md:w-1/2 mx-auto">
+            <TabsTrigger value="properties" className="text-base py-2.5">Propiedades Destacadas</TabsTrigger>
+            <TabsTrigger value="requests" className="text-base py-2.5">Solicitudes Recientes</TabsTrigger>
+          </TabsList>
+          <TabsContent value="properties" className="mt-8">
+            {featuredProperties.length > 0 ? (
+              <div className="space-y-6">
+                {featuredProperties.map((property) => (
+                  <PropertyListItem key={property.id} property={property} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10 text-muted-foreground">
+                  <Building className="h-12 w-12 mx-auto mb-2" />
+                  <p>Aún no hay propiedades destacadas publicadas.</p>
+              </div>
+            )}
+            <div className="mt-8 text-center">
+              <Button variant="outline" asChild>
+                <Link href="/properties">Ver Todas las Propiedades</Link>
+              </Button>
             </div>
-           ) : (
-            <div className="text-center py-10 text-muted-foreground">
-                <Building className="h-12 w-12 mx-auto mb-2" />
-                <p>Aún no hay propiedades destacadas publicadas.</p>
+          </TabsContent>
+          <TabsContent value="requests" className="mt-8">
+            {recentRequests.length > 0 ? (
+              <div className="space-y-6"> 
+                {recentRequests.map((request) => (
+                  <RequestListItem key={request.id} request={request} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10 text-muted-foreground">
+                  <FileSearch className="h-12 w-12 mx-auto mb-2" />
+                  <p>Aún no hay solicitudes recientes publicadas.</p>
+              </div>
+            )}
+            <div className="mt-8 text-center">
+              <Button variant="outline" asChild>
+                <Link href="/requests">Ver Todas las Solicitudes</Link>
+              </Button>
             </div>
-           )}
-          <div className="mt-8 text-center">
-            <Button variant="outline" asChild>
-              <Link href="/properties">Ver Todas las Propiedades</Link>
-            </Button>
-          </div>
-        </TabsContent>
-        <TabsContent value="requests" className="mt-8">
-          {recentRequests.length > 0 ? (
-            <div className="space-y-6"> 
-              {recentRequests.map((request) => (
-                <RequestListItem key={request.id} request={request} />
-              ))}
-            </div>
-          ) : (
-             <div className="text-center py-10 text-muted-foreground">
-                <FileSearch className="h-12 w-12 mx-auto mb-2" />
-                <p>Aún no hay solicitudes recientes publicadas.</p>
-            </div>
-          )}
-           <div className="mt-8 text-center">
-            <Button variant="outline" asChild>
-              <Link href="/requests">Ver Todas las Solicitudes</Link>
-            </Button>
-          </div>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      )}
 
-      <section className="py-10 bg-card rounded-lg shadow-md">
-         <div className="text-center">
-            <h2 className="text-3xl font-headline font-semibold">Búsqueda Inteligente con IA</h2>
-            <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">
-                Nuestra IA te ayuda a encontrar la propiedad o el arrendatario/comprador perfecto al relacionar inteligentemente los listados con las solicitudes de búsqueda.
-            </p>
-            <Button size="lg" className="mt-6" asChild>
-                <Link href="/ai-matching">Descubrir Coincidencias</Link>
-            </Button>
-         </div>
-      </section>
+      {showAiMatching && (
+        <section className="py-10 bg-card rounded-lg shadow-md">
+          <div className="text-center">
+              <h2 className="text-3xl font-headline font-semibold">Búsqueda Inteligente con IA</h2>
+              <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">
+                  Nuestra IA te ayuda a encontrar la propiedad o el arrendatario/comprador perfecto al relacionar inteligentemente los listados con las solicitudes de búsqueda.
+              </p>
+              <Button size="lg" className="mt-6" asChild>
+                  <Link href="/ai-matching">Descubrir Coincidencias</Link>
+              </Button>
+          </div>
+        </section>
+      )}
 
-      <GoogleSheetSection />
+      {showGoogleSheet && (
+        <GoogleSheetSection />
+      )}
 
     </div>
   );

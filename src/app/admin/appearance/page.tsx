@@ -21,12 +21,17 @@ import { useToast } from "@/hooks/use-toast";
 import { saveSiteSettingsAction, getSiteSettingsAction } from "@/actions/siteSettingsActions";
 import type { SiteSettings } from "@/lib/types";
 import { useEffect, useState } from "react";
-import { Loader2, Brush } from "lucide-react";
+import { Loader2, Brush, EyeOff, Eye } from "lucide-react";
 import Image from "next/image";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
   siteTitle: z.string().min(5, "El título del sitio debe tener al menos 5 caracteres.").max(100, "El título no puede exceder los 100 caracteres."),
   logoUrl: z.string().url("Debe ser una URL válida para el logo.").or(z.literal('')).optional(),
+  show_featured_listings_section: z.boolean().default(true).optional(),
+  show_ai_matching_section: z.boolean().default(true).optional(),
+  show_google_sheet_section: z.boolean().default(true).optional(),
 });
 
 type SiteSettingsFormValues = z.infer<typeof formSchema>;
@@ -43,6 +48,9 @@ export default function AdminAppearancePage() {
     defaultValues: {
       siteTitle: "",
       logoUrl: "",
+      show_featured_listings_section: true,
+      show_ai_matching_section: true,
+      show_google_sheet_section: true,
     },
   });
 
@@ -53,6 +61,9 @@ export default function AdminAppearancePage() {
       form.reset({
         siteTitle: settings.siteTitle || DEFAULT_FALLBACK_TITLE,
         logoUrl: settings.logoUrl || "",
+        show_featured_listings_section: settings.show_featured_listings_section === undefined ? true : settings.show_featured_listings_section,
+        show_ai_matching_section: settings.show_ai_matching_section === undefined ? true : settings.show_ai_matching_section,
+        show_google_sheet_section: settings.show_google_sheet_section === undefined ? true : settings.show_google_sheet_section,
       });
       setCurrentSettings(settings);
       setIsLoading(false);
@@ -63,18 +74,24 @@ export default function AdminAppearancePage() {
   async function onSubmit(values: SiteSettingsFormValues) {
     const result = await saveSiteSettingsAction({
       siteTitle: values.siteTitle,
-      logoUrl: values.logoUrl || null, // Guardar null si está vacío
+      logoUrl: values.logoUrl || null,
+      show_featured_listings_section: values.show_featured_listings_section,
+      show_ai_matching_section: values.show_ai_matching_section,
+      show_google_sheet_section: values.show_google_sheet_section,
     });
     if (result.success) {
       toast({
         title: "Apariencia Guardada",
         description: "La configuración de apariencia del sitio se ha guardado correctamente.",
       });
-      const updatedSettings = await getSiteSettingsAction(); // Recargar para mostrar lo guardado
+      const updatedSettings = await getSiteSettingsAction();
       setCurrentSettings(updatedSettings);
-       form.reset({ // Sincronizar el formulario con los datos recién guardados
+       form.reset({ 
         siteTitle: updatedSettings.siteTitle || DEFAULT_FALLBACK_TITLE,
         logoUrl: updatedSettings.logoUrl || "",
+        show_featured_listings_section: updatedSettings.show_featured_listings_section,
+        show_ai_matching_section: updatedSettings.show_ai_matching_section,
+        show_google_sheet_section: updatedSettings.show_google_sheet_section,
       });
     } else {
       toast({
@@ -102,63 +119,146 @@ export default function AdminAppearancePage() {
           Configuración de Apariencia del Sitio
         </CardTitle>
         <CardDescription>
-          Personaliza el título principal de la landing page y el logo del sitio.
+          Personaliza el título, logo y visibilidad de secciones de la página de inicio.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="siteTitle"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Título Principal del Sitio (Landing Page)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ej: El Mejor Lugar para Propiedades" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Este título aparecerá prominentemente en la página de inicio.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="logoUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL del Logo del Sitio (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://ejemplo.com/logo.png" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Ingresa la URL completa de tu logo. Si se deja vacío, se usará el logo por defecto.
-                    Recomendado: PNG transparente, altura aproximada de 30-40px.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {form.watch("logoUrl") && (
-              <div className="space-y-2">
-                <FormLabel>Vista Previa del Logo:</FormLabel>
-                <div className="p-4 border rounded-md bg-muted flex items-center justify-center h-20">
-                  <Image 
-                    src={form.watch("logoUrl")!} 
-                    alt="Vista previa del logo" 
-                    width={150} 
-                    height={40} 
-                    style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }}
-                    onError={(e) => (e.currentTarget.style.display = 'none')} // Ocultar si hay error cargando
-                  />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <div>
+                <h3 className="text-lg font-medium mb-2">Identidad del Sitio</h3>
+                <div className="space-y-6 p-4 border rounded-md">
+                    <FormField
+                    control={form.control}
+                    name="siteTitle"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Título Principal del Sitio (Landing Page)</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Ej: El Mejor Lugar para Propiedades" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                            Este título aparecerá prominentemente en la página de inicio.
+                        </FormDescription>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="logoUrl"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>URL del Logo del Sitio (Opcional)</FormLabel>
+                        <FormControl>
+                            <Input placeholder="https://ejemplo.com/logo.png" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                            Ingresa la URL completa de tu logo. Si se deja vacío, se usará el logo por defecto.
+                            Recomendado: PNG transparente, altura aproximada de 30-40px.
+                        </FormDescription>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    {form.watch("logoUrl") && (
+                    <div className="space-y-2">
+                        <FormLabel>Vista Previa del Logo:</FormLabel>
+                        <div className="p-4 border rounded-md bg-muted flex items-center justify-center h-20">
+                        <Image 
+                            src={form.watch("logoUrl")!} 
+                            alt="Vista previa del logo" 
+                            width={150} 
+                            height={40} 
+                            style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }}
+                            onError={(e) => (e.currentTarget.style.display = 'none')}
+                        />
+                        </div>
+                        {!form.formState.errors.logoUrl && !isLoading && !form.watch("logoUrl")?.startsWith('http') && form.watch("logoUrl") !== '' && (
+                            <p className="text-sm text-destructive">La URL del logo parece inválida. Asegúrate que comience con http:// o https://.</p>
+                        )}
+                    </div>
+                    )}
                 </div>
-                 {!form.formState.errors.logoUrl && !isLoading && !form.watch("logoUrl")?.startsWith('http') && form.watch("logoUrl") !== '' && (
-                    <p className="text-sm text-destructive">La URL del logo parece inválida. Asegúrate que comience con http:// o https://.</p>
-                )}
-              </div>
-            )}
+            </div>
+            
+            <Separator />
+
+            <div>
+                <h3 className="text-lg font-medium mb-2">Visibilidad de Secciones en la Landing Page</h3>
+                 <div className="space-y-4 p-4 border rounded-md">
+                    <FormField
+                    control={form.control}
+                    name="show_featured_listings_section"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                            <FormLabel className="flex items-center">
+                                {field.value ? <Eye className="h-4 w-4 mr-2 text-green-600"/> : <EyeOff className="h-4 w-4 mr-2 text-red-600"/>}
+                                Sección de Listados Destacados
+                            </FormLabel>
+                            <FormDescription>
+                            Muestra/Oculta las pestañas de "Propiedades Destacadas" y "Solicitudes Recientes".
+                            </FormDescription>
+                        </div>
+                        <FormControl>
+                            <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="show_ai_matching_section"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                            <FormLabel className="flex items-center">
+                                {field.value ? <Eye className="h-4 w-4 mr-2 text-green-600"/> : <EyeOff className="h-4 w-4 mr-2 text-red-600"/>}
+                                Sección de Búsqueda Inteligente (IA)
+                            </FormLabel>
+                            <FormDescription>
+                            Muestra/Oculta la sección de "Búsqueda Inteligente con IA".
+                            </FormDescription>
+                        </div>
+                        <FormControl>
+                            <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="show_google_sheet_section"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                            <FormLabel className="flex items-center">
+                                {field.value ? <Eye className="h-4 w-4 mr-2 text-green-600"/> : <EyeOff className="h-4 w-4 mr-2 text-red-600"/>}
+                                Sección de Datos de Google Sheets
+                            </FormLabel>
+                            <FormDescription>
+                            Muestra/Oculta la sección que carga datos desde Google Sheets.
+                            </FormDescription>
+                        </div>
+                        <FormControl>
+                            <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                    />
+                 </div>
+            </div>
+
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Guardar Cambios
@@ -166,24 +266,33 @@ export default function AdminAppearancePage() {
           </form>
         </Form>
         
-        {(currentSettings.siteTitle || currentSettings.logoUrl) && !isLoading &&(
-          <div className="mt-8 p-4 border rounded-md bg-secondary/30">
-            <h4 className="font-semibold mb-2">Configuración Actual Guardada:</h4>
-            <p className="text-sm"><strong>Título del Sitio:</strong> {currentSettings.siteTitle || DEFAULT_FALLBACK_TITLE}</p>
-            {currentSettings.logoUrl ? (
-              <div className="mt-2">
-                <p className="text-sm"><strong>Logo Actual:</strong></p>
+        {(currentSettings.siteTitle || currentSettings.logoUrl || Object.keys(currentSettings).some(k => k.startsWith('show_'))) && !isLoading &&(
+          <div className="mt-8 p-4 border rounded-md bg-secondary/30 space-y-3">
+            <h4 className="font-semibold text-lg mb-2">Configuración Actual Guardada:</h4>
+            <div>
+                <p className="text-sm font-medium">Título del Sitio:</p>
+                <p className="text-sm text-muted-foreground">{currentSettings.siteTitle || DEFAULT_FALLBACK_TITLE}</p>
+            </div>
+            <div>
+                <p className="text-sm font-medium">Logo Actual:</p>
+                {currentSettings.logoUrl ? (
                 <div className="p-2 border rounded bg-card inline-block mt-1">
                     <Image src={currentSettings.logoUrl} alt="Logo actual" width={150} height={40} style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }} />
                 </div>
-              </div>
-            ) : (
-              <p className="text-sm"><strong>Logo Actual:</strong> Usando logo por defecto.</p>
-            )}
+                ) : (
+                <p className="text-sm text-muted-foreground">Usando logo por defecto.</p>
+                )}
+            </div>
+            <Separator/>
+            <div>
+                 <p className="text-sm font-medium mb-1">Visibilidad de Secciones:</p>
+                 <p className="text-sm text-muted-foreground"><strong>Listados Destacados:</strong> {currentSettings.show_featured_listings_section ? "Visible" : "Oculta"}</p>
+                 <p className="text-sm text-muted-foreground"><strong>Búsqueda IA:</strong> {currentSettings.show_ai_matching_section ? "Visible" : "Oculta"}</p>
+                 <p className="text-sm text-muted-foreground"><strong>Google Sheets:</strong> {currentSettings.show_google_sheet_section ? "Visible" : "Oculta"}</p>
+            </div>
           </div>
         )}
       </CardContent>
     </Card>
   );
 }
-```

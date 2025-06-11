@@ -248,20 +248,23 @@ ON DUPLICATE KEY UPDATE id = 1; -- Para evitar error si se ejecuta múltiples ve
 
 ---
 ## Tabla: `site_settings` (Configuración del Sitio)
-Almacena configuraciones globales del sitio, como título y logo. Se espera una única fila.
+Almacena configuraciones globales del sitio, como título, logo y visibilidad de secciones. Se espera una única fila.
 
 ```sql
 CREATE TABLE site_settings (
     id INT PRIMARY KEY DEFAULT 1,
     site_title VARCHAR(255) DEFAULT 'PropSpot - Encuentra Tu Próxima Propiedad',
     logo_url VARCHAR(2048) DEFAULT NULL, -- URL para el logo personalizado
-    -- landing_section_order JSON DEFAULT NULL, -- Para futura reordenación de secciones
+    show_featured_listings_section BOOLEAN DEFAULT TRUE,
+    show_ai_matching_section BOOLEAN DEFAULT TRUE,
+    show_google_sheet_section BOOLEAN DEFAULT TRUE,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT id_must_be_1_site_settings CHECK (id = 1)
 );
 
 -- Insertar configuración inicial para site_settings
-INSERT INTO site_settings (id, site_title, logo_url) VALUES (1, 'PropSpot - Encuentra Tu Próxima Propiedad', NULL)
+INSERT INTO site_settings (id, site_title, logo_url, show_featured_listings_section, show_ai_matching_section, show_google_sheet_section) 
+VALUES (1, 'PropSpot - Encuentra Tu Próxima Propiedad', NULL, TRUE, TRUE, TRUE)
 ON DUPLICATE KEY UPDATE id = 1;
 ```
 

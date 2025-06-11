@@ -116,7 +116,9 @@ export interface SiteSettings {
   id?: number;
   siteTitle: string | null;
   logoUrl: string | null;
-  // landing_section_order?: string[] | null; // Para futura reordenación
+  show_featured_listings_section?: boolean;
+  show_ai_matching_section?: boolean;
+  show_google_sheet_section?: boolean;
   updated_at?: string;
 }
 
@@ -134,3 +136,4 @@ export const placeholderUser: User = {
 
 // Los datos de ejemplo como sampleProperties, sampleRequests, sampleUsers, sampleComments han sido eliminados.
 // La aplicación ahora dependerá de los datos de la base de datos o mostrará estados vacíos/mensajes apropiados.
+
