@@ -10,8 +10,9 @@ import type { PropertyListing, SearchRequest } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import { getPropertiesAction } from "@/actions/propertyActions";
 import { getRequestsAction } from "@/actions/requestActions";
+import { getSiteSettingsAction } from "@/actions/siteSettingsActions"; // Nueva importación
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable"; // Importar el nuevo componente
+import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable"; 
 
 async function GoogleSheetSection() {
   const config = await getGoogleSheetConfigAction();
@@ -34,7 +35,7 @@ async function GoogleSheetSection() {
   
   const sheetData = await fetchGoogleSheetDataAction();
 
-  if (!sheetData) { // Solo verificar si sheetData es null/undefined, no rows.length
+  if (!sheetData) { 
     return (
        <Card className="mt-10">
         <CardHeader>
@@ -92,11 +93,15 @@ export default async function HomePage() {
   const allRequests: SearchRequest[] = await getRequestsAction();
   const recentRequests = allRequests.slice(0, 2);
 
+  const siteSettings = await getSiteSettingsAction();
+  const siteTitle = siteSettings?.siteTitle || 'Encuentra Tu Próxima Propiedad';
+
   return (
     <div className="space-y-12">
       <section className="text-center py-10 bg-card rounded-lg shadow-md">
         <h1 className="text-4xl font-headline font-bold tracking-tight sm:text-5xl md:text-6xl">
-          Encuentra Tu Próxima <span className="text-primary">Propiedad</span>
+          {siteTitle.includes('PropSpot') ? siteTitle.replace('PropSpot', '').trim() : siteTitle}
+          {siteTitle.includes('PropSpot') && <span className="text-primary"> PropSpot</span>}
         </h1>
         <p className="mt-3 max-w-md mx-auto text-base text-muted-foreground sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
           Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!
@@ -188,3 +193,4 @@ export default async function HomePage() {
     </div>
   );
 }
+```

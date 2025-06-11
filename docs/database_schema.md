@@ -238,7 +238,7 @@ CREATE TABLE google_sheet_configs (
     columns_to_display TEXT,      -- Nombres de encabezados separados por coma
     is_configured BOOLEAN DEFAULT FALSE,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT id_must_be_1 CHECK (id = 1) -- Asegura que solo exista la fila con id=1
+    CONSTRAINT id_must_be_1_google_sheet CHECK (id = 1) -- Asegura que solo exista la fila con id=1
 );
 
 -- Insertar configuración inicial (vacía o con valores por defecto)
@@ -247,4 +247,25 @@ ON DUPLICATE KEY UPDATE id = 1; -- Para evitar error si se ejecuta múltiples ve
 ```
 
 ---
+## Tabla: `site_settings` (Configuración del Sitio)
+Almacena configuraciones globales del sitio, como título y logo. Se espera una única fila.
+
+```sql
+CREATE TABLE site_settings (
+    id INT PRIMARY KEY DEFAULT 1,
+    site_title VARCHAR(255) DEFAULT 'PropSpot - Encuentra Tu Próxima Propiedad',
+    logo_url VARCHAR(2048) DEFAULT NULL, -- URL para el logo personalizado
+    -- landing_section_order JSON DEFAULT NULL, -- Para futura reordenación de secciones
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT id_must_be_1_site_settings CHECK (id = 1)
+);
+
+-- Insertar configuración inicial para site_settings
+INSERT INTO site_settings (id, site_title, logo_url) VALUES (1, 'PropSpot - Encuentra Tu Próxima Propiedad', NULL)
+ON DUPLICATE KEY UPDATE id = 1;
+```
+
+---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
+
+```

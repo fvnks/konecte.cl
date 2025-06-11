@@ -1,3 +1,4 @@
+
 // src/components/layout/Navbar.tsx
 'use client';
 
@@ -10,6 +11,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { getSiteSettingsAction } from '@/actions/siteSettingsActions';
+import type { SiteSettings } from '@/lib/types';
+import Image from 'next/image';
 
 const navItems = [
   { href: '/properties', label: 'Propiedades', icon: <Briefcase className="h-4 w-4" /> },
@@ -29,6 +33,22 @@ export default function Navbar() {
   const { toast } = useToast();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+
+  const fetchSiteSettings = useCallback(async () => {
+    try {
+      const settings = await getSiteSettingsAction();
+      setSiteSettings(settings);
+    } catch (error) {
+      console.error("Error fetching site settings for Navbar:", error);
+      // Fallback a null para que use el logo por defecto
+      setSiteSettings(null);
+    }
+  }, []);
+  
+  useEffect(() => {
+    fetchSiteSettings();
+  }, [fetchSiteSettings]);
 
 
   const updateLoginState = useCallback(() => {
@@ -47,17 +67,26 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    updateLoginState(); // Initial check
+    updateLoginState(); 
 
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'loggedInUser') {
         updateLoginState();
       }
+      // Si los site_settings cambian (ej. desde el panel de admin en otra pestaña),
+      // podríamos necesitar una forma de notificar al Navbar para que recargue.
+      // Por simplicidad, recargamos las config del sitio si el storage cambia (aunque no sea 'siteSettings').
+      // O podemos añadir un listener específico si 'siteSettings' se guarda en localStorage.
+      // Por ahora, lo más simple es que se actualice en la próxima carga o si el usuario navega.
+      // O, si 'siteSettings' se guarda en BD y se invalida caché de Next.js, la próxima carga lo tomará.
+      // Para un efecto inmediato, podríamos llamar fetchSiteSettings() aquí también si detectamos un cambio relevante.
+      // Por ahora, el logo se cargará al inicio y se mantendrá.
+       if (event.key === 'siteSettingsUpdated') { // Evento personalizado que dispararíamos desde la página de admin
+        fetchSiteSettings();
+      }
     };
     
-    // Add event listener for direct storage changes (e.g. from signin page)
     window.addEventListener('storage', updateLoginState);
-    // Add event listener for changes from other tabs/windows
     window.addEventListener('storage', handleStorageChange);
 
 
@@ -65,7 +94,7 @@ export default function Navbar() {
       window.removeEventListener('storage', updateLoginState);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [updateLoginState]);
+  }, [updateLoginState, fetchSiteSettings]);
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
@@ -90,15 +119,22 @@ export default function Navbar() {
     </>
   );
 
+  const logoDisplay = siteSettings?.logoUrl ? (
+    <Image src={siteSettings.logoUrl} alt="Logo del Sitio" width={120} height={30} style={{ objectFit: 'contain', maxHeight: '30px' }} priority />
+  ) : (
+    <>
+      <Home className="h-7 w-7 text-primary" />
+      <span className="text-xl font-bold font-headline text-primary">PropSpot</span>
+    </>
+  );
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
-          <Home className="h-7 w-7 text-primary" />
-          <span className="text-xl font-bold font-headline text-primary">PropSpot</span>
+          {logoDisplay}
         </Link>
 
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
           {commonNavLinks()}
           <DropdownMenu>
@@ -154,7 +190,6 @@ export default function Navbar() {
             </Button>
           )}
           
-          {/* Mobile Navigation Trigger */}
           <div className="md:hidden">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -166,8 +201,7 @@ export default function Navbar() {
               <SheetContent side="right" className="w-[280px] sm:w-[320px] flex flex-col p-0">
                 <div className="p-4 border-b">
                     <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Home className="h-7 w-7 text-primary" />
-                        <span className="text-xl font-bold font-headline text-primary">PropSpot</span>
+                        {logoDisplay}
                     </Link>
                 </div>
                 <nav className="flex-grow flex flex-col gap-1 p-4"> 
@@ -230,3 +264,4 @@ export default function Navbar() {
 }
 
 const MobileSeparator = () => <Separator className="my-2" />;
+```

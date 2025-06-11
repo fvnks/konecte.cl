@@ -112,6 +112,14 @@ export interface GoogleSheetConfig {
   isConfigured: boolean;
 }
 
+export interface SiteSettings {
+  id?: number;
+  siteTitle: string | null;
+  logoUrl: string | null;
+  // landing_section_order?: string[] | null; // Para futura reordenación
+  updated_at?: string;
+}
+
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
 
@@ -127,3 +135,4 @@ export const placeholderUser: User = {
 // Los datos de ejemplo como sampleProperties, sampleRequests, sampleUsers, sampleComments han sido eliminados.
 // La aplicación ahora dependerá de los datos de la base de datos o mostrará estados vacíos/mensajes apropiados.
 
+```
