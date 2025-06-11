@@ -11,6 +11,7 @@ export interface User {
   name: string;
   avatarUrl?: string;
   email?: string;
+  password_hash?: string; // Only present when fetched from DB, should not be sent to client
   role_id: string; // FK a Role.id
   role_name?: string; // Nombre del rol (para mostrar en UI, obtenido de un JOIN)
   created_at?: string;
@@ -25,7 +26,7 @@ export interface PropertyListing {
   user_id: string; // FK a User.id
   title: string;
   description: string;
-  property_type: PropertyType;
+  property_type: PropertyType; // Renamed from propertyType
   category: ListingCategory;
   price: number;
   currency: string; // CLP, UF, USD
@@ -34,41 +35,41 @@ export interface PropertyListing {
   country: string;
   bedrooms: number;
   bathrooms: number;
-  area_sq_meters: number;
+  area_sq_meters: number; // Renamed from areaSqMeters
   images: string[]; // Podría ser JSON string en DB, parseado en la app
   features?: string[]; // Podría ser JSON string en DB
   slug: string;
   upvotes: number;
-  comments_count: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  comments_count: number; // Renamed from commentsCount
+  is_active: boolean; // Renamed from isActive
+  created_at: string; // Renamed from createdAt
+  updated_at: string; // Renamed from updatedAt
   author?: User; // Para mostrar info del autor, opcionalmente cargado
 }
+
 
 export interface SearchRequest {
   id: string;
   user_id: string; // FK a User.id
   title: string;
   description: string;
-  desired_property_type_rent: boolean;
-  desired_property_type_sale: boolean;
-  desired_category_apartment: boolean;
-  desired_category_house: boolean;
-  desired_category_condo: boolean;
-  desired_category_land: boolean;
-  desired_category_commercial: boolean;
-  desired_category_other: boolean;
-  desired_location_city: string;
-  desired_location_neighborhood?: string;
-  min_bedrooms?: number;
-  min_bathrooms?: number;
-  budget_max?: number;
-  comments_count: number;
+  
+  // Instead of individual booleans, use arrays for multi-select
+  desiredPropertyType: PropertyType[]; // e.g., ['rent', 'sale']
+  desiredCategories: ListingCategory[]; // e.g., ['apartment', 'house']
+  
+  desiredLocation: { // Encapsulate location
+    city: string;
+    neighborhood?: string;
+  };
+  minBedrooms?: number;
+  minBathrooms?: number;
+  budgetMax?: number;
+  commentsCount: number;
   slug: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  isActive: boolean; // Renamed from is_active
+  createdAt: string; // Renamed from created_at
+  updatedAt: string; // Renamed from updated_at
   author?: User; // Para mostrar info del autor
 }
 
@@ -208,23 +209,19 @@ export const sampleRequests: SearchRequest[] = [
     title: 'Busco depto de 2 dormitorios que admita mascotas para arrendar en Providencia',
     slug: 'busco-depto-2-dormitorios-admite-mascotas-providencia',
     description: 'Mi pareja y yo buscamos un departamento de 2 dormitorios, debe admitir mascotas (tenemos un perrito). Preferiblemente cerca del Metro y parques. Nuestro presupuesto es alrededor de $650.000 mensuales.',
-    desired_property_type_rent: true,
-    desired_property_type_sale: false,
-    desired_category_apartment: true,
-    desired_category_condo: true,
-    desired_category_house: false,
-    desired_category_land: false,
-    desired_category_commercial: false,
-    desired_category_other: false,
-    desired_location_city: 'Providencia', 
-    desired_location_neighborhood: 'Sector Pedro de Valdivia',
+    desiredPropertyType: ['rent'],
+    desiredCategories: ['apartment', 'condo'],
+    desiredLocation: { 
+        city: 'Providencia', 
+        neighborhood: 'Sector Pedro de Valdivia'
+    },
     minBedrooms: 2,
-    budget_max: 650000,
+    budgetMax: 650000,
     author: sampleUsers.find(u => u.id === 'user3')!,
-    created_at: new Date(Date.now() - 86400000 * 1).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 1).toISOString(),
-    comments_count: 5,
-    is_active: true,
+    createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
+    commentsCount: 5,
+    isActive: true,
   },
   {
     id: 'req2',
@@ -232,24 +229,15 @@ export const sampleRequests: SearchRequest[] = [
     title: 'Busco casa familiar con más de 3 dormitorios para comprar en Ñuñoa o La Reina',
     slug: 'busco-casa-familiar-3-dormitorios-nunoa-la-reina',
     description: 'Somos una familia de cuatro que busca comprar una casa en un barrio familiar en Ñuñoa o La Reina. Necesitamos al menos 3 dormitorios, patio para los niños y un buen sector. Presupuesto hasta 10.000 UF.',
-    desired_property_type_rent: false,
-    desired_property_type_sale: true,
-    desired_category_house: true,
-    desired_category_apartment: false,
-    desired_category_condo: false,
-    desired_category_land: false,
-    desired_category_commercial: false,
-    desired_category_other: false,
-    desired_location_city: 'Ñuñoa',
+    desiredPropertyType: ['sale'],
+    desiredCategories: ['house'],
+    desiredLocation: { city: 'Ñuñoa' }, // Corrected: ensure desiredLocation object exists
     minBedrooms: 3,
-    budget_max: 10000,
+    budgetMax: 10000, // Assuming UF, formatting handled in component
     author: placeholderUser,
-    created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-    comments_count: 12,
-    is_active: true,
+    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+    commentsCount: 12,
+    isActive: true,
   },
 ];
-
-// Las funciones simuladas de localStorage se eliminarán ya que usaremos la base de datos.
-// El manejo de la configuración de Google Sheets se hará mediante Server Actions que interactuarán con la BD.

@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { SearchRequest, PropertyType, ListingCategory } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,20 +39,24 @@ export default function RequestCard({ request }: RequestCardProps) {
     author,
     commentsCount,
     budgetMax,
-    desiredPropertyType
+    desiredPropertyType,
+    createdAt, // Added for display
   } = request;
+
+  const locationCity = desiredLocation?.city || 'No especificada';
+  const locationNeighborhood = desiredLocation?.neighborhood;
 
   return (
     <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg">
        <CardHeader className="p-4">
         <div className="flex items-center gap-2 mb-2">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={author.avatarUrl} alt={author.name} data-ai-hint="person portrait" />
-              <AvatarFallback>{author.name?.charAt(0).toUpperCase()}</AvatarFallback>
+              <AvatarImage src={author?.avatarUrl} alt={author?.name} data-ai-hint="person portrait" />
+              <AvatarFallback>{author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="text-sm font-medium">{author.name}</p>
-              <p className="text-xs text-muted-foreground">Publicado el {new Date(request.createdAt).toLocaleDateString('es-CL')}</p>
+              <p className="text-sm font-medium">{author?.name || 'Usuario Desconocido'}</p>
+              <p className="text-xs text-muted-foreground">Publicado el {new Date(createdAt).toLocaleDateString('es-CL')}</p>
             </div>
         </div>
         <Link href={`/requests/${slug}`} className="block">
@@ -64,14 +69,14 @@ export default function RequestCard({ request }: RequestCardProps) {
       <CardContent className="p-4 pt-0 flex-grow">
         <div className="space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center">
-            <MapPin className="mr-1.5 h-4 w-4 text-primary" /> Ubicación: {desiredLocation.city} {desiredLocation.neighborhood ? `(${desiredLocation.neighborhood})` : ''}
+            <MapPin className="mr-1.5 h-4 w-4 text-primary" /> Ubicación: {locationCity} {locationNeighborhood ? `(${locationNeighborhood})` : ''}
           </div>
-          {desiredCategories.length > 0 && (
+          {desiredCategories && desiredCategories.length > 0 && (
             <div className="flex items-center">
               <Tag className="mr-1.5 h-4 w-4 text-primary" /> Tipos: {desiredCategories.map(translateCategoryBadge).join(', ')}
             </div>
           )}
-           {desiredPropertyType.length > 0 && (
+           {desiredPropertyType && desiredPropertyType.length > 0 && (
             <div className="flex items-center">
               <Tag className="mr-1.5 h-4 w-4 text-primary" /> Para: {desiredPropertyType.map(translatePropertyTypeBadge).join(', ')}
             </div>
@@ -83,10 +88,10 @@ export default function RequestCard({ request }: RequestCardProps) {
           )}
         </div>
         <div className="mt-3">
-          {desiredPropertyType.map(pt => (
+          {desiredPropertyType && desiredPropertyType.map(pt => (
             <Badge key={pt} variant="secondary" className="mr-1.5 mb-1.5 capitalize">{translatePropertyTypeBadge(pt)}</Badge>
           ))}
-          {desiredCategories.map(cat => (
+          {desiredCategories && desiredCategories.map(cat => (
             <Badge key={cat} variant="outline" className="mr-1.5 mb-1.5 capitalize">{translateCategoryBadge(cat)}</Badge>
           ))}
         </div>

@@ -1,4 +1,5 @@
-import { sampleRequests, placeholderUser, Comment as CommentType, PropertyType, ListingCategory } from "@/lib/types";
+
+import { sampleRequests, placeholderUser, Comment as CommentType, PropertyType, ListingCategory, SearchRequest } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -7,12 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapPin, BedDouble, Bath, DollarSign, Tag, ThumbsUp, MessageSquare, Send, UserCircle, SearchIcon } from "lucide-react";
 import Link from "next/link";
 
-async function getRequestData(slug: string) {
+async function getRequestData(slug: string): Promise<SearchRequest | undefined> {
   return sampleRequests.find(p => p.slug === slug) || sampleRequests[0];
 }
 
 const sampleComments: CommentType[] = [
-  { id: 'comment1', content: '¡Podría tener un lugar que se ajuste a tus criterios! Te envío un MD.', author: placeholderUser, createdAt: new Date(Date.now() - 86400000 * 0.3).toISOString(), upvotes: 3 },
+  { id: 'comment1', content: '¡Podría tener un lugar que se ajuste a tus criterios! Te envío un MD.', author: placeholderUser, created_at: new Date(Date.now() - 86400000 * 0.3).toISOString(), upvotes: 3, updated_at: new Date().toISOString() },
 ];
 
 const translatePropertyType = (type: PropertyType): string => {
@@ -39,6 +40,10 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
   if (!request) {
     return <div className="text-center py-10">Solicitud no encontrada.</div>;
   }
+  
+  const locationCity = request.desiredLocation?.city || 'No especificada';
+  const locationNeighborhood = request.desiredLocation?.neighborhood;
+
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -46,11 +51,11 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
         <CardHeader className="p-6">
            <div className="flex items-center gap-3 mb-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={request.author.avatarUrl} alt={request.author.name} />
-                <AvatarFallback className="text-2xl">{request.author.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={request.author?.avatarUrl} alt={request.author?.name} />
+                <AvatarFallback className="text-2xl">{request.author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-xl font-semibold">{request.author.name}</p>
+                <p className="text-xl font-semibold">{request.author?.name || "Usuario Anónimo"}</p>
                 <p className="text-sm text-muted-foreground">Publicado el {new Date(request.createdAt).toLocaleDateString('es-CL')}</p>
               </div>
             </div>
@@ -68,15 +73,15 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 pt-3 border-t">
                 <div className="flex items-start">
                   <MapPin className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>Ubicación:</strong> {request.desiredLocation.city} {request.desiredLocation.neighborhood ? `(${request.desiredLocation.neighborhood})` : ''}</span>
+                  <span><strong>Ubicación:</strong> {locationCity} {locationNeighborhood ? `(${locationNeighborhood})` : ''}</span>
                 </div>
-                {request.desiredCategories.length > 0 && (
+                {request.desiredCategories && request.desiredCategories.length > 0 && (
                   <div className="flex items-start">
                     <Tag className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                     <span><strong>Tipo de Propiedad:</strong> {request.desiredCategories.map(translateCategory).join(', ')}</span>
                   </div>
                 )}
-                {request.desiredPropertyType.length > 0 && (
+                {request.desiredPropertyType && request.desiredPropertyType.length > 0 && (
                   <div className="flex items-start">
                     <Tag className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                     <span><strong>Buscando para:</strong> {request.desiredPropertyType.map(translatePropertyType).join(', ')}</span>
@@ -104,10 +109,10 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
             </div>
           </div>
            <div className="mt-4">
-            {request.desiredPropertyType.map(pt => (
+            {request.desiredPropertyType && request.desiredPropertyType.map(pt => (
                 <Badge key={pt} variant="secondary" className="mr-2 mb-2 text-sm py-1 px-3 capitalize">{translatePropertyType(pt)}</Badge>
             ))}
-            {request.desiredCategories.map(cat => (
+            {request.desiredCategories && request.desiredCategories.map(cat => (
                 <Badge key={cat} variant="outline" className="mr-2 mb-2 text-sm py-1 px-3 capitalize">{translateCategory(cat)}</Badge>
             ))}
           </div>
@@ -138,13 +143,13 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
             {sampleComments.map(comment => (
               <div key={comment.id} className="flex gap-3 items-start p-4 bg-secondary/50 rounded-lg">
                 <Avatar>
-                  <AvatarImage src={comment.author.avatarUrl} alt={comment.author.name} />
-                  <AvatarFallback>{comment.author.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                  <AvatarImage src={comment.author?.avatarUrl} alt={comment.author?.name} />
+                  <AvatarFallback>{comment.author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-grow">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm">{comment.author.name}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString('es-CL')}</span>
+                    <span className="font-semibold text-sm">{comment.author?.name || "Usuario Anónimo"}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleString('es-CL')}</span>
                   </div>
                   <p className="text-sm mt-1">{comment.content}</p>
                   <div className="flex items-center gap-2 mt-2">
