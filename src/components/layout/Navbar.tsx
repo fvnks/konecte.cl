@@ -17,8 +17,9 @@ const navItems = [
 
 export default function Navbar() {
   const [isUserLoggedIn, setIsUserLoggedIn] = React.useState(false); // Placeholder for auth state
-  // Placeholder for admin state - en una app real, esto vendría del estado de autenticación/roles
-  const [isUserAdmin, setIsUserAdmin] = React.useState(true); // Asumimos que es admin para mostrar el enlace
+  // Placeholder for admin state. En una app real, esto vendría del estado de autenticación/roles del usuario.
+  // Por defecto es false; se establecería a true si el usuario tiene el rol de administrador después de iniciar sesión.
+  const [isUserAdmin, setIsUserAdmin] = React.useState(false); 
 
   const commonNavLinks = (
     <>
@@ -30,7 +31,7 @@ export default function Navbar() {
           </Link>
         </Button>
       ))}
-       {isUserAdmin && ( // Mostrar enlace de Admin si el usuario es admin
+       {isUserLoggedIn && isUserAdmin && ( // Mostrar enlace de Admin solo si el usuario está logueado Y es admin
         <Button variant="ghost" asChild className="text-sm font-medium">
           <Link href="/admin" className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-red-500" />
@@ -83,8 +84,16 @@ export default function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard">Panel</Link>
                 </DropdownMenuItem>
+                {isUserAdmin && ( // Opción de ir a Admin solo si es admin
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin">Admin Panel</Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsUserLoggedIn(false)}>Cerrar Sesión</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setIsUserLoggedIn(false);
+                  setIsUserAdmin(false); // Al cerrar sesión, también se quita el rol de admin
+                }}>Cerrar Sesión</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -118,7 +127,7 @@ export default function Navbar() {
                       </Link>
                     </Button>
                   ))}
-                  {isUserAdmin && (
+                  {isUserLoggedIn && isUserAdmin && (
                      <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
                         <Link href="/admin" className="flex items-center gap-3 w-full">
                             <ShieldCheck className="h-4 w-4 text-red-500" />
@@ -151,7 +160,17 @@ export default function Navbar() {
                           <Briefcase className="h-4 w-4" /> Panel
                         </Link>
                       </Button>
-                      <Button variant="ghost" onClick={() => setIsUserLoggedIn(false)} className="justify-start text-base px-4 py-3 w-full text-left">
+                       {isUserAdmin && (
+                         <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
+                            <Link href="/admin" className="flex items-center gap-3 w-full">
+                                <ShieldCheck className="h-4 w-4" /> Admin Panel
+                            </Link>
+                        </Button>
+                       )}
+                      <Button variant="ghost" onClick={() => {
+                        setIsUserLoggedIn(false);
+                        setIsUserAdmin(false);
+                      }} className="justify-start text-base px-4 py-3 w-full text-left">
                         Cerrar Sesión
                       </Button>
                     </>
