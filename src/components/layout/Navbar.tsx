@@ -2,12 +2,12 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Briefcase, Search, MessageSquare, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck } from 'lucide-react'; // Added ShieldCheck for Admin
+import { Home, Briefcase, Search, MessageSquare, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut } from 'lucide-react'; // Added ShieldCheck for Admin
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import React from 'react';
-import { Separator } from '@/components/ui/separator'; // Correct import for Separator
+import { Separator } from '@/components/ui/separator'; 
 
 const navItems = [
   { href: '/properties', label: 'Propiedades', icon: <Briefcase className="h-4 w-4" /> },
@@ -16,10 +16,18 @@ const navItems = [
 ];
 
 export default function Navbar() {
-  const [isUserLoggedIn, setIsUserLoggedIn] = React.useState(false); // Placeholder for auth state
-  // Placeholder for admin state. En una app real, esto vendría del estado de autenticación/roles del usuario.
-  // Por defecto es false; se establecería a true si el usuario tiene el rol de administrador después de iniciar sesión.
+  const [isUserLoggedIn, setIsUserLoggedIn] = React.useState(false); 
   const [isUserAdmin, setIsUserAdmin] = React.useState(false); 
+
+  const handleSimulateLogin = () => {
+    setIsUserLoggedIn(true);
+    setIsUserAdmin(true); // Simulamos que el usuario es admin
+  };
+
+  const handleLogout = () => {
+    setIsUserLoggedIn(false);
+    setIsUserAdmin(false);
+  };
 
   const commonNavLinks = (
     <>
@@ -31,14 +39,7 @@ export default function Navbar() {
           </Link>
         </Button>
       ))}
-       {isUserLoggedIn && isUserAdmin && ( // Mostrar enlace de Admin solo si el usuario está logueado Y es admin
-        <Button variant="ghost" asChild className="text-sm font-medium">
-          <Link href="/admin" className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-red-500" />
-            Admin
-          </Link>
-        </Button>
-      )}
+      {/* El enlace directo a Admin en la barra principal se elimina según la solicitud */}
     </>
   );
 
@@ -84,23 +85,21 @@ export default function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard">Panel</Link>
                 </DropdownMenuItem>
-                {isUserAdmin && ( // Opción de ir a Admin solo si es admin
+                {isUserAdmin && ( 
                   <DropdownMenuItem asChild>
-                    <Link href="/admin">Admin Panel</Link>
+                    <Link href="/admin">Panel de Admin</Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => {
-                  setIsUserLoggedIn(false);
-                  setIsUserAdmin(false); // Al cerrar sesión, también se quita el rol de admin
-                }}>Cerrar Sesión</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2">
+                  <LogOut className="h-4 w-4" /> Cerrar Sesión
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="outline" size="sm" asChild className="hidden md:flex items-center gap-2">
-              <Link href="/auth/signin">
-                <LogIn className="h-4 w-4" /> Iniciar Sesión
-              </Link>
+            // Botón para simular inicio de sesión de admin en desktop
+            <Button variant="outline" size="sm" onClick={handleSimulateLogin} className="hidden md:flex items-center gap-2">
+              <LogIn className="h-4 w-4" /> Simular Inicio (Admin)
             </Button>
           )}
           
@@ -113,7 +112,7 @@ export default function Navbar() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px] sm:w-[320px]">
-                <div className="flex flex-col gap-2 py-6"> {/* Ajustado gap-2 y quitado py-6 innecesario con items de abajo */}
+                <div className="flex flex-col gap-2 py-6"> 
                   <Link href="/" className="flex items-center gap-2 px-4 mb-2">
                      <Home className="h-7 w-7 text-primary" />
                      <span className="text-xl font-bold font-headline text-primary">PropSpot</span>
@@ -127,14 +126,7 @@ export default function Navbar() {
                       </Link>
                     </Button>
                   ))}
-                  {isUserLoggedIn && isUserAdmin && (
-                     <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
-                        <Link href="/admin" className="flex items-center gap-3 w-full">
-                            <ShieldCheck className="h-4 w-4 text-red-500" />
-                            Admin
-                        </Link>
-                    </Button>
-                  )}
+                  {/* No hay enlace Admin directo en móvil aquí tampoco */}
                   <MobileSeparator />
                    <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
                       <Link href="/properties/submit" className="flex items-center gap-3 w-full">
@@ -156,29 +148,24 @@ export default function Navbar() {
                       </Button>
                       <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
                         <Link href="/dashboard" className="flex items-center gap-3 w-full">
-                           {/* Replace with appropriate dashboard icon */}
                           <Briefcase className="h-4 w-4" /> Panel
                         </Link>
                       </Button>
                        {isUserAdmin && (
                          <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
                             <Link href="/admin" className="flex items-center gap-3 w-full">
-                                <ShieldCheck className="h-4 w-4" /> Admin Panel
+                                <ShieldCheck className="h-4 w-4 text-primary" /> Panel de Admin
                             </Link>
                         </Button>
                        )}
-                      <Button variant="ghost" onClick={() => {
-                        setIsUserLoggedIn(false);
-                        setIsUserAdmin(false);
-                      }} className="justify-start text-base px-4 py-3 w-full text-left">
-                        Cerrar Sesión
+                      <Button variant="ghost" onClick={handleLogout} className="justify-start text-base px-4 py-3 w-full text-left flex items-center gap-3">
+                        <LogOut className="h-4 w-4" /> Cerrar Sesión
                       </Button>
                     </>
                   ) : (
-                    <Button variant="outline" asChild className="mx-4 mt-2">
-                      <Link href="/auth/signin" className="w-full">
-                        <LogIn className="h-4 w-4 mr-2" /> Iniciar Sesión
-                      </Link>
+                    // Botón para simular inicio de sesión de admin en móvil
+                    <Button variant="outline" onClick={handleSimulateLogin} className="mx-4 mt-2 flex items-center gap-2 justify-center">
+                      <LogIn className="h-4 w-4" /> Simular Inicio (Admin)
                     </Button>
                   )}
                 </div>
@@ -191,5 +178,4 @@ export default function Navbar() {
   );
 }
 
-// Separador para móvil, usando el componente Separator de ShadCN
 const MobileSeparator = () => <Separator className="my-2" />;
