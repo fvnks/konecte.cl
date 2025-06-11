@@ -1,3 +1,4 @@
+
 // src/actions/planActions.ts
 'use server';
 
@@ -27,7 +28,7 @@ function mapDbRowToPlan(row: any): Plan {
 
 export async function getPlansAction(): Promise<Plan[]> {
   try {
-    const rows = await query('SELECT * FROM plans ORDER BY name ASC');
+    const rows = await query('SELECT * FROM plans ORDER BY price_monthly ASC, name ASC');
     return rows.map(mapDbRowToPlan);
   } catch (error) {
     console.error("Error al obtener planes:", error);
@@ -55,14 +56,14 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
     return { success: false, message: "El precio mensual debe ser un número válido no negativo." };
   }
   
-  const max_properties_allowed = max_properties_allowed_str && max_properties_allowed_str !== '' ? parseInt(max_properties_allowed_str, 10) : null;
-  const max_requests_allowed = max_requests_allowed_str && max_requests_allowed_str !== '' ? parseInt(max_requests_allowed_str, 10) : null;
-  const property_listing_duration_days = property_listing_duration_days_str && property_listing_duration_days_str !== '' ? parseInt(property_listing_duration_days_str, 10) : null;
+  const max_properties_allowed = max_properties_allowed_str && max_properties_allowed_str.trim() !== '' ? parseInt(max_properties_allowed_str, 10) : null;
+  const max_requests_allowed = max_requests_allowed_str && max_requests_allowed_str.trim() !== '' ? parseInt(max_requests_allowed_str, 10) : null;
+  const property_listing_duration_days = property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '' ? parseInt(property_listing_duration_days_str, 10) : null;
 
-  if ((max_properties_allowed_str && max_properties_allowed_str !== '' && (isNaN(max_properties_allowed!) || max_properties_allowed! < 0)) ||
-      (max_requests_allowed_str && max_requests_allowed_str !== '' && (isNaN(max_requests_allowed!) || max_requests_allowed! < 0)) ||
-      (property_listing_duration_days_str && property_listing_duration_days_str !== '' && (isNaN(property_listing_duration_days!) || property_listing_duration_days! < 0))) {
-    return { success: false, message: "Los límites y duración deben ser números válidos no negativos si se especifican." };
+  if ((max_properties_allowed_str && max_properties_allowed_str.trim() !== '' && (isNaN(max_properties_allowed!) || max_properties_allowed! < 0)) ||
+      (max_requests_allowed_str && max_requests_allowed_str.trim() !== '' && (isNaN(max_requests_allowed!) || max_requests_allowed! < 0)) ||
+      (property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '' && (isNaN(property_listing_duration_days!) || property_listing_duration_days! < 0))) {
+    return { success: false, message: "Los límites y duración deben ser números válidos no negativos si se especifican, o dejados en blanco para ilimitado/indefinido." };
   }
 
 
@@ -113,29 +114,24 @@ export async function deletePlanAction(planId: string): Promise<{ success: boole
   }
 
   try {
-    // Primero, verificar si algún usuario está usando este plan.
-    // Si es así, podríamos impedir la eliminación o establecer plan_id = NULL para esos usuarios.
-    const usersWithPlan: any[] = await query('SELECT COUNT(*) as count FROM users WHERE plan_id = ?', [planId]);
-    if (usersWithPlan[0].count > 0) {
-      // Opción 1: Impedir eliminación
-      // return { success: false, message: `No se puede eliminar el plan porque está asignado a ${usersWithPlan[0].count} usuario(s). Por favor, reasígnelos primero.` };
-      // Opción 2: Desvincular usuarios (esto se hace con ON DELETE SET NULL en la FK, pero podríamos confirmarlo o hacerlo manualmente si la FK no está así)
-       await query('UPDATE users SET plan_id = NULL WHERE plan_id = ?', [planId]);
-       // O asignar un plan por defecto si existe uno
-    }
+    // Desvincular usuarios del plan. La FK en users es ON DELETE SET NULL,
+    // pero es más explícito y seguro hacerlo así también.
+    await query('UPDATE users SET plan_id = NULL WHERE plan_id = ?', [planId]);
 
     const result: any = await query('DELETE FROM plans WHERE id = ?', [planId]);
     if (result.affectedRows > 0) {
       revalidatePath('/admin/plans');
       revalidatePath('/admin/users');
-      return { success: true, message: "Plan eliminado exitosamente." };
+      return { success: true, message: "Plan eliminado exitosamente y usuarios desvinculados." };
     } else {
       return { success: false, message: "El plan no fue encontrado o no se pudo eliminar." };
     }
-  } catch (error: any) {
+  } catch (error: any)
+{
     console.error("Error al eliminar plan:", error);
-     if (error.code === 'ER_ROW_IS_REFERENCED_2') { // Aunque la FK es SET NULL, puede haber otros constraints
-        return { success: false, message: "No se puede eliminar el plan porque aún está referenciado. Intenta desvincular usuarios primero." };
+    // ER_ROW_IS_REFERENCED_2 puede ocurrir si hay otras restricciones, aunque no debería con users.plan_id ON DELETE SET NULL
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') { 
+        return { success: false, message: "Error de referencia: No se puede eliminar el plan porque aún está referenciado en otra tabla (que no es 'users' para plan_id). Contacte al administrador." };
     }
     return { success: false, message: `Error al eliminar plan: ${error.message}` };
   }

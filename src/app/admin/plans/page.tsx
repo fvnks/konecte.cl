@@ -1,3 +1,4 @@
+
 // src/app/admin/plans/page.tsx
 'use client';
 
@@ -31,11 +32,10 @@ export default function AdminPlansPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   
-  // Estado para el formulario de nuevo plan (simplificado por ahora)
   const [newPlanName, setNewPlanName] = useState('');
   const [newPlanDescription, setNewPlanDescription] = useState('');
   const [newPlanPrice, setNewPlanPrice] = useState('0');
-  // TODO: Añadir más campos para el formulario según la definición de Plan
+
 
   const fetchPlans = async () => {
     setIsLoading(true);
@@ -51,34 +51,31 @@ export default function AdminPlansPage() {
 
   useEffect(() => {
     fetchPlans();
-  }, []);
+  }, [toast]); // Added toast to dependency array as it's used in fetchPlans
 
   const handleAddPlan = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!newPlanName.trim()) {
-      toast({ title: "Error", description: "El nombre del plan es requerido.", variant: "destructive" });
-      return;
-    }
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    
+    // Clear previous specific errors if any visual indication was used
+    // Example: form.querySelectorAll('.error-message').forEach(el => el.textContent = '');
 
     startTransition(async () => {
-      const formData = new FormData(event.currentTarget);
-      // Asegurarse que los checkboxes envíen 'on' o nada
-      // Los campos numéricos vacíos se deben manejar en la action para convertirlos a null o 0 según corresponda
-      
       const result = await addPlanAction(formData);
-      if (result.success) {
+      if (result.success && result.plan) {
         toast({ title: "Plan Añadido", description: result.message });
-        // Limpiar formulario (ejemplo básico)
-        setNewPlanName('');
+        form.reset(); // Reset the form fields
+        setNewPlanName(''); // Reset controlled state if still used for initial values
         setNewPlanDescription('');
         setNewPlanPrice('0');
-        // Resetear otros campos del formulario si se añaden más inputs controlados
-        const form = event.target as HTMLFormElement;
-        form.reset();
-
-        await fetchPlans(); // Recargar planes
+        
+        // Optimistically update UI or refetch
+        // setPlans(prev => [...prev, result.plan!].sort((a, b) => a.price_monthly - b.price_monthly || a.name.localeCompare(b.name)));
+        await fetchPlans(); // Or simply refetch
       } else {
         toast({ title: "Error al Añadir Plan", description: result.message, variant: "destructive" });
+        // Potentially highlight fields based on result.message if it's specific
       }
     });
   };
@@ -88,7 +85,7 @@ export default function AdminPlansPage() {
       const result = await deletePlanAction(planId);
       if (result.success) {
         toast({ title: "Plan Eliminado", description: result.message });
-        await fetchPlans(); 
+        setPlans(prevPlans => prevPlans.filter(p => p.id !== planId));
       } else {
         toast({ title: "Error al Eliminar Plan", description: result.message, variant: "destructive" });
       }
@@ -100,7 +97,9 @@ export default function AdminPlansPage() {
       const result = await togglePlanStatusAction(planId, !currentStatus);
       if (result.success) {
         toast({ title: "Estado Actualizado", description: result.message });
-        await fetchPlans();
+        setPlans(prevPlans => 
+          prevPlans.map(p => p.id === planId ? { ...p, is_active: !currentStatus } : p)
+        );
       } else {
         toast({ title: "Error al Actualizar Estado", description: result.message, variant: "destructive" });
       }
@@ -109,7 +108,7 @@ export default function AdminPlansPage() {
   
   if (isLoading && plans.length === 0) { 
     return (
-      <div className="flex justify-center items-center h-full">
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="ml-2">Cargando planes...</p>
       </div>
@@ -131,43 +130,43 @@ export default function AdminPlansPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name" className="block text-sm font-medium mb-1">Nombre del Plan</Label>
+                <Label htmlFor="name" className="block text-sm font-medium mb-1">Nombre del Plan *</Label>
                 <Input id="name" name="name" value={newPlanName} onChange={e => setNewPlanName(e.target.value)} placeholder="Ej: Básico, Premium" required />
               </div>
               <div>
-                <Label htmlFor="price_monthly" className="block text-sm font-medium mb-1">Precio Mensual (CLP)</Label>
-                <Input id="price_monthly" name="price_monthly" type="number" step="0.01" value={newPlanPrice} onChange={e => setNewPlanPrice(e.target.value)} placeholder="Ej: 5000" required />
+                <Label htmlFor="price_monthly" className="block text-sm font-medium mb-1">Precio Mensual (CLP) *</Label>
+                <Input id="price_monthly" name="price_monthly" type="number" step="0.01" min="0" value={newPlanPrice} onChange={e => setNewPlanPrice(e.target.value)} placeholder="Ej: 5000" required />
               </div>
             </div>
 
             <div>
-                <Label htmlFor="description" className="block text-sm font-medium mb-1">Descripción (Opcional)</Label>
+                <Label htmlFor="description" className="block text-sm font-medium mb-1">Descripción</Label>
                 <Textarea id="description" name="description" value={newPlanDescription} onChange={e => setNewPlanDescription(e.target.value)} placeholder="Breve descripción del plan" rows={2}/>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                  <div>
                     <Label htmlFor="max_properties_allowed" className="block text-sm font-medium mb-1">Máx. Propiedades</Label>
-                    <Input id="max_properties_allowed" name="max_properties_allowed" type="number" placeholder="Ej: 5 (vacío para ilimitado)" />
+                    <Input id="max_properties_allowed" name="max_properties_allowed" type="number" min="0" placeholder="Vacío para ilimitado" />
                 </div>
                 <div>
                     <Label htmlFor="max_requests_allowed" className="block text-sm font-medium mb-1">Máx. Solicitudes</Label>
-                    <Input id="max_requests_allowed" name="max_requests_allowed" type="number" placeholder="Ej: 5 (vacío para ilimitado)" />
+                    <Input id="max_requests_allowed" name="max_requests_allowed" type="number" min="0" placeholder="Vacío para ilimitado" />
                 </div>
                 <div>
                     <Label htmlFor="property_listing_duration_days" className="block text-sm font-medium mb-1">Duración Publicación (días)</Label>
-                    <Input id="property_listing_duration_days" name="property_listing_duration_days" type="number" placeholder="Ej: 30 (vacío para indefinido)" />
+                    <Input id="property_listing_duration_days" name="property_listing_duration_days" type="number" min="0" placeholder="Vacío para indefinido" />
                 </div>
             </div>
 
-            <div className="flex items-center space-x-6 pt-2">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
                 <div className="flex items-center space-x-2">
                     <Checkbox id="can_feature_properties" name="can_feature_properties" />
                     <Label htmlFor="can_feature_properties">Permite Destacar Propiedades</Label>
                 </div>
                  <div className="flex items-center space-x-2">
                     <Checkbox id="is_active" name="is_active" defaultChecked={true} />
-                    <Label htmlFor="is_active">Plan Activo</Label>
+                    <Label htmlFor="is_active">Plan Activo al crear</Label>
                 </div>
             </div>
             <Input type="hidden" name="price_currency" value="CLP" />
@@ -182,74 +181,76 @@ export default function AdminPlansPage() {
           <h3 className="text-lg font-semibold mb-2">Planes Existentes</h3>
           {isLoading && plans.length > 0 && <p className="text-sm text-muted-foreground mb-2">Actualizando lista de planes...</p>}
           {plans.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Precio</TableHead>
-                  <TableHead>Propiedades</TableHead>
-                  <TableHead>Solicitudes</TableHead>
-                  <TableHead>Destacar</TableHead>
-                  <TableHead>Duración</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {plans.map((plan) => (
-                  <TableRow key={plan.id}>
-                    <TableCell className="font-medium">{plan.name}</TableCell>
-                    <TableCell>${plan.price_monthly.toLocaleString('es-CL')} {plan.price_currency}</TableCell>
-                    <TableCell>{plan.max_properties_allowed ?? 'Ilimit.'}</TableCell>
-                    <TableCell>{plan.max_requests_allowed ?? 'Ilimit.'}</TableCell>
-                    <TableCell>{plan.can_feature_properties ? 'Sí' : 'No'}</TableCell>
-                    <TableCell>{plan.property_listing_duration_days ?? 'Indef.'} días</TableCell>
-                    <TableCell>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleToggleStatus(plan.id, plan.is_active)}
-                        disabled={isPending}
-                        className={`h-auto px-2 py-1 text-xs ${plan.is_active ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}`}
-                      >
-                        {plan.is_active ? <ToggleRight className="mr-1 h-4 w-4" /> : <ToggleLeft className="mr-1 h-4 w-4" />}
-                        {plan.is_active ? 'Activo' : 'Inactivo'}
-                      </Button>
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" disabled={true}> {/* TODO: Implementar edición */}
-                        <Edit className="h-3 w-3 mr-1"/> Editar
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm" disabled={isPending}>
-                            <Trash2 className="h-3 w-3 mr-1" /> Eliminar
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta acción no se puede deshacer. Eliminarás permanentemente el plan "{plan.name}".
-                              Los usuarios asignados a este plan quedarán sin plan (o se les asignará uno por defecto si está configurado).
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeletePlan(plan.id)} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
-                              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                              Sí, eliminar plan
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead className="min-w-[100px]">Precio</TableHead>
+                    <TableHead>Prop.</TableHead>
+                    <TableHead>Sol.</TableHead>
+                    <TableHead>Dest.</TableHead>
+                    <TableHead className="min-w-[100px]">Duración</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right min-w-[200px]">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {plans.map((plan) => (
+                    <TableRow key={plan.id}>
+                      <TableCell className="font-medium">{plan.name}</TableCell>
+                      <TableCell>${plan.price_monthly.toLocaleString('es-CL')} {plan.price_currency}</TableCell>
+                      <TableCell className="text-center">{plan.max_properties_allowed ?? '∞'}</TableCell>
+                      <TableCell className="text-center">{plan.max_requests_allowed ?? '∞'}</TableCell>
+                      <TableCell className="text-center">{plan.can_feature_properties ? 'Sí' : 'No'}</TableCell>
+                      <TableCell className="text-center">{plan.property_listing_duration_days ?? 'Indef.'} {plan.property_listing_duration_days ? 'días' : ''}</TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleToggleStatus(plan.id, plan.is_active)}
+                          disabled={isPending}
+                          className={`h-auto px-2 py-1 text-xs ${plan.is_active ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}`}
+                        >
+                          {isPending && plan.id === plans.find(p => p.id === plan.id)?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (plan.is_active ? <ToggleRight className="mr-1 h-4 w-4" /> : <ToggleLeft className="mr-1 h-4 w-4" />)}
+                          {plan.is_active ? 'Activo' : 'Inactivo'}
+                        </Button>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="outline" size="sm" disabled={true} aria-label="Editar plan" title="Editar plan (próximamente)"> {/* TODO: Implementar edición */}
+                          <Edit className="h-3 w-3 md:mr-1"/> <span className="hidden md:inline">Editar</span>
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" disabled={isPending} aria-label="Eliminar plan" title="Eliminar plan">
+                              <Trash2 className="h-3 w-3 md:mr-1" /> <span className="hidden md:inline">Eliminar</span>
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Eliminarás permanentemente el plan "{plan.name}".
+                                Los usuarios asignados a este plan quedarán sin plan (o se les asignará uno por defecto si está configurado en la BD como SET NULL).
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeletePlan(plan.id)} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
+                                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Sí, eliminar plan
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
-            !isLoading && <p className="text-muted-foreground text-center py-4">No hay planes definidos.</p>
+            !isLoading && <p className="text-muted-foreground text-center py-4">No hay planes definidos. ¡Crea el primero!</p>
           )}
         </CardContent>
       </Card>
@@ -258,11 +259,13 @@ export default function AdminPlansPage() {
             <CardTitle className="text-xl">Notas sobre Planes</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>Los límites de propiedades/solicitudes y la duración de publicación pueden ser dejados en blanco para indicar "ilimitado" o "indefinido" respectivamente.</p>
-            <p>Si un plan se elimina, los usuarios que lo tenían asignado perderán esa asignación (su `plan_id` se volverá `NULL`). Considera reasignar usuarios antes de eliminar un plan en uso.</p>
-            <p>La funcionalidad de "Destacar Propiedades" y la "Duración de Publicación" deberán ser implementadas en la lógica de listado de propiedades más adelante.</p>
+            <p><strong>Campos con asterisco (*) son requeridos.</strong></p>
+            <p>Los límites de propiedades/solicitudes y la duración de publicación pueden ser dejados en blanco (o 0 donde aplique según la validación) para indicar "ilimitado" o "indefinido" respectivamente. Estos se guardarán como NULL en la base de datos.</p>
+            <p>Si un plan se elimina, los usuarios que lo tenían asignado perderán esa asignación (su `plan_id` se volverá `NULL` debido a la configuración `ON DELETE SET NULL` en la clave foránea de la tabla `users`).</p>
+            <p>La funcionalidad de "Destacar Propiedades" y la "Duración de Publicación" deberán ser implementadas y consideradas en la lógica de listado y gestión de propiedades más adelante.</p>
         </CardContent>
       </Card>
     </div>
   );
 }
+
