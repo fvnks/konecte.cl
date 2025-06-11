@@ -31,7 +31,7 @@ export default function PaginatedSheetTable({ headers, rows }: PaginatedSheetTab
   };
 
   const handleNextPage = () => {
-    setCurrentPage((prev) => Math.min(totalPages, prev - 1));
+    setCurrentPage((prev) => Math.min(totalPages, prev + 1)); // Corregido: prev + 1
   };
 
   if (!headers || headers.length === 0) {
@@ -39,7 +39,7 @@ export default function PaginatedSheetTable({ headers, rows }: PaginatedSheetTab
   }
 
   return (
-    <div className="max-w-5xl mx-auto"> {/* Añadido max-w-5xl y mx-auto */}
+    <div className="max-w-5xl mx-auto">
       <Table>
         <TableHeader>
           <TableRow>
