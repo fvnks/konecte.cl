@@ -81,12 +81,13 @@ export default function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/profile">Perfil</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard">Panel</Link>
-                </DropdownMenuItem>
-                {isUserAdmin && ( 
+                {isUserAdmin ? (
                   <DropdownMenuItem asChild>
                     <Link href="/admin">Panel de Admin</Link>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard">Panel</Link>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -143,16 +144,17 @@ export default function Navbar() {
                           <UserCircle className="h-4 w-4" /> Perfil
                         </Link>
                       </Button>
-                      <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
-                        <Link href="/dashboard" className="flex items-center gap-3 w-full">
-                          <Briefcase className="h-4 w-4" /> Panel
-                        </Link>
-                      </Button>
-                       {isUserAdmin && (
-                         <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
+                      {isUserAdmin ? (
+                        <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
                             <Link href="/admin" className="flex items-center gap-3 w-full">
                                 <ShieldCheck className="h-4 w-4 text-primary" /> Panel de Admin
                             </Link>
+                        </Button>
+                       ) : (
+                        <Button variant="ghost" asChild className="justify-start text-base px-4 py-3">
+                          <Link href="/dashboard" className="flex items-center gap-3 w-full">
+                            <Briefcase className="h-4 w-4" /> Panel
+                          </Link>
                         </Button>
                        )}
                       <Button variant="ghost" onClick={handleLogout} className="justify-start text-base px-4 py-3 w-full text-left flex items-center gap-3 cursor-pointer">
