@@ -23,12 +23,12 @@ import type { PropertyType, ListingCategory } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
-  { value: "rent", label: "Alquiler" },
+  { value: "rent", label: "Arriendo" },
   { value: "sale", label: "Venta" },
 ];
 
 const categoryOptions: { value: ListingCategory; label: string }[] = [
-  { value: "apartment", label: "Apartamento" },
+  { value: "apartment", label: "Departamento" },
   { value: "house", label: "Casa" },
   { value: "condo", label: "Condominio" },
   { value: "land", label: "Terreno" },
@@ -39,18 +39,18 @@ const categoryOptions: { value: ListingCategory; label: string }[] = [
 const formSchema = z.object({
   title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
   description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
-  propertyType: z.enum(["rent", "sale"], { required_error: "Debes seleccionar un tipo de propiedad." }),
+  propertyType: z.enum(["rent", "sale"], { required_error: "Debes seleccionar un tipo de propiedad (arriendo/venta)." }),
   category: z.enum(["apartment", "house", "condo", "land", "commercial", "other"], { required_error: "Debes seleccionar una categoría." }),
   price: z.coerce.number().positive("El precio debe ser un número positivo."),
-  currency: z.string().min(3, "La moneda debe tener 3 caracteres (ej: USD).").max(3, "La moneda debe tener 3 caracteres (ej: USD).").toUpperCase(),
+  currency: z.string().min(3, "La moneda debe tener 3 caracteres (ej: CLP, USD).").max(3, "La moneda debe tener 3 caracteres (ej: CLP, USD).").toUpperCase(),
   address: z.string().min(5, "La dirección es requerida."),
   city: z.string().min(2, "La ciudad es requerida."),
   country: z.string().min(2, "El país es requerido."),
-  bedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de habitaciones no puede ser negativo."),
+  bedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de dormitorios no puede ser negativo."),
   bathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de baños no puede ser negativo."),
-  areaSqMeters: z.coerce.number().positive("El área debe ser un número positivo."),
+  areaSqMeters: z.coerce.number().positive("El área (m²) debe ser un número positivo."),
   images: z.string().optional().describe("URLs de imágenes separadas por comas. Ejemplo: url1,url2"),
-  features: z.string().optional().describe("Características separadas por comas. Ejemplo: Piscina,Garaje"),
+  features: z.string().optional().describe("Características separadas por comas. Ejemplo: Piscina,Estacionamiento"),
 });
 
 export type PropertyFormValues = z.infer<typeof formSchema>;
@@ -63,10 +63,10 @@ export default function PropertyForm() {
       title: "",
       description: "",
       price: 0,
-      currency: "USD",
+      currency: "CLP", // Default to CLP for Chile
       address: "",
       city: "",
-      country: "",
+      country: "Chile", // Default to Chile
       bedrooms: 0,
       bathrooms: 0,
       areaSqMeters: 0,
@@ -82,7 +82,7 @@ export default function PropertyForm() {
         title: "Propiedad Publicada",
         description: "Tu propiedad ha sido enviada exitosamente.",
       });
-      form.reset(); // Reset form fields
+      form.reset();
     } else {
       toast({
         title: "Error al Publicar",
@@ -102,7 +102,7 @@ export default function PropertyForm() {
             <FormItem>
               <FormLabel>Título de la Publicación</FormLabel>
               <FormControl>
-                <Input placeholder="Ej: Hermoso apartamento con vista al mar" {...field} />
+                <Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} />
               </FormControl>
               <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription>
               <FormMessage />
@@ -134,7 +134,7 @@ export default function PropertyForm() {
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecciona alquiler o venta" />
+                      <SelectValue placeholder="Selecciona arriendo o venta" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -180,7 +180,7 @@ export default function PropertyForm() {
               <FormItem>
                 <FormLabel>Precio</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Ej: 250000" {...field} />
+                  <Input type="number" placeholder="Ej: 85000000" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -193,7 +193,7 @@ export default function PropertyForm() {
               <FormItem>
                 <FormLabel>Moneda</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ej: USD, EUR, MXN" {...field} />
+                  <Input placeholder="Ej: CLP, UF, USD" {...field} />
                 </FormControl>
                 <FormDescription>Código de 3 letras para la moneda.</FormDescription>
                 <FormMessage />
@@ -209,7 +209,7 @@ export default function PropertyForm() {
             <FormItem>
               <FormLabel>Dirección Completa</FormLabel>
               <FormControl>
-                <Input placeholder="Ej: Calle Falsa 123, Colonia Centro" {...field} />
+                <Input placeholder="Ej: Av. Siempre Viva 742, Villa Alemana" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -222,9 +222,9 @@ export default function PropertyForm() {
             name="city"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Ciudad</FormLabel>
+                <FormLabel>Ciudad/Comuna</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ej: Ciudad de México" {...field} />
+                  <Input placeholder="Ej: Valparaíso" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -237,7 +237,7 @@ export default function PropertyForm() {
               <FormItem>
                 <FormLabel>País</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ej: México" {...field} />
+                  <Input placeholder="Ej: Chile" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -251,7 +251,7 @@ export default function PropertyForm() {
             name="bedrooms"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Habitaciones</FormLabel>
+                <FormLabel>N° de Dormitorios</FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="Ej: 3" {...field} />
                 </FormControl>
@@ -264,7 +264,7 @@ export default function PropertyForm() {
             name="bathrooms"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Baños</FormLabel>
+                <FormLabel>N° de Baños</FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="Ej: 2" {...field} />
                 </FormControl>
@@ -277,7 +277,7 @@ export default function PropertyForm() {
             name="areaSqMeters"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Área (m²)</FormLabel>
+                <FormLabel>Superficie (m²)</FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="Ej: 120" {...field} />
                 </FormControl>
@@ -309,7 +309,7 @@ export default function PropertyForm() {
             <FormItem>
               <FormLabel>Características Adicionales (separadas por comas)</FormLabel>
               <FormControl>
-                <Input placeholder="Ej: Piscina, Jardín, Vigilancia 24h" {...field} />
+                <Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} />
               </FormControl>
               <FormDescription>Lista características importantes de tu propiedad.</FormDescription>
               <FormMessage />

@@ -3,9 +3,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, Search as SearchIcon, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import PropertyListItem from "@/components/property/PropertyListItem"; // Cambiado de PropertyCard
+import PropertyListItem from "@/components/property/PropertyListItem";
 import RequestCard from "@/components/request/RequestCard";
-import { sampleProperties, sampleRequests } from "@/lib/types"; // Usando datos de ejemplo
+import { sampleProperties, sampleRequests } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,9 +74,8 @@ async function GoogleSheetSection() {
 
 
 export default function HomePage() {
-  // En una aplicación real, obtendrías estos datos
-  const featuredProperties = sampleProperties.slice(0, 3); // Ajustado a 3 para diseño de lista
-  const recentRequests = sampleRequests.slice(0, 2); // Ajustado para consistencia
+  const featuredProperties = sampleProperties.slice(0, 3);
+  const recentRequests = sampleRequests.slice(0, 2);
 
   return (
     <div className="space-y-12">
@@ -85,7 +84,7 @@ export default function HomePage() {
           Encuentra Tu Próxima <span className="text-primary">Propiedad</span>
         </h1>
         <p className="mt-3 max-w-md mx-auto text-base text-muted-foreground sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-          Descubre, publica y comenta sobre propiedades en alquiler o venta. ¡O publica lo que estás buscando!
+          Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!
         </p>
         <div className="mt-8 max-w-xl mx-auto flex flex-col sm:flex-row gap-3 px-4">
           <Input
@@ -118,7 +117,7 @@ export default function HomePage() {
           <TabsTrigger value="requests" className="text-base py-2.5">Solicitudes Recientes</TabsTrigger>
         </TabsList>
         <TabsContent value="properties" className="mt-8">
-          <div className="space-y-6"> {/* Cambiado a space-y-6 para lista */}
+          <div className="space-y-6">
             {featuredProperties.map((property) => (
               <PropertyListItem key={property.id} property={property} />
             ))}
@@ -131,7 +130,7 @@ export default function HomePage() {
           </div>
         </TabsContent>
         <TabsContent value="requests" className="mt-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Mantenido grid para requests */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {recentRequests.map((request) => (
               <RequestCard key={request.id} request={request} />
             ))}
@@ -145,12 +144,11 @@ export default function HomePage() {
         </TabsContent>
       </Tabs>
 
-      {/* Placeholder for AI Matching Teaser */}
       <section className="py-10 bg-card rounded-lg shadow-md">
          <div className="text-center">
             <h2 className="text-3xl font-headline font-semibold">Búsqueda Inteligente con IA</h2>
             <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">
-                Nuestra IA inteligente te ayuda a encontrar la propiedad o el comprador/inquilino perfecto al relacionar inteligentemente los listados con las solicitudes de búsqueda.
+                Nuestra IA te ayuda a encontrar la propiedad o el arrendatario/comprador perfecto al relacionar inteligentemente los listados con las solicitudes de búsqueda.
             </p>
             <Button size="lg" className="mt-6" asChild>
                 <Link href="/ai-matching">Descubrir Coincidencias</Link>
@@ -158,7 +156,6 @@ export default function HomePage() {
          </div>
       </section>
 
-      {/* Nueva sección para Google Sheets */}
       <GoogleSheetSection />
 
     </div>

@@ -1,14 +1,12 @@
-// src/app/properties/page.tsx
-import PropertyListItem from "@/components/property/PropertyListItem"; // Cambiado de PropertyCard
+import PropertyListItem from "@/components/property/PropertyListItem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { sampleProperties } from "@/lib/types"; // Usando datos de ejemplo
+import { sampleProperties } from "@/lib/types";
 import { Filter, ListFilter, Search } from "lucide-react";
 import Link from "next/link";
 
 export default function PropertiesPage() {
-  // En una aplicación real, obtendrías y filtrarías estos datos
   const properties = sampleProperties;
 
   return (
@@ -16,7 +14,7 @@ export default function PropertiesPage() {
       <section className="flex flex-col md:flex-row justify-between items-center gap-4 p-6 bg-card rounded-lg shadow">
         <div>
           <h1 className="text-3xl font-headline font-bold">Propiedades</h1>
-          <p className="text-muted-foreground">Explora todas las propiedades disponibles para alquilar o vender.</p>
+          <p className="text-muted-foreground">Explora todas las propiedades disponibles para arrendar o vender.</p>
         </div>
         <Button asChild>
           <Link href="/properties/submit">Publica Tu Propiedad</Link>
@@ -33,7 +31,7 @@ export default function PropertiesPage() {
             <Filter className="h-4 w-4" /> Filtros
           </Button>
            <Select defaultValue="latest">
-            <SelectTrigger className="w-full md:w-[200px]"> {/* Increased width for longer text */}
+            <SelectTrigger className="w-full md:w-[200px]">
               <ListFilter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>
@@ -45,17 +43,10 @@ export default function PropertiesPage() {
             </SelectContent>
           </Select>
         </div>
-        {/* Placeholder for advanced filters */}
-        {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
-          <Select placeholder="Type (Rent/Sale)" />
-          <Select placeholder="Category" />
-          <Input type="number" placeholder="Min. Bedrooms" />
-          <Input type="number" placeholder="Max. Price" />
-        </div> */}
       </div>
       
       {properties.length > 0 ? (
-        <div className="space-y-6"> {/* Cambiado a space-y-6 para un layout de lista */}
+        <div className="space-y-6">
           {properties.map((property) => (
             <PropertyListItem key={property.id} property={property} />
           ))}
@@ -72,7 +63,6 @@ export default function PropertiesPage() {
           </Button>
         </div>
       )}
-       {/* Placeholder de Paginación */}
       <div className="flex justify-center mt-8">
         <Button variant="outline" className="mr-2" disabled>Anterior</Button>
         <Button variant="outline">Siguiente</Button>

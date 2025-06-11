@@ -7,25 +7,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapPin, BedDouble, Bath, DollarSign, Tag, ThumbsUp, MessageSquare, Send, UserCircle, SearchIcon } from "lucide-react";
 import Link from "next/link";
 
-// Placeholder for actual data fetching
 async function getRequestData(slug: string) {
   return sampleRequests.find(p => p.slug === slug) || sampleRequests[0];
 }
 
-// Placeholder for comments
 const sampleComments: CommentType[] = [
   { id: 'comment1', content: '¡Podría tener un lugar que se ajuste a tus criterios! Te envío un MD.', author: placeholderUser, createdAt: new Date(Date.now() - 86400000 * 0.3).toISOString(), upvotes: 3 },
 ];
 
 const translatePropertyType = (type: PropertyType): string => {
-  if (type === 'rent') return 'Alquiler';
+  if (type === 'rent') return 'Arriendo';
   if (type === 'sale') return 'Venta';
   return type;
 }
 
 const translateCategory = (category: ListingCategory): string => {
   switch (category) {
-    case 'apartment': return 'Apartamento';
+    case 'apartment': return 'Departamento';
     case 'house': return 'Casa';
     case 'condo': return 'Condominio';
     case 'land': return 'Terreno';
@@ -53,7 +51,7 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
               </Avatar>
               <div>
                 <p className="text-xl font-semibold">{request.author.name}</p>
-                <p className="text-sm text-muted-foreground">Publicado el {new Date(request.createdAt).toLocaleDateString('es-ES')}</p>
+                <p className="text-sm text-muted-foreground">Publicado el {new Date(request.createdAt).toLocaleDateString('es-CL')}</p>
               </div>
             </div>
           <CardTitle className="text-3xl font-headline flex items-start">
@@ -63,7 +61,7 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
         </CardHeader>
         <CardContent className="p-6 space-y-6">
           <div>
-            <h3 className="text-xl font-semibold mb-2 font-headline">Detalles</h3>
+            <h3 className="text-xl font-semibold mb-2 font-headline">Detalles de la Búsqueda</h3>
             <div className="space-y-3 text-muted-foreground">
               <p className="whitespace-pre-line leading-relaxed">{request.description}</p>
               
@@ -81,13 +79,13 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
                 {request.desiredPropertyType.length > 0 && (
                   <div className="flex items-start">
                     <Tag className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span><strong>Buscando:</strong> {request.desiredPropertyType.map(translatePropertyType).join(', ')}</span>
+                    <span><strong>Buscando para:</strong> {request.desiredPropertyType.map(translatePropertyType).join(', ')}</span>
                   </div>
                 )}
                 {request.minBedrooms && (
                   <div className="flex items-start">
                     <BedDouble className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span><strong>Habitaciones:</strong> {request.minBedrooms}+</span>
+                    <span><strong>Dormitorios:</strong> {request.minBedrooms}+</span>
                   </div>
                 )}
                  {request.minBathrooms && (
@@ -99,7 +97,7 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
                 {request.budgetMax && (
                   <div className="flex items-start">
                     <DollarSign className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span><strong>Presupuesto Máx.:</strong> ${request.budgetMax.toLocaleString('es-ES')}</span>
+                    <span><strong>Presupuesto Máx.:</strong> ${request.budgetMax.toLocaleString('es-CL')}</span>
                   </div>
                 )}
               </div>
@@ -116,7 +114,6 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
         </CardContent>
       </Card>
 
-      {/* Comments Section */}
       <Card id="comments">
         <CardHeader>
           <CardTitle className="text-2xl font-headline flex items-center">
@@ -124,7 +121,6 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Comment Form */}
           <div className="flex gap-3 items-start">
             <Avatar className="mt-1">
               <AvatarImage src={placeholderUser.avatarUrl} />
@@ -138,7 +134,6 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
             </div>
           </div>
 
-          {/* Comment List */}
           <div className="space-y-4">
             {sampleComments.map(comment => (
               <div key={comment.id} className="flex gap-3 items-start p-4 bg-secondary/50 rounded-lg">
@@ -149,7 +144,7 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
                 <div className="flex-grow">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">{comment.author.name}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString('es-ES')}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString('es-CL')}</span>
                   </div>
                   <p className="text-sm mt-1">{comment.content}</p>
                   <div className="flex items-center gap-2 mt-2">

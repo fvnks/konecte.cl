@@ -18,17 +18,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { submitRequestAction } from "@/actions/requestActions"; // Asegúrate de crear este archivo y acción
+import { submitRequestAction } from "@/actions/requestActions";
 import type { PropertyType, ListingCategory } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
-  { value: "rent", label: "Alquiler" },
+  { value: "rent", label: "Arriendo" },
   { value: "sale", label: "Venta" },
 ];
 
 const categoryOptions: { value: ListingCategory; label: string }[] = [
-  { value: "apartment", label: "Apartamento" },
+  { value: "apartment", label: "Departamento" },
   { value: "house", label: "Casa" },
   { value: "condo", label: "Condominio" },
   { value: "land", label: "Terreno" },
@@ -39,9 +39,9 @@ const categoryOptions: { value: ListingCategory; label: string }[] = [
 const formSchema = z.object({
   title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
   description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
-  desiredPropertyType: z.array(z.enum(["rent", "sale"])).min(1, "Debes seleccionar al menos un tipo de transacción (alquiler/venta)."),
+  desiredPropertyType: z.array(z.enum(["rent", "sale"])).min(1, "Debes seleccionar al menos un tipo de transacción (arriendo/venta)."),
   desiredCategories: z.array(z.enum(["apartment", "house", "condo", "land", "commercial", "other"])).min(1, "Debes seleccionar al menos una categoría de propiedad."),
-  desiredLocationCity: z.string().min(2, "La ciudad deseada es requerida."),
+  desiredLocationCity: z.string().min(2, "La ciudad/comuna deseada es requerida."),
   desiredLocationNeighborhood: z.string().optional(),
   minBedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
   minBathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
@@ -68,7 +68,6 @@ export default function RequestForm() {
   });
 
   async function onSubmit(values: RequestFormValues) {
-    // Convertir opcionales vacíos a undefined para que la acción los maneje correctamente
     const dataToSubmit = {
         ...values,
         minBedrooms: values.minBedrooms === '' ? undefined : values.minBedrooms,
@@ -102,7 +101,7 @@ export default function RequestForm() {
             <FormItem>
               <FormLabel>Título de la Solicitud</FormLabel>
               <FormControl>
-                <Input placeholder="Ej: Busco apartamento de 2 habitaciones en el centro" {...field} />
+                <Input placeholder="Ej: Busco departamento de 2 dormitorios en Providencia" {...field} />
               </FormControl>
               <FormDescription>Un título claro sobre lo que estás buscando.</FormDescription>
               <FormMessage />
@@ -132,7 +131,7 @@ export default function RequestForm() {
               <div className="mb-4">
                 <FormLabel className="text-base">Tipo de Transacción Buscada</FormLabel>
                 <FormDescription>
-                  Selecciona si buscas alquilar, comprar, o ambos.
+                  Selecciona si buscas arrendar, comprar, o ambos.
                 </FormDescription>
               </div>
               {propertyTypeOptions.map((item) => (
@@ -228,9 +227,9 @@ export default function RequestForm() {
             name="desiredLocationCity"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Ciudad Deseada</FormLabel>
+                <FormLabel>Ciudad/Comuna Deseada</FormLabel>
                 <FormControl>
-                    <Input placeholder="Ej: Ciudad de México" {...field} />
+                    <Input placeholder="Ej: Santiago, Viña del Mar" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -241,9 +240,9 @@ export default function RequestForm() {
             name="desiredLocationNeighborhood"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Barrio/Zona Preferida (Opcional)</FormLabel>
+                <FormLabel>Barrio/Sector Preferido (Opcional)</FormLabel>
                 <FormControl>
-                    <Input placeholder="Ej: Polanco, Roma Norte" {...field} />
+                    <Input placeholder="Ej: Las Condes, Ñuñoa, Reñaca" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -258,7 +257,7 @@ export default function RequestForm() {
             name="minBedrooms"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Mínimo de Habitaciones (Opcional)</FormLabel>
+                <FormLabel>Mínimo de Dormitorios (Opcional)</FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="Ej: 2" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
                 </FormControl>
@@ -286,9 +285,9 @@ export default function RequestForm() {
               <FormItem>
                 <FormLabel>Presupuesto Máximo (Opcional)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Ej: 500000" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} />
+                  <Input type="number" placeholder="Ej: 600000 (en CLP)" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} />
                 </FormControl>
-                <FormDescription>Indica tu presupuesto máximo en la moneda local.</FormDescription>
+                <FormDescription>Indica tu presupuesto máximo en CLP o UF.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -303,5 +302,3 @@ export default function RequestForm() {
     </Form>
   );
 }
-
-    

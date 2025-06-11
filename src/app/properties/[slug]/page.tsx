@@ -8,26 +8,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapPin, BedDouble, Bath, HomeIcon, Tag, ThumbsUp, MessageSquare, Send, UserCircle } from "lucide-react";
 import Link from "next/link";
 
-// Placeholder for actual data fetching
 async function getPropertyData(slug: string): Promise<PropertyListing | undefined> {
   return sampleProperties.find(p => p.slug === slug) || sampleProperties[0];
 }
 
-// Placeholder for comments
 const sampleComments: CommentType[] = [
   { id: 'comment1', content: '¡Este lugar se ve genial! ¿Está cerca del transporte público?', author: placeholderUser, createdAt: new Date(Date.now() - 86400000 * 0.5).toISOString(), upvotes: 5 },
-  { id: 'comment2', content: '¿Cómo son las tarifas de la asociación de propietarios?', author: {id: 'user4', name: 'Bob Johnson', avatarUrl: 'https://placehold.co/40x40.png?text=BJ'}, createdAt: new Date(Date.now() - 86400000 * 0.2).toISOString(), upvotes: 2 },
+  { id: 'comment2', content: '¿Cómo son los gastos comunes?', author: {id: 'user4', name: 'Bob Johnson', avatarUrl: 'https://placehold.co/40x40.png?text=BJ'}, createdAt: new Date(Date.now() - 86400000 * 0.2).toISOString(), upvotes: 2 },
 ];
 
 const translatePropertyType = (type: 'rent' | 'sale'): string => {
-  if (type === 'rent') return 'En Alquiler';
+  if (type === 'rent') return 'En Arriendo';
   if (type === 'sale') return 'En Venta';
   return type;
 }
 
 const translateCategory = (category: ListingCategory): string => {
   switch (category) {
-    case 'apartment': return 'Apartamento';
+    case 'apartment': return 'Departamento';
     case 'house': return 'Casa';
     case 'condo': return 'Condominio';
     case 'land': return 'Terreno';
@@ -36,6 +34,18 @@ const translateCategory = (category: ListingCategory): string => {
     default: return category;
   }
 }
+
+const formatPrice = (price: number, currency: string) => {
+  if (currency.toUpperCase() === 'UF') {
+    return `${new Intl.NumberFormat('es-CL').format(price)} UF`;
+  }
+  try {
+    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: currency }).format(price);
+  } catch (e) {
+    console.warn(`Invalid currency code for formatting: ${currency}. Falling back to simple number format.`);
+    return `${new Intl.NumberFormat('es-CL').format(price)} ${currency}`;
+  }
+};
 
 
 export default async function PropertyDetailPage({ params }: { params: { slug: string } }) {
@@ -55,7 +65,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             fill
             className="object-cover"
             priority
-            data-ai-hint="modern apartment"
+            data-ai-hint="modern department"
           />
            <Badge variant="secondary" className="absolute top-4 left-4 text-sm py-1 px-3 capitalize shadow-md">
             {translatePropertyType(property.propertyType)}
@@ -68,7 +78,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             <span>{property.address}, {property.city}, {property.country}</span>
           </div>
            <div className="mt-2 text-3xl font-bold text-primary">
-            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: property.currency }).format(property.price)}
+            {formatPrice(property.price, property.currency)}
             {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground">/mes</span>}
           </div>
         </CardHeader>
@@ -76,7 +86,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div className="p-3 bg-secondary rounded-lg">
               <BedDouble className="mx-auto mb-1 h-6 w-6 text-primary" />
-              <p className="font-medium">{property.bedrooms} Habitaciones</p>
+              <p className="font-medium">{property.bedrooms} Dormitorios</p>
             </div>
             <div className="p-3 bg-secondary rounded-lg">
               <Bath className="mx-auto mb-1 h-6 w-6 text-primary" />
@@ -120,7 +130,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
               </Avatar>
               <div>
                 <p className="font-semibold">{property.author.name}</p>
-                <p className="text-xs text-muted-foreground">Se unió el {new Date(property.createdAt).toLocaleDateString('es-ES') /* Assuming author join date is same as property for placeholder */}</p>
+                <p className="text-xs text-muted-foreground">Se unió el {new Date(property.createdAt).toLocaleDateString('es-CL')} </p>
               </div>
               <Button variant="outline" className="ml-auto">Contactar al Anunciante</Button>
             </div>
@@ -129,7 +139,6 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
         </CardContent>
       </Card>
 
-      {/* Comments Section */}
       <Card id="comments">
         <CardHeader>
           <CardTitle className="text-2xl font-headline flex items-center">
@@ -137,7 +146,6 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Comment Form */}
           <div className="flex gap-3 items-start">
             <Avatar className="mt-1">
               <AvatarImage src={placeholderUser.avatarUrl} />
@@ -151,7 +159,6 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             </div>
           </div>
 
-          {/* Comment List */}
           <div className="space-y-4">
             {sampleComments.map(comment => (
               <div key={comment.id} className="flex gap-3 items-start p-4 bg-secondary/50 rounded-lg">
@@ -162,7 +169,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
                 <div className="flex-grow">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">{comment.author.name}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString('es-ES')}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString('es-CL')}</span>
                   </div>
                   <p className="text-sm mt-1">{comment.content}</p>
                   <div className="flex items-center gap-2 mt-2">

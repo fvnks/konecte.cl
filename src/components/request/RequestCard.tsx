@@ -11,14 +11,14 @@ interface RequestCardProps {
 }
 
 const translatePropertyTypeBadge = (type: PropertyType): string => {
-  if (type === 'rent') return 'Alquiler';
+  if (type === 'rent') return 'Arriendo';
   if (type === 'sale') return 'Venta';
   return type;
 }
 
 const translateCategoryBadge = (category: ListingCategory): string => {
   switch (category) {
-    case 'apartment': return 'Apartamento';
+    case 'apartment': return 'Departamento';
     case 'house': return 'Casa';
     case 'condo': return 'Condominio';
     case 'land': return 'Terreno';
@@ -51,7 +51,7 @@ export default function RequestCard({ request }: RequestCardProps) {
             </Avatar>
             <div>
               <p className="text-sm font-medium">{author.name}</p>
-              <p className="text-xs text-muted-foreground">Publicado el {new Date(request.createdAt).toLocaleDateString('es-ES')}</p>
+              <p className="text-xs text-muted-foreground">Publicado el {new Date(request.createdAt).toLocaleDateString('es-CL')}</p>
             </div>
         </div>
         <Link href={`/requests/${slug}`} className="block">
@@ -78,7 +78,7 @@ export default function RequestCard({ request }: RequestCardProps) {
           )}
           {budgetMax && (
              <div className="flex items-center">
-              <DollarSign className="mr-1.5 h-4 w-4 text-primary" /> Presupuesto: Hasta ${budgetMax.toLocaleString('es-ES')}
+              <DollarSign className="mr-1.5 h-4 w-4 text-primary" /> Presupuesto: Hasta ${budgetMax.toLocaleString('es-CL')}
             </div>
           )}
         </div>

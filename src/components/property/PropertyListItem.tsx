@@ -1,7 +1,4 @@
 // src/components/property/PropertyListItem.tsx
-// Este es el contenido que antes estaba en PropertyCard.tsx, movido a un nuevo archivo
-// para representar mejor su propósito como un item de lista.
-
 import Link from 'next/link';
 import Image from 'next/image';
 import type { PropertyListing, ListingCategory } from '@/lib/types';
@@ -16,14 +13,14 @@ interface PropertyListItemProps {
 }
 
 const translatePropertyTypeBadge = (type: 'rent' | 'sale'): string => {
-  if (type === 'rent') return 'Alquiler';
+  if (type === 'rent') return 'Arriendo';
   if (type === 'sale') return 'Venta';
   return type;
 }
 
 const translateCategoryBadge = (category: ListingCategory): string => {
   switch (category) {
-    case 'apartment': return 'Apartamento';
+    case 'apartment': return 'Departamento';
     case 'house': return 'Casa';
     case 'condo': return 'Condominio';
     case 'land': return 'Terreno';
@@ -32,6 +29,18 @@ const translateCategoryBadge = (category: ListingCategory): string => {
     default: return category;
   }
 }
+
+const formatPrice = (price: number, currency: string) => {
+  if (currency.toUpperCase() === 'UF') {
+    return `${new Intl.NumberFormat('es-CL').format(price)} UF`;
+  }
+  try {
+    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: currency }).format(price);
+  } catch (e) {
+    console.warn(`Invalid currency code for formatting: ${currency}. Falling back to simple number format.`);
+    return `${new Intl.NumberFormat('es-CL').format(price)} ${currency}`;
+  }
+};
 
 export default function PropertyListItem({ property }: PropertyListItemProps) {
   const {
@@ -84,7 +93,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
         </CardHeader>
         <CardContent className="p-0 flex-grow mb-3">
           <div className="text-2xl font-semibold text-primary mb-2">
-            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: currency }).format(price)}
+            {formatPrice(price, currency)}
             {propertyType === 'rent' && <span className="text-sm font-normal text-muted-foreground">/mes</span>}
           </div>
           <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
@@ -92,7 +101,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mb-2">
             <div className="flex items-center">
-              <BedDouble className="mr-1.5 h-4 w-4 text-primary" /> {bedrooms} habs
+              <BedDouble className="mr-1.5 h-4 w-4 text-primary" /> {bedrooms} dorms.
             </div>
             <div className="flex items-center">
               <Bath className="mr-1.5 h-4 w-4 text-primary" /> {bathrooms} baños
