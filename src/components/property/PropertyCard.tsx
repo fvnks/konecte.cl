@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import type { PropertyListing } from '@/lib/types';
+import type { PropertyListing, ListingCategory } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,24 @@ import { ArrowBigUp, MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag } fro
 
 interface PropertyCardProps {
   property: PropertyListing;
+}
+
+const translatePropertyTypeBadge = (type: 'rent' | 'sale'): string => {
+  if (type === 'rent') return 'Alquiler';
+  if (type === 'sale') return 'Venta';
+  return type;
+}
+
+const translateCategoryBadge = (category: ListingCategory): string => {
+  switch (category) {
+    case 'apartment': return 'Apartamento';
+    case 'house': return 'Casa';
+    case 'condo': return 'Condominio';
+    case 'land': return 'Terreno';
+    case 'commercial': return 'Comercial';
+    case 'other': return 'Otro';
+    default: return category;
+  }
 }
 
 export default function PropertyCard({ property }: PropertyCardProps) {
@@ -42,7 +60,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
             data-ai-hint="apartment building"
           />
           <Badge variant="secondary" className="absolute top-2 left-2 capitalize">
-            {propertyType}
+            {translatePropertyTypeBadge(propertyType)}
           </Badge>
         </div>
       </Link>
@@ -62,15 +80,15 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         </CardHeader>
         <CardContent className="p-4 pt-0 flex-grow">
           <div className="text-xl font-semibold text-primary mb-2">
-            {new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(price)}
-            {propertyType === 'rent' && <span className="text-sm font-normal text-muted-foreground">/month</span>}
+            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: currency }).format(price)}
+            {propertyType === 'rent' && <span className="text-sm font-normal text-muted-foreground">/mes</span>}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mb-3">
             <div className="flex items-center">
-              <BedDouble className="mr-1.5 h-4 w-4" /> {bedrooms} beds
+              <BedDouble className="mr-1.5 h-4 w-4" /> {bedrooms} habs
             </div>
             <div className="flex items-center">
-              <Bath className="mr-1.5 h-4 w-4" /> {bathrooms} baths
+              <Bath className="mr-1.5 h-4 w-4" /> {bathrooms} baños
             </div>
             <div className="flex items-center">
               <HomeIcon className="mr-1.5 h-4 w-4" /> {property.areaSqMeters} m²
@@ -78,7 +96,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           </div>
           <Badge variant="outline" className="capitalize text-xs">
             <Tag className="mr-1 h-3 w-3" />
-            {category}
+            {translateCategoryBadge(category)}
           </Badge>
         </CardContent>
         <CardFooter className="p-4 pt-0 flex justify-between items-center border-t">
@@ -87,7 +105,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
               <AvatarImage src={author.avatarUrl} alt={author.name} />
               <AvatarFallback>{author.name?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <span className="text-xs text-muted-foreground">by {author.name}</span>
+            <span className="text-xs text-muted-foreground">por {author.name}</span>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary p-1.5 h-auto">

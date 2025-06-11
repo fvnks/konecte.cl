@@ -8,9 +8,9 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import React from 'react';
 
 const navItems = [
-  { href: '/properties', label: 'Properties', icon: <Briefcase className="h-4 w-4" /> },
-  { href: '/requests', label: 'Requests', icon: <Search className="h-4 w-4" /> },
-  // { href: '/forums', label: 'Forums', icon: <MessageSquare className="h-4 w-4" /> }, // TODO: Uncomment when forums are ready
+  { href: '/properties', label: 'Propiedades', icon: <Briefcase className="h-4 w-4" /> },
+  { href: '/requests', label: 'Solicitudes', icon: <Search className="h-4 w-4" /> },
+  // { href: '/forums', label: 'Foros', icon: <MessageSquare className="h-4 w-4" /> }, // TODO: Uncomment when forums are ready
 ];
 
 export default function Navbar() {
@@ -42,15 +42,15 @@ export default function Navbar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="text-sm font-medium flex items-center gap-2">
-                <PlusCircle className="h-4 w-4" /> Submit
+                <PlusCircle className="h-4 w-4" /> Publicar
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href="/properties/submit">List a Property</Link>
+                <Link href="/properties/submit">Publicar una Propiedad</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/requests/submit">Post a Request</Link>
+                <Link href="/requests/submit">Publicar una Solicitud</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -66,19 +66,19 @@ export default function Navbar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link href="/profile">Profile</Link>
+                  <Link href="/profile">Perfil</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard">Dashboard</Link>
+                  <Link href="/dashboard">Panel</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsUserLoggedIn(false)}>Log Out</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsUserLoggedIn(false)}>Cerrar Sesión</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <Button variant="outline" size="sm" asChild className="hidden md:flex items-center gap-2">
               <Link href="/auth/signin">
-                <LogIn className="h-4 w-4" /> Sign In
+                <LogIn className="h-4 w-4" /> Iniciar Sesión
               </Link>
             </Button>
           )}
@@ -88,7 +88,7 @@ export default function Navbar() {
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon">
                   <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle menu</span>
+                  <span className="sr-only">Alternar menú</span>
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px] sm:w-[320px]">
@@ -109,12 +109,12 @@ export default function Navbar() {
                   <Separator />
                    <Button variant="ghost" asChild className="justify-start text-base px-4">
                       <Link href="/properties/submit" className="flex items-center gap-3">
-                        <PlusCircle className="h-4 w-4" /> List a Property
+                        <PlusCircle className="h-4 w-4" /> Publicar una Propiedad
                       </Link>
                     </Button>
                     <Button variant="ghost" asChild className="justify-start text-base px-4">
                       <Link href="/requests/submit" className="flex items-center gap-3">
-                        <PlusCircle className="h-4 w-4" /> Post a Request
+                        <PlusCircle className="h-4 w-4" /> Publicar una Solicitud
                       </Link>
                     </Button>
                   <Separator />
@@ -122,23 +122,23 @@ export default function Navbar() {
                      <>
                       <Button variant="ghost" asChild className="justify-start text-base px-4">
                         <Link href="/profile" className="flex items-center gap-3">
-                          <UserCircle className="h-4 w-4" /> Profile
+                          <UserCircle className="h-4 w-4" /> Perfil
                         </Link>
                       </Button>
                       <Button variant="ghost" asChild className="justify-start text-base px-4">
                         <Link href="/dashboard" className="flex items-center gap-3">
                            {/* Replace with appropriate dashboard icon */}
-                          <Briefcase className="h-4 w-4" /> Dashboard 
+                          <Briefcase className="h-4 w-4" /> Panel
                         </Link>
                       </Button>
                       <Button variant="ghost" onClick={() => setIsUserLoggedIn(false)} className="justify-start text-base px-4">
-                        Log Out
+                        Cerrar Sesión
                       </Button>
                     </>
                   ) : (
                     <Button variant="outline" asChild className="mx-4">
                       <Link href="/auth/signin">
-                        <LogIn className="h-4 w-4 mr-2" /> Sign In
+                        <LogIn className="h-4 w-4 mr-2" /> Iniciar Sesión
                       </Link>
                     </Button>
                   )}

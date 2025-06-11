@@ -15,11 +15,11 @@ export default function RequestsPage() {
     <div className="space-y-8">
       <section className="flex flex-col md:flex-row justify-between items-center gap-4 p-6 bg-card rounded-lg shadow">
         <div>
-          <h1 className="text-3xl font-headline font-bold">Property Requests</h1>
-          <p className="text-muted-foreground">Browse what others are looking for.</p>
+          <h1 className="text-3xl font-headline font-bold">Solicitudes de Propiedad</h1>
+          <p className="text-muted-foreground">Explora lo que otros están buscando.</p>
         </div>
         <Button asChild>
-          <Link href="/requests/submit">Post Your Request</Link>
+          <Link href="/requests/submit">Publica Tu Solicitud</Link>
         </Button>
       </section>
 
@@ -27,19 +27,19 @@ export default function RequestsPage() {
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-grow">
             <SearchIconLucide className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input type="search" placeholder="Search requests by location, type..." className="pl-10 w-full" />
+            <Input type="search" placeholder="Buscar solicitudes por ubicación, tipo..." className="pl-10 w-full" />
           </div>
           <Button variant="outline" className="flex items-center gap-2">
-            <Filter className="h-4 w-4" /> Filters
+            <Filter className="h-4 w-4" /> Filtros
           </Button>
           <Select defaultValue="latest">
             <SelectTrigger className="w-full md:w-[180px]">
               <ListFilter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Sort by" />
+              <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="latest">Latest</SelectItem>
-              <SelectItem value="oldest">Oldest</SelectItem>
+              <SelectItem value="latest">Más Recientes</SelectItem>
+              <SelectItem value="oldest">Más Antiguos</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -54,20 +54,20 @@ export default function RequestsPage() {
       ) : (
         <div className="text-center py-12">
           <SearchIconLucide className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-2 text-xl font-semibold">No Requests Found</h3>
+          <h3 className="mt-2 text-xl font-semibold">No se Encontraron Solicitudes</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Try adjusting your search or filters. Or, be the first to post one!
+            Intenta ajustar tu búsqueda o filtros. ¡O sé el primero en publicar una!
           </p>
           <Button className="mt-6" asChild>
-            <Link href="/requests/submit">Post a Request</Link>
+            <Link href="/requests/submit">Publicar una Solicitud</Link>
           </Button>
         </div>
       )}
 
       {/* Pagination Placeholder */}
       <div className="flex justify-center mt-8">
-        <Button variant="outline" className="mr-2" disabled>Previous</Button>
-        <Button variant="outline">Next</Button>
+        <Button variant="outline" className="mr-2" disabled>Anterior</Button>
+        <Button variant="outline">Siguiente</Button>
       </div>
     </div>
   );

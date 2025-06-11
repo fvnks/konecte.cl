@@ -10,42 +10,42 @@ export default function SignUpPage() {
     <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
-          <CardDescription>Join PropSpot to list, find, and discuss properties.</CardDescription>
+          <CardTitle className="text-2xl font-headline">Crear una Cuenta</CardTitle>
+          <CardDescription>Únete a PropSpot para listar, encontrar y discutir propiedades.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
-            <Input id="name" type="text" placeholder="John Doe" />
+            <Label htmlFor="name">Nombre Completo</Label>
+            <Input id="name" type="text" placeholder="Juan Pérez" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="you@example.com" />
+            <Label htmlFor="email">Correo Electrónico</Label>
+            <Input id="email" type="email" placeholder="tu@ejemplo.com" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Contraseña</Label>
             <Input id="password" type="password" placeholder="••••••••" />
           </div>
            <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirm Password</Label>
+            <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
             <Input id="confirm-password" type="password" placeholder="••••••••" />
           </div>
           <Button type="submit" className="w-full flex items-center gap-2">
-            <UserPlus className="h-4 w-4" /> Sign Up
+            <UserPlus className="h-4 w-4" /> Registrarse
           </Button>
         </CardContent>
          <CardFooter className="flex flex-col gap-3 text-center">
            <p className="text-xs text-muted-foreground">
-            Or sign up with
+            O regístrate con
           </p>
           <div className="flex gap-2 w-full">
             <Button variant="outline" className="w-full">Google</Button>
             <Button variant="outline" className="w-full">Facebook</Button>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            Already have an account?{" "}
+            ¿Ya tienes una cuenta?{" "}
             <Link href="/auth/signin" className="font-medium text-primary hover:underline">
-              Sign in
+              Inicia sesión
             </Link>
           </p>
         </CardFooter>

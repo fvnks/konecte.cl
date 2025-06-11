@@ -1,4 +1,4 @@
-import { sampleProperties, placeholderUser, Comment as CommentType } from "@/lib/types";
+import { sampleProperties, placeholderUser, Comment as CommentType, PropertyListing, ListingCategory } from "@/lib/types";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,22 +9,40 @@ import { MapPin, BedDouble, Bath, HomeIcon, Tag, ThumbsUp, MessageSquare, Send, 
 import Link from "next/link";
 
 // Placeholder for actual data fetching
-async function getPropertyData(slug: string) {
+async function getPropertyData(slug: string): Promise<PropertyListing | undefined> {
   return sampleProperties.find(p => p.slug === slug) || sampleProperties[0];
 }
 
 // Placeholder for comments
 const sampleComments: CommentType[] = [
-  { id: 'comment1', content: 'This looks like a great place! Is it near public transport?', author: placeholderUser, createdAt: new Date(Date.now() - 86400000 * 0.5).toISOString(), upvotes: 5 },
-  { id: 'comment2', content: 'What are the HOA fees like?', author: {id: 'user4', name: 'Bob Johnson', avatarUrl: 'https://placehold.co/40x40.png?text=BJ'}, createdAt: new Date(Date.now() - 86400000 * 0.2).toISOString(), upvotes: 2 },
+  { id: 'comment1', content: '¡Este lugar se ve genial! ¿Está cerca del transporte público?', author: placeholderUser, createdAt: new Date(Date.now() - 86400000 * 0.5).toISOString(), upvotes: 5 },
+  { id: 'comment2', content: '¿Cómo son las tarifas de la asociación de propietarios?', author: {id: 'user4', name: 'Bob Johnson', avatarUrl: 'https://placehold.co/40x40.png?text=BJ'}, createdAt: new Date(Date.now() - 86400000 * 0.2).toISOString(), upvotes: 2 },
 ];
+
+const translatePropertyType = (type: 'rent' | 'sale'): string => {
+  if (type === 'rent') return 'En Alquiler';
+  if (type === 'sale') return 'En Venta';
+  return type;
+}
+
+const translateCategory = (category: ListingCategory): string => {
+  switch (category) {
+    case 'apartment': return 'Apartamento';
+    case 'house': return 'Casa';
+    case 'condo': return 'Condominio';
+    case 'land': return 'Terreno';
+    case 'commercial': return 'Comercial';
+    case 'other': return 'Otro';
+    default: return category;
+  }
+}
 
 
 export default async function PropertyDetailPage({ params }: { params: { slug: string } }) {
   const property = await getPropertyData(params.slug);
 
   if (!property) {
-    return <div className="text-center py-10">Property not found.</div>;
+    return <div className="text-center py-10">Propiedad no encontrada.</div>;
   }
 
   return (
@@ -40,7 +58,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             data-ai-hint="modern apartment"
           />
            <Badge variant="secondary" className="absolute top-4 left-4 text-sm py-1 px-3 capitalize shadow-md">
-            For {property.propertyType}
+            {translatePropertyType(property.propertyType)}
           </Badge>
         </div>
         <CardHeader className="p-6">
@@ -50,19 +68,19 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             <span>{property.address}, {property.city}, {property.country}</span>
           </div>
            <div className="mt-2 text-3xl font-bold text-primary">
-            {new Intl.NumberFormat('en-US', { style: 'currency', currency: property.currency }).format(property.price)}
-            {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground">/month</span>}
+            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: property.currency }).format(property.price)}
+            {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground">/mes</span>}
           </div>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div className="p-3 bg-secondary rounded-lg">
               <BedDouble className="mx-auto mb-1 h-6 w-6 text-primary" />
-              <p className="font-medium">{property.bedrooms} Bedrooms</p>
+              <p className="font-medium">{property.bedrooms} Habitaciones</p>
             </div>
             <div className="p-3 bg-secondary rounded-lg">
               <Bath className="mx-auto mb-1 h-6 w-6 text-primary" />
-              <p className="font-medium">{property.bathrooms} Bathrooms</p>
+              <p className="font-medium">{property.bathrooms} Baños</p>
             </div>
              <div className="p-3 bg-secondary rounded-lg">
               <HomeIcon className="mx-auto mb-1 h-6 w-6 text-primary" />
@@ -70,18 +88,18 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             </div>
             <div className="p-3 bg-secondary rounded-lg">
               <Tag className="mx-auto mb-1 h-6 w-6 text-primary" />
-              <p className="font-medium capitalize">{property.category}</p>
+              <p className="font-medium capitalize">{translateCategory(property.category)}</p>
             </div>
           </div>
           
           <div>
-            <h3 className="text-xl font-semibold mb-2 font-headline">Description</h3>
+            <h3 className="text-xl font-semibold mb-2 font-headline">Descripción</h3>
             <p className="text-muted-foreground whitespace-pre-line">{property.description}</p>
           </div>
 
           {property.features && property.features.length > 0 && (
             <div>
-              <h3 className="text-xl font-semibold mb-2 font-headline">Features</h3>
+              <h3 className="text-xl font-semibold mb-2 font-headline">Características</h3>
               <ul className="grid grid-cols-2 md:grid-cols-3 gap-2 list-inside">
                 {property.features.map(feature => (
                   <li key={feature} className="flex items-center text-muted-foreground">
@@ -94,7 +112,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
           )}
 
           <div className="border-t pt-6">
-            <h3 className="text-xl font-semibold mb-2 font-headline">Listed By</h3>
+            <h3 className="text-xl font-semibold mb-2 font-headline">Publicado por</h3>
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12">
                 <AvatarImage src={property.author.avatarUrl} alt={property.author.name} />
@@ -102,9 +120,9 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
               </Avatar>
               <div>
                 <p className="font-semibold">{property.author.name}</p>
-                <p className="text-xs text-muted-foreground">Joined {new Date(property.createdAt).toLocaleDateString() /* Assuming author join date is same as property for placeholder */}</p>
+                <p className="text-xs text-muted-foreground">Se unió el {new Date(property.createdAt).toLocaleDateString('es-ES') /* Assuming author join date is same as property for placeholder */}</p>
               </div>
-              <Button variant="outline" className="ml-auto">Contact Lister</Button>
+              <Button variant="outline" className="ml-auto">Contactar al Anunciante</Button>
             </div>
           </div>
           
@@ -115,7 +133,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
       <Card id="comments">
         <CardHeader>
           <CardTitle className="text-2xl font-headline flex items-center">
-            <MessageSquare className="mr-3 h-7 w-7 text-primary"/> Discussions ({sampleComments.length})
+            <MessageSquare className="mr-3 h-7 w-7 text-primary"/> Discusiones ({sampleComments.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -126,9 +144,9 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
               <AvatarFallback><UserCircle /></AvatarFallback>
             </Avatar>
             <div className="flex-grow space-y-2">
-              <Textarea placeholder="Add a public comment..." className="min-h-[80px]" />
+              <Textarea placeholder="Añade un comentario público..." className="min-h-[80px]" />
               <Button className="flex items-center gap-2">
-                <Send className="h-4 w-4"/> Post Comment
+                <Send className="h-4 w-4"/> Publicar Comentario
               </Button>
             </div>
           </div>
@@ -144,20 +162,20 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
                 <div className="flex-grow">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">{comment.author.name}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString()}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString('es-ES')}</span>
                   </div>
                   <p className="text-sm mt-1">{comment.content}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <Button variant="ghost" size="sm" className="text-xs p-1 h-auto text-muted-foreground hover:text-primary">
                       <ThumbsUp className="h-3.5 w-3.5 mr-1" /> {comment.upvotes}
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-xs p-1 h-auto text-muted-foreground">Reply</Button>
+                    <Button variant="ghost" size="sm" className="text-xs p-1 h-auto text-muted-foreground">Responder</Button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-           {sampleComments.length === 0 && <p className="text-muted-foreground text-center py-4">No comments yet. Be the first to discuss!</p>}
+           {sampleComments.length === 0 && <p className="text-muted-foreground text-center py-4">Aún no hay comentarios. ¡Sé el primero en comentar!</p>}
         </CardContent>
       </Card>
     </div>

@@ -16,31 +16,31 @@ export default function HomePage() {
     <div className="space-y-12">
       <section className="text-center py-10 bg-card rounded-lg shadow-md">
         <h1 className="text-4xl font-headline font-bold tracking-tight sm:text-5xl md:text-6xl">
-          Find Your Next <span className="text-primary">Property</span>
+          Encuentra Tu Próxima <span className="text-primary">Propiedad</span>
         </h1>
         <p className="mt-3 max-w-md mx-auto text-base text-muted-foreground sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-          Discover, list, and discuss properties for rent or sale. Or post what you're looking for!
+          Descubre, publica y comenta sobre propiedades en alquiler o venta. ¡O publica lo que estás buscando!
         </p>
         <div className="mt-8 max-w-xl mx-auto flex flex-col sm:flex-row gap-3 px-4">
           <Input
             type="search"
-            placeholder="Search by location, type, keywords..."
+            placeholder="Buscar por ubicación, tipo, palabras clave..."
             className="flex-grow text-base"
-            aria-label="Search properties and requests"
+            aria-label="Buscar propiedades y solicitudes"
           />
           <Button size="lg" className="flex items-center gap-2">
-            <SearchIcon className="h-5 w-5" /> Search
+            <SearchIcon className="h-5 w-5" /> Buscar
           </Button>
         </div>
         <div className="mt-6 flex justify-center gap-4">
           <Button size="lg" variant="default" asChild>
             <Link href="/properties/submit">
-              <PlusCircle className="mr-2 h-5 w-5" /> List a Property
+              <PlusCircle className="mr-2 h-5 w-5" /> Publicar una Propiedad
             </Link>
           </Button>
           <Button size="lg" variant="secondary" asChild>
             <Link href="/requests/submit">
-              <PlusCircle className="mr-2 h-5 w-5" /> Post a Request
+              <PlusCircle className="mr-2 h-5 w-5" /> Publicar una Solicitud
             </Link>
           </Button>
         </div>
@@ -48,8 +48,8 @@ export default function HomePage() {
 
       <Tabs defaultValue="properties" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:w-1/2 mx-auto">
-          <TabsTrigger value="properties" className="text-base py-2.5">Featured Properties</TabsTrigger>
-          <TabsTrigger value="requests" className="text-base py-2.5">Recent Requests</TabsTrigger>
+          <TabsTrigger value="properties" className="text-base py-2.5">Propiedades Destacadas</TabsTrigger>
+          <TabsTrigger value="requests" className="text-base py-2.5">Solicitudes Recientes</TabsTrigger>
         </TabsList>
         <TabsContent value="properties" className="mt-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -57,10 +57,10 @@ export default function HomePage() {
               <PropertyCard key={property.id} property={property} />
             ))}
           </div>
-          {featuredProperties.length === 0 && <p className="text-center text-muted-foreground py-8">No featured properties yet.</p>}
+          {featuredProperties.length === 0 && <p className="text-center text-muted-foreground py-8">Aún no hay propiedades destacadas.</p>}
           <div className="mt-8 text-center">
             <Button variant="outline" asChild>
-              <Link href="/properties">View All Properties</Link>
+              <Link href="/properties">Ver Todas las Propiedades</Link>
             </Button>
           </div>
         </TabsContent>
@@ -70,10 +70,10 @@ export default function HomePage() {
               <RequestCard key={request.id} request={request} />
             ))}
           </div>
-          {recentRequests.length === 0 && <p className="text-center text-muted-foreground py-8">No recent requests yet.</p>}
+          {recentRequests.length === 0 && <p className="text-center text-muted-foreground py-8">Aún no hay solicitudes recientes.</p>}
            <div className="mt-8 text-center">
             <Button variant="outline" asChild>
-              <Link href="/requests">View All Requests</Link>
+              <Link href="/requests">Ver Todas las Solicitudes</Link>
             </Button>
           </div>
         </TabsContent>
@@ -82,12 +82,12 @@ export default function HomePage() {
       {/* Placeholder for AI Matching Teaser */}
       <section className="py-10 bg-card rounded-lg shadow-md">
          <div className="text-center">
-            <h2 className="text-3xl font-headline font-semibold">AI-Powered Matching</h2>
+            <h2 className="text-3xl font-headline font-semibold">Búsqueda Inteligente con IA</h2>
             <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">
-                Our smart AI helps you find the perfect property or buyer/renter by intelligently matching listings with search requests.
+                Nuestra IA inteligente te ayuda a encontrar la propiedad o el comprador/inquilino perfecto al relacionar inteligentemente los listados con las solicitudes de búsqueda.
             </p>
             <Button size="lg" className="mt-6" disabled>
-                Discover Matches (Coming Soon)
+                Descubrir Coincidencias (Próximamente)
             </Button>
          </div>
       </section>

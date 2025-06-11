@@ -4,8 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import AppLayout from '@/components/layout/AppLayout';
 
 export const metadata: Metadata = {
-  title: 'PropSpot - Find Your Next Property',
-  description: 'Discover, list, and discuss properties for rent or sale.',
+  title: 'PropSpot - Encuentra Tu Próxima Propiedad',
+  description: 'Descubre, publica y comenta propiedades en alquiler o venta.',
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { SearchRequest } from '@/lib/types';
+import { SearchRequest, PropertyType, ListingCategory } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,25 @@ import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon } from 'lucide-react
 interface RequestCardProps {
   request: SearchRequest;
 }
+
+const translatePropertyTypeBadge = (type: PropertyType): string => {
+  if (type === 'rent') return 'Alquiler';
+  if (type === 'sale') return 'Venta';
+  return type;
+}
+
+const translateCategoryBadge = (category: ListingCategory): string => {
+  switch (category) {
+    case 'apartment': return 'Apartamento';
+    case 'house': return 'Casa';
+    case 'condo': return 'Condominio';
+    case 'land': return 'Terreno';
+    case 'commercial': return 'Comercial';
+    case 'other': return 'Otro';
+    default: return category;
+  }
+}
+
 
 export default function RequestCard({ request }: RequestCardProps) {
   const {
@@ -32,7 +51,7 @@ export default function RequestCard({ request }: RequestCardProps) {
             </Avatar>
             <div>
               <p className="text-sm font-medium">{author.name}</p>
-              <p className="text-xs text-muted-foreground">Posted {new Date(request.createdAt).toLocaleDateString()}</p>
+              <p className="text-xs text-muted-foreground">Publicado el {new Date(request.createdAt).toLocaleDateString('es-ES')}</p>
             </div>
         </div>
         <Link href={`/requests/${slug}`} className="block">
@@ -45,30 +64,30 @@ export default function RequestCard({ request }: RequestCardProps) {
       <CardContent className="p-4 pt-0 flex-grow">
         <div className="space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center">
-            <MapPin className="mr-1.5 h-4 w-4 text-primary" /> Location: {desiredLocation.city} {desiredLocation.neighborhood ? `(${desiredLocation.neighborhood})` : ''}
+            <MapPin className="mr-1.5 h-4 w-4 text-primary" /> Ubicación: {desiredLocation.city} {desiredLocation.neighborhood ? `(${desiredLocation.neighborhood})` : ''}
           </div>
           {desiredCategories.length > 0 && (
             <div className="flex items-center">
-              <Tag className="mr-1.5 h-4 w-4 text-primary" /> Types: {desiredCategories.join(', ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+              <Tag className="mr-1.5 h-4 w-4 text-primary" /> Tipos: {desiredCategories.map(translateCategoryBadge).join(', ')}
             </div>
           )}
            {desiredPropertyType.length > 0 && (
             <div className="flex items-center">
-              <Tag className="mr-1.5 h-4 w-4 text-primary" /> For: {desiredPropertyType.join(', ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+              <Tag className="mr-1.5 h-4 w-4 text-primary" /> Para: {desiredPropertyType.map(translatePropertyTypeBadge).join(', ')}
             </div>
           )}
           {budgetMax && (
              <div className="flex items-center">
-              <DollarSign className="mr-1.5 h-4 w-4 text-primary" /> Budget: Up to ${budgetMax.toLocaleString()}
+              <DollarSign className="mr-1.5 h-4 w-4 text-primary" /> Presupuesto: Hasta ${budgetMax.toLocaleString('es-ES')}
             </div>
           )}
         </div>
         <div className="mt-3">
           {desiredPropertyType.map(pt => (
-            <Badge key={pt} variant="secondary" className="mr-1.5 mb-1.5 capitalize">{pt}</Badge>
+            <Badge key={pt} variant="secondary" className="mr-1.5 mb-1.5 capitalize">{translatePropertyTypeBadge(pt)}</Badge>
           ))}
           {desiredCategories.map(cat => (
-            <Badge key={cat} variant="outline" className="mr-1.5 mb-1.5 capitalize">{cat}</Badge>
+            <Badge key={cat} variant="outline" className="mr-1.5 mb-1.5 capitalize">{translateCategoryBadge(cat)}</Badge>
           ))}
         </div>
       </CardContent>
@@ -76,7 +95,7 @@ export default function RequestCard({ request }: RequestCardProps) {
         <Link href={`/requests/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary">
           <Button variant="ghost" size="sm" className="p-1.5 h-auto">
             <MessageCircle className="mr-1 h-4 w-4" />
-            <span className="text-xs">{commentsCount} comments</span>
+            <span className="text-xs">{commentsCount} comentarios</span>
           </Button>
         </Link>
       </CardFooter>

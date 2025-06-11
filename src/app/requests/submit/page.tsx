@@ -10,18 +10,18 @@ export default function SubmitRequestPage() {
     <div className="max-w-2xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-headline">Post Your Property Request</CardTitle>
-          <CardDescription>Let others know what kind of property you are looking for.</CardDescription>
+          <CardTitle className="text-2xl font-headline">Publica Tu Solicitud de Propiedad</CardTitle>
+          <CardDescription>Haz saber a otros qué tipo de propiedad estás buscando.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* <RequestForm /> */}
            <div className="text-center p-8 border border-dashed rounded-md">
-            <h3 className="text-xl font-semibold mb-2">Request Form Coming Soon!</h3>
+            <h3 className="text-xl font-semibold mb-2">¡Formulario de Solicitud Próximamente!</h3>
             <p className="text-muted-foreground mb-4">
-              The form to post property search requests will be available here.
+              El formulario para publicar solicitudes de búsqueda de propiedades estará disponible aquí.
             </p>
             <Button variant="outline" asChild>
-              <Link href="/requests">Back to Requests</Link>
+              <Link href="/requests">Volver a Solicitudes</Link>
             </Button>
           </div>
         </CardContent>
