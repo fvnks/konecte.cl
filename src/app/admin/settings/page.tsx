@@ -25,7 +25,7 @@ import { Loader2 } from "lucide-react";
 const formSchema = z.object({
   sheetId: z.string().min(1, "El ID de la Hoja de Cálculo es requerido."),
   sheetName: z.string().min(1, "El nombre de la Hoja (pestaña) es requerido."),
-  columnsToDisplay: z.string().min(1, "Debe especificar las columnas a mostrar (ej: A,B,C o Nombre,Email)."),
+  columnsToDisplay: z.string().min(1, "Debe especificar los nombres de los encabezados de las columnas a mostrar (ej: Nombre,Email)."),
 });
 
 type GoogleSheetFormValues = z.infer<typeof formSchema>;
@@ -56,7 +56,6 @@ export default function AdminSettingsPage() {
         });
         setInitialConfig(config);
       } else if (config) {
-        // Si hay config por defecto pero no está "isConfigured"
          form.reset({
           sheetId: config.sheetId || "",
           sheetName: config.sheetName || "",
@@ -100,8 +99,8 @@ export default function AdminSettingsPage() {
       <CardHeader>
         <CardTitle className="text-2xl font-headline">Configuración de Google Sheets</CardTitle>
         <CardDescription>
-          Configura el ID de la Hoja de Cálculo de Google, el nombre de la hoja (pestaña) y las columnas que deseas mostrar en la página de inicio.
-          Asegúrate de que la hoja de cálculo esté compartida como "Cualquier persona con el enlace puede ver".
+          Configura el ID de la Hoja de Cálculo de Google, el nombre de la hoja (pestaña) y las columnas que deseas mostrar.
+          La hoja de cálculo debe estar compartida como "Cualquier persona con el enlace puede ver".
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -117,7 +116,7 @@ export default function AdminSettingsPage() {
                     <Input placeholder="Ej: 1qA2bC3dE4fG5hI6jK7lM8nO9pQrStUvWxYzAbCdEfGhI" {...field} />
                   </FormControl>
                   <FormDescription>
-                    El ID largo que se encuentra en la URL de tu Google Sheet.
+                    El ID largo que se encuentra en la URL de tu Google Sheet (entre /d/ y /edit).
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -144,12 +143,12 @@ export default function AdminSettingsPage() {
               name="columnsToDisplay"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Columnas a Mostrar</FormLabel>
+                  <FormLabel>Columnas a Mostrar (Nombres de Encabezado)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: Nombre,Email,Teléfono o A,B,D" {...field} />
+                    <Input placeholder="Ej: Nombre,Email,Teléfono" {...field} />
                   </FormControl>
                   <FormDescription>
-                    Nombres de encabezado de las columnas o letras de columna (separadas por comas) que deseas mostrar. El orden se respetará. La primera fila de tu hoja se considerará como encabezados.
+                    Escribe los nombres exactos de los encabezados de las columnas de tu hoja (separados por comas) que deseas mostrar. El orden se respetará. La primera fila de tu hoja se considerará como los encabezados.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -171,18 +170,21 @@ export default function AdminSettingsPage() {
             <p className="text-sm"><strong>Columnas:</strong> {initialConfig.columnsToDisplay}</p>
           </div>
         )}
-         <div className="mt-6 p-4 border border-yellow-500 bg-yellow-50 rounded-md text-yellow-700">
-            <h4 className="font-semibold text-yellow-800">¡Importante!</h4>
+         <div className="mt-6 p-4 border border-blue-500 bg-blue-50 rounded-md text-blue-700">
+            <h4 className="font-semibold text-blue-800">¡Importante!</h4>
             <p className="text-sm">
-                Actualmente, la obtención de datos de Google Sheets es **SIMULADA**. Para conectar con datos reales:
+                Para que esto funcione, tu Hoja de Cálculo de Google debe estar compartida públicamente:
             </p>
             <ol className="list-decimal list-inside text-sm space-y-1 mt-2">
-                <li>Obtén una **Google Sheets API Key** desde Google Cloud Console.</li>
-                <li>Asegúrate de que la API de Google Sheets esté habilitada para tu proyecto.</li>
-                <li>Añade la clave al archivo `.env` en la variable `GOOGLE_SHEETS_API_KEY`.</li>
-                <li>Descomenta y adapta el código de llamada a la API en `src/actions/googleSheetActions.ts`.</li>
-                <li>Verifica que tu hoja de cálculo esté compartida públicamente (cualquier persona con el enlace puede ver).</li>
+                <li>Abre tu Google Sheet.</li>
+                <li>Haz clic en "Archivo" &gt; "Compartir" &gt; "Publicar en la web".</li>
+                <li>En la pestaña "Enlace", asegúrate de que "Toda la hoja de cálculo" (o la hoja específica) esté seleccionada y elige "Valores separados por comas (.csv)" en el segundo desplegable.</li>
+                <li>Haz clic en "Publicar".</li>
+                <li>Alternativamente (y preferido para este método), simplemente comparte la hoja con la opción: "Cualquier persona con el enlace" puede "Ver". El ID de la hoja y el nombre de la pestaña serán suficientes.</li>
             </ol>
+            <p className="text-sm mt-2">
+              La aplicación construirá la URL CSV necesaria automáticamente.
+            </p>
         </div>
       </CardContent>
     </Card>

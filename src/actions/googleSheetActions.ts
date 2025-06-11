@@ -3,28 +3,17 @@
 
 import type { GoogleSheetConfig } from "@/lib/types";
 import { getMockSheetConfig, saveMockSheetConfig as saveMockConfig } from "@/lib/types";
-// import { google } from 'googleapis'; // Descomentar para usar la API real
-
-// Simulación de almacenamiento de configuración. En una app real, usarías una base de datos.
-// Para esta simulación, estamos usando localStorage a través de getMockSheetConfig y saveMockConfig,
-// lo cual solo funcionará completamente en el lado del cliente para la persistencia simulada.
-// Las Server Actions pueden leer el estado inicial o un estado por defecto.
 
 export async function saveGoogleSheetConfigAction(config: GoogleSheetConfig): Promise<{ success: boolean; message?: string }> {
   try {
-    // Simulación de guardado:
-    console.log("Guardando configuración de Google Sheet (simulado):", config);
-    // En una app real, aquí guardarías `config` en tu base de datos.
-    // Para la simulación y para que getGoogleSheetConfigAction pueda "leerlo" en la misma sesión del navegador:
-    if (typeof window !== 'undefined') { // Solo si estamos en el cliente (para el useEffect del formulario)
+    console.log("Guardando configuración de Google Sheet:", config);
+    // En una app real, aquí guardarías `config` en tu base de datos o un sistema de configuración.
+    // Para la simulación, usamos localStorage (a través de saveMockConfig).
+    if (typeof window !== 'undefined') { 
         saveMockConfig(config);
     } else {
-        // Si se llama desde el servidor directamente, no podemos usar localStorage.
-        // Esto es una limitación de la simulación sin una BD real.
-        console.warn("saveGoogleSheetConfigAction llamada desde el servidor, la configuración no persistirá entre requests sin una BD.")
+        console.warn("saveGoogleSheetConfigAction llamada desde el servidor, la configuración no persistirá entre requests sin una BD o sistema de archivos.")
     }
-    // Por ahora, esta acción solo puede ser llamada desde el cliente para que la simulación funcione.
-    
     return { success: true };
   } catch (error) {
     console.error("Error al guardar la configuración de Google Sheet:", error);
@@ -34,10 +23,6 @@ export async function saveGoogleSheetConfigAction(config: GoogleSheetConfig): Pr
 
 export async function getGoogleSheetConfigAction(): Promise<GoogleSheetConfig | null> {
   try {
-    // Simulación de obtención de configuración:
-    // En una app real, aquí obtendrías `config` de tu base de datos.
-    // Usamos getMockSheetConfig para la simulación, que podría leer de localStorage si está en el cliente,
-    // o devolver un valor por defecto si está en el servidor.
     const config = getMockSheetConfig();
     console.log("Obteniendo configuración de Google Sheet (simulado):", config);
     return config;
@@ -47,10 +32,44 @@ export async function getGoogleSheetConfigAction(): Promise<GoogleSheetConfig | 
   }
 }
 
-// Define la estructura de los datos que esperas de la hoja.
-// Esto es un ejemplo, ajústalo a tus necesidades.
 interface SheetRow {
-  [key: string]: string; // Asume que todas las celdas son strings
+  [key: string]: string;
+}
+
+// Función para parsear CSV simple
+function parseCSV(csvText: string): { headers: string[]; data: string[][] } {
+  const lines = csvText.trim().split(/\r\n|\n/); // Manejar diferentes finales de línea
+  if (lines.length === 0) return { headers: [], data: [] };
+
+  // Función para parsear una línea CSV, manejando comillas
+  const parseCsvLine = (line: string): string[] => {
+    const result: string[] = [];
+    let currentField = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && i + 1 < line.length && line[i+1] === '"') {
+          // Escaped quote
+          currentField += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(currentField.trim());
+        currentField = '';
+      } else {
+        currentField += char;
+      }
+    }
+    result.push(currentField.trim());
+    return result;
+  };
+  
+  const headers = parseCsvLine(lines[0]);
+  const data = lines.slice(1).map(line => parseCsvLine(line));
+  return { headers, data };
 }
 
 export async function fetchGoogleSheetDataAction(): Promise<{ headers: string[]; rows: SheetRow[] } | null> {
@@ -61,87 +80,63 @@ export async function fetchGoogleSheetDataAction(): Promise<{ headers: string[];
     return null;
   }
 
-  // const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
-  // if (!apiKey) {
-  //   console.error("GOOGLE_SHEETS_API_KEY no está configurada en .env");
-  //   // Podrías retornar datos simulados aquí si la API key no está presente
-  //   // return getMockSheetData(config.columnsToDisplay); 
-  //   // O lanzar un error o retornar null. Por ahora, continuamos con simulación si no hay API key.
-  // }
+  // Construir la URL de exportación CSV
+  // Documentación no oficial sobre esto: https://gist.github.com/johndyer24/0dffbdd982c27c02652f
+  // Nota: El nombre de la hoja (sheetName) es más robusto que gid para la exportación CSV si el orden de las hojas cambia.
+  // Si sheetName contiene espacios u otros caracteres especiales, debe ser URL-encoded.
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${config.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(config.sheetName)}`;
 
-  // Simulación de obtención de datos
-  console.log(`Simulando obtención de datos para Sheet ID: ${config.sheetId}, Sheet Name: ${config.sheetName}, Columns: ${config.columnsToDisplay}`);
-  return getMockSheetData(config.columnsToDisplay);
-
-  /*
-  // --- INICIO DE CÓDIGO PARA API REAL DE GOOGLE SHEETS ---
-  // Descomenta y adapta esta sección cuando tengas tu API Key y la hoja compartida públicamente.
-
-  if (!apiKey) {
-     console.error("API Key de Google Sheets no encontrada. Usando datos simulados.");
-     return getMockSheetData(config.columnsToDisplay);
-  }
+  console.log(`Obteniendo datos de Google Sheet desde: ${csvUrl}`);
 
   try {
-    const sheets = google.sheets({ version: 'v4', auth: apiKey });
-    const range = `${config.sheetName}`; // Lee toda la hoja, podrías hacerlo más específico
-
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: config.sheetId,
-      range: range,
-    });
-
-    const allRows = response.data.values;
-    if (!allRows || allRows.length === 0) {
-      return { headers: [], rows: [] };
+    const response = await fetch(csvUrl, { cache: 'no-store' }); // Evitar caché agresiva
+    if (!response.ok) {
+      console.error(`Error al obtener la hoja de cálculo: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text();
+      console.error("Cuerpo del error:", errorBody);
+      // Podrías retornar datos simulados aquí o manejar el error de forma más específica
+      // return getMockSheetData(config.columnsToDisplay); 
+      return null;
     }
 
-    const rawHeaders = allRows[0];
-    const rawDataRows = allRows.slice(1);
+    const csvText = await response.text();
+    if (!csvText) {
+      return { headers: [], rows: [] };
+    }
     
-    const requestedColumns = config.columnsToDisplay.split(',').map(c => c.trim());
-    
-    // Determinar los índices de las columnas solicitadas
-    const columnIndices: number[] = [];
-    const finalHeaders: string[] = [];
+    const { headers: rawHeaders, data: rawDataRows } = parseCSV(csvText);
 
-    requestedColumns.forEach(requestedCol => {
-      let foundIndex = -1;
-      // Intenta hacer coincidir por letra de columna (ej. A, B)
-      if (requestedCol.match(/^[A-Z]+$/i)) {
-        // Convertir letra de columna a índice base 0 (A=0, B=1, ...)
-        let colIndex = 0;
-        for (let i = 0; i < requestedCol.length; i++) {
-          colIndex = colIndex * 26 + (requestedCol.charCodeAt(i) - (requestedCol.charCodeAt(i) >= 97 ? 97 : 65) + 1);
-        }
-        foundIndex = colIndex -1;
-        if (foundIndex >= 0 && foundIndex < rawHeaders.length) {
-           finalHeaders.push(rawHeaders[foundIndex]);
-           columnIndices.push(foundIndex);
-        } else {
-            console.warn(`Columna por letra '${requestedCol}' fuera de rango o no válida.`);
-        }
+    if (!rawHeaders || rawHeaders.length === 0) {
+      console.warn("El CSV no contiene encabezados o está vacío.");
+      return { headers: [], rows: [] };
+    }
+    
+    const requestedColumns = config.columnsToDisplay.split(',').map(c => c.trim().toLowerCase());
+    
+    const finalHeaders: string[] = [];
+    const columnIndices: number[] = [];
+
+    // Coincidir las columnas solicitadas (nombres de encabezado) con los encabezados del CSV
+    requestedColumns.forEach(requestedColName => {
+      const foundIndex = rawHeaders.findIndex(csvHeader => csvHeader.toLowerCase() === requestedColName);
+      if (foundIndex !== -1) {
+        finalHeaders.push(rawHeaders[foundIndex]); // Usar el nombre original del encabezado del CSV
+        columnIndices.push(foundIndex);
       } else {
-        // Intenta hacer coincidir por nombre de encabezado
-        foundIndex = rawHeaders.findIndex(header => header.toLowerCase() === requestedCol.toLowerCase());
-        if (foundIndex !== -1) {
-          finalHeaders.push(rawHeaders[foundIndex]);
-          columnIndices.push(foundIndex);
-        } else {
-            console.warn(`Encabezado de columna '${requestedCol}' no encontrado.`);
-        }
+        console.warn(`Encabezado de columna '${requestedColName}' no encontrado en el CSV. Encabezados disponibles: ${rawHeaders.join(', ')}`);
       }
     });
     
     if (columnIndices.length === 0) {
-        console.warn("No se encontraron columnas válidas para mostrar.");
+        console.warn("No se encontraron columnas válidas para mostrar del CSV. Verifica los nombres de las columnas en la configuración.");
         return { headers: [], rows: [] };
     }
 
-    const filteredRows: SheetRow[] = rawDataRows.map(row => {
+    const filteredRows: SheetRow[] = rawDataRows.map(rowArray => {
       const rowObject: SheetRow = {};
       columnIndices.forEach((colIndex, i) => {
-        rowObject[finalHeaders[i]] = row[colIndex] || ''; // Asigna el valor de la celda o string vacío
+        // Asegurarse de que el índice no esté fuera de los límites para la fila actual
+        rowObject[finalHeaders[i]] = colIndex < rowArray.length ? (rowArray[colIndex] || '') : '';
       });
       return rowObject;
     });
@@ -149,40 +144,43 @@ export async function fetchGoogleSheetDataAction(): Promise<{ headers: string[];
     return { headers: finalHeaders, rows: filteredRows };
 
   } catch (error) {
-    console.error('Error al obtener datos de Google Sheets:', error);
+    console.error('Error al obtener o parsear datos de Google Sheets:', error);
     // Considera retornar datos simulados en caso de error si es apropiado
     // return getMockSheetData(config.columnsToDisplay);
     return null;
   }
-  // --- FIN DE CÓDIGO PARA API REAL DE GOOGLE SHEETS ---
-  */
 }
 
 
-// Función para generar datos simulados
+// Función para generar datos simulados (se mantiene como fallback o para desarrollo)
 function getMockSheetData(columnsToDisplay: string): { headers: string[]; rows: SheetRow[] } {
-  const requestedHeaders = columnsToDisplay.split(',').map(h => h.trim());
+  const requestedHeaders = columnsToDisplay.split(',').map(h => h.trim()).filter(h => h.length > 0);
   
   const mockData: SheetRow[] = [
-    { "Nombre": "Juan Pérez", "Email": "juan.perez@example.com", "Teléfono": "555-1234", "Empresa": "Tech Corp", "Cargo": "Desarrollador" },
-    { "Nombre": "Ana Gómez", "Email": "ana.gomez@example.com", "Teléfono": "555-5678", "Empresa": "Innovate Ltd.", "Cargo": "Diseñadora" },
-    { "Nombre": "Carlos Ruiz", "Email": "carlos.ruiz@example.com", "Teléfono": "555-9012", "Empresa": "Solutions Inc.", "Cargo": "Gerente" },
-    { "Nombre": "Laura Méndez", "Email": "laura.mendez@example.com", "Teléfono": "555-3456", "Empresa": "Biz Hub", "Cargo": "Marketing" },
+    { "Nombre": "Juan Pérez (Simulado)", "Email": "juan.perez.sim@example.com", "Teléfono": "555-1234", "Empresa": "Tech Corp", "Cargo": "Desarrollador" },
+    { "Nombre": "Ana Gómez (Simulado)", "Email": "ana.gomez.sim@example.com", "Teléfono": "555-5678", "Empresa": "Innovate Ltd.", "Cargo": "Diseñadora" },
   ];
 
-  if (requestedHeaders.length === 0) {
-    return { headers: ["Nombre", "Email", "Teléfono"], rows: mockData.map(row => ({ "Nombre": row["Nombre"], "Email": row["Email"], "Teléfono": row["Teléfono"]})) };
+  if (requestedHeaders.length === 0 || requestedHeaders[0] === "") {
+    // Si no se especifican columnas, o está vacío, devolver un conjunto por defecto
+    const defaultHeaders = ["Nombre", "Email", "Teléfono"];
+    return { 
+      headers: defaultHeaders, 
+      rows: mockData.map(row => ({ 
+        "Nombre": row["Nombre"], 
+        "Email": row["Email"], 
+        "Teléfono": row["Teléfono"]
+      })) 
+    };
   }
   
-  // Filtra las filas para incluir solo las columnas solicitadas
   const filteredRows = mockData.map(row => {
     const newRow: SheetRow = {};
     requestedHeaders.forEach(header => {
       if (row[header] !== undefined) {
         newRow[header] = row[header];
       } else {
-        // Simular si la columna solicitada no existe en los datos de ejemplo
-        newRow[header] = `(Dato no encontrado para ${header})`;
+        newRow[header] = `(Simulado: ${header} no encontrado)`;
       }
     });
     return newRow;
@@ -190,22 +188,3 @@ function getMockSheetData(columnsToDisplay: string): { headers: string[]; rows: 
 
   return { headers: requestedHeaders, rows: filteredRows };
 }
-
-// Ejemplo de cómo podrías manejar la conversión de letras de columna a índices si eliges esa ruta
-// function columnToLetter(column: number): string {
-//   let temp, letter = '';
-//   while (column > 0) {
-//     temp = (column - 1) % 26;
-//     letter = String.fromCharCode(temp + 65) + letter;
-//     column = (column - temp - 1) / 26;
-//   }
-//   return letter;
-// }
-
-// function letterToColumn(letter: string): number {
-//   let column = 0, length = letter.length;
-//   for (let i = 0; i < length; i++) {
-//     column += (letter.charCodeAt(i) - 64) * Math.pow(26, length - i - 1);
-//   }
-//   return column;
-// }
