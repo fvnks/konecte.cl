@@ -5,13 +5,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, Search as SearchIcon, AlertTriangle, Building, FileSearch } from "lucide-react";
 import Link from "next/link";
 import PropertyListItem from "@/components/property/PropertyListItem";
-import RequestListItem from "@/components/request/RequestListItem"; // Actualizado de RequestCard a RequestListItem
+import RequestListItem from "@/components/request/RequestListItem";
 import type { PropertyListing, SearchRequest } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import { getPropertiesAction } from "@/actions/propertyActions";
-import { getRequestsAction } from "@/actions/requestActions"; // Asegúrate que esta acción esté implementada
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getRequestsAction } from "@/actions/requestActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable"; // Importar el nuevo componente
 
 async function GoogleSheetSection() {
   const config = await getGoogleSheetConfigAction();
@@ -34,12 +34,12 @@ async function GoogleSheetSection() {
   
   const sheetData = await fetchGoogleSheetDataAction();
 
-  if (!sheetData || sheetData.rows.length === 0) {
+  if (!sheetData) { // Solo verificar si sheetData es null/undefined, no rows.length
     return (
        <Card className="mt-10">
         <CardHeader>
           <CardTitle>Datos de Google Sheets</CardTitle>
-           <CardDescription>No se pudieron cargar los datos de la hoja de cálculo o está vacía. Verifica la configuración.</CardDescription>
+           <CardDescription>No se pudieron cargar los datos de la hoja de cálculo. Verifica la configuración.</CardDescription>
         </CardHeader>
          <CardContent>
            <p className="text-sm text-muted-foreground">Asegúrate de que el ID de la hoja, el nombre de la pestaña y las columnas sean correctos, y que la hoja esté compartida públicamente.</p>
@@ -48,28 +48,37 @@ async function GoogleSheetSection() {
     );
   }
 
+  if (sheetData.rows.length === 0 && sheetData.headers.length > 0) {
+     return (
+       <Card className="mt-10">
+        <CardHeader>
+          <CardTitle>Datos de Google Sheets</CardTitle>
+           <CardDescription>La hoja de cálculo está configurada pero no contiene filas de datos (solo encabezados).</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <PaginatedSheetTable headers={sheetData.headers} rows={sheetData.rows} />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (sheetData.headers.length === 0) {
+    return (
+       <Card className="mt-10">
+        <CardHeader>
+          <CardTitle>Datos de Google Sheets</CardTitle>
+           <CardDescription>No se encontraron encabezados en la hoja de cálculo. Verifica los nombres de las columnas en la configuración y en la hoja.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+
   return (
     <section className="py-10 bg-card rounded-lg shadow-md mt-12">
       <div className="container mx-auto px-4">
         <h2 className="text-3xl font-headline font-semibold text-center mb-6">Datos de Nuestra Hoja de Cálculo</h2>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {sheetData.headers.map((header) => (
-                <TableHead key={header}>{header}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sheetData.rows.map((row, rowIndex) => (
-              <TableRow key={rowIndex}>
-                {sheetData.headers.map((header) => (
-                  <TableCell key={`${rowIndex}-${header}`}>{row[header]}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <PaginatedSheetTable headers={sheetData.headers} rows={sheetData.rows} />
       </div>
     </section>
   );
@@ -143,9 +152,9 @@ export default async function HomePage() {
         </TabsContent>
         <TabsContent value="requests" className="mt-8">
           {recentRequests.length > 0 ? (
-            <div className="space-y-6"> {/* Cambiado de grid a space-y-6 para formato de lista */}
+            <div className="space-y-6"> 
               {recentRequests.map((request) => (
-                <RequestListItem key={request.id} request={request} /> // Usando RequestListItem
+                <RequestListItem key={request.id} request={request} />
               ))}
             </div>
           ) : (
