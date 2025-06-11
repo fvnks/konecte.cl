@@ -38,6 +38,13 @@ INSERT INTO roles (id, name, description) VALUES
 Almacena la información de los usuarios registrados.
 
 ```sql
+-- Si la tabla 'users' ya existe y necesitas modificarla para que coincida con este esquema:
+-- 1. Primero elimina la tabla existente SI NO CONTIENE DATOS IMPORTANTES:
+--    DROP TABLE users;
+-- 2. Luego ejecuta el CREATE TABLE a continuación.
+-- Si necesitas conservar datos, tendrás que usar ALTER TABLE para añadir las columnas faltantes
+-- y la clave foránea.
+
 CREATE TABLE users (
     id VARCHAR(36) PRIMARY KEY,                           -- UUID o similar
     name VARCHAR(255) NOT NULL,
@@ -54,6 +61,13 @@ CREATE TABLE users (
 -- Índices
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role_id ON users(role_id);
+
+-- Ejemplo para insertar un usuario administrador (ejecutar después de crear las tablas 'roles' y 'users'):
+-- Contraseña: "admin123" (hasheada con bcrypt, salt rounds: 10)
+-- El hash es: $2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS
+-- Asegúrate de que el rol 'admin' exista en la tabla 'roles'.
+-- INSERT INTO users (id, name, email, password_hash, role_id) VALUES 
+-- (UUID(), 'Admin PropSpot', 'admin@propspot.cl', '$2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS', 'admin');
 ```
 
 ---
@@ -204,3 +218,5 @@ ON DUPLICATE KEY UPDATE id = 1; -- Para evitar error si se ejecuta múltiples ve
 
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
+
+```

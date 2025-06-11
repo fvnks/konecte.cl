@@ -1,44 +1,127 @@
+'use client';
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn } from "lucide-react";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { LogIn, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
+import { signInAction, type SignInFormValues } from "@/actions/authActions";
+import { useRouter } from "next/navigation";
+
+const signInSchema = z.object({
+  email: z.string().email("Correo electrónico inválido."),
+  password: z.string().min(1, "La contraseña es requerida."),
+});
 
 export default function SignInPage() {
+  const { toast } = useToast();
+  const router = useRouter();
+  const form = useForm<SignInFormValues>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  async function onSubmit(values: SignInFormValues) {
+    const result = await signInAction(values);
+    if (result.success && result.user) {
+      toast({
+        title: "Inicio de Sesión Exitoso",
+        description: `¡Bienvenido de nuevo, ${result.user.name}!`,
+      });
+      // Guardar información del usuario en localStorage (simplificado)
+      localStorage.setItem('loggedInUser', JSON.stringify({ 
+        id: result.user.id, 
+        name: result.user.name, 
+        email: result.user.email,
+        roleId: result.user.role_id,
+        roleName: result.user.role_name 
+      }));
+      // Disparar un evento para que el Navbar pueda actualizarse
+      window.dispatchEvent(new Event('storage')); 
+      
+      if (result.user.role_id === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
+    } else {
+      toast({
+        title: "Error de Inicio de Sesión",
+        description: result.message || "No se pudo iniciar sesión. Verifica tus credenciales.",
+        variant: "destructive",
+      });
+    }
+  }
+
   return (
     <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center px-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-headline">¡Bienvenido de Nuevo!</CardTitle>
           <CardDescription>Inicia sesión para acceder a tu cuenta de PropSpot.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo Electrónico</Label>
-            <Input id="email" type="email" placeholder="tu@ejemplo.com" />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Contraseña</Label>
-              <Link href="#" className="text-xs text-primary hover:underline">
-                ¿Olvidaste tu contraseña?
-              </Link>
-            </div>
-            <Input id="password" type="password" placeholder="••••••••" />
-          </div>
-          <Button type="submit" className="w-full flex items-center gap-2">
-            <LogIn className="h-4 w-4" /> Iniciar Sesión
-          </Button>
-        </CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Correo Electrónico</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="tu@ejemplo.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                        <FormLabel>Contraseña</FormLabel>
+                        <Link href="#" className="text-xs text-primary hover:underline">
+                            ¿Olvidaste tu contraseña?
+                        </Link>
+                    </div>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full flex items-center gap-2" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LogIn className="h-4 w-4" />
+                )}
+                Iniciar Sesión
+              </Button>
+            </CardContent>
+          </form>
+        </Form>
         <CardFooter className="flex flex-col gap-3 text-center">
-           <p className="text-xs text-muted-foreground">
+           {/* <p className="text-xs text-muted-foreground">
             O inicia sesión con
           </p>
           <div className="flex gap-2 w-full">
             <Button variant="outline" className="w-full">Google</Button>
             <Button variant="outline" className="w-full">Facebook</Button>
-          </div>
+          </div> */}
           <p className="mt-4 text-sm text-muted-foreground">
             ¿No tienes una cuenta?{" "}
             <Link href="/auth/signup" className="font-medium text-primary hover:underline">
