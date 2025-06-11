@@ -4,7 +4,7 @@
 
 import type { PropertyFormValues } from "@/components/property/PropertyForm";
 import { query } from "@/lib/db";
-import type { PropertyListing, User } from "@/lib/types"; // Asegúrate que User está importado si lo usas para author
+import type { PropertyListing, User } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 
@@ -19,7 +19,6 @@ const generateSlug = (title: string): string => {
 };
 
 function mapDbRowToPropertyListing(row: any): PropertyListing {
-  // Helper to parse JSON fields safely
   const parseJsonString = (jsonString: string | null): string[] => {
     if (!jsonString) return [];
     try {
@@ -37,28 +36,28 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     title: row.title,
     slug: row.slug,
     description: row.description,
-    propertyType: row.property_type, // Map from DB
+    propertyType: row.property_type,
     category: row.category,
-    price: Number(row.price), // Ensure price is a number
+    price: Number(row.price),
     currency: row.currency,
     address: row.address,
     city: row.city,
     country: row.country,
     bedrooms: Number(row.bedrooms),
     bathrooms: Number(row.bathrooms),
-    areaSqMeters: Number(row.area_sq_meters), // Map from DB
+    areaSqMeters: Number(row.area_sq_meters),
     images: parseJsonString(row.images),
     features: parseJsonString(row.features),
     upvotes: Number(row.upvotes),
-    commentsCount: Number(row.comments_count), // Map from DB
-    isActive: Boolean(row.is_active), // Map from DB
-    createdAt: new Date(row.created_at).toISOString(), // Map from DB
-    updatedAt: new Date(row.updated_at).toISOString(), // Map from DB
-    author: row.author_name ? { // Construct author object if data exists
-      id: row.user_id, // Assuming user_id is the author's ID
+    commentsCount: Number(row.comments_count),
+    isActive: Boolean(row.is_active),
+    createdAt: new Date(row.created_at).toISOString(),
+    updatedAt: new Date(row.updated_at).toISOString(),
+    author: row.author_name ? { 
+      id: row.user_id,
       name: row.author_name,
-      avatarUrl: row.author_avatar_url || undefined, // Handle null avatar
-      role_id: '', // Role ID might not be directly available here without more joins/logic
+      avatarUrl: row.author_avatar_url || undefined,
+      role_id: row.author_role_id || '', // Assuming author_role_id is fetched
     } : undefined,
   };
 }
@@ -116,6 +115,8 @@ export async function submitPropertyAction(
     revalidatePath('/properties');
     revalidatePath(`/properties/${slug}`);
     revalidatePath('/dashboard');
+    revalidatePath('/admin/properties');
+
 
     return { success: true, message: "Propiedad publicada exitosamente.", propertyId: propertyId, propertySlug: slug };
 
@@ -131,19 +132,42 @@ export async function submitPropertyAction(
   }
 }
 
-export async function getPropertiesAction(): Promise<PropertyListing[]> {
+interface GetPropertiesActionOptions {
+  includeInactive?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export async function getPropertiesAction(options: GetPropertiesActionOptions = {}): Promise<PropertyListing[]> {
+  const { includeInactive = false, limit, offset } = options;
   try {
-    const sql = `
+    let sql = `
       SELECT 
         p.*, 
         u.name as author_name, 
-        u.avatar_url as author_avatar_url 
+        u.avatar_url as author_avatar_url,
+        u.role_id as author_role_id 
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.is_active = TRUE
-      ORDER BY p.created_at DESC
     `;
-    const rows = await query(sql);
+    const queryParams: any[] = [];
+
+    if (!includeInactive) {
+      sql += ' WHERE p.is_active = TRUE';
+    }
+    
+    sql += ' ORDER BY p.created_at DESC';
+
+    if (limit !== undefined) {
+      sql += ' LIMIT ?';
+      queryParams.push(limit);
+    }
+    if (offset !== undefined && limit !== undefined) { // offset typically used with limit
+      sql += ' OFFSET ?';
+      queryParams.push(offset);
+    }
+
+    const rows = await query(sql, queryParams);
     if (!Array.isArray(rows)) {
         console.error("[PropertyAction] Expected array from query, got:", typeof rows);
         return [];
@@ -161,11 +185,13 @@ export async function getPropertyBySlugAction(slug: string): Promise<PropertyLis
       SELECT 
         p.*, 
         u.name as author_name, 
-        u.avatar_url as author_avatar_url
+        u.avatar_url as author_avatar_url,
+        u.role_id as author_role_id
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.slug = ? AND p.is_active = TRUE
-    `;
+      WHERE p.slug = ? 
+        AND p.is_active = TRUE
+    `; // For public view, only active properties by slug
     const rows = await query(sql, [slug]);
     if (!Array.isArray(rows) || rows.length === 0) {
       return null;
@@ -184,7 +210,8 @@ export async function getUserPropertiesAction(userId: string): Promise<PropertyL
       SELECT 
         p.*,
         u.name as author_name,
-        u.avatar_url as author_avatar_url
+        u.avatar_url as author_avatar_url,
+        u.role_id as author_role_id
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.user_id = ?
@@ -202,6 +229,45 @@ export async function getUserPropertiesAction(userId: string): Promise<PropertyL
   }
 }
 
-// Placeholder para futuras acciones como actualizar o eliminar propiedades
-// export async function updatePropertyAction(propertyId: string, data: Partial<PropertyFormValues>) { /* ... */ }
-// export async function deletePropertyAction(propertyId: string) { /* ... */ }
+export async function updatePropertyStatusAction(propertyId: string, isActive: boolean): Promise<{ success: boolean; message?: string }> {
+  if (!propertyId) {
+    return { success: false, message: "ID de propiedad no proporcionado." };
+  }
+  try {
+    await query('UPDATE properties SET is_active = ? WHERE id = ?', [isActive, propertyId]);
+    revalidatePath('/admin/properties');
+    revalidatePath('/properties'); // Revalidate public listing
+    revalidatePath(`/properties/[slug]`); // Revalidate specific property page, though slug is not directly known here
+    return { success: true, message: `Propiedad ${isActive ? 'activada' : 'desactivada'} correctamente.` };
+  } catch (error: any) {
+    console.error("Error al cambiar estado de la propiedad:", error);
+    return { success: false, message: `Error al cambiar estado de la propiedad: ${error.message}` };
+  }
+}
+
+export async function deletePropertyByAdminAction(propertyId: string): Promise<{ success: boolean; message?: string }> {
+  if (!propertyId) {
+    return { success: false, message: "ID de propiedad no proporcionado." };
+  }
+
+  try {
+    // Consider deleting related comments first if ON DELETE CASCADE is not set for comments.property_id or if explicit control is needed.
+    // For now, assuming ON DELETE CASCADE handles comments linked to properties.
+    const result: any = await query('DELETE FROM properties WHERE id = ?', [propertyId]);
+    if (result.affectedRows > 0) {
+      revalidatePath('/admin/properties');
+      revalidatePath('/properties');
+      revalidatePath('/'); // Homepage might show featured properties
+      return { success: true, message: "Propiedad eliminada exitosamente." };
+    } else {
+      return { success: false, message: "La propiedad no fue encontrada o no se pudo eliminar." };
+    }
+  } catch (error: any) {
+    console.error("Error al eliminar propiedad por admin:", error);
+    // ER_ROW_IS_REFERENCED_2 puede ocurrir si hay otras restricciones no cubiertas por ON DELETE CASCADE
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') { 
+        return { success: false, message: "Error de referencia: No se puede eliminar la propiedad porque aún está referenciada en otra tabla. Contacte al administrador." };
+    }
+    return { success: false, message: `Error al eliminar propiedad: ${error.message}` };
+  }
+}
