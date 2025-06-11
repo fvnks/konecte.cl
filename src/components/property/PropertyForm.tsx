@@ -1,3 +1,4 @@
+
 // src/components/property/PropertyForm.tsx
 'use client';
 
@@ -19,8 +20,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
-import type { PropertyType, ListingCategory } from "@/lib/types";
+import type { PropertyType, ListingCategory, User as StoredUser } from "@/lib/types"; // Renamed User to StoredUser to avoid conflict
 import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -57,6 +60,23 @@ export type PropertyFormValues = z.infer<typeof formSchema>;
 
 export default function PropertyForm() {
   const { toast } = useToast();
+  const router = useRouter();
+  const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const userJson = localStorage.getItem('loggedInUser');
+    if (userJson) {
+      try {
+        setLoggedInUser(JSON.parse(userJson));
+      } catch (error) {
+        console.error("Error parsing user from localStorage", error);
+        localStorage.removeItem('loggedInUser'); // Clear corrupted data
+      }
+    }
+    setIsCheckingAuth(false);
+  }, []);
+
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -76,13 +96,25 @@ export default function PropertyForm() {
   });
 
   async function onSubmit(values: PropertyFormValues) {
-    const result = await submitPropertyAction(values);
-    if (result.success) {
+    if (!loggedInUser || !loggedInUser.id) {
+      toast({
+        title: "Acción Requerida",
+        description: "Debes iniciar sesión para publicar una propiedad.",
+        variant: "destructive",
+        action: <Button onClick={() => router.push('/auth/signin')}>Iniciar Sesión</Button>
+      });
+      return;
+    }
+
+    const result = await submitPropertyAction(values, loggedInUser.id);
+    if (result.success && result.propertyId) {
       toast({
         title: "Propiedad Publicada",
         description: "Tu propiedad ha sido enviada exitosamente.",
       });
       form.reset();
+      // Opcional: redirigir a la página de la propiedad recién creada
+      // router.push(`/properties/${result.propertySlug}`); // Asumiendo que el slug se devuelve o se puede construir
     } else {
       toast({
         title: "Error al Publicar",
@@ -90,6 +122,15 @@ export default function PropertyForm() {
         variant: "destructive",
       });
     }
+  }
+  
+  if (isCheckingAuth) {
+    return (
+      <div className="flex justify-center items-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Verificando autenticación...</p>
+      </div>
+    );
   }
 
   return (
@@ -317,8 +358,8 @@ export default function PropertyForm() {
           )}
         />
         
-        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth}>
+          {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Publicar Propiedad
         </Button>
       </form>

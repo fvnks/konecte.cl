@@ -126,17 +126,6 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
     console.log(`[AuthAction] Direct comparison with known hash for 'admin123': ${directComparisonWithKnownHash}`);
     // --- END DEBUGGING ---
 
-    // TEMPORARY DEBUGGING: Force login for admin@propspot.cl to bypass password check
-    if (email === 'admin@propspot.cl') {
-        console.warn("[AuthAction] TEMPORARY DEBUG: Forcing login for admin@propspot.cl due to password comparison issues.");
-        // We still want to return the user object as if login was successful
-        const adminUser = usersFound[0] as User; // Re-cast if necessary, or use 'user' directly
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { password_hash, ...adminWithoutPasswordHash } = adminUser; // Exclude password_hash
-        return { success: true, user: adminWithoutPasswordHash };
-    }
-    // END TEMPORARY DEBUGGING - REMEMBER TO REMOVE THIS BLOCK
-
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     console.log(`[AuthAction] Password match result for ${user.email}: ${passwordMatch}`);
 
