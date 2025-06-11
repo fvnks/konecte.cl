@@ -1,12 +1,14 @@
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Search as SearchIcon, AlertTriangle } from "lucide-react";
+import { PlusCircle, Search as SearchIcon, AlertTriangle, Building } from "lucide-react";
 import Link from "next/link";
 import PropertyListItem from "@/components/property/PropertyListItem";
 import RequestCard from "@/components/request/RequestCard";
-import { sampleProperties, sampleRequests } from "@/lib/types";
+import { sampleRequests, type PropertyListing } from "@/lib/types"; // Remove sampleProperties
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
+import { getPropertiesAction } from "@/actions/propertyActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -73,9 +75,10 @@ async function GoogleSheetSection() {
 }
 
 
-export default function HomePage() {
-  const featuredProperties = sampleProperties.slice(0, 3);
-  const recentRequests = sampleRequests.slice(0, 2);
+export default async function HomePage() {
+  const allProperties: PropertyListing[] = await getPropertiesAction();
+  const featuredProperties = allProperties.slice(0, 3); // Get first 3 or fewer
+  const recentRequests = sampleRequests.slice(0, 2); // Still using sample data for requests
 
   return (
     <div className="space-y-12">
@@ -117,12 +120,18 @@ export default function HomePage() {
           <TabsTrigger value="requests" className="text-base py-2.5">Solicitudes Recientes</TabsTrigger>
         </TabsList>
         <TabsContent value="properties" className="mt-8">
-          <div className="space-y-6">
-            {featuredProperties.map((property) => (
-              <PropertyListItem key={property.id} property={property} />
-            ))}
-          </div>
-          {featuredProperties.length === 0 && <p className="text-center text-muted-foreground py-8">Aún no hay propiedades destacadas.</p>}
+          {featuredProperties.length > 0 ? (
+            <div className="space-y-6">
+              {featuredProperties.map((property) => (
+                <PropertyListItem key={property.id} property={property} />
+              ))}
+            </div>
+           ) : (
+            <div className="text-center py-10 text-muted-foreground">
+                <Building className="h-12 w-12 mx-auto mb-2" />
+                <p>Aún no hay propiedades destacadas publicadas.</p>
+            </div>
+           )}
           <div className="mt-8 text-center">
             <Button variant="outline" asChild>
               <Link href="/properties">Ver Todas las Propiedades</Link>

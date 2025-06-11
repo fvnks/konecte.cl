@@ -1,13 +1,15 @@
+
 import PropertyListItem from "@/components/property/PropertyListItem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { sampleProperties } from "@/lib/types";
-import { Filter, ListFilter, Search } from "lucide-react";
+import { Filter, ListFilter, Search, Building } from "lucide-react";
 import Link from "next/link";
+import { getPropertiesAction } from "@/actions/propertyActions";
+import type { PropertyListing } from "@/lib/types";
 
-export default function PropertiesPage() {
-  const properties = sampleProperties;
+export default async function PropertiesPage() {
+  const properties: PropertyListing[] = await getPropertiesAction();
 
   return (
     <div className="space-y-8">
@@ -53,20 +55,23 @@ export default function PropertiesPage() {
         </div>
       ) : (
         <div className="text-center py-12">
-          <Search className="mx-auto h-12 w-12 text-muted-foreground" />
+          <Building className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-2 text-xl font-semibold">No se Encontraron Propiedades</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Intenta ajustar tu búsqueda o filtros. ¡O sé el primero en publicar una!
+            Actualmente no hay propiedades listadas. ¡O sé el primero en publicar una!
           </p>
           <Button className="mt-6" asChild>
             <Link href="/properties/submit">Publicar una Propiedad</Link>
           </Button>
         </div>
       )}
-      <div className="flex justify-center mt-8">
-        <Button variant="outline" className="mr-2" disabled>Anterior</Button>
-        <Button variant="outline">Siguiente</Button>
-      </div>
+      {/* Pagination Placeholder - Consider removing or implementing if not used soon */}
+      {properties.length > 10 && ( // Show pagination only if there are enough items
+        <div className="flex justify-center mt-8">
+          <Button variant="outline" className="mr-2" disabled>Anterior</Button>
+          <Button variant="outline">Siguiente</Button>
+        </div>
+      )}
     </div>
   );
 }

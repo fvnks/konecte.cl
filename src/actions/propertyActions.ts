@@ -4,6 +4,7 @@
 
 import type { PropertyFormValues } from "@/components/property/PropertyForm";
 import { query } from "@/lib/db";
+import type { PropertyListing, User } from "@/lib/types"; // Asegúrate que User está importado si lo usas para author
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 
@@ -17,11 +18,57 @@ const generateSlug = (title: string): string => {
     .replace(/-+/g, '-'); // Replace multiple hyphens with a single one
 };
 
+function mapDbRowToPropertyListing(row: any): PropertyListing {
+  // Helper to parse JSON fields safely
+  const parseJsonString = (jsonString: string | null): string[] => {
+    if (!jsonString) return [];
+    try {
+      const parsed = JSON.parse(jsonString);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.warn("Failed to parse JSON string:", jsonString, e);
+      return [];
+    }
+  };
+
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    title: row.title,
+    slug: row.slug,
+    description: row.description,
+    propertyType: row.property_type, // Map from DB
+    category: row.category,
+    price: Number(row.price), // Ensure price is a number
+    currency: row.currency,
+    address: row.address,
+    city: row.city,
+    country: row.country,
+    bedrooms: Number(row.bedrooms),
+    bathrooms: Number(row.bathrooms),
+    areaSqMeters: Number(row.area_sq_meters), // Map from DB
+    images: parseJsonString(row.images),
+    features: parseJsonString(row.features),
+    upvotes: Number(row.upvotes),
+    commentsCount: Number(row.comments_count), // Map from DB
+    isActive: Boolean(row.is_active), // Map from DB
+    createdAt: new Date(row.created_at).toISOString(), // Map from DB
+    updatedAt: new Date(row.updated_at).toISOString(), // Map from DB
+    author: row.author_name ? { // Construct author object if data exists
+      id: row.user_id, // Assuming user_id is the author's ID
+      name: row.author_name,
+      avatarUrl: row.author_avatar_url || undefined, // Handle null avatar
+      role_id: '', // Role ID might not be directly available here without more joins/logic
+    } : undefined,
+  };
+}
+
+
 export async function submitPropertyAction(
   data: PropertyFormValues,
-  userId: string 
-): Promise<{ success: boolean; message?: string; propertyId?: string }> {
-  console.log("Datos de la propiedad recibidos en el servidor:", data, "UserID:", userId);
+  userId: string
+): Promise<{ success: boolean; message?: string; propertyId?: string, propertySlug?: string }> {
+  console.log("[PropertyAction] Property data received on server:", data, "UserID:", userId);
 
   if (!userId) {
     return { success: false, message: "Usuario no autenticado." };
@@ -29,18 +76,17 @@ export async function submitPropertyAction(
 
   try {
     const propertyId = randomUUID();
-    const slug = generateSlug(data.title); // Consider adding a check for slug uniqueness if necessary
+    const slug = generateSlug(data.title);
 
-    // Convert comma-separated strings to JSON arrays
-    const imagesJson = data.images ? JSON.stringify(data.images.split(',').map(img => img.trim())) : null;
-    const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim())) : null;
+    const imagesJson = data.images ? JSON.stringify(data.images.split(',').map(img => img.trim()).filter(img => img.length > 0)) : null;
+    const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
 
     const sql = `
       INSERT INTO properties (
         id, user_id, title, slug, description, property_type, category,
         price, currency, address, city, country, bedrooms, bathrooms,
-        area_sq_meters, images, features 
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        area_sq_meters, images, features, is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
     `;
     
     const params = [
@@ -66,12 +112,12 @@ export async function submitPropertyAction(
     await query(sql, params);
     console.log(`[PropertyAction] Property submitted successfully. ID: ${propertyId}, Slug: ${slug}`);
 
-    // Revalidate paths where properties are listed or displayed
     revalidatePath('/');
     revalidatePath('/properties');
-    revalidatePath(`/properties/${slug}`); // If you have a detail page
+    revalidatePath(`/properties/${slug}`);
+    revalidatePath('/dashboard');
 
-    return { success: true, message: "Propiedad publicada exitosamente.", propertyId: propertyId };
+    return { success: true, message: "Propiedad publicada exitosamente.", propertyId: propertyId, propertySlug: slug };
 
   } catch (error: any) {
     console.error("[PropertyAction] Error submitting property:", error);
@@ -84,3 +130,78 @@ export async function submitPropertyAction(
     return { success: false, message };
   }
 }
+
+export async function getPropertiesAction(): Promise<PropertyListing[]> {
+  try {
+    const sql = `
+      SELECT 
+        p.*, 
+        u.name as author_name, 
+        u.avatar_url as author_avatar_url 
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.is_active = TRUE
+      ORDER BY p.created_at DESC
+    `;
+    const rows = await query(sql);
+    if (!Array.isArray(rows)) {
+        console.error("[PropertyAction] Expected array from query, got:", typeof rows);
+        return [];
+    }
+    return rows.map(mapDbRowToPropertyListing);
+  } catch (error: any) {
+    console.error("[PropertyAction] Error fetching properties:", error);
+    return [];
+  }
+}
+
+export async function getPropertyBySlugAction(slug: string): Promise<PropertyListing | null> {
+  try {
+    const sql = `
+      SELECT 
+        p.*, 
+        u.name as author_name, 
+        u.avatar_url as author_avatar_url
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.slug = ? AND p.is_active = TRUE
+    `;
+    const rows = await query(sql, [slug]);
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return null;
+    }
+    return mapDbRowToPropertyListing(rows[0]);
+  } catch (error: any) {
+    console.error(`[PropertyAction] Error fetching property by slug ${slug}:`, error);
+    return null;
+  }
+}
+
+export async function getUserPropertiesAction(userId: string): Promise<PropertyListing[]> {
+  if (!userId) return [];
+  try {
+    const sql = `
+      SELECT 
+        p.*,
+        u.name as author_name,
+        u.avatar_url as author_avatar_url
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.user_id = ?
+      ORDER BY p.created_at DESC
+    `;
+    const rows = await query(sql, [userId]);
+    if (!Array.isArray(rows)) {
+        console.error("[PropertyAction] Expected array from getUserPropertiesAction, got:", typeof rows);
+        return [];
+    }
+    return rows.map(mapDbRowToPropertyListing);
+  } catch (error: any) {
+    console.error(`[PropertyAction] Error fetching properties for user ${userId}:`, error);
+    return [];
+  }
+}
+
+// Placeholder para futuras acciones como actualizar o eliminar propiedades
+// export async function updatePropertyAction(propertyId: string, data: Partial<PropertyFormValues>) { /* ... */ }
+// export async function deletePropertyAction(propertyId: string) { /* ... */ }

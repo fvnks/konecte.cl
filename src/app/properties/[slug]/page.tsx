@@ -1,20 +1,18 @@
-import { sampleProperties, placeholderUser, Comment as CommentType, PropertyListing, ListingCategory } from "@/lib/types";
+
+import { getPropertyBySlugAction } from "@/actions/propertyActions";
+import { placeholderUser, Comment as CommentType, PropertyListing, ListingCategory } from "@/lib/types";
 import Image from "next/image";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, BedDouble, Bath, HomeIcon, Tag, ThumbsUp, MessageSquare, Send, UserCircle } from "lucide-react";
-import Link from "next/link";
+import { MapPin, BedDouble, Bath, HomeIcon, Tag, ThumbsUp, MessageSquare, Send, UserCircle, AlertTriangle } from "lucide-react";
 
-async function getPropertyData(slug: string): Promise<PropertyListing | undefined> {
-  return sampleProperties.find(p => p.slug === slug) || sampleProperties[0];
-}
-
+// Simulación de comentarios, reemplazar con carga desde BD más adelante
 const sampleComments: CommentType[] = [
-  { id: 'comment1', content: '¡Este lugar se ve genial! ¿Está cerca del transporte público?', author: placeholderUser, createdAt: new Date(Date.now() - 86400000 * 0.5).toISOString(), upvotes: 5 },
-  { id: 'comment2', content: '¿Cómo son los gastos comunes?', author: {id: 'user4', name: 'Bob Johnson', avatarUrl: 'https://placehold.co/40x40.png?text=BJ'}, createdAt: new Date(Date.now() - 86400000 * 0.2).toISOString(), upvotes: 2 },
+  { id: 'comment1', user_id: placeholderUser.id, content: '¡Este lugar se ve genial! ¿Está cerca del transporte público?', author: placeholderUser, created_at: new Date(Date.now() - 86400000 * 0.5).toISOString(), upvotes: 5, updated_at: new Date(Date.now() - 86400000 * 0.5).toISOString() },
+  { id: 'comment2', user_id: 'user4', content: '¿Cómo son los gastos comunes?', author: {id: 'user4', name: 'Bob Johnson', avatarUrl: 'https://placehold.co/40x40.png?text=BJ', role_id: 'user'}, created_at: new Date(Date.now() - 86400000 * 0.2).toISOString(), upvotes: 2, updated_at: new Date(Date.now() - 86400000 * 0.2).toISOString()},
 ];
 
 const translatePropertyType = (type: 'rent' | 'sale'): string => {
@@ -36,36 +34,45 @@ const translateCategory = (category: ListingCategory): string => {
 }
 
 const formatPrice = (price: number, currency: string) => {
-  if (currency.toUpperCase() === 'UF') {
+  if (currency?.toUpperCase() === 'UF') {
     return `${new Intl.NumberFormat('es-CL').format(price)} UF`;
   }
   try {
-    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: currency }).format(price);
+    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: currency || 'CLP' }).format(price);
   } catch (e) {
-    console.warn(`Invalid currency code for formatting: ${currency}. Falling back to simple number format.`);
-    return `${new Intl.NumberFormat('es-CL').format(price)} ${currency}`;
+    // console.warn(`Invalid currency code for formatting: ${currency}. Falling back to simple number format.`);
+    return `${new Intl.NumberFormat('es-CL').format(price)} ${currency || 'CLP'}`;
   }
 };
 
 
 export default async function PropertyDetailPage({ params }: { params: { slug: string } }) {
-  const property = await getPropertyData(params.slug);
+  const property = await getPropertyBySlugAction(params.slug);
 
   if (!property) {
-    return <div className="text-center py-10">Propiedad no encontrada.</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Propiedad No Encontrada</h1>
+        <p className="text-muted-foreground">La propiedad que buscas no existe o no está disponible.</p>
+      </div>
+    );
   }
+  
+  const mainImage = property.images && property.images.length > 0 ? property.images[0] : 'https://placehold.co/800x450.png?text=Propiedad+Sin+Imagen';
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <Card className="overflow-hidden">
         <div className="relative aspect-[16/9] w-full">
           <Image
-            src={property.images[0] || 'https://placehold.co/800x450.png'}
+            src={mainImage}
             alt={property.title}
             fill
             className="object-cover"
             priority
-            data-ai-hint="modern department"
+            data-ai-hint="interior de propiedad"
           />
            <Badge variant="secondary" className="absolute top-4 left-4 text-sm py-1 px-3 capitalize shadow-md">
             {translatePropertyType(property.propertyType)}
@@ -84,19 +91,19 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
         </CardHeader>
         <CardContent className="p-6 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div className="p-3 bg-secondary rounded-lg">
+            <div className="p-3 bg-secondary/50 rounded-lg">
               <BedDouble className="mx-auto mb-1 h-6 w-6 text-primary" />
               <p className="font-medium">{property.bedrooms} Dormitorios</p>
             </div>
-            <div className="p-3 bg-secondary rounded-lg">
+            <div className="p-3 bg-secondary/50 rounded-lg">
               <Bath className="mx-auto mb-1 h-6 w-6 text-primary" />
               <p className="font-medium">{property.bathrooms} Baños</p>
             </div>
-             <div className="p-3 bg-secondary rounded-lg">
+             <div className="p-3 bg-secondary/50 rounded-lg">
               <HomeIcon className="mx-auto mb-1 h-6 w-6 text-primary" />
               <p className="font-medium">{property.areaSqMeters} m²</p>
             </div>
-            <div className="p-3 bg-secondary rounded-lg">
+            <div className="p-3 bg-secondary/50 rounded-lg">
               <Tag className="mx-auto mb-1 h-6 w-6 text-primary" />
               <p className="font-medium capitalize">{translateCategory(property.category)}</p>
             </div>
@@ -121,20 +128,22 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             </div>
           )}
 
-          <div className="border-t pt-6">
-            <h3 className="text-xl font-semibold mb-2 font-headline">Publicado por</h3>
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={property.author.avatarUrl} alt={property.author.name} />
-                <AvatarFallback>{property.author.name?.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-semibold">{property.author.name}</p>
-                <p className="text-xs text-muted-foreground">Se unió el {new Date(property.createdAt).toLocaleDateString('es-CL')} </p>
+          {property.author && (
+            <div className="border-t pt-6">
+              <h3 className="text-xl font-semibold mb-2 font-headline">Publicado por</h3>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={property.author.avatarUrl || `https://placehold.co/40x40.png?text=${property.author.name?.charAt(0).toUpperCase()}`} alt={property.author.name} data-ai-hint="persona" />
+                  <AvatarFallback>{property.author.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold">{property.author.name}</p>
+                  {property.createdAt && <p className="text-xs text-muted-foreground">Publicado el {new Date(property.createdAt).toLocaleDateString('es-CL')} </p>}
+                </div>
+                <Button variant="outline" className="ml-auto">Contactar al Anunciante</Button>
               </div>
-              <Button variant="outline" className="ml-auto">Contactar al Anunciante</Button>
             </div>
-          </div>
+          )}
           
         </CardContent>
       </Card>
@@ -163,13 +172,13 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             {sampleComments.map(comment => (
               <div key={comment.id} className="flex gap-3 items-start p-4 bg-secondary/50 rounded-lg">
                 <Avatar>
-                  <AvatarImage src={comment.author.avatarUrl} alt={comment.author.name} />
-                  <AvatarFallback>{comment.author.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                  <AvatarImage src={comment.author?.avatarUrl} alt={comment.author?.name} data-ai-hint="persona" />
+                  <AvatarFallback>{comment.author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-grow">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm">{comment.author.name}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleString('es-CL')}</span>
+                    <span className="font-semibold text-sm">{comment.author?.name}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleString('es-CL')}</span>
                   </div>
                   <p className="text-sm mt-1">{comment.content}</p>
                   <div className="flex items-center gap-2 mt-2">

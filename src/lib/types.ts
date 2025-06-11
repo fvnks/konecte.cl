@@ -26,7 +26,7 @@ export interface PropertyListing {
   user_id: string; // FK a User.id
   title: string;
   description: string;
-  property_type: PropertyType; // Renamed from propertyType
+  propertyType: PropertyType; // Changed from property_type
   category: ListingCategory;
   price: number;
   currency: string; // CLP, UF, USD
@@ -35,16 +35,16 @@ export interface PropertyListing {
   country: string;
   bedrooms: number;
   bathrooms: number;
-  area_sq_meters: number; // Renamed from areaSqMeters
-  images: string[]; // Podría ser JSON string en DB, parseado en la app
-  features?: string[]; // Podría ser JSON string en DB
+  areaSqMeters: number; // Changed from area_sq_meters
+  images: string[]; 
+  features?: string[]; 
   slug: string;
   upvotes: number;
-  comments_count: number; // Renamed from commentsCount
-  is_active: boolean; // Renamed from isActive
-  created_at: string; // Renamed from createdAt
-  updated_at: string; // Renamed from updatedAt
-  author?: User; // Para mostrar info del autor, opcionalmente cargado
+  commentsCount: number; // Changed from comments_count
+  isActive: boolean; // Changed from is_active
+  createdAt: string; // Changed from created_at
+  updatedAt: string; // Changed from updated_at
+  author?: User; 
 }
 
 
@@ -54,11 +54,10 @@ export interface SearchRequest {
   title: string;
   description: string;
   
-  // Instead of individual booleans, use arrays for multi-select
-  desiredPropertyType: PropertyType[]; // e.g., ['rent', 'sale']
-  desiredCategories: ListingCategory[]; // e.g., ['apartment', 'house']
+  desiredPropertyType: PropertyType[]; 
+  desiredCategories: ListingCategory[]; 
   
-  desiredLocation: { // Encapsulate location
+  desiredLocation: { 
     city: string;
     neighborhood?: string;
   };
@@ -67,10 +66,10 @@ export interface SearchRequest {
   budgetMax?: number;
   commentsCount: number;
   slug: string;
-  isActive: boolean; // Renamed from is_active
-  createdAt: string; // Renamed from created_at
-  updatedAt: string; // Renamed from updated_at
-  author?: User; // Para mostrar info del autor
+  isActive: boolean; 
+  createdAt: string; 
+  updatedAt: string; 
+  author?: User; 
 }
 
 
@@ -88,7 +87,7 @@ export interface Comment {
 }
 
 export interface GoogleSheetConfig {
-  id?: number; // PK, solo una fila en la tabla
+  id?: number; 
   sheetId: string | null;
   sheetName: string | null;
   columnsToDisplay: string | null;
@@ -106,7 +105,7 @@ export const initialSampleRoles: Role[] = [
 export const placeholderUser: User = {
   id: 'user1',
   name: 'Juanita Pérez',
-  avatarUrl: 'https://placehold.co/40x40.png',
+  avatarUrl: 'https://placehold.co/40x40.png?text=JP',
   email: 'juanita.perez@example.com',
   role_id: 'admin', 
   role_name: 'Administrador'
@@ -156,7 +155,7 @@ export const sampleProperties: PropertyListing[] = [
     title: 'Amplio Departamento de 3 Dormitorios en el Centro de Santiago',
     slug: 'amplio-departamento-3-dormitorios-centro-santiago',
     description: 'Un hermoso y espacioso departamento ubicado en el corazón del centro de la ciudad, perfecto para familias o profesionales. Cuenta con comodidades modernas e impresionantes vistas.',
-    property_type: 'rent',
+    propertyType: 'rent',
     category: 'apartment',
     price: 750000,
     currency: 'CLP',
@@ -165,15 +164,15 @@ export const sampleProperties: PropertyListing[] = [
     country: 'Chile',
     bedrooms: 3,
     bathrooms: 2,
-    area_sq_meters: 120,
+    areaSqMeters: 120,
     images: ['https://placehold.co/600x400.png?text=Living+Comedor', 'https://placehold.co/600x400.png?text=Dormitorio+1', 'https://placehold.co/600x400.png?text=Cocina'],
     author: sampleUsers.find(u => u.id === 'user2')!,
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 1).toISOString(),
+    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
     upvotes: 120,
-    comments_count: 15,
+    commentsCount: 15,
     features: ['Admite mascotas', 'Gimnasio', 'Estacionamiento'],
-    is_active: true,
+    isActive: true,
   },
   {
     id: 'prop2',
@@ -181,7 +180,7 @@ export const sampleProperties: PropertyListing[] = [
     title: 'Casa Moderna con Jardín en Venta en Las Condes',
     slug: 'casa-moderna-con-jardin-en-venta-las-condes',
     description: 'Casa moderna recientemente renovada con un hermoso jardín y quincho. Ideal para quienes buscan un entorno de vida tranquilo y confortable en un buen sector.',
-    property_type: 'sale',
+    propertyType: 'sale',
     category: 'house',
     price: 12500, 
     currency: 'UF',
@@ -190,15 +189,15 @@ export const sampleProperties: PropertyListing[] = [
     country: 'Chile',
     bedrooms: 4,
     bathrooms: 3,
-    area_sq_meters: 200,
+    areaSqMeters: 200,
     images: ['https://placehold.co/600x400.png?text=Fachada', 'https://placehold.co/600x400.png?text=Jardin+Quincho', 'https://placehold.co/600x400.png?text=Dormitorio+Principal'],
     author: placeholderUser, 
-    created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
     upvotes: 250,
-    comments_count: 30,
+    commentsCount: 30,
     features: ['Gran jardín', 'Estacionamiento', 'Piscina', 'Quincho'],
-    is_active: true,
+    isActive: true,
   },
 ];
 
@@ -231,9 +230,9 @@ export const sampleRequests: SearchRequest[] = [
     description: 'Somos una familia de cuatro que busca comprar una casa en un barrio familiar en Ñuñoa o La Reina. Necesitamos al menos 3 dormitorios, patio para los niños y un buen sector. Presupuesto hasta 10.000 UF.',
     desiredPropertyType: ['sale'],
     desiredCategories: ['house'],
-    desiredLocation: { city: 'Ñuñoa' }, // Corrected: ensure desiredLocation object exists
+    desiredLocation: { city: 'Ñuñoa', neighborhood: 'Plaza Egaña' },
     minBedrooms: 3,
-    budgetMax: 10000, // Assuming UF, formatting handled in component
+    budgetMax: 10000,
     author: placeholderUser,
     createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
     updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
