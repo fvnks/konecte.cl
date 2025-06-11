@@ -2,14 +2,14 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Search as SearchIcon, AlertTriangle, Building } from "lucide-react";
+import { PlusCircle, Search as SearchIcon, AlertTriangle, Building, FileSearch } from "lucide-react";
 import Link from "next/link";
 import PropertyListItem from "@/components/property/PropertyListItem";
-import RequestCard from "@/components/request/RequestCard";
+import RequestListItem from "@/components/request/RequestListItem"; // Actualizado de RequestCard a RequestListItem
 import type { PropertyListing, SearchRequest } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import { getPropertiesAction } from "@/actions/propertyActions";
-import { getRequestsAction } from "@/actions/requestActions";
+import { getRequestsAction } from "@/actions/requestActions"; // Asegúrate que esta acción esté implementada
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -143,13 +143,16 @@ export default async function HomePage() {
         </TabsContent>
         <TabsContent value="requests" className="mt-8">
           {recentRequests.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6"> {/* Cambiado de grid a space-y-6 para formato de lista */}
               {recentRequests.map((request) => (
-                <RequestCard key={request.id} request={request} />
+                <RequestListItem key={request.id} request={request} /> // Usando RequestListItem
               ))}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-8">Aún no hay solicitudes recientes.</p>
+             <div className="text-center py-10 text-muted-foreground">
+                <FileSearch className="h-12 w-12 mx-auto mb-2" />
+                <p>Aún no hay solicitudes recientes publicadas.</p>
+            </div>
           )}
            <div className="mt-8 text-center">
             <Button variant="outline" asChild>
@@ -176,4 +179,3 @@ export default async function HomePage() {
     </div>
   );
 }
-

@@ -1,11 +1,11 @@
 
 // src/app/requests/page.tsx
-import RequestCard from "@/components/request/RequestCard";
+import RequestListItem from "@/components/request/RequestListItem"; // Actualizado
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { SearchRequest } from "@/lib/types"; 
-import { Filter, ListFilter, Search as SearchIconLucide } from "lucide-react";
+import { Filter, ListFilter, Search as SearchIconLucide, FileSearch } from "lucide-react"; // Icono cambiado
 import Link from "next/link";
 import { getRequestsAction } from "@/actions/requestActions";
 
@@ -47,14 +47,14 @@ export default async function RequestsPage() {
       </div>
 
       {requests.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="space-y-6"> {/* Cambiado de grid a space-y-6 para formato de lista */}
           {requests.map((request) => (
-            <RequestCard key={request.id} request={request} />
+            <RequestListItem key={request.id} request={request} /> // Usando RequestListItem
           ))}
         </div>
       ) : (
         <div className="text-center py-12">
-          <SearchIconLucide className="mx-auto h-12 w-12 text-muted-foreground" />
+          <FileSearch className="mx-auto h-12 w-12 text-muted-foreground" /> {/* Icono cambiado */}
           <h3 className="mt-2 text-xl font-semibold">No se Encontraron Solicitudes</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             Actualmente no hay solicitudes publicadas. ¡O sé el primero en publicar una!
@@ -74,4 +74,3 @@ export default async function RequestsPage() {
     </div>
   );
 }
-
