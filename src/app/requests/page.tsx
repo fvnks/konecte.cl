@@ -4,14 +4,13 @@ import RequestCard from "@/components/request/RequestCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { SearchRequest } from "@/lib/types"; // Import type
+import type { SearchRequest } from "@/lib/types"; 
 import { Filter, ListFilter, Search as SearchIconLucide } from "lucide-react";
 import Link from "next/link";
+import { getRequestsAction } from "@/actions/requestActions";
 
-export default function RequestsPage() {
-  // TODO: Implementar carga desde BD
-  // En una aplicación real, aquí obtendrías y filtrarías estos datos desde tu backend/DB.
-  const requests: SearchRequest[] = []; 
+export default async function RequestsPage() {
+  const requests: SearchRequest[] = await getRequestsAction(); 
 
   return (
     <div className="space-y-8">
@@ -66,8 +65,7 @@ export default function RequestsPage() {
         </div>
       )}
 
-      {/* Pagination Placeholder - Consider removing or implementing if not used soon */}
-      {requests.length > 10 && ( // Show pagination only if there are enough items
+      {requests.length > 10 && ( 
         <div className="flex justify-center mt-8">
           <Button variant="outline" className="mr-2" disabled>Anterior</Button>
           <Button variant="outline">Siguiente</Button>
@@ -76,3 +74,4 @@ export default function RequestsPage() {
     </div>
   );
 }
+

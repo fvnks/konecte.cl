@@ -1,6 +1,6 @@
 
 // src/app/dashboard/page.tsx
-'use client'; // This needs to be a client component to access localStorage
+'use client'; 
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -8,16 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PlusCircle, ListTree, SearchCheck, Building, UserCircle, Loader2 } from 'lucide-react';
 import PropertyListItem from '@/components/property/PropertyListItem';
 import RequestCard from '@/components/request/RequestCard';
-import { placeholderUser } from '@/lib/types'; // User type for StoredUser
 import type { PropertyListing, SearchRequest, User as StoredUser } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { getUserPropertiesAction } from '@/actions/propertyActions';
-
-// Simulación: En una app real, obtendrías estos datos del usuario autenticado desde tu backend.
-async function getUserSampleRequests(): Promise<SearchRequest[]> {
-  // TODO: Implementar carga desde BD para las solicitudes del usuario
-  return []; 
-}
+import { getUserRequestsAction } from '@/actions/requestActions'; // Importar la nueva acción
 
 export default function DashboardPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
@@ -44,13 +38,12 @@ export default function DashboardPage() {
         setIsLoading(true);
         const [properties, requests] = await Promise.all([
           getUserPropertiesAction(loggedInUser.id),
-          getUserSampleRequests() // Ahora devuelve array vacío
+          getUserRequestsAction(loggedInUser.id) // Usar la acción real
         ]);
         setUserProperties(properties);
         setUserRequests(requests);
         setIsLoading(false);
       } else {
-        // Not logged in, or user ID not available
         setIsLoading(false);
         setUserProperties([]);
         setUserRequests([]);
@@ -167,3 +160,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

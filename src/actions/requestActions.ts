@@ -1,62 +1,202 @@
+
 // src/actions/requestActions.ts
 'use server';
 
 import type { RequestFormValues } from "@/components/request/RequestForm";
-import { placeholderUser } from "@/lib/types"; // Usaremos un usuario placeholder por ahora
+import { query } from "@/lib/db";
+import type { SearchRequest, User, PropertyType, ListingCategory } from "@/lib/types";
+import { randomUUID } from "crypto";
+import { revalidatePath } from "next/cache";
 
-// En una aplicación real, aquí guardarías los datos en tu base de datos.
-// Esta es una acción simulada.
+// Helper function to generate a slug from a title
+const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .trim()
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-'); // Replace multiple hyphens with a single one
+};
+
+function mapDbRowToSearchRequest(row: any): SearchRequest {
+  const desiredPropertyType: PropertyType[] = [];
+  if (row.desired_property_type_rent) desiredPropertyType.push('rent');
+  if (row.desired_property_type_sale) desiredPropertyType.push('sale');
+
+  const desiredCategories: ListingCategory[] = [];
+  if (row.desired_category_apartment) desiredCategories.push('apartment');
+  if (row.desired_category_house) desiredCategories.push('house');
+  if (row.desired_category_condo) desiredCategories.push('condo');
+  if (row.desired_category_land) desiredCategories.push('land');
+  if (row.desired_category_commercial) desiredCategories.push('commercial');
+  if (row.desired_category_other) desiredCategories.push('other');
+  
+  const author: User | undefined = row.author_name ? {
+    id: row.user_id,
+    name: row.author_name,
+    avatarUrl: row.author_avatar_url || undefined,
+    role_id: '', // No es crucial para mostrar la tarjeta de solicitud, se puede añadir si es necesario.
+  } : undefined;
+
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    title: row.title,
+    slug: row.slug,
+    description: row.description,
+    desiredPropertyType,
+    desiredCategories,
+    desiredLocation: {
+      city: row.desired_location_city,
+      neighborhood: row.desired_location_neighborhood || undefined,
+    },
+    minBedrooms: row.min_bedrooms !== null ? Number(row.min_bedrooms) : undefined,
+    minBathrooms: row.min_bathrooms !== null ? Number(row.min_bathrooms) : undefined,
+    budgetMax: row.budget_max !== null ? Number(row.budget_max) : undefined,
+    commentsCount: Number(row.comments_count),
+    isActive: Boolean(row.is_active),
+    createdAt: new Date(row.created_at).toISOString(),
+    updatedAt: new Date(row.updated_at).toISOString(),
+    author,
+  };
+}
+
 export async function submitRequestAction(
-  data: RequestFormValues
-): Promise<{ success: boolean; message?: string; requestId?: string }> {
-  console.log("Datos de la solicitud de propiedad recibidos en el servidor:", data);
+  data: RequestFormValues,
+  userId: string
+): Promise<{ success: boolean; message?: string; requestId?: string, requestSlug?: string }> {
+  console.log("[RequestAction] Request data received on server:", data, "UserID:", userId);
 
-  // Simulación de creación de solicitud
+  if (!userId) {
+    return { success: false, message: "Usuario no autenticado." };
+  }
+
   try {
-    // Aquí iría la lógica para insertar 'data' en tu base de datos MySQL.
-    // También generarías un ID único, un slug, y asignarías el autor (usuario logueado).
+    const requestId = randomUUID();
+    const slug = generateSlug(data.title);
 
-    // Ejemplo de cómo podrías construir un objeto SearchRequest parcial:
-    const newRequestPartial = {
-      ...data,
-      id: `req${Math.floor(Math.random() * 10000)}`, // ID simulado
-      author: placeholderUser, // Usuario simulado
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      commentsCount: 0,
-      slug: data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
-      // Ajustar campos específicos del formulario de solicitud:
-      desiredLocation: {
-        city: data.desiredLocationCity,
-        neighborhood: data.desiredLocationNeighborhood,
-      },
-      // Los campos minBedrooms, minBathrooms, budgetMax ya están en 'data' si fueron provistos.
-    };
+    const sql = `
+      INSERT INTO property_requests (
+        id, user_id, title, slug, description,
+        desired_property_type_rent, desired_property_type_sale,
+        desired_category_apartment, desired_category_house, desired_category_condo,
+        desired_category_land, desired_category_commercial, desired_category_other,
+        desired_location_city, desired_location_neighborhood,
+        min_bedrooms, min_bathrooms, budget_max,
+        is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
+    `;
 
-    console.log("Solicitud simulada a ser guardada:", newRequestPartial);
+    const params = [
+      requestId,
+      userId,
+      data.title,
+      slug,
+      data.description,
+      data.desiredPropertyType.includes('rent'),
+      data.desiredPropertyType.includes('sale'),
+      data.desiredCategories.includes('apartment'),
+      data.desiredCategories.includes('house'),
+      data.desiredCategories.includes('condo'),
+      data.desiredCategories.includes('land'),
+      data.desiredCategories.includes('commercial'),
+      data.desiredCategories.includes('other'),
+      data.desiredLocationCity,
+      data.desiredLocationNeighborhood || null,
+      data.minBedrooms !== undefined && data.minBedrooms !== '' ? data.minBedrooms : null,
+      data.minBathrooms !== undefined && data.minBathrooms !== '' ? data.minBathrooms : null,
+      data.budgetMax !== undefined && data.budgetMax !== '' ? data.budgetMax : null,
+    ];
     
-    // Aquí podrías añadirlo a una lista en memoria para demostración o interactuar con una API simulada.
-    // Por ejemplo, podríamos añadirlo a 'sampleRequests' (aunque esto solo sería temporal en memoria del servidor)
-    // sampleRequests.unshift(newRequestPartial as any); // 'as any' por la diferencia de tipos
+    await query(sql, params);
+    console.log(`[RequestAction] Request submitted successfully. ID: ${requestId}, Slug: ${slug}`);
 
-    // Simular un pequeño retraso de red/base de datos
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    revalidatePath('/');
+    revalidatePath('/requests');
+    revalidatePath(`/requests/${slug}`);
+    revalidatePath('/dashboard');
 
-    // Simular un error aleatorio para pruebas
-    // if (Math.random() > 0.8) {
-    //   return { success: false, message: "Error simulado al guardar la solicitud." };
-    // }
+    return { success: true, message: "Solicitud publicada exitosamente.", requestId, requestSlug: slug };
 
-    return { success: true, message: "Solicitud publicada exitosamente.", requestId: newRequestPartial.id };
-
-  } catch (error) {
-    console.error("Error al simular el guardado de la solicitud:", error);
-    let message = "Ocurrió un error desconocido.";
-    if (error instanceof Error) {
+  } catch (error: any) {
+    console.error("[RequestAction] Error submitting request:", error);
+    let message = "Ocurrió un error desconocido al publicar la solicitud.";
+     if (error.code === 'ER_DUP_ENTRY' && error.message.includes('property_requests.slug')) {
+        message = "Ya existe una solicitud con un título muy similar (slug duplicado). Intenta con un título ligeramente diferente.";
+    } else if (error.message) {
       message = error.message;
     }
     return { success: false, message };
   }
 }
 
-    
+export async function getRequestsAction(): Promise<SearchRequest[]> {
+  try {
+    const sql = `
+      SELECT 
+        pr.*, 
+        u.name as author_name, 
+        u.avatar_url as author_avatar_url 
+      FROM property_requests pr
+      LEFT JOIN users u ON pr.user_id = u.id
+      WHERE pr.is_active = TRUE
+      ORDER BY pr.created_at DESC
+    `;
+    const rows = await query(sql);
+    if (!Array.isArray(rows)) {
+        console.error("[RequestAction] Expected array from getRequestsAction, got:", typeof rows);
+        return [];
+    }
+    return rows.map(mapDbRowToSearchRequest);
+  } catch (error: any) {
+    console.error("[RequestAction] Error fetching requests:", error);
+    return [];
+  }
+}
+
+export async function getRequestBySlugAction(slug: string): Promise<SearchRequest | null> {
+  try {
+    const sql = `
+      SELECT 
+        pr.*, 
+        u.name as author_name, 
+        u.avatar_url as author_avatar_url
+      FROM property_requests pr
+      LEFT JOIN users u ON pr.user_id = u.id
+      WHERE pr.slug = ? AND pr.is_active = TRUE
+    `;
+    const rows = await query(sql, [slug]);
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return null;
+    }
+    return mapDbRowToSearchRequest(rows[0]);
+  } catch (error: any) {
+    console.error(`[RequestAction] Error fetching request by slug ${slug}:`, error);
+    return null;
+  }
+}
+
+export async function getUserRequestsAction(userId: string): Promise<SearchRequest[]> {
+  if (!userId) return [];
+  try {
+    const sql = `
+      SELECT 
+        pr.*,
+        u.name as author_name,
+        u.avatar_url as author_avatar_url
+      FROM property_requests pr
+      LEFT JOIN users u ON pr.user_id = u.id
+      WHERE pr.user_id = ?
+      ORDER BY pr.created_at DESC
+    `;
+    const rows = await query(sql, [userId]);
+     if (!Array.isArray(rows)) {
+        console.error("[RequestAction] Expected array from getUserRequestsAction, got:", typeof rows);
+        return [];
+    }
+    return rows.map(mapDbRowToSearchRequest);
+  } catch (error: any) {
+    console.error(`[RequestAction] Error fetching requests for user ${userId}:`, error);
+    return [];
+  }
+}

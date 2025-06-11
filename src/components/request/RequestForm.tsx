@@ -20,8 +20,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { submitRequestAction } from "@/actions/requestActions";
-import type { PropertyType, ListingCategory } from "@/lib/types";
+import type { PropertyType, ListingCategory, User as StoredUser } from "@/lib/types";
 import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -53,6 +55,24 @@ export type RequestFormValues = z.infer<typeof formSchema>;
 
 export default function RequestForm() {
   const { toast } = useToast();
+  const router = useRouter();
+  const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const userJson = localStorage.getItem('loggedInUser');
+    if (userJson) {
+      try {
+        setLoggedInUser(JSON.parse(userJson));
+      } catch (error) {
+        console.error("Error parsing user from localStorage", error);
+        localStorage.removeItem('loggedInUser'); 
+      }
+    }
+    setIsCheckingAuth(false);
+  }, []);
+
+
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -69,6 +89,16 @@ export default function RequestForm() {
   });
 
   async function onSubmit(values: RequestFormValues) {
+     if (!loggedInUser || !loggedInUser.id) {
+      toast({
+        title: "Acción Requerida",
+        description: "Debes iniciar sesión para publicar una solicitud.",
+        variant: "destructive",
+        action: <Button onClick={() => router.push('/auth/signin')}>Iniciar Sesión</Button>
+      });
+      return;
+    }
+
     const dataToSubmit = {
         ...values,
         minBedrooms: values.minBedrooms === '' ? undefined : values.minBedrooms,
@@ -76,15 +106,15 @@ export default function RequestForm() {
         budgetMax: values.budgetMax === '' ? undefined : values.budgetMax,
     };
 
-    // TODO: Conectar esta acción con la base de datos cuando se implemente el backend para solicitudes.
-    // Por ahora, la acción submitRequestAction es simulada y no guarda en la BD.
-    const result = await submitRequestAction(dataToSubmit);
+    const result = await submitRequestAction(dataToSubmit, loggedInUser.id);
     if (result.success) {
       toast({
-        title: "Solicitud Publicada (Simulación)",
-        description: "Tu solicitud de propiedad ha sido enviada (actualmente es una simulación y no se guarda en la base de datos).",
+        title: "Solicitud Publicada",
+        description: "Tu solicitud de propiedad ha sido enviada exitosamente.",
       });
       form.reset();
+      // Opcional: Redirigir a la página de la solicitud recién creada
+      // if (result.requestSlug) router.push(`/requests/${result.requestSlug}`);
     } else {
       toast({
         title: "Error al Publicar Solicitud",
@@ -92,6 +122,15 @@ export default function RequestForm() {
         variant: "destructive",
       });
     }
+  }
+
+  if (isCheckingAuth) {
+    return (
+      <div className="flex justify-center items-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Verificando autenticación...</p>
+      </div>
+    );
   }
 
   return (
@@ -297,11 +336,12 @@ export default function RequestForm() {
           />
         </div>
         
-        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth}>
+          {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Publicar Solicitud
         </Button>
       </form>
     </Form>
   );
 }
+

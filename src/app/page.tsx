@@ -6,9 +6,10 @@ import { PlusCircle, Search as SearchIcon, AlertTriangle, Building } from "lucid
 import Link from "next/link";
 import PropertyListItem from "@/components/property/PropertyListItem";
 import RequestCard from "@/components/request/RequestCard";
-import type { PropertyListing, SearchRequest } from "@/lib/types"; // Removed sampleRequests, added SearchRequest
+import type { PropertyListing, SearchRequest } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import { getPropertiesAction } from "@/actions/propertyActions";
+import { getRequestsAction } from "@/actions/requestActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -77,10 +78,10 @@ async function GoogleSheetSection() {
 
 export default async function HomePage() {
   const allProperties: PropertyListing[] = await getPropertiesAction();
-  const featuredProperties = allProperties.slice(0, 3); // Get first 3 or fewer
-  // TODO: Implementar carga desde BD para solicitudes recientes.
-  // Por ahora, mostramos un array vacío, lo que resultará en un mensaje de "Aún no hay solicitudes recientes."
-  const recentRequests: SearchRequest[] = []; 
+  const featuredProperties = allProperties.slice(0, 3); 
+  
+  const allRequests: SearchRequest[] = await getRequestsAction();
+  const recentRequests = allRequests.slice(0, 2);
 
   return (
     <div className="space-y-12">
@@ -141,12 +142,15 @@ export default async function HomePage() {
           </div>
         </TabsContent>
         <TabsContent value="requests" className="mt-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {recentRequests.map((request) => (
-              <RequestCard key={request.id} request={request} />
-            ))}
-          </div>
-          {recentRequests.length === 0 && <p className="text-center text-muted-foreground py-8">Aún no hay solicitudes recientes.</p>}
+          {recentRequests.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {recentRequests.map((request) => (
+                <RequestCard key={request.id} request={request} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">Aún no hay solicitudes recientes.</p>
+          )}
            <div className="mt-8 text-center">
             <Button variant="outline" asChild>
               <Link href="/requests">Ver Todas las Solicitudes</Link>
@@ -172,3 +176,4 @@ export default async function HomePage() {
     </div>
   );
 }
+

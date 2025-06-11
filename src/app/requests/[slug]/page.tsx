@@ -1,5 +1,4 @@
 
-
 import { placeholderUser, type Comment as CommentType, type PropertyType, type ListingCategory, type SearchRequest } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,17 +6,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MapPin, BedDouble, Bath, DollarSign, Tag, ThumbsUp, MessageSquare, Send, UserCircle, SearchIcon, AlertTriangle } from "lucide-react";
+import { getRequestBySlugAction } from "@/actions/requestActions";
 
-// TODO: Implementar carga desde BD
-async function getRequestData(slug: string): Promise<SearchRequest | undefined> {
-  // Esta función debería obtener los datos de la solicitud desde la base de datos usando el slug.
-  console.log(`TODO: Cargar datos para la solicitud con slug: ${slug} desde la BD.`);
-  // Por ahora, devolvemos undefined, lo que mostrará "Solicitud no encontrada".
-  return undefined; 
-}
-
-// TODO: Implementar carga de comentarios desde BD
-const sampleComments: CommentType[] = []; 
+const sampleComments: CommentType[] = []; // TODO: Implementar carga de comentarios desde BD
 
 const translatePropertyType = (type: PropertyType): string => {
   if (type === 'rent') return 'Arriendo';
@@ -38,7 +29,7 @@ const translateCategory = (category: ListingCategory): string => {
 }
 
 export default async function RequestDetailPage({ params }: { params: { slug: string } }) {
-  const request = await getRequestData(params.slug);
+  const request = await getRequestBySlugAction(params.slug);
 
   if (!request) {
     return (
@@ -60,7 +51,7 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
         <CardHeader className="p-6">
            <div className="flex items-center gap-3 mb-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={request.author?.avatarUrl} alt={request.author?.name} />
+                <AvatarImage src={request.author?.avatarUrl || `https://placehold.co/64x64.png?text=${request.author?.name?.charAt(0).toUpperCase()}`} alt={request.author?.name} data-ai-hint="persona" />
                 <AvatarFallback className="text-2xl">{request.author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>
@@ -96,19 +87,19 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
                     <span><strong>Buscando para:</strong> {request.desiredPropertyType.map(translatePropertyType).join(', ')}</span>
                   </div>
                 )}
-                {request.minBedrooms && (
+                {request.minBedrooms !== undefined && (
                   <div className="flex items-start">
                     <BedDouble className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                     <span><strong>Dormitorios:</strong> {request.minBedrooms}+</span>
                   </div>
                 )}
-                 {request.minBathrooms && (
+                 {request.minBathrooms !== undefined && (
                   <div className="flex items-start">
                     <Bath className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                     <span><strong>Baños:</strong> {request.minBathrooms}+</span>
                   </div>
                 )}
-                {request.budgetMax && (
+                {request.budgetMax !== undefined && (
                   <div className="flex items-start">
                     <DollarSign className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                     <span><strong>Presupuesto Máx.:</strong> ${request.budgetMax.toLocaleString('es-CL')}</span>
@@ -152,7 +143,7 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
             {sampleComments.map(comment => (
               <div key={comment.id} className="flex gap-3 items-start p-4 bg-secondary/50 rounded-lg">
                 <Avatar>
-                  <AvatarImage src={comment.author?.avatarUrl} alt={comment.author?.name} />
+                  <AvatarImage src={comment.author?.avatarUrl} alt={comment.author?.name} data-ai-hint="persona" />
                   <AvatarFallback>{comment.author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-grow">
@@ -177,3 +168,4 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
     </div>
   );
 }
+
