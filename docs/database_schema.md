@@ -12,22 +12,48 @@ A medida que la aplicación evolucione, este esquema se actualizará.
 
 ---
 
+## Tabla: `roles` (Roles de Usuario)
+
+Almacena los diferentes roles que un usuario puede tener.
+
+```sql
+CREATE TABLE roles (
+    id VARCHAR(36) PRIMARY KEY,                          -- Identificador único para el rol (ej: 'admin', 'user', 'editor')
+    name VARCHAR(255) NOT NULL UNIQUE,                   -- Nombre legible del rol (ej: 'Administrador', 'Usuario Estándar')
+    description TEXT,                                    -- Descripción opcional del rol
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Insertar roles iniciales
+INSERT INTO roles (id, name, description) VALUES 
+('admin', 'Administrador', 'Acceso total a todas las funcionalidades y configuraciones del sistema.'),
+('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.');
+```
+
+---
+
 ## Tabla: `users` (Usuarios)
 
 Almacena la información de los usuarios registrados.
 
 ```sql
 CREATE TABLE users (
-    id VARCHAR(36) PRIMARY KEY,                           -- UUID o similar, si no es autoincremental
-    -- user_id INT AUTO_INCREMENT PRIMARY KEY,            -- Alternativa con ID numérico
+    id VARCHAR(36) PRIMARY KEY,                           -- UUID o similar
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,                 -- Hash de la contraseña
     avatar_url VARCHAR(2048),
-    role ENUM('user', 'admin') NOT NULL DEFAULT 'user',  -- Rol del usuario
+    role_id VARCHAR(36) NOT NULL,                        -- FK a roles.id
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT -- O SET DEFAULT si tienes un rol por defecto seguro
 );
+
+-- Índices
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_role_id ON users(role_id);
 ```
 
 ---
@@ -39,7 +65,6 @@ Almacena los listados de propiedades.
 ```sql
 CREATE TABLE properties (
     id VARCHAR(36) PRIMARY KEY,
-    -- property_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,                          -- FK a users.id
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,                     -- Para URLs amigables
@@ -54,13 +79,13 @@ CREATE TABLE properties (
     bedrooms INT NOT NULL DEFAULT 0,
     bathrooms INT NOT NULL DEFAULT 0,
     area_sq_meters DECIMAL(10,2) NOT NULL,
-    images TEXT,                                           -- URLs de imágenes, separadas por comas o JSON array
-    features TEXT,                                         -- Características, separadas por comas o JSON array
+    images JSON,                                           -- JSON array de URLs de imágenes
+    features JSON,                                         -- JSON array de características
     upvotes INT DEFAULT 0,
     comments_count INT DEFAULT 0,                          -- Se puede actualizar con triggers o lógica de app
+    is_active BOOLEAN DEFAULT TRUE,                        -- Para activar/desactivar listados
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE,                        -- Para activar/desactivar listados
     
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -82,33 +107,33 @@ Almacena las solicitudes de búsqueda de propiedades de los usuarios.
 ```sql
 CREATE TABLE property_requests (
     id VARCHAR(36) PRIMARY KEY,
-    -- request_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,                          -- FK a users.id
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
     description TEXT NOT NULL,
-    desired_property_type_rent BOOLEAN DEFAULT FALSE,      -- Si busca para arriendo
-    desired_property_type_sale BOOLEAN DEFAULT FALSE,      -- Si busca para venta
-    -- Alternativa para desired_property_type: VARCHAR(255) para 'rent,sale' o tabla de unión
+    
+    -- Tipos de transacción deseados (booleanos para simplificar)
+    desired_property_type_rent BOOLEAN DEFAULT FALSE,      
+    desired_property_type_sale BOOLEAN DEFAULT FALSE,      
 
+    -- Categorías de propiedad deseadas (booleanos)
     desired_category_apartment BOOLEAN DEFAULT FALSE,
     desired_category_house BOOLEAN DEFAULT FALSE,
     desired_category_condo BOOLEAN DEFAULT FALSE,
     desired_category_land BOOLEAN DEFAULT FALSE,
     desired_category_commercial BOOLEAN DEFAULT FALSE,
     desired_category_other BOOLEAN DEFAULT FALSE,
-    -- Alternativa para desired_categories: VARCHAR(255) o tabla de unión
-
+    
     desired_location_city VARCHAR(100) NOT NULL,
     desired_location_neighborhood VARCHAR(100),
     min_bedrooms INT,
     min_bathrooms INT,
     budget_max DECIMAL(15,2),
-    -- budget_currency VARCHAR(3) DEFAULT 'CLP', -- Si el presupuesto puede ser en diferentes monedas
+    -- budget_currency VARCHAR(3) DEFAULT 'CLP', -- Considerar si el presupuesto puede ser en diferentes monedas
     comments_count INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE,
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -117,12 +142,7 @@ CREATE TABLE property_requests (
 CREATE INDEX idx_property_requests_slug ON property_requests(slug);
 CREATE INDEX idx_property_requests_user_id ON property_requests(user_id);
 CREATE INDEX idx_property_requests_city ON property_requests(desired_location_city);
-
 ```
-*Nota sobre `desired_property_type` y `desired_categories` en `property_requests`:*
-Usar campos booleanos individuales es simple para un número fijo de opciones. Si las opciones pueden crecer o se necesita más flexibilidad, una tabla de unión (muchos a muchos) entre `property_requests` y `property_types`/`categories` sería una mejor solución. Por ejemplo:
-`request_property_types (request_id, property_type_value)`
-`request_categories (request_id, category_value)`
 
 ---
 
@@ -133,12 +153,10 @@ Almacena comentarios para propiedades y solicitudes.
 ```sql
 CREATE TABLE comments (
     id VARCHAR(36) PRIMARY KEY,
-    -- comment_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,                          -- FK a users.id
     content TEXT NOT NULL,
     parent_id VARCHAR(36),                                 -- Para comentarios anidados (referencia a comments.id)
     
-    -- Para vincular el comentario a una propiedad O una solicitud
     property_id VARCHAR(36),                               -- FK a properties.id (NULL si es para una solicitud)
     request_id VARCHAR(36),                                -- FK a property_requests.id (NULL si es para una propiedad)
 
@@ -147,11 +165,10 @@ CREATE TABLE comments (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE SET NULL, -- O CASCADE
+    FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE SET NULL, 
     FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
     FOREIGN KEY (request_id) REFERENCES property_requests(id) ON DELETE CASCADE,
 
-    -- Asegura que un comentario pertenezca a una propiedad O una solicitud, pero no a ambas (y no a ninguna)
     CONSTRAINT chk_comment_target CHECK (
         (property_id IS NOT NULL AND request_id IS NULL) OR 
         (property_id IS NULL AND request_id IS NOT NULL)
@@ -164,26 +181,26 @@ CREATE INDEX idx_comments_property_id ON comments(property_id);
 CREATE INDEX idx_comments_request_id ON comments(request_id);
 CREATE INDEX idx_comments_parent_id ON comments(parent_id);
 ```
-
 ---
 
-## Tabla: `property_upvotes` (Votos para Propiedades - Ejemplo)
-
-Si se desea un sistema de votos más detallado (quién votó qué).
+## Tabla: `google_sheet_configs` (Configuración de Google Sheets)
+Almacena la configuración para la integración con Google Sheets. Se espera que haya una sola fila.
 
 ```sql
--- CREATE TABLE property_upvotes (
---     user_id VARCHAR(36) NOT NULL,
---     property_id VARCHAR(36) NOT NULL,
---     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     PRIMARY KEY (user_id, property_id),
---     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
---     FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
--- );
+CREATE TABLE google_sheet_configs (
+    id INT PRIMARY KEY DEFAULT 1, -- Asumimos una única fila de configuración global
+    sheet_id VARCHAR(255),
+    sheet_name VARCHAR(255),
+    columns_to_display TEXT,      -- Nombres de encabezados separados por coma
+    is_configured BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT id_must_be_1 CHECK (id = 1) -- Asegura que solo exista la fila con id=1
+);
+
+-- Insertar configuración inicial (vacía o con valores por defecto)
+INSERT INTO google_sheet_configs (id, is_configured) VALUES (1, FALSE)
+ON DUPLICATE KEY UPDATE id = 1; -- Para evitar error si se ejecuta múltiples veces
 ```
 
 ---
-
-Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests`.
-
-Avísame cuando quieras definir la primera tabla y te ayudaré a generar el comando `CREATE TABLE` específico que podrás ejecutar.
+Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.

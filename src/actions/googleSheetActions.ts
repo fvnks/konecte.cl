@@ -2,32 +2,57 @@
 'use server';
 
 import type { GoogleSheetConfig } from "@/lib/types";
-import { getMockSheetConfig, saveMockSheetConfig as saveMockConfig } from "@/lib/types";
+import { query } from '@/lib/db';
+import { revalidatePath } from "next/cache";
 
-export async function saveGoogleSheetConfigAction(config: GoogleSheetConfig): Promise<{ success: boolean; message?: string }> {
+export async function saveGoogleSheetConfigAction(config: Omit<GoogleSheetConfig, 'id' | 'isConfigured'> & {isConfigured?: boolean}): Promise<{ success: boolean; message?: string }> {
   try {
-    console.log("Guardando configuración de Google Sheet:", config);
-    // En una app real, aquí guardarías `config` en tu base de datos o un sistema de configuración.
-    // Para la simulación, usamos localStorage (a través de saveMockConfig).
-    if (typeof window !== 'undefined') { 
-        saveMockConfig(config);
-    } else {
-        console.warn("saveGoogleSheetConfigAction llamada desde el servidor, la configuración no persistirá entre requests sin una BD o sistema de archivos.")
-    }
-    return { success: true };
-  } catch (error) {
-    console.error("Error al guardar la configuración de Google Sheet:", error);
-    return { success: false, message: "Error al guardar la configuración." };
+    const { sheetId, sheetName, columnsToDisplay } = config;
+    const isConfigured = config.isConfigured === undefined ? !!(sheetId && sheetName && columnsToDisplay) : config.isConfigured;
+
+    // En la tabla google_sheet_configs, siempre actualizaremos la fila con id=1
+    // o la insertaremos si no existe.
+    const sql = `
+      INSERT INTO google_sheet_configs (id, sheet_id, sheet_name, columns_to_display, is_configured)
+      VALUES (1, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        sheet_id = VALUES(sheet_id),
+        sheet_name = VALUES(sheet_name),
+        columns_to_display = VALUES(columns_to_display),
+        is_configured = VALUES(is_configured),
+        updated_at = CURRENT_TIMESTAMP
+    `;
+    await query(sql, [sheetId || null, sheetName || null, columnsToDisplay || null, isConfigured]);
+    
+    revalidatePath('/'); // Para que la página de inicio recargue los datos de la hoja
+    revalidatePath('/admin/settings');
+    return { success: true, message: "Configuración de Google Sheet guardada exitosamente." };
+  } catch (error: any) {
+    console.error("Error al guardar la configuración de Google Sheet en la BD:", error);
+    return { success: false, message: `Error al guardar la configuración: ${error.message}` };
   }
 }
 
 export async function getGoogleSheetConfigAction(): Promise<GoogleSheetConfig | null> {
   try {
-    const config = getMockSheetConfig();
-    console.log("Obteniendo configuración de Google Sheet (simulado):", config);
-    return config;
+    const result = await query('SELECT id, sheet_id as sheetId, sheet_name as sheetName, columns_to_display as columnsToDisplay, is_configured as isConfigured FROM google_sheet_configs WHERE id = 1');
+    if (result && result.length > 0) {
+      const config = result[0];
+      return {
+        ...config,
+        isConfigured: Boolean(config.isConfigured) // Asegurar que sea booleano
+      };
+    }
+    // Si no hay configuración, devolvemos un objeto por defecto no configurado
+    return {
+      id: 1,
+      sheetId: null,
+      sheetName: null,
+      columnsToDisplay: null,
+      isConfigured: false,
+    };
   } catch (error) {
-    console.error("Error al obtener la configuración de Google Sheet:", error);
+    console.error("Error al obtener la configuración de Google Sheet desde la BD:", error);
     return null;
   }
 }
@@ -36,12 +61,10 @@ interface SheetRow {
   [key: string]: string;
 }
 
-// Función para parsear CSV simple
 function parseCSV(csvText: string): { headers: string[]; data: string[][] } {
-  const lines = csvText.trim().split(/\r\n|\n/); // Manejar diferentes finales de línea
+  const lines = csvText.trim().split(/\r\n|\n/); 
   if (lines.length === 0) return { headers: [], data: [] };
 
-  // Función para parsear una línea CSV, manejando comillas
   const parseCsvLine = (line: string): string[] => {
     const result: string[] = [];
     let currentField = '';
@@ -50,7 +73,6 @@ function parseCSV(csvText: string): { headers: string[]; data: string[][] } {
       const char = line[i];
       if (char === '"') {
         if (inQuotes && i + 1 < line.length && line[i+1] === '"') {
-          // Escaped quote
           currentField += '"';
           i++;
         } else {
@@ -76,26 +98,19 @@ export async function fetchGoogleSheetDataAction(): Promise<{ headers: string[];
   const config = await getGoogleSheetConfigAction();
 
   if (!config || !config.isConfigured || !config.sheetId || !config.sheetName || !config.columnsToDisplay) {
-    console.log("Google Sheet no configurado o configuración incompleta.");
+    console.log("Google Sheet no configurado o configuración incompleta en la BD.");
     return null;
   }
 
-  // Construir la URL de exportación CSV
-  // Documentación no oficial sobre esto: https://gist.github.com/johndyer24/0dffbdd982c27c02652f
-  // Nota: El nombre de la hoja (sheetName) es más robusto que gid para la exportación CSV si el orden de las hojas cambia.
-  // Si sheetName contiene espacios u otros caracteres especiales, debe ser URL-encoded.
   const csvUrl = `https://docs.google.com/spreadsheets/d/${config.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(config.sheetName)}`;
-
   console.log(`Obteniendo datos de Google Sheet desde: ${csvUrl}`);
 
   try {
-    const response = await fetch(csvUrl, { cache: 'no-store' }); // Evitar caché agresiva
+    const response = await fetch(csvUrl, { cache: 'no-store' });
     if (!response.ok) {
       console.error(`Error al obtener la hoja de cálculo: ${response.status} ${response.statusText}`);
       const errorBody = await response.text();
       console.error("Cuerpo del error:", errorBody);
-      // Podrías retornar datos simulados aquí o manejar el error de forma más específica
-      // return getMockSheetData(config.columnsToDisplay); 
       return null;
     }
 
@@ -116,11 +131,10 @@ export async function fetchGoogleSheetDataAction(): Promise<{ headers: string[];
     const finalHeaders: string[] = [];
     const columnIndices: number[] = [];
 
-    // Coincidir las columnas solicitadas (nombres de encabezado) con los encabezados del CSV
     requestedColumns.forEach(requestedColName => {
       const foundIndex = rawHeaders.findIndex(csvHeader => csvHeader.toLowerCase() === requestedColName);
       if (foundIndex !== -1) {
-        finalHeaders.push(rawHeaders[foundIndex]); // Usar el nombre original del encabezado del CSV
+        finalHeaders.push(rawHeaders[foundIndex]); 
         columnIndices.push(foundIndex);
       } else {
         console.warn(`Encabezado de columna '${requestedColName}' no encontrado en el CSV. Encabezados disponibles: ${rawHeaders.join(', ')}`);
@@ -135,7 +149,6 @@ export async function fetchGoogleSheetDataAction(): Promise<{ headers: string[];
     const filteredRows: SheetRow[] = rawDataRows.map(rowArray => {
       const rowObject: SheetRow = {};
       columnIndices.forEach((colIndex, i) => {
-        // Asegurarse de que el índice no esté fuera de los límites para la fila actual
         rowObject[finalHeaders[i]] = colIndex < rowArray.length ? (rowArray[colIndex] || '') : '';
       });
       return rowObject;
@@ -145,46 +158,6 @@ export async function fetchGoogleSheetDataAction(): Promise<{ headers: string[];
 
   } catch (error) {
     console.error('Error al obtener o parsear datos de Google Sheets:', error);
-    // Considera retornar datos simulados en caso de error si es apropiado
-    // return getMockSheetData(config.columnsToDisplay);
     return null;
   }
-}
-
-
-// Función para generar datos simulados (se mantiene como fallback o para desarrollo)
-function getMockSheetData(columnsToDisplay: string): { headers: string[]; rows: SheetRow[] } {
-  const requestedHeaders = columnsToDisplay.split(',').map(h => h.trim()).filter(h => h.length > 0);
-  
-  const mockData: SheetRow[] = [
-    { "Nombre": "Juan Pérez (Simulado)", "Email": "juan.perez.sim@example.com", "Teléfono": "555-1234", "Empresa": "Tech Corp", "Cargo": "Desarrollador" },
-    { "Nombre": "Ana Gómez (Simulado)", "Email": "ana.gomez.sim@example.com", "Teléfono": "555-5678", "Empresa": "Innovate Ltd.", "Cargo": "Diseñadora" },
-  ];
-
-  if (requestedHeaders.length === 0 || requestedHeaders[0] === "") {
-    // Si no se especifican columnas, o está vacío, devolver un conjunto por defecto
-    const defaultHeaders = ["Nombre", "Email", "Teléfono"];
-    return { 
-      headers: defaultHeaders, 
-      rows: mockData.map(row => ({ 
-        "Nombre": row["Nombre"], 
-        "Email": row["Email"], 
-        "Teléfono": row["Teléfono"]
-      })) 
-    };
-  }
-  
-  const filteredRows = mockData.map(row => {
-    const newRow: SheetRow = {};
-    requestedHeaders.forEach(header => {
-      if (row[header] !== undefined) {
-        newRow[header] = row[header];
-      } else {
-        newRow[header] = `(Simulado: ${header} no encontrado)`;
-      }
-    });
-    return newRow;
-  });
-
-  return { headers: requestedHeaders, rows: filteredRows };
 }

@@ -1,54 +1,89 @@
 // src/app/admin/users/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { User, UserRole } from "@/lib/types";
-import { sampleUsers as initialSampleUsers } from "@/lib/types"; // Using placeholder data
-import { PlusCircle, UserCog, Users } from 'lucide-react';
+import type { User, Role } from "@/lib/types";
+import { getUsersAction, updateUserRoleAction } from '@/actions/userActions';
+import { getRolesAction } from '@/actions/roleActions';
+import { PlusCircle, UserCog, Users, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const roleOptions: { value: UserRole; label: string }[] = [
-  { value: "user", label: "Usuario" },
-  { value: "admin", label: "Administrador" },
-];
-
-const getRoleBadgeVariant = (role: UserRole) => {
-  if (role === 'admin') return 'default';
+const getRoleBadgeVariant = (roleId: string) => {
+  if (roleId === 'admin') return 'default'; // Primary color for admin
+  // Puedes añadir más variantes si quieres colores específicos para otros roles
   return 'secondary';
 };
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
-  // Manejaremos el estado de los usuarios localmente para esta simulación
   const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [isLoadingRoles, setIsLoadingRoles] = useState(true);
+  const [isPending, startTransition] = useTransition();
+
+  const fetchData = async () => {
+    setIsLoadingUsers(true);
+    setIsLoadingRoles(true);
+    try {
+      const [fetchedUsers, fetchedRoles] = await Promise.all([
+        getUsersAction(),
+        getRolesAction()
+      ]);
+      setUsers(fetchedUsers);
+      setRoles(fetchedRoles);
+    } catch (error) {
+      toast({ title: "Error", description: "No se pudieron cargar los datos de usuarios o roles.", variant: "destructive" });
+    } finally {
+      setIsLoadingUsers(false);
+      setIsLoadingRoles(false);
+    }
+  };
 
   useEffect(() => {
-    // Cargamos los usuarios de ejemplo al montar el componente
-    // En una app real, aquí harías un fetch a tu API
-    setUsers(initialSampleUsers);
+    fetchData();
   }, []);
 
-  const handleRoleChange = (userId: string, newRole: UserRole) => {
-    setUsers(prevUsers =>
-      prevUsers.map(user =>
-        user.id === userId ? { ...user, role: newRole } : user
-      )
-    );
-    // Simular guardado en backend
-    console.log(`Simulación: Cambiado rol del usuario ${userId} a ${newRole}`);
-    toast({
-      title: "Rol Actualizado (Simulación)",
-      description: `El rol del usuario ha sido cambiado a ${roleOptions.find(r => r.value === newRole)?.label}. Este cambio es solo visual.`,
+  const handleRoleChange = (userId: string, newRoleId: string) => {
+    startTransition(async () => {
+      const result = await updateUserRoleAction(userId, newRoleId);
+      if (result.success) {
+        toast({
+          title: "Rol Actualizado",
+          description: result.message,
+        });
+        // Actualizar el rol localmente para reflejar el cambio inmediatamente
+        setUsers(prevUsers =>
+          prevUsers.map(user =>
+            user.id === userId ? { ...user, role_id: newRoleId, role_name: roles.find(r => r.id === newRoleId)?.name } : user
+          )
+        );
+      } else {
+        toast({
+          title: "Error al Actualizar Rol",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
     });
-    // En una app real, aquí llamarías a una server action o API para persistir el cambio.
-    // Por ejemplo: await updateUserRoleAction(userId, newRole);
   };
+
+  const isLoading = isLoadingUsers || isLoadingRoles;
+
+  if (isLoading && users.length === 0) {
+     return (
+      <div className="flex justify-center items-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Cargando datos...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -60,11 +95,12 @@ export default function AdminUsersPage() {
             </CardTitle>
             <CardDescription>Administra los usuarios y sus roles en la plataforma.</CardDescription>
           </div>
-          <Button disabled> {/* Deshabilitado ya que no implementaremos la creación real */}
+          <Button disabled> {/* Deshabilitado ya que no implementaremos la creación real de usuarios por ahora */}
             <PlusCircle className="h-4 w-4 mr-2" /> Añadir Nuevo Usuario
           </Button>
         </CardHeader>
         <CardContent>
+          {isLoading && users.length > 0 && <p className="text-sm text-muted-foreground mb-2">Actualizando lista de usuarios...</p>}
           {users.length > 0 ? (
             <Table>
               <TableHeader>
@@ -81,33 +117,38 @@ export default function AdminUsersPage() {
                   <TableRow key={user.id}>
                     <TableCell>
                       <Avatar>
-                        <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint="persona" />
+                        <AvatarImage src={user.avatarUrl || `https://placehold.co/40x40.png?text=${user.name.substring(0,1)}`} alt={user.name} data-ai-hint="persona" />
                         <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                     </TableCell>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">
-                        {roleOptions.find(r => r.value === user.role)?.label}
+                      <Badge variant={getRoleBadgeVariant(user.role_id)} className="capitalize">
+                        {user.role_name || user.role_id} 
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                        <div className="flex justify-end items-center">
                         <UserCog className="h-5 w-5 mr-2 text-muted-foreground" />
-                        <Select
-                          defaultValue={user.role}
-                          onValueChange={(newRole: UserRole) => handleRoleChange(user.id, newRole)}
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Seleccionar rol" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roleOptions.map(option => (
-                              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {roles.length > 0 ? (
+                            <Select
+                            defaultValue={user.role_id}
+                            onValueChange={(newRole: string) => handleRoleChange(user.id, newRole)}
+                            disabled={isPending || isLoadingRoles}
+                            >
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Seleccionar rol" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {roles.map(role => (
+                                <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                        ) : (
+                            <span className="text-xs text-muted-foreground">Cargando roles...</span>
+                        )}
                        </div>
                     </TableCell>
                   </TableRow>
@@ -115,7 +156,7 @@ export default function AdminUsersPage() {
               </TableBody>
             </Table>
           ) : (
-            <p className="text-muted-foreground text-center py-4">No hay usuarios para mostrar.</p>
+            !isLoading && <p className="text-muted-foreground text-center py-4">No hay usuarios para mostrar.</p>
           )}
         </CardContent>
       </Card>
@@ -124,9 +165,10 @@ export default function AdminUsersPage() {
             <CardTitle className="text-xl">Sobre los Roles</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p><strong>Usuario (User):</strong> Puede navegar por el sitio, ver propiedades, publicar propiedades/solicitudes y comentar.</p>
-            <p><strong>Administrador (Admin):</strong> Tiene todos los permisos de un usuario, además de acceso al Panel de Administración para gestionar configuraciones del sitio y usuarios.</p>
-            <p className="mt-2 italic">Nota: La creación de usuarios y la persistencia real de los cambios de roles no están implementadas en esta simulación. Los cambios de rol son solo visuales.</p>
+            {roles.length > 0 ? roles.map(role => (
+                <p key={role.id}><strong>{role.name}:</strong> {role.description || 'Rol de usuario.'}</p>
+            )) : <p>Cargando descripciones de roles...</p>}
+            <p className="mt-2 italic">Nota: La creación de usuarios no está implementada. Los cambios de rol se guardarán en la base de datos.</p>
         </CardContent>
       </Card>
     </div>
