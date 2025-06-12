@@ -1,15 +1,16 @@
 // src/app/dashboard/crm/page.tsx
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, UserCircle, Users as UsersIcon, AlertTriangle } from 'lucide-react';
+import { Loader2, PlusCircle, UserCircle, Users as UsersIcon } from 'lucide-react';
 import type { Contact, User as StoredUserType } from '@/lib/types';
 import { getUserContactsAction } from '@/actions/crmActions';
 import ContactListItem from '@/components/crm/ContactListItem';
 import AddContactDialog from '@/components/crm/AddContactDialog';
+import EditContactDialog from '@/components/crm/EditContactDialog'; // Importar el nuevo diálogo
 import { useToast } from '@/hooks/use-toast';
 
 export default function CrmPage() {
@@ -17,6 +18,10 @@ export default function CrmPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -29,7 +34,7 @@ export default function CrmPage() {
         localStorage.removeItem('loggedInUser');
       }
     } else {
-      setIsLoading(false); // No user, stop loading if not already stopped
+      setIsLoading(false); 
     }
   }, []);
 
@@ -51,19 +56,31 @@ export default function CrmPage() {
           setIsLoading(false);
         }
       } else if (!localStorage.getItem('loggedInUser')) {
-        // If there's definitively no user (checked both state and localStorage)
         setIsLoading(false);
       }
     }
-    // Only fetch contacts if loggedInUser is set, or if it's the initial load (where loggedInUser might still be null but about to be set)
-    if (loggedInUser || isLoading) { // isLoading check ensures initial fetch attempt if user is being loaded
+    if (loggedInUser || isLoading) {
         fetchContacts();
     }
-  }, [loggedInUser, toast, isLoading]); // Added isLoading to dependencies to re-trigger if it changes
+  }, [loggedInUser, toast, isLoading]);
 
   const handleContactAdded = (newContact: Contact) => {
     setContacts(prevContacts => [newContact, ...prevContacts].sort((a, b) => a.name.localeCompare(b.name)));
     setIsAddContactOpen(false);
+  };
+
+  const handleEditContact = (contact: Contact) => {
+    setEditingContact(contact);
+    setIsEditModalOpen(true);
+  };
+
+  const handleContactUpdated = (updatedContact: Contact) => {
+    setContacts(prevContacts => 
+      prevContacts.map(c => c.id === updatedContact.id ? updatedContact : c)
+                  .sort((a, b) => a.name.localeCompare(b.name))
+    );
+    setIsEditModalOpen(false);
+    setEditingContact(null);
   };
 
   if (!loggedInUser && !isLoading) {
@@ -109,7 +126,11 @@ export default function CrmPage() {
           ) : contacts.length > 0 ? (
             <div className="space-y-4">
               {contacts.map(contact => (
-                <ContactListItem key={contact.id} contact={contact} />
+                <ContactListItem 
+                  key={contact.id} 
+                  contact={contact}
+                  onEdit={handleEditContact} 
+                />
               ))}
             </div>
           ) : (
@@ -131,6 +152,16 @@ export default function CrmPage() {
           )}
         </CardContent>
       </Card>
+
+      {editingContact && (
+        <EditContactDialog
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          onContactUpdated={handleContactUpdated}
+          userId={loggedInUser?.id}
+          initialData={editingContact}
+        />
+      )}
     </div>
   );
 }

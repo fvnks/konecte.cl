@@ -2,8 +2,8 @@
 'use server';
 
 import { query } from '@/lib/db';
-import type { Contact } from '@/lib/types';
-import { addContactFormSchema, type AddContactFormValues } from '@/lib/types'; // Updated import
+import type { Contact, AddContactFormValues, EditContactFormValues } from '@/lib/types'; // Updated import
+import { addContactFormSchema, editContactFormSchema } from '@/lib/types'; // Updated import
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 
@@ -65,24 +65,16 @@ export async function addContactAction(
     await query(sql, params);
 
     // Revalidate paths where contacts might be displayed
-    // Example: A dashboard CRM section or a dedicated contacts page
-    revalidatePath('/dashboard/crm');
-    revalidatePath('/crm/contacts');
+    revalidatePath('/dashboard/crm'); // Main CRM page for the user
+    // If admins can view user CRM, revalidate that path too, e.g.:
+    // revalidatePath(`/admin/users/${userId}/crm`); 
 
-    const newContact: Contact = {
-      id: contactId,
-      user_id: userId,
-      name,
-      email: email || null,
-      phone: phone || null,
-      company_name: company_name || null,
-      status,
-      source: source || null,
-      notes: notes || null,
-      created_at: new Date().toISOString(), // Approximate, DB will have the exact time
-      updated_at: new Date().toISOString(),
-    };
-    return { success: true, message: "Contacto añadido exitosamente.", contact: newContact };
+    const newContactResult = await query('SELECT * FROM contacts WHERE id = ?', [contactId]);
+    if (newContactResult.length === 0) {
+        return { success: false, message: "Error al crear el contacto, no se pudo recuperar." };
+    }
+    
+    return { success: true, message: "Contacto añadido exitosamente.", contact: mapDbRowToContact(newContactResult[0]) };
 
   } catch (error: any) {
     console.error("[CrmAction] Error adding contact:", error);
@@ -113,11 +105,75 @@ export async function getUserContactsAction(userId: string): Promise<Contact[]> 
   }
 }
 
+export async function updateContactAction(
+  contactId: string,
+  values: EditContactFormValues,
+  userId: string
+): Promise<{ success: boolean; message?: string; contact?: Contact }> {
+  if (!userId) {
+    return { success: false, message: "Usuario no autenticado." };
+  }
+  if (!contactId) {
+    return { success: false, message: "ID de contacto no proporcionado." };
+  }
+
+  const validation = editContactFormSchema.safeParse(values);
+  if (!validation.success) {
+    const errorMessages = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    return { success: false, message: `Datos inválidos: ${errorMessages}` };
+  }
+
+  const { name, email, phone, company_name, status, source, notes } = validation.data;
+
+  try {
+    // First, verify the contact belongs to the user
+    const contactCheck = await query('SELECT id FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
+    if (contactCheck.length === 0) {
+      return { success: false, message: "Contacto no encontrado o no tienes permiso para editarlo." };
+    }
+
+    const sql = `
+      UPDATE contacts SET
+        name = ?, email = ?, phone = ?, company_name = ?,
+        status = ?, source = ?, notes = ?, updated_at = NOW()
+      WHERE id = ? AND user_id = ?
+    `;
+    const params = [
+      name,
+      email || null,
+      phone || null,
+      company_name || null,
+      status,
+      source || null,
+      notes || null,
+      contactId,
+      userId
+    ];
+
+    await query(sql, params);
+
+    revalidatePath('/dashboard/crm');
+    // revalidatePath(`/admin/users/${userId}/crm`);
+
+    const updatedContactResult = await query('SELECT * FROM contacts WHERE id = ?', [contactId]);
+     if (updatedContactResult.length === 0) {
+        return { success: false, message: "Error al actualizar el contacto, no se pudo recuperar." };
+    }
+
+    return { success: true, message: "Contacto actualizado exitosamente.", contact: mapDbRowToContact(updatedContactResult[0]) };
+
+  } catch (error: any) {
+    console.error(`[CrmAction] Error updating contact ${contactId}:`, error);
+    return { success: false, message: `Error al actualizar contacto: ${error.message}` };
+  }
+}
+
+
 // --- Interaction Schemas and Actions (to be implemented later) ---
 // export const addInteractionFormSchema = z.object({...});
 // export type AddInteractionFormValues = z.infer<typeof addInteractionFormSchema>;
 // export async function addContactInteractionAction(...) {}
 // export async function getContactInteractionsAction(...) {}
 
-// TODO: Implement getContactByIdAction, updateContactAction, deleteContactAction
+// TODO: Implement getContactByIdAction, deleteContactAction
 // TODO: Implement actions for contact_interactions

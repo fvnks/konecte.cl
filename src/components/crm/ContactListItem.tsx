@@ -1,17 +1,19 @@
 // src/components/crm/ContactListItem.tsx
 import type { Contact } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'; // AvatarImage removed as not used for placeholder
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, Building, Edit3, Trash2, Info, UserCircle } from 'lucide-react'; // UserCircle added for fallback
+import { Mail, Phone, Building, Edit3, Trash2, Info, UserCircle } from 'lucide-react';
 import { contactStatusOptions } from '@/lib/types'; 
 
 interface ContactListItemProps {
   contact: Contact;
+  onEdit: (contact: Contact) => void; // Nueva prop para manejar la edición
+  // onDelete: (contactId: string) => void; // Prop para manejar la eliminación (se añadirá después)
 }
 
-export default function ContactListItem({ contact }: ContactListItemProps) {
+export default function ContactListItem({ contact, onEdit }: ContactListItemProps) {
   const statusLabel = contactStatusOptions.find(opt => opt.value === contact.status)?.label || contact.status;
 
   const getInitials = (name: string) => {
@@ -30,7 +32,6 @@ export default function ContactListItem({ contact }: ContactListItemProps) {
     <Card className="shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="p-4 flex flex-row items-start gap-4 space-y-0">
         <Avatar className="h-12 w-12 border">
-           {/* Placeholder for contact image - could be a future feature. Currently uses initials. */}
           <AvatarFallback className="text-lg bg-secondary text-secondary-foreground">
             {contactInitials || <UserCircle className="h-6 w-6" />}
           </AvatarFallback>
@@ -47,7 +48,7 @@ export default function ContactListItem({ contact }: ContactListItemProps) {
           </Badge>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar (próximamente)" disabled>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar contacto" onClick={() => onEdit(contact)}>
             <Edit3 className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/90" title="Eliminar (próximamente)" disabled>

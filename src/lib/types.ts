@@ -1,5 +1,5 @@
 // src/lib/types.ts
-import { z } from 'zod'; // Added import
+import { z } from 'zod';
 
 export interface Role {
   id: string; // ej: admin, editor_contenido
@@ -151,14 +151,12 @@ export const contactStatusOptions: { value: ContactStatus; label: string }[] = [
     { value: 'unqualified', label: 'No Calificado' },
 ];
 
-// Moved from crmActions.ts
 export const contactStatusValues = [
   'new', 'contacted', 'qualified', 'proposal_sent',
   'negotiation', 'won', 'lost', 'on_hold', 'unqualified'
 ] as const;
 
-// Moved from crmActions.ts
-export const addContactFormSchema = z.object({
+const baseContactSchema = {
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres.").max(255),
   email: z.string().email("Correo electrónico inválido.").max(255).optional().or(z.literal('')),
   phone: z.string().max(50).optional().or(z.literal('')),
@@ -166,9 +164,13 @@ export const addContactFormSchema = z.object({
   status: z.enum(contactStatusValues).default('new'),
   source: z.string().max(100).optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
-});
+};
 
+export const addContactFormSchema = z.object(baseContactSchema);
 export type AddContactFormValues = z.infer<typeof addContactFormSchema>;
+
+export const editContactFormSchema = z.object(baseContactSchema); // Can be identical or diverge later
+export type EditContactFormValues = z.infer<typeof editContactFormSchema>;
 
 
 export interface Contact {
