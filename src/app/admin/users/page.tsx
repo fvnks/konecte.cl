@@ -2,7 +2,7 @@
 // src/app/admin/users/page.tsx
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,6 +16,7 @@ import { getRolesAction } from '@/actions/roleActions';
 import { getPlansAction } from '@/actions/planActions';
 import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import AdminCreateUserDialog from '@/components/admin/users/AdminCreateUserDialog'; // Importar el nuevo diálogo
 
 const getRoleBadgeVariant = (roleId: string) => {
   if (roleId === 'admin') return 'default';
@@ -32,11 +33,11 @@ export default function AdminUsersPage() {
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]); // Todos los planes, filtrados para activos en el diálogo
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isPending, startTransition] = useTransition();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoadingData(true);
     try {
       const [fetchedUsers, fetchedRoles, fetchedPlans] = await Promise.all([
@@ -46,17 +47,17 @@ export default function AdminUsersPage() {
       ]);
       setUsers(fetchedUsers);
       setRoles(fetchedRoles);
-      setPlans(fetchedPlans.filter(plan => plan.is_active)); 
+      setPlans(fetchedPlans); 
     } catch (error) {
       toast({ title: "Error", description: "No se pudieron cargar los datos de usuarios, roles o planes.", variant: "destructive" });
     } finally {
       setIsLoadingData(false);
     }
-  };
+  }, [toast]); // toast es una dependencia de fetchData
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleRoleChange = (userId: string, newRoleId: string) => {
     startTransition(async () => {
@@ -90,6 +91,10 @@ export default function AdminUsersPage() {
       }
     });
   };
+  
+  const handleUserCreated = () => {
+    fetchData(); // Vuelve a cargar todos los datos para reflejar el nuevo usuario
+  };
 
 
   if (isLoadingData && users.length === 0) {
@@ -100,20 +105,24 @@ export default function AdminUsersPage() {
       </div>
     );
   }
+  
+  const activePlans = plans.filter(plan => plan.is_active);
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <CardTitle className="text-2xl font-headline flex items-center">
               <Users className="h-6 w-6 mr-2 text-primary" /> Gestión de Usuarios
             </CardTitle>
             <CardDescription>Administra los usuarios, sus roles y planes en la plataforma.</CardDescription>
           </div>
-          <Button disabled>
-            <PlusCircle className="h-4 w-4 mr-2" /> Añadir Nuevo Usuario
-          </Button>
+          <AdminCreateUserDialog roles={roles} plans={activePlans} onUserCreated={handleUserCreated}>
+            <Button disabled={isLoadingData || roles.length === 0}>
+              <PlusCircle className="h-4 w-4 mr-2" /> Añadir Nuevo Usuario
+            </Button>
+          </AdminCreateUserDialog>
         </CardHeader>
         <CardContent>
           {isLoadingData && users.length > 0 && <p className="text-sm text-muted-foreground mb-2">Actualizando lista de usuarios...</p>}
@@ -122,13 +131,13 @@ export default function AdminUsersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[150px]">Usuario</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead className="min-w-[180px]">Usuario</TableHead>
+                    <TableHead className="min-w-[180px]">Email</TableHead>
                     <TableHead>Rol</TableHead>
-                    <TableHead className="min-w-[220px]">Asignar Rol</TableHead>
+                    <TableHead className="min-w-[200px]">Asignar Rol</TableHead>
                     <TableHead>Plan Actual</TableHead>
-                    <TableHead className="min-w-[220px]">Asignar Plan</TableHead>
-                    <TableHead className="text-center">CRM del Usuario</TableHead>
+                    <TableHead className="min-w-[200px]">Asignar Plan</TableHead>
+                    <TableHead className="text-center min-w-[130px]">CRM del Usuario</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -191,7 +200,7 @@ export default function AdminUsersPage() {
                               </SelectTrigger>
                               <SelectContent>
                                   <SelectItem value="none" className="text-xs italic">Sin Plan</SelectItem>
-                                  {plans.map(plan => (
+                                  {activePlans.map(plan => ( // Usar activePlans para el select
                                   <SelectItem key={plan.id} value={plan.id} className="text-xs">{plan.name} (${plan.price_monthly.toLocaleString('es-CL')})</SelectItem>
                                   ))}
                               </SelectContent>

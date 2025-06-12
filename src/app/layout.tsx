@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -13,10 +14,6 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'PropSpot - Encuentra Tu Próxima Propiedad',
   description: 'Descubre, publica y comenta propiedades en arriendo o venta.',
-  // If you need to add other link tags for head, you can do it here, e.g., icons
-  // icons: {
-  //   icon: '/favicon.ico', // Next.js will handle this if favicon.ico is in app directory
-  // },
 };
 
 export default function RootLayout({
