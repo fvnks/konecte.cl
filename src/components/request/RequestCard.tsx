@@ -1,11 +1,11 @@
 
 import Link from 'next/link';
-import type { SearchRequest, PropertyType, ListingCategory } from '@/lib/types'; // Asegúrate que User esté importado si lo usas para author
+import type { SearchRequest, PropertyType, ListingCategory } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays } from 'lucide-react'; // CalendarDays añadido
+import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, Eye } from 'lucide-react';
 
 interface RequestCardProps {
   request: SearchRequest;
@@ -29,7 +29,6 @@ const translateCategoryBadge = (category: ListingCategory): string => {
   }
 }
 
-
 export default function RequestCard({ request }: RequestCardProps) {
   const {
     title,
@@ -41,79 +40,78 @@ export default function RequestCard({ request }: RequestCardProps) {
     budgetMax,
     desiredPropertyType,
     createdAt,
+    description, // Added for line-clamp
   } = request;
 
   const locationCity = desiredLocation?.city || 'No especificada';
-  const locationNeighborhood = desiredLocation?.neighborhood;
+  const authorName = author?.name || "Usuario Anónimo";
+  const authorAvatar = author?.avatarUrl;
+  const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
   return (
-    <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg">
-       <CardHeader className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={author?.avatarUrl || `https://placehold.co/40x40.png?text=${author?.name?.charAt(0).toUpperCase()}`} alt={author?.name} data-ai-hint="persona" />
-              <AvatarFallback>{author?.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+    <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl h-full">
+       <CardHeader className="p-3 sm:p-4">
+        <div className="flex items-center gap-2 mb-1.5">
+            <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
+              <AvatarImage src={authorAvatar || `https://placehold.co/40x40.png?text=${authorInitials}`} alt={authorName} data-ai-hint="persona solicitante" />
+              <AvatarFallback className="text-sm">{authorInitials}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="text-sm font-medium">{author?.name || 'Usuario Desconocido'}</p>
+              <p className="text-xs sm:text-sm font-medium line-clamp-1" title={authorName}>{authorName}</p>
               <p className="text-xs text-muted-foreground flex items-center">
-                <CalendarDays className="h-3 w-3 mr-1" /> {/* Icono y fecha añadidos */}
-                Publicado el {new Date(createdAt).toLocaleDateString('es-CL')}
+                <CalendarDays className="h-3 w-3 mr-1" />
+                {new Date(createdAt).toLocaleDateString('es-CL', { day:'2-digit', month:'short' })}
               </p>
             </div>
         </div>
         <Link href={`/requests/${slug}`} className="block">
-          <CardTitle className="text-lg font-headline leading-tight hover:text-primary transition-colors">
-            <SearchIcon className="inline-block h-5 w-5 mr-2 text-primary align-text-bottom" />
+          <CardTitle className="text-sm sm:text-base font-headline leading-snug hover:text-primary transition-colors line-clamp-2" title={title}>
+            <SearchIcon className="inline-block h-4 w-4 mr-1.5 text-primary align-text-bottom" />
             {title}
           </CardTitle>
         </Link>
       </CardHeader>
-      <CardContent className="p-4 pt-0 flex-grow">
-        <div className="space-y-1 text-sm text-muted-foreground">
+      <CardContent className="p-3 sm:p-4 pt-0 flex-grow">
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-2" title={description}>{description}</p>
+        <div className="space-y-0.5 text-xs text-muted-foreground">
           <div className="flex items-center">
-            <MapPin className="mr-1.5 h-4 w-4 text-primary flex-shrink-0" /> 
-            <span>Ubicación: {locationCity} {locationNeighborhood ? `(${locationNeighborhood})` : ''}</span>
+            <MapPin className="mr-1 h-3.5 w-3.5 text-primary/80 flex-shrink-0" /> 
+            <span className="truncate">En: {locationCity}</span>
           </div>
           {desiredPropertyType && desiredPropertyType.length > 0 && (
              <div className="flex items-center">
-                <Tag className="mr-1.5 h-4 w-4 text-primary flex-shrink-0" />
-                <span>Para: {desiredPropertyType.map(translatePropertyTypeBadge).join(', ')}</span>
+                <Tag className="mr-1 h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
+                <span className="truncate">Para: {desiredPropertyType.map(translatePropertyTypeBadge).join(', ')}</span>
              </div>
           )}
-          {desiredCategories && desiredCategories.length > 0 && (
-            <div className="flex items-center">
-              <Tag className="mr-1.5 h-4 w-4 text-primary flex-shrink-0" /> 
-              <span>Tipos: {desiredCategories.map(translateCategoryBadge).join(', ')}</span>
-            </div>
-          )}
-          {budgetMax && (
-             <div className="flex items-center">
-              <DollarSign className="mr-1.5 h-4 w-4 text-primary flex-shrink-0" /> 
-              <span>Presupuesto: Hasta ${budgetMax.toLocaleString('es-CL')}</span>
-            </div>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {desiredCategories && desiredCategories.slice(0, 2).map(cat => ( // Show max 2 categories for space
+            <Badge key={cat} variant="secondary" className="text-[10px] sm:text-xs py-0.5 px-1.5 capitalize rounded-md">{translateCategoryBadge(cat)}</Badge>
+          ))}
+          {desiredCategories && desiredCategories.length > 2 && (
+            <Badge variant="outline" className="text-[10px] sm:text-xs py-0.5 px-1.5 rounded-md">+{desiredCategories.length - 2}</Badge>
           )}
         </div>
-        <div className="mt-3">
-          {desiredPropertyType && desiredPropertyType.map(pt => (
-            <Badge key={pt} variant="secondary" className="mr-1.5 mb-1.5 text-xs py-0.5 px-1.5 capitalize">{translatePropertyTypeBadge(pt)}</Badge>
-          ))}
-          {desiredCategories && desiredCategories.map(cat => (
-            <Badge key={cat} variant="outline" className="mr-1.5 mb-1.5 text-xs py-0.5 px-1.5 capitalize">{translateCategoryBadge(cat)}</Badge>
-          ))}
-        </div>
+         {budgetMax && (
+             <div className="flex items-center text-xs text-muted-foreground mt-1.5">
+              <DollarSign className="mr-1 h-3.5 w-3.5 text-primary/80 flex-shrink-0" /> 
+              <span>Hasta ${budgetMax.toLocaleString('es-CL', {notation: 'compact'})}</span>
+            </div>
+          )}
       </CardContent>
-      <CardFooter className="p-4 pt-3 border-t flex justify-between items-center mt-auto">
+      <CardFooter className="p-3 sm:p-4 pt-2 border-t flex justify-between items-center mt-auto">
         <Link href={`/requests/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary">
-          <Button variant="ghost" size="sm" className="p-1.5 h-auto text-xs">
-            <MessageCircle className="mr-1 h-3.5 w-3.5" />
-            {commentsCount} comentarios
+          <Button variant="ghost" size="sm" className="p-1 h-auto text-xs">
+            <MessageCircle className="mr-1 h-3 w-3" />
+            {commentsCount}
           </Button>
         </Link>
-        <Button size="sm" asChild>
-            <Link href={`/requests/${slug}`}>Ver Detalles</Link>
+        <Button size="sm" asChild className="text-xs sm:text-sm rounded-md">
+            <Link href={`/requests/${slug}`} className="flex items-center gap-1"> <Eye className="h-3.5 w-3.5" /> Ver</Link>
         </Button>
       </CardFooter>
     </Card>
   );
 }
+

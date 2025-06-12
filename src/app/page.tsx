@@ -2,11 +2,8 @@
 import type { ReactNode } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // No longer needed here
 import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, DatabaseZap, ArrowRight } from "lucide-react";
 import Link from "next/link";
-// import PropertyListItem from "@/components/property/PropertyListItem"; // Moved to client component
-// import RequestListItem from "@/components/request/RequestListItem"; // Moved to client component
 import type { PropertyListing, SearchRequest, LandingSectionKey } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import { getPropertiesAction } from "@/actions/propertyActions";
@@ -14,16 +11,18 @@ import { getRequestsAction } from "@/actions/requestActions";
 import { getSiteSettingsAction } from "@/actions/siteSettingsActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable"; 
-import FeaturedListingsClient from '@/components/landing/FeaturedListingsClient'; // Import the new client component
+import FeaturedListingsClient from '@/components/landing/FeaturedListingsClient';
 
 // --- Section Data Fetching (remains on server) ---
 
 async function getFeaturedListingsAndRequestsData() {
   const allProperties: PropertyListing[] = await getPropertiesAction();
-  const featuredProperties = allProperties.slice(0, 3); 
+  // Tomar hasta 8 propiedades para la cuadrícula
+  const featuredProperties = allProperties.slice(0, 8); 
   
   const allRequests: SearchRequest[] = await getRequestsAction();
-  const recentRequests = allRequests.slice(0, 2);
+  // Tomar hasta 8 solicitudes para la cuadrícula
+  const recentRequests = allRequests.slice(0, 8);
   return { featuredProperties, recentRequests };
 }
 
