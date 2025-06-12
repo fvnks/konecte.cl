@@ -11,12 +11,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { User, Role, Plan } from "@/lib/types";
-import { getUsersAction, updateUserRoleAction, updateUserPlanAction } from '@/actions/userActions';
+import { getUsersAction, updateUserRoleAction, updateUserPlanAction, adminDeleteUserAction } from '@/actions/userActions';
 import { getRolesAction } from '@/actions/roleActions';
 import { getPlansAction } from '@/actions/planActions';
-import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon } from 'lucide-react';
+import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import AdminCreateUserDialog from '@/components/admin/users/AdminCreateUserDialog'; // Importar el nuevo diálogo
+import AdminCreateUserDialog from '@/components/admin/users/AdminCreateUserDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+interface LoggedInAdmin {
+  id: string;
+}
 
 const getRoleBadgeVariant = (roleId: string) => {
   if (roleId === 'admin') return 'default';
@@ -33,9 +48,27 @@ export default function AdminUsersPage() {
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [plans, setPlans] = useState<Plan[]>([]); // Todos los planes, filtrados para activos en el diálogo
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [loggedInAdmin, setLoggedInAdmin] = useState<LoggedInAdmin | null>(null);
+
+
+  useEffect(() => {
+    // Simular la obtención del ID del administrador logueado (en una app real, esto vendría de la sesión)
+    const adminUserJson = localStorage.getItem('loggedInUser');
+    if (adminUserJson) {
+        try {
+            const parsedAdmin: User = JSON.parse(adminUserJson);
+            if (parsedAdmin.role_id === 'admin') { // Asegurarse que el usuario es admin
+                setLoggedInAdmin({ id: parsedAdmin.id });
+            } else {
+                 toast({ title: "Acceso Denegado", description: "No tienes permisos de administrador.", variant: "destructive" });
+            }
+        } catch (e) { console.error("Error parsing admin user from storage", e)}
+    }
+  }, [toast]);
 
   const fetchData = useCallback(async () => {
     setIsLoadingData(true);
@@ -53,7 +86,7 @@ export default function AdminUsersPage() {
     } finally {
       setIsLoadingData(false);
     }
-  }, [toast]); // toast es una dependencia de fetchData
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
@@ -93,7 +126,31 @@ export default function AdminUsersPage() {
   };
   
   const handleUserCreated = () => {
-    fetchData(); // Vuelve a cargar todos los datos para reflejar el nuevo usuario
+    fetchData(); 
+  };
+
+  const openDeleteDialog = (user: User) => {
+    setUserToDelete(user);
+  };
+
+  const confirmDeleteUser = () => {
+    if (!userToDelete || !loggedInAdmin) return;
+    if (userToDelete.id === loggedInAdmin.id) {
+        toast({ title: "Acción no permitida", description: "No puedes eliminar tu propia cuenta de administrador.", variant: "destructive" });
+        setUserToDelete(null);
+        return;
+    }
+
+    startTransition(async () => {
+      const result = await adminDeleteUserAction(userToDelete.id, loggedInAdmin.id);
+      if (result.success) {
+        toast({ title: "Usuario Eliminado", description: result.message });
+        fetchData(); // Recargar la lista de usuarios
+      } else {
+        toast({ title: "Error al Eliminar Usuario", description: result.message, variant: "destructive" });
+      }
+      setUserToDelete(null); // Cerrar el diálogo
+    });
   };
 
 
@@ -119,7 +176,7 @@ export default function AdminUsersPage() {
             <CardDescription>Administra los usuarios, sus roles y planes en la plataforma.</CardDescription>
           </div>
           <AdminCreateUserDialog roles={roles} plans={activePlans} onUserCreated={handleUserCreated}>
-            <Button disabled={isLoadingData || roles.length === 0}>
+            <Button disabled={isLoadingData || roles.length === 0 || !loggedInAdmin}>
               <PlusCircle className="h-4 w-4 mr-2" /> Añadir Nuevo Usuario
             </Button>
           </AdminCreateUserDialog>
@@ -137,7 +194,7 @@ export default function AdminUsersPage() {
                     <TableHead className="min-w-[200px]">Asignar Rol</TableHead>
                     <TableHead>Plan Actual</TableHead>
                     <TableHead className="min-w-[200px]">Asignar Plan</TableHead>
-                    <TableHead className="text-center min-w-[130px]">CRM del Usuario</TableHead>
+                    <TableHead className="text-center min-w-[200px]">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -146,7 +203,7 @@ export default function AdminUsersPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={user.avatarUrl || `https://placehold.co/40x40.png?text=${user.name.substring(0,1)}`} alt={user.name} data-ai-hint="persona" />
+                            <AvatarImage src={user.avatarUrl || `https://placehold.co/40x40.png?text=${user.name.substring(0,1)}`} alt={user.name} data-ai-hint="persona"/>
                             <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <span className="font-medium text-sm">{user.name}</span>
@@ -165,7 +222,7 @@ export default function AdminUsersPage() {
                               <Select
                               value={user.role_id}
                               onValueChange={(newRole: string) => handleRoleChange(user.id, newRole)}
-                              disabled={isPending || isLoadingData}
+                              disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id}
                               >
                               <SelectTrigger className="w-full max-w-[180px] h-9 text-xs">
                                   <SelectValue placeholder="Seleccionar rol" />
@@ -200,7 +257,7 @@ export default function AdminUsersPage() {
                               </SelectTrigger>
                               <SelectContent>
                                   <SelectItem value="none" className="text-xs italic">Sin Plan</SelectItem>
-                                  {activePlans.map(plan => ( // Usar activePlans para el select
+                                  {activePlans.map(plan => (
                                   <SelectItem key={plan.id} value={plan.id} className="text-xs">{plan.name} (${plan.price_monthly.toLocaleString('es-CL')})</SelectItem>
                                   ))}
                               </SelectContent>
@@ -210,12 +267,29 @@ export default function AdminUsersPage() {
                           )}
                          </div>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <Button variant="outline" size="sm" asChild className="h-8 text-xs">
+                      <TableCell className="text-center space-x-1">
+                        <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Editar Usuario (Nombre/Email)">
+                            <span onClick={() => alert("Funcionalidad de editar usuario pendiente.")}> {/* Temporal */}
+                                <Edit className="h-4 w-4" />
+                            </span>
+                        </Button>
+                        <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Ver CRM del Usuario">
                           <Link href={`/admin/users/${user.id}/crm`}>
-                            <ContactIcon className="h-3.5 w-3.5 mr-1.5" /> Ver CRM
+                            <ContactIcon className="h-4 w-4" />
                           </Link>
                         </Button>
+                        <AlertDialogTrigger asChild>
+                           <Button 
+                             variant="destructive" 
+                             size="icon" 
+                             className="h-8 w-8"
+                             title="Eliminar Usuario"
+                             disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id || !loggedInAdmin}
+                             onClick={() => openDeleteDialog(user)}
+                           >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -227,6 +301,28 @@ export default function AdminUsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {userToDelete && (
+        <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Eliminación de Usuario</AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Estás seguro de que quieres eliminar al usuario <span className="font-semibold">{userToDelete.name} ({userToDelete.email})</span>?
+                <br />
+                <strong className="text-destructive">¡Advertencia!</strong> Esta acción es irreversible y eliminará permanentemente al usuario junto con todas sus propiedades, solicitudes, comentarios y datos del CRM.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setUserToDelete(null)} disabled={isPending}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteUser} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sí, Eliminar Usuario
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

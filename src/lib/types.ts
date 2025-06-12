@@ -149,6 +149,13 @@ export const adminCreateUserFormSchema = z.object({
 });
 export type AdminCreateUserFormValues = z.infer<typeof adminCreateUserFormSchema>;
 
+export const adminEditUserFormSchema = z.object({
+  name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
+  email: z.string().email("Correo electrónico inválido.").max(255),
+  // role_id y plan_id se manejan con acciones separadas por ahora, pero podrían incluirse aquí si se desea un form unificado
+});
+export type AdminEditUserFormValues = z.infer<typeof adminEditUserFormSchema>;
+
 
 // --- CRM Types ---
 

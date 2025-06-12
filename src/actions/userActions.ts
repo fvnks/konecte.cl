@@ -40,6 +40,7 @@ export async function updateUserRoleAction(userId: string, newRoleId: string): P
   }
 
   try {
+    // Futura mejora: verificar si el admin intenta cambiarse su propio rol a no-admin.
     const result: any = await query('UPDATE users SET role_id = ? WHERE id = ?', [newRoleId, userId]);
     if (result.affectedRows > 0) {
       revalidatePath('/admin/users');
@@ -57,19 +58,14 @@ export async function updateUserPlanAction(userId: string, newPlanId: string | n
   if (!userId) {
     return { success: false, message: "ID de usuario no proporcionado." };
   }
-  // Si newPlanId es una cadena vacía (ej, desde un Select que no tiene un valor para "Sin Plan" como null explícito),
-  // lo convertimos a null para la base de datos.
   const planIdToSet = newPlanId === '' ? null : newPlanId;
 
   try {
-    // Por ahora, al cambiar de plan, no actualizaremos plan_expires_at.
-    // Esto podría ser una mejora futura.
     const result: any = await query('UPDATE users SET plan_id = ? WHERE id = ?', [planIdToSet, userId]);
     if (result.affectedRows > 0) {
       revalidatePath('/admin/users');
       return { success: true, message: "Plan del usuario actualizado exitosamente." };
     } else {
-      // Esto puede ocurrir si el usuario ya tenía ese plan (o ya era null)
       return { success: true, message: "Plan del usuario sin cambios (ya estaba asignado)." };
     }
   } catch (error: any) {
@@ -85,31 +81,24 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
   }
 
   const { name, email, password, role_id, plan_id } = validation.data;
-  console.log(`[UserAction Admin] Attempting to create user with email: ${email}`);
 
   try {
     const existingUserRows: any[] = await query('SELECT id FROM users WHERE email = ?', [email]);
     if (existingUserRows.length > 0) {
-      console.log(`[UserAction Admin] User creation failed: Email ${email} already exists.`);
       return { success: false, message: "Ya existe un usuario con este correo electrónico." };
     }
 
-    // Verificar que el rol exista
     const roleExistsRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [role_id]);
     if (roleExistsRows.length === 0) {
-      console.error(`[UserAction Admin] Role with id '${role_id}' not found.`);
       return { success: false, message: "El rol seleccionado no es válido." };
     }
     
-    // Verificar que el plan exista si se proporciona
     if (plan_id) {
         const planExistsRows: any[] = await query('SELECT id FROM plans WHERE id = ?', [plan_id]);
         if (planExistsRows.length === 0) {
-            console.error(`[UserAction Admin] Plan with id '${plan_id}' not found.`);
             return { success: false, message: "El plan seleccionado no es válido." };
         }
     }
-
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = randomUUID();
@@ -118,9 +107,7 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
       'INSERT INTO users (id, name, email, password_hash, role_id, plan_id) VALUES (?, ?, ?, ?, ?, ?)',
       [userId, name, email, hashedPassword, role_id, plan_id || null]
     );
-    console.log(`[UserAction Admin] User creation successful for email: ${email}, userID: ${userId}`);
-
-    // Fetch the newly created user (without password hash) to return role_name and plan_name
+    
     const newUserRows: any[] = await query(
         `SELECT u.id, u.name, u.email, u.avatar_url, 
                 u.role_id, r.name as role_name,
@@ -133,11 +120,9 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
     );
 
     if (newUserRows.length === 0) {
-        // Should not happen if insert was successful
         return { success: false, message: "Error al recuperar el usuario recién creado." };
     }
     
-    // Map to User type, ensuring dates are ISO strings
     const newUser: User = {
         ...newUserRows[0],
         created_at: newUserRows[0].created_at ? new Date(newUserRows[0].created_at).toISOString() : undefined,
@@ -146,7 +131,6 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
     };
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password_hash, ...userToReturn } = newUser;
-
 
     revalidatePath('/admin/users');
     return { success: true, message: "Usuario creado exitosamente.", user: userToReturn };
@@ -160,6 +144,32 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
   }
 }
 
+export async function adminDeleteUserAction(userIdToDelete: string, currentAdminUserId: string): Promise<{ success: boolean; message?: string }> {
+  if (!userIdToDelete || !currentAdminUserId) {
+    return { success: false, message: "Se requiere el ID del usuario a eliminar y del administrador." };
+  }
 
-// export async function deleteUserAction(userId: string) { /* ... */ }
+  if (userIdToDelete === currentAdminUserId) {
+    return { success: false, message: "No puedes eliminar tu propia cuenta de administrador." };
+  }
 
+  // Adicionalmente, podrías querer prevenir la eliminación del último administrador o un admin "root".
+  // Por ahora, solo prevenimos la auto-eliminación.
+
+  try {
+    // La base de datos se encargará de eliminar en cascada propiedades, solicitudes, comentarios, etc.
+    // debido a las restricciones FOREIGN KEY con ON DELETE CASCADE.
+    const result: any = await query('DELETE FROM users WHERE id = ?', [userIdToDelete]);
+
+    if (result.affectedRows > 0) {
+      revalidatePath('/admin/users');
+      return { success: true, message: "Usuario eliminado exitosamente. Todos sus datos asociados (propiedades, solicitudes, comentarios, CRM) también han sido eliminados." };
+    } else {
+      return { success: false, message: "Usuario no encontrado o no se pudo eliminar." };
+    }
+  } catch (error: any) {
+    console.error(`[UserAction Admin] Error deleting user ${userIdToDelete}:`, error);
+    // Podría haber errores si, por alguna razón, ON DELETE CASCADE falla o hay otras restricciones.
+    return { success: false, message: `Error al eliminar usuario: ${error.message}` };
+  }
+}
