@@ -3,8 +3,8 @@
 'use server';
 
 import { query } from '@/lib/db';
-import type { Contact, AddContactFormValues, EditContactFormValues, Interaction, AddInteractionFormValues } from '@/lib/types';
-import { addContactFormSchema, editContactFormSchema, addInteractionFormSchema } from '@/lib/types';
+import type { Contact, AddContactFormValues, EditContactFormValues, Interaction, AddInteractionFormValues, EditInteractionFormValues } from '@/lib/types';
+import { addContactFormSchema, editContactFormSchema, addInteractionFormSchema, editInteractionFormSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 
@@ -271,16 +271,17 @@ export async function addContactInteractionAction(
     `;
     const params = [
       interactionId, contactId, userId, interaction_type,
-      new Date(interaction_date),
+      new Date(interaction_date), // Ensure it's a Date object for MySQL driver
       subject || null,
       description,
       outcome || null,
       follow_up_needed,
-      follow_up_date ? new Date(follow_up_date) : null,
+      follow_up_date ? new Date(follow_up_date) : null, // Ensure it's a Date object or null
     ];
 
     await query(sql, params);
 
+    // Update last_contacted_at on the parent contact
     await query('UPDATE contacts SET last_contacted_at = ? WHERE id = ? AND user_id = ?', [new Date(interaction_date), contactId, userId]);
 
     revalidatePath(`/dashboard/crm`); // Revalidates the page where interactions are listed
@@ -297,6 +298,95 @@ export async function addContactInteractionAction(
     return { success: false, message: `Error al añadir interacción: ${error.message}` };
   }
 }
+
+export async function updateContactInteractionAction(
+  interactionId: string,
+  userId: string,
+  contactId: string,
+  values: EditInteractionFormValues
+): Promise<{ success: boolean; message?: string; interaction?: Interaction }> {
+  if (!userId) {
+    return { success: false, message: "Usuario no autenticado." };
+  }
+  if (!interactionId) {
+    return { success: false, message: "ID de interacción no proporcionado." };
+  }
+  if (!contactId) {
+    return { success: false, message: "ID de contacto no proporcionado para verificación." };
+  }
+  
+  const validation = editInteractionFormSchema.safeParse(values);
+  if (!validation.success) {
+    const errorMessages = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    return { success: false, message: `Datos inválidos para actualizar: ${errorMessages}` };
+  }
+
+  const {
+    interaction_type,
+    interaction_date,
+    subject,
+    description,
+    outcome,
+    follow_up_needed,
+    follow_up_date,
+  } = validation.data;
+
+  try {
+    // Verify interaction belongs to a contact owned by the user
+    const interactionCheckSql = `
+      SELECT ci.id 
+      FROM contact_interactions ci
+      JOIN contacts c ON ci.contact_id = c.id
+      WHERE ci.id = ? AND c.user_id = ? AND ci.contact_id = ?
+    `;
+    const interactionCheckResult = await query(interactionCheckSql, [interactionId, userId, contactId]);
+    if (!Array.isArray(interactionCheckResult) || interactionCheckResult.length === 0) {
+      return { success: false, message: "Interacción no encontrada o no tienes permiso para editarla." };
+    }
+
+    const updateSql = `
+      UPDATE contact_interactions SET
+        interaction_type = ?, interaction_date = ?, subject = ?,
+        description = ?, outcome = ?, follow_up_needed = ?, follow_up_date = ?,
+        updated_at = NOW()
+      WHERE id = ?
+    `;
+    const params = [
+      interaction_type,
+      new Date(interaction_date),
+      subject || null,
+      description,
+      outcome || null,
+      follow_up_needed,
+      follow_up_date ? new Date(follow_up_date) : null,
+      interactionId
+    ];
+
+    await query(updateSql, params);
+    
+    // Potentially update last_contacted_at on the parent contact if the interaction_date changed
+    // Or if this is the latest interaction. This can be complex, so for now we'll just update if it's this interaction's date
+    // A more robust solution would be to find MAX(interaction_date) for the contact after update.
+    const contactUpdateResult: any = await query('SELECT MAX(interaction_date) as max_date FROM contact_interactions WHERE contact_id = ? AND user_id = ?', [contactId, userId]);
+    const newLastContactedDate = contactUpdateResult[0]?.max_date || null;
+    await query('UPDATE contacts SET last_contacted_at = ? WHERE id = ? AND user_id = ?', [newLastContactedDate, contactId, userId]);
+
+
+    revalidatePath(`/dashboard/crm`);
+
+    const updatedInteractionResult = await query('SELECT * FROM contact_interactions WHERE id = ?', [interactionId]);
+    if (!Array.isArray(updatedInteractionResult) || updatedInteractionResult.length === 0) {
+        return { success: false, message: "Error al actualizar la interacción, no se pudo recuperar." };
+    }
+
+    return { success: true, message: "Interacción actualizada exitosamente.", interaction: mapDbRowToInteraction(updatedInteractionResult[0]) };
+
+  } catch (error: any) {
+    console.error(`[CrmAction] Error updating interaction ${interactionId}:`, error);
+    return { success: false, message: `Error al actualizar interacción: ${error.message}` };
+  }
+}
+
 
 export async function getContactInteractionsAction(
   contactId: string,
@@ -339,7 +429,7 @@ export async function getContactInteractionsAction(
 export async function deleteInteractionAction(
   interactionId: string,
   userId: string,
-  contactId: string // Used to verify ownership and potentially update contact's last_contacted_at
+  contactId: string 
 ): Promise<{ success: boolean; message?: string }> {
   if (!userId) {
     return { success: false, message: "Usuario no autenticado." };
@@ -352,7 +442,6 @@ export async function deleteInteractionAction(
   }
 
   try {
-    // Verify the interaction belongs to a contact owned by the user
     const interactionCheckResult = await query(
       `SELECT ci.id 
        FROM contact_interactions ci
@@ -368,15 +457,15 @@ export async function deleteInteractionAction(
     const result: any = await query('DELETE FROM contact_interactions WHERE id = ?', [interactionId]);
 
     if (result.affectedRows > 0) {
-      // Optional: Recalculate last_contacted_at for the parent contact
-      // This involves finding the latest interaction date for this contactId and updating contacts table.
-      // For simplicity now, we'll just revalidate. A more robust solution would update last_contacted_at.
-      // Example logic:
-      // const latestInteraction = await query('SELECT MAX(interaction_date) as max_date FROM contact_interactions WHERE contact_id = ? AND user_id = ?', [contactId, userId]);
-      // const newLastContactedDate = latestInteraction[0]?.max_date || null;
-      // await query('UPDATE contacts SET last_contacted_at = ? WHERE id = ? AND user_id = ?', [newLastContactedDate, contactId, userId]);
-
-      revalidatePath(`/dashboard/crm`); // Revalidates the page where interactions are listed
+      // After deleting, update the contact's last_contacted_at to the latest remaining interaction
+      const latestInteraction: any[] = await query(
+        'SELECT MAX(interaction_date) as max_date FROM contact_interactions WHERE contact_id = ? AND user_id = ?',
+        [contactId, userId]
+      );
+      const newLastContactedDate = latestInteraction[0]?.max_date || null;
+      await query('UPDATE contacts SET last_contacted_at = ? WHERE id = ? AND user_id = ?', [newLastContactedDate, contactId, userId]);
+      
+      revalidatePath(`/dashboard/crm`); 
       return { success: true, message: "Interacción eliminada exitosamente." };
     } else {
       return { success: false, message: "La interacción no fue encontrada o no se pudo eliminar." };

@@ -240,7 +240,7 @@ export interface Interaction {
   contact_name?: string; // For display purposes, joined from contacts table
 }
 
-export const addInteractionFormSchema = z.object({
+const baseInteractionFormSchema = z.object({
   interaction_type: z.enum(interactionTypeValues, {
     required_error: "El tipo de interacción es requerido.",
   }),
@@ -257,7 +257,11 @@ export const addInteractionFormSchema = z.object({
   }),
 });
 
+export const addInteractionFormSchema = baseInteractionFormSchema;
 export type AddInteractionFormValues = z.infer<typeof addInteractionFormSchema>;
+
+export const editInteractionFormSchema = baseInteractionFormSchema; // Can be identical for now
+export type EditInteractionFormValues = z.infer<typeof editInteractionFormSchema>;
 
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
