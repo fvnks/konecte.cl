@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users } from 'lucide-react';
+import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -57,6 +57,10 @@ export default function Navbar() {
   
   useEffect(() => {
     fetchSiteSettings();
+     // Escuchar evento personalizado para actualizar settings si cambian en otra parte
+    const handleSettingsUpdate = () => fetchSiteSettings();
+    window.addEventListener('siteSettingsUpdated', handleSettingsUpdate);
+    return () => window.removeEventListener('siteSettingsUpdated', handleSettingsUpdate);
   }, [fetchSiteSettings]);
 
 
@@ -78,24 +82,28 @@ export default function Navbar() {
   useEffect(() => {
     updateLoginState(); 
 
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'loggedInUser') {
-        updateLoginState();
-      }
-       if (event.key === 'siteSettingsUpdated') { 
-        fetchSiteSettings();
+    const handleStorageChange = (event: StorageEvent | Event) => {
+      // Manejar tanto StorageEvent como el evento personalizado 'storage'
+      if (event instanceof StorageEvent) {
+        if (event.key === 'loggedInUser') {
+          updateLoginState();
+        }
+      } else if (event.type === 'storage' && (event as CustomEvent).detail?.key === 'loggedInUser') {
+         updateLoginState();
       }
     };
     
-    window.addEventListener('storage', updateLoginState);
     window.addEventListener('storage', handleStorageChange);
+    // También escuchar el evento personalizado 'storage' por si acaso.
+    // Este se dispara manualmente desde signInAction.
+    document.addEventListener('storage', handleStorageChange);
 
 
     return () => {
-      window.removeEventListener('storage', updateLoginState);
       window.removeEventListener('storage', handleStorageChange);
+      document.removeEventListener('storage', handleStorageChange);
     };
-  }, [updateLoginState, fetchSiteSettings]);
+  }, [updateLoginState]);
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
@@ -130,13 +138,13 @@ export default function Navbar() {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg"> {/* Sombra más pronunciada */}
-      <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8"> {/* Aumentar altura */}
+    <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
+      <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
           {logoDisplay}
         </Link>
 
-        <nav className="hidden md:flex items-center gap-2"> {/* Aumentar gap */}
+        <nav className="hidden md:flex items-center gap-1">
           {commonNavLinks()}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -144,18 +152,18 @@ export default function Navbar() {
                 <PlusCircle className="h-5 w-5" /> Publicar
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-card shadow-xl rounded-lg border">
-              <DropdownMenuItem asChild className="hover:bg-primary/10">
-                <Link href="/properties/submit">Publicar Propiedad</Link>
+            <DropdownMenuContent align="end" className="w-56 bg-card shadow-xl rounded-lg border">
+              <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                <Link href="/properties/submit" className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary"/>Publicar Propiedad</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="hover:bg-primary/10">
-                <Link href="/requests/submit">Publicar Solicitud</Link>
+              <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                <Link href="/requests/submit" className="flex items-center gap-2"><Search className="h-4 w-4 text-primary"/>Publicar Solicitud</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>
 
-        <div className="flex items-center gap-3"> {/* Aumentar gap */}
+        <div className="flex items-center gap-3">
           {isClient && loggedInUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -166,38 +174,42 @@ export default function Navbar() {
                     </Avatar>
                   </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60 bg-card shadow-xl rounded-lg border"> {/* Más ancho */}
-                 <DropdownMenuItem disabled>
-                    <div className="flex flex-col space-y-1 py-1.5">
-                      <p className="text-sm font-semibold leading-none">{loggedInUser.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {loggedInUser.email}
-                      </p>
-                       {loggedInUser.planName && (
-                        <p className="text-xs leading-none text-primary mt-1.5 flex items-center">
-                          <CreditCard className="mr-1.5 h-3.5 w-3.5"/> Plan: {loggedInUser.planName}
+              <DropdownMenuContent align="end" className="w-64 bg-card shadow-xl rounded-lg border">
+                 <div className="px-3 py-3">
+                    <p className="text-sm font-semibold leading-none truncate">{loggedInUser.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground truncate mt-0.5">
+                      {loggedInUser.email}
+                    </p>
+                    <div className="mt-2 space-y-1">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <ShieldCheck className="h-3.5 w-3.5 text-primary/80"/>
+                            Rol: <span className="font-medium text-foreground">{loggedInUser.roleName || loggedInUser.roleId}</span>
                         </p>
-                      )}
+                        {loggedInUser.planName && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <CreditCard className="h-3.5 w-3.5 text-primary/80"/> Plan: <span className="font-medium text-foreground">{loggedInUser.planName}</span>
+                            </p>
+                        )}
                     </div>
-                  </DropdownMenuItem>
+                  </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="hover:bg-primary/10">
-                  <Link href="/profile" className="flex items-center w-full py-2"><UserCircle className="mr-2 h-4 w-4"/>Perfil</Link>
+                <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                  <Link href="/profile" className="flex items-center w-full gap-2"><UserCircle className="h-4 w-4 text-primary"/>Perfil</Link>
                 </DropdownMenuItem>
                 {isUserAdmin ? (
-                  <DropdownMenuItem asChild className="hover:bg-primary/10">
-                    <Link href="/admin" className="flex items-center w-full py-2"><ShieldCheck className="mr-2 h-4 w-4 text-primary"/>Panel Admin</Link>
+                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                    <Link href="/admin" className="flex items-center w-full gap-2"><LayoutDashboard className="h-4 w-4 text-primary"/>Panel Admin</Link>
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem asChild className="hover:bg-primary/10">
-                    <Link href="/dashboard" className="flex items-center w-full py-2"><Briefcase className="mr-2 h-4 w-4"/>Panel</Link>
+                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                    <Link href="/dashboard" className="flex items-center w-full gap-2"><LayoutDashboard className="h-4 w-4 text-primary"/>Panel</Link>
                   </DropdownMenuItem>
                 )}
-                 <DropdownMenuItem asChild className="hover:bg-primary/10">
-                  <Link href="/dashboard/crm" className="flex items-center w-full py-2"><Users className="mr-2 h-4 w-4"/>Mi CRM</Link>
+                 <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                  <Link href="/dashboard/crm" className="flex items-center w-full gap-2"><Users className="h-4 w-4 text-primary"/>Mi CRM</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 cursor-pointer text-destructive hover:!bg-destructive/10 hover:!text-destructive py-2">
+                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 cursor-pointer text-destructive hover:!bg-destructive/10 hover:!text-destructive py-2.5">
                   <LogOut className="h-4 w-4" /> Cerrar Sesión
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -226,17 +238,17 @@ export default function Navbar() {
                         {logoDisplay}
                     </Link>
                 </div>
-                <nav className="flex-grow flex flex-col gap-1.5 p-5"> 
+                <nav className="flex-grow flex flex-col gap-1.5 p-5 overflow-y-auto"> 
                   {commonNavLinks(() => setIsMobileMenuOpen(false))}
                   <MobileSeparator />
                    <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
                       <Link href="/properties/submit" className="flex items-center gap-2.5 w-full">
-                        <PlusCircle className="h-5 w-5" /> Publicar Propiedad
+                        <PlusCircle className="h-5 w-5 text-primary" /> Publicar Propiedad
                       </Link>
                     </Button>
                     <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
                       <Link href="/requests/submit" className="flex items-center gap-2.5 w-full">
-                        <PlusCircle className="h-5 w-5" /> Publicar Solicitud
+                        <PlusCircle className="h-5 w-5 text-primary" /> Publicar Solicitud
                       </Link>
                     </Button>
                   <MobileSeparator />
@@ -244,25 +256,25 @@ export default function Navbar() {
                      <>
                       <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
                         <Link href="/profile" className="flex items-center gap-2.5 w-full">
-                          <UserCircle className="h-5 w-5" /> Perfil
+                          <UserCircle className="h-5 w-5 text-primary" /> Perfil
                         </Link>
                       </Button>
                       {isUserAdmin ? (
                         <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
                             <Link href="/admin" className="flex items-center gap-2.5 w-full">
-                                <ShieldCheck className="h-5 w-5 text-primary" /> Panel Admin
+                                <LayoutDashboard className="h-5 w-5 text-primary" /> Panel Admin
                             </Link>
                         </Button>
                        ) : (
                         <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
                           <Link href="/dashboard" className="flex items-center gap-2.5 w-full">
-                            <Briefcase className="h-5 w-5" /> Panel
+                            <LayoutDashboard className="h-5 w-5 text-primary" /> Panel
                           </Link>
                         </Button>
                        )}
                         <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
                           <Link href="/dashboard/crm" className="flex items-center gap-2.5 w-full">
-                            <Users className="h-5 w-5" /> Mi CRM
+                            <Users className="h-5 w-5 text-primary" /> Mi CRM
                           </Link>
                         </Button>
                     </>
