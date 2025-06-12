@@ -149,13 +149,15 @@ export async function getRequestsAction(options: GetRequestsActionOptions = {}):
       LEFT JOIN users u ON pr.user_id = u.id
     `;
     
+    const queryParams: any[] = [];
+
     if (!includeInactive) {
       sql += ' WHERE pr.is_active = TRUE';
     }
     
     sql += ' ORDER BY pr.created_at DESC';
 
-    const rows = await query(sql);
+    const rows = await query(sql, queryParams);
     if (!Array.isArray(rows)) {
         console.error("[RequestAction] Expected array from getRequestsAction, got:", typeof rows);
         return [];
@@ -249,8 +251,6 @@ export async function adminDeleteRequestAction(requestId: string): Promise<{ suc
     }
   } catch (error: any) {
     console.error("Error al eliminar solicitud por admin:", error);
-    // No hay otras FK directas a property_requests que impidan su eliminación,
-    // excepto 'comments' que tiene ON DELETE CASCADE.
     return { success: false, message: `Error al eliminar solicitud: ${error.message}` };
   }
 }
@@ -266,7 +266,7 @@ export async function getRequestByIdForAdminAction(requestId: string): Promise<S
       FROM property_requests pr
       LEFT JOIN users u ON pr.user_id = u.id
       WHERE pr.id = ?
-    `; // No filter by is_active for admin
+    `; 
     const rows = await query(sql, [requestId]);
     if (!Array.isArray(rows) || rows.length === 0) {
       return null;
@@ -289,7 +289,6 @@ export async function adminUpdateRequestAction(
   }
 
   try {
-    // El slug se mantiene, si se necesita cambiar, requiere lógica adicional.
     const sql = `
       UPDATE property_requests SET
         title = ?, description = ?,
@@ -345,9 +344,7 @@ export async function adminUpdateRequestAction(
 
   } catch (error: any) {
     console.error(`[RequestAction Admin] Error updating request ${requestId}:`, error);
-    // ER_DUP_ENTRY no debería ocurrir si no cambiamos el slug.
     return { success: false, message: `Error al actualizar solicitud: ${error.message}` };
   }
 }
-
     
