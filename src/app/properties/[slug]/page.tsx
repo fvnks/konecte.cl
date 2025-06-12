@@ -1,16 +1,13 @@
 
 import { getPropertyBySlugAction } from "@/actions/propertyActions";
-import { placeholderUser, type Comment as CommentType, type PropertyListing, type ListingCategory } from "@/lib/types";
+import type { PropertyListing, ListingCategory } from "@/lib/types";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { MapPin, BedDouble, Bath, HomeIcon, Tag, ThumbsUp, MessageSquare, Send, UserCircle, AlertTriangle } from "lucide-react";
-
-// Simulación de comentarios, reemplazar con carga desde BD más adelante
-const sampleComments: CommentType[] = []; // TODO: Implementar carga de comentarios desde BD
+import { MapPin, BedDouble, Bath, HomeIcon, Tag, AlertTriangle, UserCircle } from "lucide-react";
+import PropertyComments from "@/components/comments/PropertyComments"; // Import the new component
 
 const translatePropertyType = (type: 'rent' | 'sale'): string => {
   if (type === 'rent') return 'En Arriendo';
@@ -37,11 +34,9 @@ const formatPrice = (price: number, currency: string) => {
   try {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: currency || 'CLP' }).format(price);
   } catch (e) {
-    // console.warn(`Invalid currency code for formatting: ${currency}. Falling back to simple number format.`);
     return `${new Intl.NumberFormat('es-CL').format(price)} ${currency || 'CLP'}`;
   }
 };
-
 
 export default async function PropertyDetailPage({ params }: { params: { slug: string } }) {
   const property = await getPropertyBySlugAction(params.slug);
@@ -57,11 +52,13 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
   }
   
   const mainImage = property.images && property.images.length > 0 ? property.images[0] : 'https://placehold.co/800x450.png?text=Propiedad+Sin+Imagen';
-
+  const authorName = property.author?.name || "Anunciante";
+  const authorAvatar = property.author?.avatarUrl;
+  const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden shadow-lg">
         <div className="relative aspect-[16/9] w-full">
           <Image
             src={mainImage}
@@ -86,7 +83,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground">/mes</span>}
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
+        <CardContent className="p-6 pt-0 space-y-6"> {/* Adjusted padding */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div className="p-3 bg-secondary/50 rounded-lg">
               <BedDouble className="mx-auto mb-1 h-6 w-6 text-primary" />
@@ -130,11 +127,11 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
               <h3 className="text-xl font-semibold mb-2 font-headline">Publicado por</h3>
               <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12">
-                  <AvatarImage src={property.author.avatarUrl || `https://placehold.co/40x40.png?text=${property.author.name?.charAt(0).toUpperCase()}`} alt={property.author.name} data-ai-hint="persona" />
-                  <AvatarFallback>{property.author.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                  <AvatarImage src={authorAvatar} alt={authorName} data-ai-hint="persona"/>
+                  <AvatarFallback>{authorInitials || <UserCircle className="h-6 w-6"/>}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold">{property.author.name}</p>
+                  <p className="font-semibold">{authorName}</p>
                   {property.createdAt && <p className="text-xs text-muted-foreground">Publicado el {new Date(property.createdAt).toLocaleDateString('es-CL')} </p>}
                 </div>
                 <Button variant="outline" className="ml-auto">Contactar al Anunciante</Button>
@@ -145,52 +142,8 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
         </CardContent>
       </Card>
 
-      <Card id="comments">
-        <CardHeader>
-          <CardTitle className="text-2xl font-headline flex items-center">
-            <MessageSquare className="mr-3 h-7 w-7 text-primary"/> Discusiones ({sampleComments.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex gap-3 items-start">
-            <Avatar className="mt-1">
-              <AvatarImage src={placeholderUser.avatarUrl} />
-              <AvatarFallback><UserCircle /></AvatarFallback>
-            </Avatar>
-            <div className="flex-grow space-y-2">
-              <Textarea placeholder="Añade un comentario público..." className="min-h-[80px]" />
-              <Button className="flex items-center gap-2">
-                <Send className="h-4 w-4"/> Publicar Comentario
-              </Button>
-            </div>
-          </div>
+      <PropertyComments propertyId={property.id} propertySlug={property.slug} />
 
-          <div className="space-y-4">
-            {sampleComments.map(comment => (
-              <div key={comment.id} className="flex gap-3 items-start p-4 bg-secondary/50 rounded-lg">
-                <Avatar>
-                  <AvatarImage src={comment.author?.avatarUrl} alt={comment.author?.name} data-ai-hint="persona" />
-                  <AvatarFallback>{comment.author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm">{comment.author?.name}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleString('es-CL')}</span>
-                  </div>
-                  <p className="text-sm mt-1">{comment.content}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Button variant="ghost" size="sm" className="text-xs p-1 h-auto text-muted-foreground hover:text-primary">
-                      <ThumbsUp className="h-3.5 w-3.5 mr-1" /> {comment.upvotes}
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-xs p-1 h-auto text-muted-foreground">Responder</Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-           {sampleComments.length === 0 && <p className="text-muted-foreground text-center py-4">Aún no hay comentarios. ¡Sé el primero en comentar!</p>}
-        </CardContent>
-      </Card>
     </div>
   );
 }
