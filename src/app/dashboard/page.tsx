@@ -1,17 +1,17 @@
 
 // src/app/dashboard/page.tsx
-'use client'; 
+'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { PlusCircle, ListTree, SearchCheck, Building, UserCircle, Loader2, CreditCard, Users as UsersIcon, LayoutGrid } from 'lucide-react';
+import { PlusCircle, ListTree, SearchCheck, Building, UserCircle, Loader2, CreditCard, Users as UsersIcon, LayoutGrid, ArrowRight } from 'lucide-react';
 import PropertyListItem from '@/components/property/PropertyListItem';
-import RequestListItem from '@/components/request/RequestListItem'; 
+import RequestListItem from '@/components/request/RequestListItem';
 import type { PropertyListing, SearchRequest, User as StoredUserType } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { getUserPropertiesAction } from '@/actions/propertyActions';
-import { getUserRequestsAction } from '@/actions/requestActions'; 
+import { getUserRequestsAction } from '@/actions/requestActions';
 
 interface DashboardUser extends StoredUserType {
   planId?: string | null;
@@ -26,7 +26,7 @@ export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsClient(true); // Indicate that component has mounted
+    setIsClient(true);
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
@@ -52,18 +52,16 @@ export default function DashboardPage() {
             setUserRequests(requests);
         } catch(error) {
             console.error("Error fetching dashboard data:", error);
-            // Optionally show a toast error
         } finally {
             setIsLoading(false);
         }
       } else if (isClient && localStorage.getItem('loggedInUser') === null) {
-        // Only set loading to false if we are on client and confirmed no user
         setIsLoading(false);
         setUserProperties([]);
         setUserRequests([]);
       }
     }
-    if (isClient) { // Only run fetchData if on client
+    if (isClient) {
         fetchData();
     }
   }, [loggedInUser, isClient]);
@@ -77,7 +75,7 @@ export default function DashboardPage() {
       </div>
     );
   }
-  
+
   if (!loggedInUser) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--header-height,10rem)-var(--footer-height,5rem))] py-10">
@@ -89,50 +87,50 @@ export default function DashboardPage() {
       </div>
     );
   }
-  
+
   const userName = loggedInUser?.name || "Usuario";
 
   return (
     <div className="space-y-8 md:space-y-10">
-      <Card className="shadow-xl rounded-xl border">
-        <CardHeader className="p-6 md:p-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-3">
+      <Card className="shadow-xl rounded-xl border overflow-hidden">
+        <CardHeader className="p-6 md:p-8 bg-gradient-to-br from-primary/10 to-accent/5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <UserCircle className="h-12 w-12 md:h-14 md:w-14 text-primary flex-shrink-0" />
+              <UserCircle className="h-16 w-16 md:h-20 md:w-20 text-primary flex-shrink-0" />
               <div>
-                <CardTitle className="text-2xl md:text-3xl font-headline font-bold">Panel de {userName}</CardTitle>
-                <CardDescription className="text-md md:text-lg text-muted-foreground">Bienvenido. Aquí puedes gestionar tus publicaciones y tu cuenta.</CardDescription>
+                <CardTitle className="text-3xl md:text-4xl font-headline font-bold">¡Hola, {userName}!</CardTitle>
+                <CardDescription className="text-base md:text-lg text-muted-foreground mt-1">Bienvenido a tu centro de control en PropSpot.</CardDescription>
               </div>
             </div>
             {loggedInUser && (
-                 <div className="text-sm bg-primary/10 p-3.5 rounded-lg text-right sm:text-left border border-primary/20">
-                    <p className="font-semibold text-primary-foreground">Tu Plan Actual:</p>
-                    <p className="text-primary font-medium flex items-center gap-1.5">
-                        <CreditCard className="h-4 w-4" /> 
-                        {loggedInUser.planName || "Gratuito (o sin plan asignado)"}
+                 <div className="text-sm bg-card p-4 rounded-lg shadow-sm border text-right sm:text-left min-w-[200px]">
+                    <p className="font-semibold text-foreground">Tu Plan Actual:</p>
+                    <p className="text-primary font-medium flex items-center gap-1.5 text-lg">
+                        <CreditCard className="h-5 w-5" />
+                        {loggedInUser.planName || "Básico"}
                     </p>
-                    {!loggedInUser.planName && (
-                         <Button variant="link" size="sm" className="p-0 h-auto mt-1 text-xs text-primary hover:text-primary/80" disabled> {/* TODO: Link to plans page */}
-                            Ver Planes
-                        </Button>
-                    )}
+                    <Button variant="link" size="sm" className="p-0 h-auto mt-1.5 text-xs text-accent hover:text-accent/80" asChild>
+                        <Link href="#"> {/* TODO: Link to plans/upgrade page */}
+                            {loggedInUser.planName ? "Gestionar Plan" : "Ver Planes"} <ArrowRight className="h-3 w-3 ml-1"/>
+                        </Link>
+                    </Button>
                 </div>
             )}
           </div>
         </CardHeader>
-        <CardContent className="p-6 md:p-8 pt-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Button asChild size="lg" variant="default" className="h-12 text-base rounded-md shadow-md hover:shadow-lg transition-shadow">
-            <Link href="/properties/submit" className="flex items-center gap-2">
+        <CardContent className="p-6 md:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Button asChild size="lg" variant="default" className="h-14 text-base rounded-lg shadow-md hover:shadow-lg transition-shadow">
+            <Link href="/properties/submit" className="flex items-center gap-2.5">
               <PlusCircle className="h-5 w-5" /> Publicar Propiedad
             </Link>
           </Button>
-          <Button asChild size="lg" variant="secondary" className="h-12 text-base rounded-md shadow-md hover:shadow-lg transition-shadow">
-            <Link href="/requests/submit" className="flex items-center gap-2">
+          <Button asChild size="lg" variant="secondary" className="h-14 text-base rounded-lg shadow-md hover:shadow-lg transition-shadow">
+            <Link href="/requests/submit" className="flex items-center gap-2.5">
               <PlusCircle className="h-5 w-5" /> Publicar Solicitud
             </Link>
           </Button>
-           <Button asChild size="lg" variant="outline" className="h-12 text-base rounded-md shadow-sm hover:shadow-md transition-shadow">
-            <Link href="/dashboard/crm" className="flex items-center gap-2">
+           <Button asChild size="lg" variant="outline" className="h-14 text-base rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <Link href="/dashboard/crm" className="flex items-center gap-2.5">
               <UsersIcon className="h-5 w-5" /> Ir a Mi CRM
             </Link>
           </Button>
@@ -140,17 +138,17 @@ export default function DashboardPage() {
       </Card>
 
       {!isLoading && loggedInUser && (
-        <>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10">
           <Card className="rounded-xl shadow-lg border">
             <CardHeader className="p-6 md:p-8">
-              <CardTitle className="text-2xl font-headline flex items-center gap-2">
-                <ListTree className="h-6 w-6 text-primary" /> Mis Propiedades Listadas ({userProperties.length})
+              <CardTitle className="text-2xl font-headline flex items-center gap-3">
+                <ListTree className="h-7 w-7 text-primary" /> Mis Propiedades ({userProperties.length})
               </CardTitle>
-              <CardDescription>Gestiona las propiedades que has listado en PropSpot.</CardDescription>
+              <CardDescription>Gestiona las propiedades que has listado.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 md:p-8 pt-0 space-y-6">
               {userProperties.length > 0 ? (
-                userProperties.slice(0,3).map(property => ( // Mostrar solo las 3 primeras
+                userProperties.slice(0,2).map(property => (
                   <PropertyListItem key={property.id} property={property} />
                 ))
               ) : (
@@ -163,10 +161,10 @@ export default function DashboardPage() {
                 </div>
               )}
             </CardContent>
-             {userProperties.length > 3 && ( // Si hay más de 3, mostrar botón "Ver todas"
+             {userProperties.length > 2 && (
                <CardFooter className="p-6 md:p-8 pt-0">
-                  <Button variant="outline" className="mx-auto rounded-md" asChild>
-                      <Link href="/properties">Ver todas mis propiedades</Link>
+                  <Button variant="outline" className="w-full rounded-md" asChild>
+                      <Link href="/properties" className="flex items-center gap-2">Ver todas mis propiedades <ArrowRight className="h-4 w-4"/></Link>
                   </Button>
               </CardFooter>
              )}
@@ -174,15 +172,15 @@ export default function DashboardPage() {
 
           <Card className="rounded-xl shadow-lg border">
             <CardHeader className="p-6 md:p-8">
-              <CardTitle className="text-2xl font-headline flex items-center gap-2">
-                <SearchCheck className="h-6 w-6 text-primary" /> Mis Solicitudes de Búsqueda ({userRequests.length})
+              <CardTitle className="text-2xl font-headline flex items-center gap-3">
+                <SearchCheck className="h-7 w-7 text-primary" /> Mis Solicitudes ({userRequests.length})
               </CardTitle>
-              <CardDescription>Revisa y gestiona tus solicitudes de búsqueda de propiedades.</CardDescription>
+              <CardDescription>Revisa tus solicitudes de búsqueda de propiedades.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 md:p-8 pt-0 space-y-6">
               {userRequests.length > 0 ? (
-                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {userRequests.slice(0,2).map(request => ( // Mostrar solo las 2 primeras
+                 <div className="space-y-6">
+                  {userRequests.slice(0,2).map(request => (
                     <RequestListItem key={request.id} request={request} />
                   ))}
                 </div>
@@ -196,17 +194,16 @@ export default function DashboardPage() {
                 </div>
               )}
             </CardContent>
-             {userRequests.length > 2 && ( // Si hay más de 2, mostrar botón "Ver todas"
+             {userRequests.length > 2 && (
               <CardFooter className="p-6 md:p-8 pt-0">
-                  <Button variant="outline" className="mx-auto rounded-md" asChild>
-                      <Link href="/requests">Ver todas mis solicitudes</Link>
+                  <Button variant="outline" className="w-full rounded-md" asChild>
+                      <Link href="/requests" className="flex items-center gap-2">Ver todas mis solicitudes <ArrowRight className="h-4 w-4"/></Link>
                   </Button>
               </CardFooter>
              )}
           </Card>
-        </>
+        </div>
       )}
     </div>
   );
 }
-

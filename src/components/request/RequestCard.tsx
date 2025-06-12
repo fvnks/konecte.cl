@@ -1,11 +1,12 @@
 
+// src/components/request/RequestCard.tsx
 import Link from 'next/link';
 import type { SearchRequest, PropertyType, ListingCategory } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, Eye } from 'lucide-react';
+import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, Eye, UserCircle as UserIcon } from 'lucide-react';
 
 interface RequestCardProps {
   request: SearchRequest;
@@ -40,7 +41,7 @@ export default function RequestCard({ request }: RequestCardProps) {
     budgetMax,
     desiredPropertyType,
     createdAt,
-    description, // Added for line-clamp
+    description,
   } = request;
 
   const locationCity = desiredLocation?.city || 'No especificada';
@@ -49,33 +50,33 @@ export default function RequestCard({ request }: RequestCardProps) {
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
   return (
-    <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl h-full">
+    <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl h-full border group">
        <CardHeader className="p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-1.5">
-            <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
+            <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border">
               <AvatarImage src={authorAvatar || `https://placehold.co/40x40.png?text=${authorInitials}`} alt={authorName} data-ai-hint="persona solicitante" />
-              <AvatarFallback className="text-sm">{authorInitials}</AvatarFallback>
+              <AvatarFallback className="text-sm bg-muted">{authorInitials || <UserIcon className="h-5 w-5"/>}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="text-xs sm:text-sm font-medium line-clamp-1" title={authorName}>{authorName}</p>
+              <p className="text-xs sm:text-sm font-semibold line-clamp-1" title={authorName}>{authorName}</p>
               <p className="text-xs text-muted-foreground flex items-center">
                 <CalendarDays className="h-3 w-3 mr-1" />
-                {new Date(createdAt).toLocaleDateString('es-CL', { day:'2-digit', month:'short' })}
+                {new Date(createdAt).toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'2-digit' })}
               </p>
             </div>
         </div>
         <Link href={`/requests/${slug}`} className="block">
-          <CardTitle className="text-sm sm:text-base font-headline leading-snug hover:text-primary transition-colors line-clamp-2" title={title}>
-            <SearchIcon className="inline-block h-4 w-4 mr-1.5 text-primary align-text-bottom" />
+          <CardTitle className="text-sm sm:text-base font-headline leading-snug hover:text-primary transition-colors line-clamp-2 h-[40px] sm:h-[48px]" title={title}>
+            <SearchIcon className="inline-block h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 text-primary align-text-bottom" />
             {title}
           </CardTitle>
         </Link>
       </CardHeader>
       <CardContent className="p-3 sm:p-4 pt-0 flex-grow">
-        <p className="text-xs text-muted-foreground line-clamp-2 mb-2" title={description}>{description}</p>
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-2 h-[32px]" title={description}>{description}</p>
         <div className="space-y-0.5 text-xs text-muted-foreground">
           <div className="flex items-center">
-            <MapPin className="mr-1 h-3.5 w-3.5 text-primary/80 flex-shrink-0" /> 
+            <MapPin className="mr-1 h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
             <span className="truncate">En: {locationCity}</span>
           </div>
           {desiredPropertyType && desiredPropertyType.length > 0 && (
@@ -94,9 +95,9 @@ export default function RequestCard({ request }: RequestCardProps) {
           )}
         </div>
          {budgetMax && (
-             <div className="flex items-center text-xs text-muted-foreground mt-1.5">
-              <DollarSign className="mr-1 h-3.5 w-3.5 text-primary/80 flex-shrink-0" /> 
-              <span>Hasta ${budgetMax.toLocaleString('es-CL', {notation: 'compact'})}</span>
+             <div className="flex items-center text-xs text-accent font-semibold mt-1.5">
+              <DollarSign className="mr-0.5 h-3.5 w-3.5 text-accent/80 flex-shrink-0" />
+              <span>Hasta ${budgetMax.toLocaleString('es-CL', {notation: 'compact', compactDisplay: 'short'})}</span>
             </div>
           )}
       </CardContent>
@@ -104,14 +105,13 @@ export default function RequestCard({ request }: RequestCardProps) {
         <Link href={`/requests/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary">
           <Button variant="ghost" size="sm" className="p-1 h-auto text-xs">
             <MessageCircle className="mr-1 h-3 w-3" />
-            {commentsCount}
+            {commentsCount} <span className="hidden sm:inline ml-1">Coments.</span>
           </Button>
         </Link>
-        <Button size="sm" asChild className="text-xs sm:text-sm rounded-md">
+        <Button size="sm" asChild className="text-xs sm:text-sm rounded-md shadow-sm hover:shadow-md transition-shadow">
             <Link href={`/requests/${slug}`} className="flex items-center gap-1"> <Eye className="h-3.5 w-3.5" /> Ver</Link>
         </Button>
       </CardFooter>
     </Card>
   );
 }
-
