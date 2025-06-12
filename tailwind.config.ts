@@ -10,14 +10,17 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: "2rem", // Default padding, can be overridden
       screens: {
-        "2xl": "1400px",
+        sm: "640px",
+        md: "768px",
+        lg: "1024px",
+        xl: "1280px",
+        "2xl": "1536px", // Wider max container
       },
     },
     extend: {
       fontFamily: {
-        // Updated to use the CSS variable from next/font
         sans: ['var(--font-inter)', 'sans-serif'],
         body: ['var(--font-inter)', 'sans-serif'],
         headline: ['var(--font-inter)', 'sans-serif'],
@@ -75,10 +78,17 @@ export default {
           ring: 'hsl(var(--sidebar-ring))',
         },
       },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+      borderRadius: { // More pronounced rounding
+        xl: 'calc(var(--radius) + 4px)', // Example: 0.75rem + 4px = 1rem
+        '2xl': 'calc(var(--radius) + 8px)', // Example: 0.75rem + 8px = 1.25rem
+        '3xl': 'calc(var(--radius) + 16px)',// Example: 0.75rem + 16px = 1.75rem
+        lg: 'var(--radius)', // 0.75rem
+        md: 'calc(var(--radius) - 2px)', // 0.75rem - 2px
+        sm: 'calc(var(--radius) - 4px)', // 0.75rem - 4px
+      },
+      boxShadow: { // Adding more pronounced shadows
+        'xl': '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+        '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
       },
       keyframes: {
         'accordion-down': {
@@ -98,14 +108,14 @@ export default {
           },
         },
         'fade-in': {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'fade-in': 'fade-in 0.5s ease-out',
+        'fade-in': 'fade-in 0.6s ease-out forwards', // Added forwards
       },
     },
   },
