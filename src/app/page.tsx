@@ -2,11 +2,11 @@
 import type { ReactNode } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Search as SearchIcon, AlertTriangle, Building, FileSearch, Brain, ListChecks, DatabaseZap, ArrowRight } from "lucide-react";
+// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // No longer needed here
+import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, DatabaseZap, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import PropertyListItem from "@/components/property/PropertyListItem";
-import RequestListItem from "@/components/request/RequestListItem";
+// import PropertyListItem from "@/components/property/PropertyListItem"; // Moved to client component
+// import RequestListItem from "@/components/request/RequestListItem"; // Moved to client component
 import type { PropertyListing, SearchRequest, LandingSectionKey } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import { getPropertiesAction } from "@/actions/propertyActions";
@@ -14,84 +14,20 @@ import { getRequestsAction } from "@/actions/requestActions";
 import { getSiteSettingsAction } from "@/actions/siteSettingsActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable"; 
+import FeaturedListingsClient from '@/components/landing/FeaturedListingsClient'; // Import the new client component
 
-// --- Section Components ---
+// --- Section Data Fetching (remains on server) ---
 
-async function FeaturedListingsAndRequestsSection() {
+async function getFeaturedListingsAndRequestsData() {
   const allProperties: PropertyListing[] = await getPropertiesAction();
   const featuredProperties = allProperties.slice(0, 3); 
   
   const allRequests: SearchRequest[] = await getRequestsAction();
   const recentRequests = allRequests.slice(0, 2);
-
-  return (
-    <Card className="shadow-xl rounded-2xl overflow-hidden">
-      <CardHeader className="p-6 md:p-8 bg-secondary/30">
-        <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
-          <ListChecks className="h-8 w-8 mr-3 text-primary" />
-          Destacados y Recientes
-        </CardTitle>
-        <CardDescription className="text-lg text-muted-foreground mt-1">Explora las últimas propiedades y las solicitudes de búsqueda más nuevas.</CardDescription>
-      </CardHeader>
-      <CardContent className="p-6 md:p-8">
-        <Tabs defaultValue="properties" className="w-full">
-          <TabsList className="p-1 rounded-lg bg-muted grid w-full sm:grid-cols-2 mb-8">
-            <TabsTrigger 
-              value="properties" 
-              className="px-3 py-1.5 text-base data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-sm transition-all"
-            >
-              Propiedades Destacadas
-            </TabsTrigger>
-            <TabsTrigger 
-              value="requests" 
-              className="px-3 py-1.5 text-base data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-sm transition-all"
-            >
-              Solicitudes Recientes
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="properties" className="mt-2">
-            {featuredProperties.length > 0 ? (
-              <div className="space-y-8">
-                {featuredProperties.map((property) => (
-                  <PropertyListItem key={property.id} property={property} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground bg-muted/50 rounded-lg">
-                  <Building className="h-16 w-16 mx-auto mb-3 text-gray-400" />
-                  <p className="text-xl">Aún no hay propiedades destacadas.</p>
-              </div>
-            )}
-            <div className="mt-10 text-center">
-              <Button variant="outline" size="lg" asChild className="rounded-lg text-base hover:bg-primary/10 hover:text-primary hover:border-primary">
-                <Link href="/properties">Ver Todas las Propiedades <ArrowRight className="ml-2 h-4 w-4"/></Link>
-              </Button>
-            </div>
-          </TabsContent>
-          <TabsContent value="requests" className="mt-2">
-            {recentRequests.length > 0 ? (
-              <div className="space-y-8"> 
-                {recentRequests.map((request) => (
-                  <RequestListItem key={request.id} request={request} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground bg-muted/50 rounded-lg">
-                  <FileSearch className="h-16 w-16 mx-auto mb-3 text-gray-400" />
-                  <p className="text-xl">Aún no hay solicitudes recientes.</p>
-              </div>
-            )}
-            <div className="mt-10 text-center">
-              <Button variant="outline" size="lg" asChild className="rounded-lg text-base hover:bg-primary/10 hover:text-primary hover:border-primary">
-                <Link href="/requests">Ver Todas las Solicitudes <ArrowRight className="ml-2 h-4 w-4"/></Link>
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
-  );
+  return { featuredProperties, recentRequests };
 }
+
+// --- Section Components (Server or Client as appropriate) ---
 
 function AIMatchingSection() {
   return (
@@ -216,10 +152,29 @@ export default async function HomePage() {
   
   const sectionsOrder = siteSettings?.landing_sections_order || DEFAULT_SECTIONS_ORDER;
 
-  const sectionComponents: Record<LandingSectionKey, ReactNode | null> = {
-    featured_list_requests: showFeaturedListings ? <FeaturedListingsAndRequestsSection /> : null,
-    ai_matching: showAiMatching ? <AIMatchingSection /> : null,
-    google_sheet: showGoogleSheet ? <GoogleSheetDataSection /> : null,
+  // Fetch data for the featured section here, as HomePage is a Server Component
+  const { featuredProperties, recentRequests } = await getFeaturedListingsAndRequestsData();
+
+  const sectionComponentsRender: Record<LandingSectionKey, () => ReactNode | null> = {
+    featured_list_requests: () => showFeaturedListings ? (
+      <Card className="shadow-xl rounded-2xl overflow-hidden">
+        <CardHeader className="p-6 md:p-8 bg-secondary/30">
+          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
+            <ListChecks className="h-8 w-8 mr-3 text-primary" />
+            Destacados y Recientes
+          </CardTitle>
+          <CardDescription className="text-lg text-muted-foreground mt-1">Explora las últimas propiedades y las solicitudes de búsqueda más nuevas.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-6 md:p-8">
+          <FeaturedListingsClient 
+            featuredProperties={featuredProperties}
+            recentRequests={recentRequests}
+          />
+        </CardContent>
+      </Card>
+    ) : null,
+    ai_matching: () => showAiMatching ? <AIMatchingSection /> : null,
+    google_sheet: () => showGoogleSheet ? <GoogleSheetDataSection /> : null,
   };
 
   return (
@@ -264,8 +219,8 @@ export default async function HomePage() {
       </section>
 
       {sectionsOrder.map(key => {
-         const SectionComponent = sectionComponents[key];
-         return SectionComponent ? <div key={key}>{SectionComponent}</div> : null;
+         const SectionRenderer = sectionComponentsRender[key];
+         return SectionRenderer ? <div key={key}>{SectionRenderer()}</div> : null;
       })}
 
     </div>
