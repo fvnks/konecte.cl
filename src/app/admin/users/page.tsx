@@ -3,6 +3,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,7 +14,7 @@ import type { User, Role, Plan } from "@/lib/types";
 import { getUsersAction, updateUserRoleAction, updateUserPlanAction } from '@/actions/userActions';
 import { getRolesAction } from '@/actions/roleActions';
 import { getPlansAction } from '@/actions/planActions';
-import { PlusCircle, UserCog, Users, Loader2, ShieldAlert, CreditCard } from 'lucide-react';
+import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const getRoleBadgeVariant = (roleId: string) => {
@@ -22,9 +23,8 @@ const getRoleBadgeVariant = (roleId: string) => {
 };
 
 const getPlanBadgeVariant = (planId?: string | null) => {
-  if (!planId) return 'outline'; // Para "Sin Plan"
-  // Puedes añadir lógica para diferentes colores de planes si lo deseas
-  return 'default'; // Usamos 'default' para planes asignados por ahora
+  if (!planId) return 'outline'; 
+  return 'default'; 
 };
 
 
@@ -46,7 +46,7 @@ export default function AdminUsersPage() {
       ]);
       setUsers(fetchedUsers);
       setRoles(fetchedRoles);
-      setPlans(fetchedPlans.filter(plan => plan.is_active)); // Solo mostrar planes activos para asignación
+      setPlans(fetchedPlans.filter(plan => plan.is_active)); 
     } catch (error) {
       toast({ title: "Error", description: "No se pudieron cargar los datos de usuarios, roles o planes.", variant: "destructive" });
     } finally {
@@ -76,7 +76,6 @@ export default function AdminUsersPage() {
 
   const handlePlanChange = (userId: string, newPlanId: string) => {
     startTransition(async () => {
-      // El valor 'none' se convierte a null para la acción
       const planIdToSet = newPlanId === 'none' ? null : newPlanId;
       const result = await updateUserPlanAction(userId, planIdToSet);
       if (result.success) {
@@ -129,6 +128,7 @@ export default function AdminUsersPage() {
                     <TableHead className="min-w-[220px]">Asignar Rol</TableHead>
                     <TableHead>Plan Actual</TableHead>
                     <TableHead className="min-w-[220px]">Asignar Plan</TableHead>
+                    <TableHead className="text-center">CRM del Usuario</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -180,9 +180,9 @@ export default function AdminUsersPage() {
                        <TableCell>
                          <div className="flex items-center">
                           <CreditCard className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
-                          {plans.length > 0 || !isLoadingData ? ( // Mostrar Select si hay planes o si ya terminó de cargar y no hay
+                          {plans.length > 0 || !isLoadingData ? ( 
                               <Select
-                              value={user.plan_id || 'none'} // 'none' para representar Sin Plan
+                              value={user.plan_id || 'none'} 
                               onValueChange={(newPlan: string) => handlePlanChange(user.id, newPlan)}
                               disabled={isPending || isLoadingData}
                               >
@@ -200,6 +200,13 @@ export default function AdminUsersPage() {
                               <span className="text-xs text-muted-foreground">Cargando...</span>
                           )}
                          </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button variant="outline" size="sm" asChild className="h-8 text-xs">
+                          <Link href={`/admin/users/${user.id}/crm`}>
+                            <ContactIcon className="h-3.5 w-3.5 mr-1.5" /> Ver CRM
+                          </Link>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
