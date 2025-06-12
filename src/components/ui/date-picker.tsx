@@ -17,7 +17,7 @@ import {
 
 interface DatePickerProps {
   value?: Date | null; // Allow null for optional date
-  onChange: (date?: Date) | ((date?: Date) => void); // Allow undefined for clearing date
+  onChange: (date?: Date | undefined) => void; // Corrected: onChange is a function that takes an optional Date
   placeholder?: string;
   disabled?: boolean;
 }
@@ -31,9 +31,10 @@ export function DatePicker({ value, onChange, placeholder = "Selecciona una fech
 
   const handleDateChange = (selectedDate?: Date) => {
     setDate(selectedDate);
-    if (typeof onChange === 'function') {
-      onChange(selectedDate);
-    }
+    // The typeof check is no longer strictly necessary if onChange is always a function as per the corrected type,
+    // but it doesn't hurt to keep for safety if the prop were to become optional in the future.
+    // However, since it's a required prop as a function, we can call it directly.
+    onChange(selectedDate);
   }
 
   return (
@@ -64,3 +65,4 @@ export function DatePicker({ value, onChange, placeholder = "Selecciona una fech
     </Popover>
   )
 }
+
