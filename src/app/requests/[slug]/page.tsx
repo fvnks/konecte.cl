@@ -1,11 +1,13 @@
 
 import type { PropertyType, ListingCategory, SearchRequest } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, BedDouble, Bath, DollarSign, Tag, SearchIcon, AlertTriangle } from "lucide-react";
+import { MapPin, BedDouble, Bath, DollarSign, Tag, SearchCheck as SearchIcon, AlertTriangle, CalendarDays, Building } from "lucide-react";
 import { getRequestBySlugAction } from "@/actions/requestActions";
-import RequestComments from "@/components/comments/RequestComments"; // Import the new component
+import RequestComments from "@/components/comments/RequestComments"; 
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const translatePropertyType = (type: PropertyType): string => {
   if (type === 'rent') return 'Arriendo';
@@ -30,10 +32,13 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
 
   if (!request) {
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-            <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
-            <h1 className="text-2xl font-bold mb-2">Solicitud No Encontrada</h1>
-            <p className="text-muted-foreground">La solicitud que buscas no existe o no está disponible.</p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+            <AlertTriangle className="h-20 w-20 text-destructive mb-6" />
+            <h1 className="text-3xl font-bold mb-3">Solicitud No Encontrada</h1>
+            <p className="text-lg text-muted-foreground mb-8">La solicitud que buscas no existe o ya no está disponible.</p>
+            <Button asChild>
+              <Link href="/requests">Volver a Solicitudes</Link>
+            </Button>
         </div>
     );
   }
@@ -46,75 +51,90 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
 
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-      <Card className="shadow-lg">
-        <CardHeader className="p-6">
-           <div className="flex items-center gap-3 mb-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={authorAvatar || `https://placehold.co/64x64.png?text=${authorInitials}`} alt={authorName} data-ai-hint="persona" />
+    <div className="max-w-4xl mx-auto space-y-8 lg:space-y-10">
+      <Card className="shadow-xl rounded-xl">
+        <CardHeader className="p-6 md:p-8">
+           <div className="flex items-center gap-4 mb-4">
+              <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
+                <AvatarImage src={authorAvatar || `https://placehold.co/80x80.png?text=${authorInitials}`} alt={authorName} data-ai-hint="persona solicitante" />
                 <AvatarFallback className="text-2xl">{authorInitials}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-xl font-semibold">{authorName}</p>
-                <p className="text-sm text-muted-foreground">Publicado el {new Date(request.createdAt).toLocaleDateString('es-CL')}</p>
+                <p className="text-xl sm:text-2xl font-semibold">{authorName}</p>
+                <p className="text-sm text-muted-foreground flex items-center mt-1">
+                    <CalendarDays className="h-4 w-4 mr-1.5"/>
+                    Publicado el {new Date(request.createdAt).toLocaleDateString('es-CL')}
+                </p>
               </div>
             </div>
-          <CardTitle className="text-3xl font-headline flex items-start">
+          <CardTitle className="text-3xl lg:text-4xl font-headline font-bold flex items-start">
             <SearchIcon className="mr-3 h-8 w-8 text-primary flex-shrink-0 mt-1"/>
             {request.title}
           </CardTitle>
+          <CardDescription className="text-base lg:text-lg text-muted-foreground mt-3 leading-relaxed">
+            {request.description}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
+        <CardContent className="p-6 md:p-8 pt-0 space-y-6">
           <div>
-            <h3 className="text-xl font-semibold mb-2 font-headline">Detalles de la Búsqueda</h3>
-            <div className="space-y-3 text-muted-foreground">
-              <p className="whitespace-pre-line leading-relaxed">{request.description}</p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 pt-3 border-t">
+            <h3 className="text-xl lg:text-2xl font-semibold mb-4 font-headline">Detalles de la Búsqueda</h3>
+            <div className="space-y-3 text-muted-foreground text-base">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 pt-4 border-t">
                 <div className="flex items-start">
-                  <MapPin className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>Ubicación:</strong> {locationCity} {locationNeighborhood ? `(${locationNeighborhood})` : ''}</span>
-                </div>
-                {request.desiredCategories && request.desiredCategories.length > 0 && (
-                  <div className="flex items-start">
-                    <Tag className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span><strong>Tipo de Propiedad:</strong> {request.desiredCategories.map(translateCategory).join(', ')}</span>
+                  <MapPin className="mr-2.5 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-foreground">Ubicación Deseada:</span><br/>
+                    {locationCity} {locationNeighborhood ? `(${locationNeighborhood})` : ''}
                   </div>
-                )}
+                </div>
                 {request.desiredPropertyType && request.desiredPropertyType.length > 0 && (
                   <div className="flex items-start">
-                    <Tag className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span><strong>Buscando para:</strong> {request.desiredPropertyType.map(translatePropertyType).join(', ')}</span>
+                    <Tag className="mr-2.5 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                     <div>
+                        <span className="font-medium text-foreground">Buscando para:</span><br/>
+                        {request.desiredPropertyType.map(translatePropertyType).join(', ')}
+                    </div>
+                  </div>
+                )}
+                 {request.desiredCategories && request.desiredCategories.length > 0 && (
+                  <div className="flex items-start col-span-1 sm:col-span-2">
+                    <Building className="mr-2.5 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                        <span className="font-medium text-foreground">Tipos de Propiedad:</span><br/>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                        {request.desiredCategories.map(cat => (
+                            <Badge key={cat} variant="secondary" className="text-sm py-1 px-2.5 capitalize rounded-md">{translateCategory(cat)}</Badge>
+                        ))}
+                        </div>
+                    </div>
                   </div>
                 )}
                 {request.minBedrooms !== undefined && (
                   <div className="flex items-start">
-                    <BedDouble className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span><strong>Dormitorios:</strong> {request.minBedrooms}+</span>
+                    <BedDouble className="mr-2.5 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                        <span className="font-medium text-foreground">Dormitorios:</span><br/> {request.minBedrooms}+
+                    </div>
                   </div>
                 )}
                  {request.minBathrooms !== undefined && (
                   <div className="flex items-start">
-                    <Bath className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span><strong>Baños:</strong> {request.minBathrooms}+</span>
+                    <Bath className="mr-2.5 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                        <span className="font-medium text-foreground">Baños:</span><br/> {request.minBathrooms}+
+                    </div>
                   </div>
                 )}
                 {request.budgetMax !== undefined && (
                   <div className="flex items-start">
-                    <DollarSign className="mr-2 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <span><strong>Presupuesto Máx.:</strong> ${request.budgetMax.toLocaleString('es-CL')}</span>
+                    <DollarSign className="mr-2.5 h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                     <div>
+                        <span className="font-medium text-foreground">Presupuesto Máx.:</span><br/> ${request.budgetMax.toLocaleString('es-CL')}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-          </div>
-           <div className="mt-4">
-            {request.desiredPropertyType && request.desiredPropertyType.map(pt => (
-                <Badge key={pt} variant="secondary" className="mr-2 mb-2 text-sm py-1 px-3 capitalize">{translatePropertyType(pt)}</Badge>
-            ))}
-            {request.desiredCategories && request.desiredCategories.map(cat => (
-                <Badge key={cat} variant="outline" className="mr-2 mb-2 text-sm py-1 px-3 capitalize">{translateCategory(cat)}</Badge>
-            ))}
           </div>
         </CardContent>
       </Card>
