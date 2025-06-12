@@ -36,7 +36,7 @@ const formSchema = z.object({
   show_featured_listings_section: z.boolean().default(true).optional(),
   show_ai_matching_section: z.boolean().default(true).optional(),
   show_google_sheet_section: z.boolean().default(true).optional(),
-  landing_sections_order: z.array(landingSectionKeySchema).min(1, "Debe haber al menos una sección en el orden."),
+  landing_sections_order: z.array(landingSectionKeySchema).min(1, "Debe haber al menos una sección en el orden.").default(["featured_list_requests", "ai_matching", "google_sheet"]),
 });
 
 type SiteSettingsFormValues = z.infer<typeof formSchema>;
@@ -67,22 +67,26 @@ export default function AdminAppearancePage() {
       landing_sections_order: DEFAULT_SECTIONS_ORDER,
     },
   });
-  const { setValue } = form; // Destructure setValue for stable reference
+  const { setValue } = form;
 
   const resetFormAndState = useCallback((settings: SiteSettings) => {
     const validOrder = settings.landing_sections_order && settings.landing_sections_order.length > 0
                        ? settings.landing_sections_order
                        : DEFAULT_SECTIONS_ORDER;
     
-    setOrderedSections(validOrder); // This will trigger the useEffect below
-
+    // Actualizar el estado local primero
+    setOrderedSections(validOrder); 
+    
+    // Luego resetear el formulario. El useEffect se encargará de sincronizar
+    // el valor de landing_sections_order del formulario si es necesario,
+    // pero es bueno establecerlo aquí también para consistencia inicial.
     form.reset({
       siteTitle: settings.siteTitle || DEFAULT_FALLBACK_TITLE,
       logoUrl: settings.logoUrl || "",
       show_featured_listings_section: settings.show_featured_listings_section === undefined ? true : settings.show_featured_listings_section,
       show_ai_matching_section: settings.show_ai_matching_section === undefined ? true : settings.show_ai_matching_section,
       show_google_sheet_section: settings.show_google_sheet_section === undefined ? true : settings.show_google_sheet_section,
-      landing_sections_order: validOrder, // Also set in form reset for completeness
+      landing_sections_order: validOrder,
     });
     setCurrentSettings(settings);
   }, [form]);
@@ -97,15 +101,14 @@ export default function AdminAppearancePage() {
     }
     loadSettings();
   }, [resetFormAndState]);
-
-  // Synchronize react-hook-form's 'landing_sections_order' field
-  // with the local 'orderedSections' state using useEffect.
+  
+  // Sincronizar el estado local `orderedSections` con el campo del formulario `landing_sections_order`
   useEffect(() => {
     setValue('landing_sections_order', orderedSections, {
-      shouldValidate: true,
-      shouldDirty: form.formState.isDirty, // Preserve dirty state or set based on actual changes
+      shouldValidate: true, // Validar después de cambiar el orden
+      shouldDirty: true,    // Marcar como dirty si el orden es diferente al valor inicial del form
     });
-  }, [orderedSections, setValue, form.formState.isDirty]);
+  }, [orderedSections, setValue]);
 
   const moveSection = (index: number, direction: 'up' | 'down') => {
     setOrderedSections(prevOrder => {
@@ -113,29 +116,25 @@ export default function AdminAppearancePage() {
       const newIndex = direction === 'up' ? index - 1 : index + 1;
 
       if (newIndex < 0 || newIndex >= newOrder.length) {
-        return prevOrder; // No change if out of bounds
+        return prevOrder; 
       }
-      // Swap elements
       [newOrder[index], newOrder[newIndex]] = [newOrder[newIndex], newOrder[index]];
-      // form.setValue is removed from here; useEffect will handle it.
       return newOrder;
     });
-    if (!form.formState.isDirty) {
-        form.control.register('landing_sections_order', { value: orderedSections }); // Manually trigger dirty
-        form.trigger('landing_sections_order'); // And validation if needed
-    }
   };
 
 
   async function onSubmit(values: SiteSettingsFormValues) {
-    // Use the `orderedSections` from local state as the source of truth for submission.
+    // Usar el `orderedSections` del estado local como la fuente de verdad para el guardado.
+    // Los `values` del formulario ya deberían estar sincronizados por el useEffect,
+    // pero es más seguro usar el estado que controla directamente la UI de reordenamiento.
     const result = await saveSiteSettingsAction({
       siteTitle: values.siteTitle,
       logoUrl: values.logoUrl || null,
       show_featured_listings_section: values.show_featured_listings_section,
       show_ai_matching_section: values.show_ai_matching_section,
       show_google_sheet_section: values.show_google_sheet_section,
-      landing_sections_order: orderedSections,
+      landing_sections_order: orderedSections, 
     });
 
     if (result.success) {
@@ -144,8 +143,7 @@ export default function AdminAppearancePage() {
         description: "La configuración de apariencia del sitio se ha guardado correctamente.",
       });
       const updatedSettings = await getSiteSettingsAction();
-      resetFormAndState(updatedSettings);
-      // form.formState.isSubmitted = false; // No longer needed, form.reset handles it
+      resetFormAndState(updatedSettings); // Esto reiniciará isDirty
     } else {
       toast({
         title: "Error",
@@ -315,13 +313,13 @@ export default function AdminAppearancePage() {
 
             <Separator />
 
-            {/* Reordering Sections UI */}
             <div>
               <h3 className="text-lg font-medium mb-2">Orden de Secciones en la Landing Page</h3>
+              {/* Usamos Controller aquí para conectar `orderedSections` con el form state para validación/dirty-checking */}
               <Controller
                 control={form.control}
                 name="landing_sections_order"
-                render={() => ( // field is not directly used for reordering UI but good for context
+                render={() => ( 
                   <div className="p-4 border rounded-md">
                     <p className="text-sm text-muted-foreground mb-3">
                       Haz clic en las flechas para cambiar el orden de aparición de las secciones en la página de inicio.
@@ -418,3 +416,5 @@ export default function AdminAppearancePage() {
     </Card>
   );
 }
+
+    
