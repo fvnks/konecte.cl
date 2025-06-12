@@ -1,3 +1,4 @@
+
 // src/app/dashboard/crm/page.tsx
 'use client';
 
@@ -5,12 +6,13 @@ import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, UserCircle, Users as UsersIcon, AlertTriangle } from 'lucide-react';
-import type { Contact, User as StoredUserType } from '@/lib/types';
-import { getUserContactsAction, deleteContactAction } from '@/actions/crmActions';
+import { Loader2, PlusCircle, UserCircle, Users as UsersIcon, AlertTriangle, History as HistoryIcon } from 'lucide-react';
+import type { Contact, User as StoredUserType, Interaction } from '@/lib/types';
+import { getUserContactsAction, deleteContactAction, getContactInteractionsAction } from '@/actions/crmActions';
 import ContactListItem from '@/components/crm/ContactListItem';
 import AddContactDialog from '@/components/crm/AddContactDialog';
 import EditContactDialog from '@/components/crm/EditContactDialog';
+import ContactInteractionsDialog from '@/components/crm/ContactInteractionsDialog';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -26,7 +28,7 @@ import {
 export default function CrmPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUserType | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(true);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -35,8 +37,12 @@ export default function CrmPage() {
   const [contactToDelete, setContactToDelete] = useState<{id: string, name: string} | null>(null);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
 
+  const [viewingInteractionsForContact, setViewingInteractionsForContact] = useState<Contact | null>(null);
+  const [contactInteractions, setContactInteractions] = useState<Interaction[]>([]);
+  const [isLoadingInteractions, setIsLoadingInteractions] = useState(false);
+  const [isInteractionsModalOpen, setIsInteractionsModalOpen] = useState(false);
+
   const [isPending, startTransition] = useTransition();
-  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -49,14 +55,14 @@ export default function CrmPage() {
         localStorage.removeItem('loggedInUser');
       }
     } else {
-      setIsLoading(false); 
+      setIsLoadingContacts(false); 
     }
   }, []);
 
   useEffect(() => {
     async function fetchContacts() {
       if (loggedInUser?.id) {
-        setIsLoading(true);
+        setIsLoadingContacts(true);
         try {
           const fetchedContacts = await getUserContactsAction(loggedInUser.id);
           setContacts(fetchedContacts.sort((a, b) => a.name.localeCompare(b.name)));
@@ -68,16 +74,14 @@ export default function CrmPage() {
             variant: 'destructive',
           });
         } finally {
-          setIsLoading(false);
+          setIsLoadingContacts(false);
         }
       } else if (!localStorage.getItem('loggedInUser')) {
-        setIsLoading(false);
+         setIsLoadingContacts(false);
       }
     }
-    if (loggedInUser || isLoading) {
-        fetchContacts();
-    }
-  }, [loggedInUser, toast, isLoading]);
+    fetchContacts();
+  }, [loggedInUser, toast]);
 
   const handleContactAdded = (newContact: Contact) => {
     setContacts(prevContacts => [newContact, ...prevContacts].sort((a, b) => a.name.localeCompare(b.name)));
@@ -125,8 +129,36 @@ export default function CrmPage() {
     });
   };
 
+  const handleViewInteractions = async (contact: Contact) => {
+    if (!loggedInUser?.id) return;
+    setViewingInteractionsForContact(contact);
+    setIsInteractionsModalOpen(true);
+    setIsLoadingInteractions(true);
+    try {
+      const fetchedInteractions = await getContactInteractionsAction(contact.id, loggedInUser.id);
+      setContactInteractions(fetchedInteractions);
+    } catch (error) {
+      toast({ title: 'Error', description: 'No se pudieron cargar las interacciones.', variant: 'destructive' });
+      setContactInteractions([]);
+    } finally {
+      setIsLoadingInteractions(false);
+    }
+  };
+  
+  const handleInteractionAdded = (newInteraction: Interaction) => {
+    setContactInteractions(prev => [newInteraction, ...prev].sort((a,b) => new Date(b.interaction_date).getTime() - new Date(a.interaction_date).getTime() ));
+    // Optimistically update last_contacted_at on the main contact list for better UX
+    if (viewingInteractionsForContact) {
+      setContacts(prevContacts => prevContacts.map(c => 
+        c.id === viewingInteractionsForContact.id 
+        ? { ...c, last_contacted_at: newInteraction.interaction_date } 
+        : c
+      ));
+    }
+  };
 
-  if (!loggedInUser && !isLoading) {
+
+  if (!loggedInUser && !isLoadingContacts) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-20rem)]">
         <UserCircle className="h-16 w-16 text-muted-foreground mb-4" />
@@ -155,13 +187,13 @@ export default function CrmPage() {
             onContactAdded={handleContactAdded}
             userId={loggedInUser?.id}
           >
-            <Button onClick={() => setIsAddContactOpen(true)} disabled={!loggedInUser || isLoading || isPending}>
+            <Button onClick={() => setIsAddContactOpen(true)} disabled={!loggedInUser || isLoadingContacts || isPending}>
               <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nuevo Contacto
             </Button>
           </AddContactDialog>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoadingContacts ? (
             <div className="flex justify-center items-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="ml-3 text-muted-foreground">Cargando tus contactos...</p>
@@ -174,6 +206,7 @@ export default function CrmPage() {
                   contact={contact}
                   onEdit={handleEditContact}
                   onDeleteRequest={handleDeleteRequest} 
+                  onViewInteractions={handleViewInteractions}
                 />
               ))}
             </div>
@@ -188,7 +221,7 @@ export default function CrmPage() {
                 onContactAdded={handleContactAdded}
                 userId={loggedInUser?.id}
               >
-                <Button onClick={() => setIsAddContactOpen(true)} variant="default" disabled={!loggedInUser || isLoading || isPending}>
+                <Button onClick={() => setIsAddContactOpen(true)} variant="default" disabled={!loggedInUser || isLoadingContacts || isPending}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Añadir Primer Contacto
                 </Button>
               </AddContactDialog>
@@ -217,7 +250,7 @@ export default function CrmPage() {
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                     ¿Estás seguro de que quieres eliminar al contacto <span className="font-semibold">{contactToDelete.name}</span>? 
-                    Esta acción no se puede deshacer.
+                    Esta acción no se puede deshacer y eliminará también todas sus interacciones.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -231,6 +264,21 @@ export default function CrmPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+      )}
+
+      {viewingInteractionsForContact && (
+        <ContactInteractionsDialog
+            open={isInteractionsModalOpen}
+            onOpenChange={(open) => {
+                setIsInteractionsModalOpen(open);
+                if (!open) setViewingInteractionsForContact(null); // Clear contact when closing
+            }}
+            contact={viewingInteractionsForContact}
+            interactions={contactInteractions}
+            onInteractionAdded={handleInteractionAdded}
+            isLoadingInteractions={isLoadingInteractions}
+            userId={loggedInUser?.id}
+        />
       )}
     </div>
   );

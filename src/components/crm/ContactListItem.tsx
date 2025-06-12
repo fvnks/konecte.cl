@@ -1,10 +1,11 @@
+
 // src/components/crm/ContactListItem.tsx
 import type { Contact } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, Building, Edit3, Trash2, Info, UserCircle } from 'lucide-react';
+import { Mail, Phone, Building, Edit3, Trash2, Info, UserCircle, History } from 'lucide-react';
 import { contactStatusOptions } from '@/lib/types'; 
 import {
   AlertDialog,
@@ -22,10 +23,11 @@ import { useState } from 'react';
 interface ContactListItemProps {
   contact: Contact;
   onEdit: (contact: Contact) => void;
-  onDeleteRequest: (contactId: string, contactName: string) => void; // Prop para solicitar eliminación
+  onDeleteRequest: (contactId: string, contactName: string) => void;
+  onViewInteractions: (contact: Contact) => void; 
 }
 
-export default function ContactListItem({ contact, onEdit, onDeleteRequest }: ContactListItemProps) {
+export default function ContactListItem({ contact, onEdit, onDeleteRequest, onViewInteractions }: ContactListItemProps) {
   const statusLabel = contactStatusOptions.find(opt => opt.value === contact.status)?.label || contact.status;
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
 
@@ -61,6 +63,9 @@ export default function ContactListItem({ contact, onEdit, onDeleteRequest }: Co
           </Badge>
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver interacciones" onClick={() => onViewInteractions(contact)}>
+            <History className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar contacto" onClick={() => onEdit(contact)}>
             <Edit3 className="h-4 w-4" />
           </Button>
@@ -76,7 +81,7 @@ export default function ContactListItem({ contact, onEdit, onDeleteRequest }: Co
                 <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
                 <AlertDialogDescription>
                   Esta acción no se puede deshacer. Esto eliminará permanentemente el contacto 
-                  <span className="font-semibold"> {contact.name}</span> y todos sus datos asociados.
+                  <span className="font-semibold"> {contact.name}</span> y todos sus datos asociados (incluyendo interacciones).
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -118,9 +123,13 @@ export default function ContactListItem({ contact, onEdit, onDeleteRequest }: Co
             <p className="mt-2 text-xs text-muted-foreground italic">No hay detalles adicionales.</p>
         )}
       </CardContent>
-      <CardFooter className="p-4 pt-2 text-xs text-muted-foreground flex justify-between border-t">
+      <CardFooter className="p-4 pt-2 text-xs text-muted-foreground flex justify-between items-center border-t">
         <span>Fuente: {contact.source || 'N/A'}</span>
-        {contact.created_at && <span>Creado: {new Date(contact.created_at).toLocaleDateString('es-CL')}</span>}
+        {contact.last_contacted_at ? (
+            <span>Últ. contacto: {new Date(contact.last_contacted_at).toLocaleDateString('es-CL')}</span>
+        ) : (
+            contact.created_at && <span>Creado: {new Date(contact.created_at).toLocaleDateString('es-CL')}</span>
+        )}
       </CardFooter>
     </Card>
   );

@@ -157,7 +157,7 @@ export const contactStatusValues = [
   'negotiation', 'won', 'lost', 'on_hold', 'unqualified'
 ] as const;
 
-const baseContactSchema = {
+const baseContactSchemaParts = {
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres.").max(255),
   email: z.string().email("Correo electrónico inválido.").max(255).optional().or(z.literal('')),
   phone: z.string().max(50).optional().or(z.literal('')),
@@ -167,10 +167,10 @@ const baseContactSchema = {
   notes: z.string().optional().or(z.literal('')),
 };
 
-export const addContactFormSchema = z.object(baseContactSchema);
+export const addContactFormSchema = z.object(baseContactSchemaParts);
 export type AddContactFormValues = z.infer<typeof addContactFormSchema>;
 
-export const editContactFormSchema = z.object(baseContactSchema);
+export const editContactFormSchema = z.object(baseContactSchemaParts);
 export type EditContactFormValues = z.infer<typeof editContactFormSchema>;
 
 
@@ -270,4 +270,3 @@ export const placeholderUser: User = {
   role_id: 'user',
   role_name: 'Usuario'
 };
-

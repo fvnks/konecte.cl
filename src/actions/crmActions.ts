@@ -123,11 +123,11 @@ export async function updateContactAction(
   const { name, email, phone, company_name, status, source, notes } = validation.data;
 
   try {
-    const contactCheck = await query('SELECT id, user_id FROM contacts WHERE id = ?', [contactId]);
-    if (contactCheck.length === 0) {
+    const contactCheckResult = await query('SELECT id, user_id FROM contacts WHERE id = ?', [contactId]);
+    if (!Array.isArray(contactCheckResult) || contactCheckResult.length === 0) {
       return { success: false, message: "Contacto no encontrado." };
     }
-    if (contactCheck[0].user_id !== userId) {
+    if (contactCheckResult[0].user_id !== userId) {
       return { success: false, message: "No tienes permiso para editar este contacto." };
     }
 
@@ -155,7 +155,7 @@ export async function updateContactAction(
     // revalidatePath(`/admin/users/${userId}/crm`);
 
     const updatedContactResult = await query('SELECT * FROM contacts WHERE id = ?', [contactId]);
-     if (updatedContactResult.length === 0) {
+     if (!Array.isArray(updatedContactResult) || updatedContactResult.length === 0) {
         return { success: false, message: "Error al actualizar el contacto, no se pudo recuperar." };
     }
 
@@ -179,19 +179,22 @@ export async function deleteContactAction(
   }
 
   try {
-    const contactCheck = await query('SELECT id, user_id FROM contacts WHERE id = ?', [contactId]);
-     if (contactCheck.length === 0) {
+    const contactCheckResult = await query('SELECT id, user_id FROM contacts WHERE id = ?', [contactId]);
+     if (!Array.isArray(contactCheckResult) || contactCheckResult.length === 0) {
       return { success: false, message: "Contacto no encontrado." };
     }
-    if (contactCheck[0].user_id !== userId) {
+    if (contactCheckResult[0].user_id !== userId) {
       return { success: false, message: "No tienes permiso para eliminar este contacto." };
     }
+    
+    // Eliminar interacciones asociadas primero, debido a la FK
+    await query('DELETE FROM contact_interactions WHERE contact_id = ? AND user_id = ?', [contactId, userId]);
     
     const result: any = await query('DELETE FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
     
     if (result.affectedRows > 0) {
       revalidatePath('/dashboard/crm');
-      return { success: true, message: "Contacto eliminado exitosamente." };
+      return { success: true, message: "Contacto y sus interacciones eliminados exitosamente." };
     } else {
       return { success: false, message: "El contacto no fue encontrado o no se pudo eliminar." };
     }
@@ -254,8 +257,8 @@ export async function addContactInteractionAction(
 
   try {
     // Verify contact belongs to user
-    const contactCheck = await query('SELECT id FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
-    if (contactCheck.length === 0) {
+    const contactCheckResult = await query('SELECT id FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
+    if (!Array.isArray(contactCheckResult) || contactCheckResult.length === 0) {
       return { success: false, message: "Contacto no encontrado o no tienes permiso para añadir interacciones." };
     }
 
@@ -268,24 +271,22 @@ export async function addContactInteractionAction(
     `;
     const params = [
       interactionId, contactId, userId, interaction_type,
-      new Date(interaction_date), // Ensure it's a Date object for DB
+      new Date(interaction_date), 
       subject || null,
       description,
       outcome || null,
       follow_up_needed,
-      follow_up_date ? new Date(follow_up_date) : null, // Ensure it's a Date object or null
+      follow_up_date ? new Date(follow_up_date) : null,
     ];
 
     await query(sql, params);
     
-    // Also update last_contacted_at on the contact
     await query('UPDATE contacts SET last_contacted_at = ? WHERE id = ? AND user_id = ?', [new Date(interaction_date), contactId, userId]);
 
-
-    revalidatePath(`/dashboard/crm`); // Or more specific path if interactions are on a detail page
+    revalidatePath(`/dashboard/crm`);
 
     const newInteractionResult = await query('SELECT * FROM contact_interactions WHERE id = ?', [interactionId]);
-    if (newInteractionResult.length === 0) {
+    if (!Array.isArray(newInteractionResult) || newInteractionResult.length === 0) {
         return { success: false, message: "Error al añadir la interacción, no se pudo recuperar." };
     }
     
@@ -311,11 +312,10 @@ export async function getContactInteractionsAction(
   }
 
   try {
-    // Verify contact belongs to user before fetching interactions for security/privacy
-    const contactCheck = await query('SELECT id FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
-    if (contactCheck.length === 0) {
+    const contactCheckResult = await query('SELECT id FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
+    if (!Array.isArray(contactCheckResult) || contactCheckResult.length === 0) {
       console.warn(`[CrmAction] Attempt to fetch interactions for contact ${contactId} not belonging to user ${userId}.`);
-      return []; // Or throw an error
+      return [];
     }
 
     const sql = `
