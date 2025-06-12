@@ -1,3 +1,4 @@
+
 # Esquema de la Base de Datos PropSpot (MySQL)
 
 Este documento describe la estructura propuesta para las tablas de la base de datos de PropSpot.
@@ -258,13 +259,14 @@ CREATE TABLE site_settings (
     show_featured_listings_section BOOLEAN DEFAULT TRUE,
     show_ai_matching_section BOOLEAN DEFAULT TRUE,
     show_google_sheet_section BOOLEAN DEFAULT TRUE,
+    landing_sections_order TEXT DEFAULT '["featured_list_requests", "ai_matching", "google_sheet"]', -- Orden de las secciones como JSON array
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT id_must_be_1_site_settings CHECK (id = 1)
 );
 
 -- Insertar configuración inicial para site_settings
-INSERT INTO site_settings (id, site_title, logo_url, show_featured_listings_section, show_ai_matching_section, show_google_sheet_section) 
-VALUES (1, 'PropSpot - Encuentra Tu Próxima Propiedad', NULL, TRUE, TRUE, TRUE)
+INSERT INTO site_settings (id, site_title, logo_url, show_featured_listings_section, show_ai_matching_section, show_google_sheet_section, landing_sections_order) 
+VALUES (1, 'PropSpot - Encuentra Tu Próxima Propiedad', NULL, TRUE, TRUE, TRUE, '["featured_list_requests", "ai_matching", "google_sheet"]')
 ON DUPLICATE KEY UPDATE id = 1;
 ```
 

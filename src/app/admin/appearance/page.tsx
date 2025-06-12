@@ -19,12 +19,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { saveSiteSettingsAction, getSiteSettingsAction } from "@/actions/siteSettingsActions";
-import type { SiteSettings } from "@/lib/types";
+import type { SiteSettings, LandingSectionKey } from "@/lib/types";
 import { useEffect, useState } from "react";
-import { Loader2, Brush, EyeOff, Eye } from "lucide-react";
+import { Loader2, Brush, EyeOff, Eye, ListOrdered } from "lucide-react";
 import Image from "next/image";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+
+const landingSectionKeySchema = z.enum(["featured_list_requests", "ai_matching", "google_sheet"]);
 
 const formSchema = z.object({
   siteTitle: z.string().min(5, "El título del sitio debe tener al menos 5 caracteres.").max(100, "El título no puede exceder los 100 caracteres."),
@@ -32,11 +34,19 @@ const formSchema = z.object({
   show_featured_listings_section: z.boolean().default(true).optional(),
   show_ai_matching_section: z.boolean().default(true).optional(),
   show_google_sheet_section: z.boolean().default(true).optional(),
+  landing_sections_order: z.array(landingSectionKeySchema).optional(), // No se usa en el form aun, pero para consistencia
 });
 
 type SiteSettingsFormValues = z.infer<typeof formSchema>;
 
 const DEFAULT_FALLBACK_TITLE = 'PropSpot - Encuentra Tu Próxima Propiedad';
+const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "ai_matching", "google_sheet"];
+
+const sectionNames: Record<LandingSectionKey, string> = {
+  featured_list_requests: "Listados Destacados y Solicitudes Recientes",
+  ai_matching: "Búsqueda Inteligente (IA)",
+  google_sheet: "Datos de Google Sheets",
+};
 
 export default function AdminAppearancePage() {
   const { toast } = useToast();
@@ -51,6 +61,7 @@ export default function AdminAppearancePage() {
       show_featured_listings_section: true,
       show_ai_matching_section: true,
       show_google_sheet_section: true,
+      landing_sections_order: DEFAULT_SECTIONS_ORDER,
     },
   });
 
@@ -64,6 +75,7 @@ export default function AdminAppearancePage() {
         show_featured_listings_section: settings.show_featured_listings_section === undefined ? true : settings.show_featured_listings_section,
         show_ai_matching_section: settings.show_ai_matching_section === undefined ? true : settings.show_ai_matching_section,
         show_google_sheet_section: settings.show_google_sheet_section === undefined ? true : settings.show_google_sheet_section,
+        landing_sections_order: settings.landing_sections_order || DEFAULT_SECTIONS_ORDER,
       });
       setCurrentSettings(settings);
       setIsLoading(false);
@@ -72,12 +84,15 @@ export default function AdminAppearancePage() {
   }, [form]);
 
   async function onSubmit(values: SiteSettingsFormValues) {
+    // Aunque landing_sections_order está en el schema, no lo estamos modificando en este form aún.
+    // Así que lo tomamos de currentSettings para no perderlo si ya existe.
     const result = await saveSiteSettingsAction({
       siteTitle: values.siteTitle,
       logoUrl: values.logoUrl || null,
       show_featured_listings_section: values.show_featured_listings_section,
       show_ai_matching_section: values.show_ai_matching_section,
       show_google_sheet_section: values.show_google_sheet_section,
+      landing_sections_order: currentSettings.landing_sections_order || DEFAULT_SECTIONS_ORDER,
     });
     if (result.success) {
       toast({
@@ -92,6 +107,7 @@ export default function AdminAppearancePage() {
         show_featured_listings_section: updatedSettings.show_featured_listings_section,
         show_ai_matching_section: updatedSettings.show_ai_matching_section,
         show_google_sheet_section: updatedSettings.show_google_sheet_section,
+        landing_sections_order: updatedSettings.landing_sections_order || DEFAULT_SECTIONS_ORDER,
       });
     } else {
       toast({
@@ -119,7 +135,7 @@ export default function AdminAppearancePage() {
           Configuración de Apariencia del Sitio
         </CardTitle>
         <CardDescription>
-          Personaliza el título, logo y visibilidad de secciones de la página de inicio.
+          Personaliza el título, logo, visibilidad y orden de secciones de la página de inicio.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -151,7 +167,7 @@ export default function AdminAppearancePage() {
                         <FormItem>
                         <FormLabel>URL del Logo del Sitio (Opcional)</FormLabel>
                         <FormControl>
-                            <Input placeholder="https://ejemplo.com/logo.png" {...field} />
+                            <Input placeholder="https://ejemplo.com/logo.png" {...field} value={field.value || ''}/>
                         </FormControl>
                         <FormDescription>
                             Ingresa la URL completa de tu logo. Si se deja vacío, se usará el logo por defecto.
@@ -172,6 +188,7 @@ export default function AdminAppearancePage() {
                             height={40} 
                             style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }}
                             onError={(e) => (e.currentTarget.style.display = 'none')}
+                            data-ai-hint="logo"
                         />
                         </div>
                         {!form.formState.errors.logoUrl && !isLoading && !form.watch("logoUrl")?.startsWith('http') && form.watch("logoUrl") !== '' && (
@@ -259,6 +276,31 @@ export default function AdminAppearancePage() {
                  </div>
             </div>
 
+            <Separator />
+
+            <div>
+                <h3 className="text-lg font-medium mb-2">Orden de Secciones en la Landing Page</h3>
+                <div className="p-4 border rounded-md bg-secondary/30">
+                    <p className="text-sm text-muted-foreground mb-3">
+                        Actualmente, el orden de las secciones se gestiona internamente. 
+                        La capacidad de reordenar visualmente las secciones se implementará en una futura actualización.
+                    </p>
+                    {currentSettings.landing_sections_order && currentSettings.landing_sections_order.length > 0 ? (
+                        <>
+                            <p className="text-sm font-medium mb-1">Orden Actual:</p>
+                            <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+                            {(currentSettings.landing_sections_order || DEFAULT_SECTIONS_ORDER).map((sectionKey) => (
+                                <li key={sectionKey}>{sectionNames[sectionKey as LandingSectionKey] || sectionKey}</li>
+                            ))}
+                            </ol>
+                        </>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No se ha definido un orden específico, se usará el orden por defecto.</p>
+                    )}
+                </div>
+            </div>
+
+
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Guardar Cambios
@@ -277,7 +319,7 @@ export default function AdminAppearancePage() {
                 <p className="text-sm font-medium">Logo Actual:</p>
                 {currentSettings.logoUrl ? (
                 <div className="p-2 border rounded bg-card inline-block mt-1">
-                    <Image src={currentSettings.logoUrl} alt="Logo actual" width={150} height={40} style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }} />
+                    <Image src={currentSettings.logoUrl} alt="Logo actual" width={150} height={40} style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }} data-ai-hint="logo"/>
                 </div>
                 ) : (
                 <p className="text-sm text-muted-foreground">Usando logo por defecto.</p>
@@ -289,6 +331,22 @@ export default function AdminAppearancePage() {
                  <p className="text-sm text-muted-foreground"><strong>Listados Destacados:</strong> {currentSettings.show_featured_listings_section ? "Visible" : "Oculta"}</p>
                  <p className="text-sm text-muted-foreground"><strong>Búsqueda IA:</strong> {currentSettings.show_ai_matching_section ? "Visible" : "Oculta"}</p>
                  <p className="text-sm text-muted-foreground"><strong>Google Sheets:</strong> {currentSettings.show_google_sheet_section ? "Visible" : "Oculta"}</p>
+            </div>
+             <Separator/>
+             <div>
+                 <p className="text-sm font-medium mb-1 flex items-center">
+                    <ListOrdered className="h-4 w-4 mr-2 text-primary"/>
+                    Orden Actual de Secciones:
+                </p>
+                 {(currentSettings.landing_sections_order && currentSettings.landing_sections_order.length > 0) ? (
+                    <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground pl-5">
+                    {(currentSettings.landing_sections_order || DEFAULT_SECTIONS_ORDER).map((sectionKey) => (
+                        <li key={sectionKey}>{sectionNames[sectionKey as LandingSectionKey] || sectionKey}</li>
+                    ))}
+                    </ol>
+                 ) : (
+                    <p className="text-sm text-muted-foreground pl-5">Orden por defecto.</p>
+                 )}
             </div>
           </div>
         )}

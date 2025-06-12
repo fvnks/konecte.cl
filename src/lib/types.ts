@@ -112,13 +112,16 @@ export interface GoogleSheetConfig {
   isConfigured: boolean;
 }
 
+export type LandingSectionKey = "featured_list_requests" | "ai_matching" | "google_sheet";
+
 export interface SiteSettings {
   id?: number;
   siteTitle: string | null;
   logoUrl: string | null;
-  show_featured_listings_section?: boolean;
+  show_featured_listings_section?: boolean; // Renamed to match DB and avoid conflict
   show_ai_matching_section?: boolean;
   show_google_sheet_section?: boolean;
+  landing_sections_order?: LandingSectionKey[] | null; // Array of section keys
   updated_at?: string;
 }
 
@@ -137,3 +140,4 @@ export const placeholderUser: User = {
 // Los datos de ejemplo como sampleProperties, sampleRequests, sampleUsers, sampleComments han sido eliminados.
 // La aplicación ahora dependerá de los datos de la base de datos o mostrará estados vacíos/mensajes apropiados.
 
+```
