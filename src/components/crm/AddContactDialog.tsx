@@ -1,6 +1,7 @@
 // src/components/crm/AddContactDialog.tsx
 'use client';
 
+import React, { useState } from 'react'; // Added React import
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { addContactFormSchema, type AddContactFormValues, contactStatusOptions, type Contact } from '@/lib/types';
@@ -28,8 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { addContactAction } from '@/actions/crmActions';
 import { Loader2, UserPlus } from 'lucide-react';
-import type React from 'react';
-import { useState } from 'react';
+// Removed type React from here as it's now imported above.
 
 interface AddContactDialogProps {
   children: React.ReactNode; // For the trigger button
