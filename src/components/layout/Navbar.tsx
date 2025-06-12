@@ -15,6 +15,7 @@ import { getSiteSettingsAction } from '@/actions/siteSettingsActions';
 import type { SiteSettings } from '@/lib/types';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from '@/lib/utils'; // Ensure cn is imported
 
 const navItems = [
   { href: '/properties', label: 'Propiedades', icon: <Briefcase /> },
@@ -57,10 +58,12 @@ export default function Navbar() {
   
   useEffect(() => {
     fetchSiteSettings();
-     // Escuchar evento personalizado para actualizar settings si cambian en otra parte
     const handleSettingsUpdate = () => fetchSiteSettings();
-    window.addEventListener('siteSettingsUpdated', handleSettingsUpdate);
-    return () => window.removeEventListener('siteSettingsUpdated', handleSettingsUpdate);
+    // Ensure event listener is only added on the client
+    if (typeof window !== 'undefined') {
+        window.addEventListener('siteSettingsUpdated', handleSettingsUpdate);
+        return () => window.removeEventListener('siteSettingsUpdated', handleSettingsUpdate);
+    }
   }, [fetchSiteSettings]);
 
 
@@ -83,25 +86,26 @@ export default function Navbar() {
     updateLoginState(); 
 
     const handleStorageChange = (event: StorageEvent | Event) => {
-      // Manejar tanto StorageEvent como el evento personalizado 'storage'
-      if (event instanceof StorageEvent) {
-        if (event.key === 'loggedInUser') {
-          updateLoginState();
-        }
-      } else if (event.type === 'storage' && (event as CustomEvent).detail?.key === 'loggedInUser') {
+      const eventIsCustom = event.type === 'storage' && (event as CustomEvent).detail?.key === 'loggedInUser';
+      const eventIsStorage = event instanceof StorageEvent && event.key === 'loggedInUser';
+
+      if (eventIsCustom || eventIsStorage) {
          updateLoginState();
       }
     };
     
-    window.addEventListener('storage', handleStorageChange);
-    // También escuchar el evento personalizado 'storage' por si acaso.
-    // Este se dispara manualmente desde signInAction.
-    document.addEventListener('storage', handleStorageChange);
+    if (typeof window !== 'undefined') {
+        window.addEventListener('storage', handleStorageChange);
+        // Consider if 'document' listener is duplicative or necessary based on event dispatch
+        // document.addEventListener('storage', handleStorageChange);
+    }
 
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      document.removeEventListener('storage', handleStorageChange);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorageChange);
+        // document.removeEventListener('storage', handleStorageChange);
+      }
     };
   }, [updateLoginState]);
 
@@ -115,12 +119,21 @@ export default function Navbar() {
 
   const isUserAdmin = loggedInUser?.roleId === 'admin';
 
-  const commonNavLinks = (closeMobileMenu?: () => void) => (
+  const commonNavLinks = (closeMenu?: () => void, isMobile?: boolean) => (
     <>
       {navItems.map((item) => (
-        <Button key={item.label} variant="ghost" asChild className="text-sm font-medium hover:bg-primary/10 hover:text-primary md:text-base md:justify-start md:px-4 md:py-2 w-full" onClick={closeMobileMenu}>
-          <Link href={item.href} className="flex items-center gap-2 md:gap-2.5">
-            {React.cloneElement(item.icon, { className: "h-4 w-4 md:h-5 md:w-5"})}
+        <Button 
+          key={item.label} 
+          variant="ghost" 
+          asChild 
+          className={cn(
+            "font-medium hover:bg-primary/10 hover:text-primary w-full md:w-auto",
+            isMobile ? "text-lg justify-start px-4 py-3.5" : "text-sm md:text-base md:px-4 py-2" // Adjusted padding & text size
+          )}
+          onClick={closeMenu}
+        >
+          <Link href={item.href} className="flex items-center gap-2.5">
+            {React.cloneElement(item.icon, { className: "h-5 w-5"})}
             {item.label}
           </Link>
         </Button>
@@ -137,162 +150,156 @@ export default function Navbar() {
     </>
   );
 
+  const MobileMenuLink = ({ href, icon, label, closeMenu }: { href: string; icon: React.ReactNode; label: string; closeMenu?: () => void }) => (
+    <Button variant="ghost" asChild className="justify-start text-lg px-4 py-3.5 w-full hover:bg-primary/10 hover:text-primary" onClick={closeMenu}>
+      <Link href={href} className="flex items-center gap-2.5 w-full">
+        {React.cloneElement(icon as React.ReactElement, { className: "h-5 w-5 text-primary"})}
+        {label}
+      </Link>
+    </Button>
+  );
+
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
       <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
+        <Link href="/" className="flex items-center gap-2 shrink-0" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
           {logoDisplay}
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-2 mx-auto"> {/* Increased gap */}
           {commonNavLinks()}
+        </nav>
+
+        <div className="flex items-center gap-2 sm:gap-3"> {/* Adjusted gap */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="text-sm font-medium flex items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary">
+              <Button 
+                variant="default" // Changed to default for more emphasis
+                className="hidden md:flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg shadow-sm hover:bg-primary/80" // Adjusted padding & added rounded-lg
+              >
                 <PlusCircle className="h-5 w-5" /> Publicar
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-card shadow-xl rounded-lg border">
+            <DropdownMenuContent align="end" className="w-60 bg-card shadow-xl rounded-lg border mt-2">
               <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                <Link href="/properties/submit" className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary"/>Publicar Propiedad</Link>
+                <Link href="/properties/submit" className="flex items-center gap-2.5 text-sm"><Briefcase className="h-4 w-4 text-primary"/>Publicar Propiedad</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                <Link href="/requests/submit" className="flex items-center gap-2"><Search className="h-4 w-4 text-primary"/>Publicar Solicitud</Link>
+                <Link href="/requests/submit" className="flex items-center gap-2.5 text-sm"><Search className="h-4 w-4 text-primary"/>Publicar Solicitud</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </nav>
-
-        <div className="flex items-center gap-3">
+          
           {isClient && loggedInUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 hover:opacity-80 transition-opacity">
-                    <Avatar className="h-10 w-10 border-2 border-primary/50">
-                      <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/40x40.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona avatar"/>
-                      <AvatarFallback className="bg-muted text-muted-foreground">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
+                 <Button variant="ghost" className="relative h-11 w-11 rounded-full p-0 hover:opacity-80 transition-opacity"> {/* Increased size */}
+                    <Avatar className="h-11 w-11 border-2 border-primary/50">
+                      <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/44x44.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona avatar"/>
+                      <AvatarFallback className="bg-muted text-muted-foreground text-base">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
                     </Avatar>
                   </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 bg-card shadow-xl rounded-lg border">
-                 <div className="px-3 py-3">
+              <DropdownMenuContent align="end" className="w-64 bg-card shadow-xl rounded-lg border mt-2">
+                 <div className="px-3.5 py-3">
                     <p className="text-sm font-semibold leading-none truncate">{loggedInUser.name}</p>
                     <p className="text-xs leading-none text-muted-foreground truncate mt-0.5">
                       {loggedInUser.email}
                     </p>
-                    <div className="mt-2 space-y-1">
+                    <div className="mt-2.5 space-y-1.5">
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                            <ShieldCheck className="h-3.5 w-3.5 text-primary/80"/>
+                            <ShieldCheck className="h-4 w-4 text-primary/80"/>
                             Rol: <span className="font-medium text-foreground">{loggedInUser.roleName || loggedInUser.roleId}</span>
                         </p>
                         {loggedInUser.planName && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                            <CreditCard className="h-3.5 w-3.5 text-primary/80"/> Plan: <span className="font-medium text-foreground">{loggedInUser.planName}</span>
+                            <CreditCard className="h-4 w-4 text-primary/80"/> Plan: <span className="font-medium text-foreground">{loggedInUser.planName}</span>
                             </p>
                         )}
                     </div>
                   </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                  <Link href="/profile" className="flex items-center w-full gap-2"><UserCircle className="h-4 w-4 text-primary"/>Perfil</Link>
+                  <Link href="/profile" className="flex items-center w-full gap-2.5 text-sm"><UserCircle className="h-4 w-4 text-primary"/>Perfil</Link>
                 </DropdownMenuItem>
                 {isUserAdmin ? (
                   <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                    <Link href="/admin" className="flex items-center w-full gap-2"><LayoutDashboard className="h-4 w-4 text-primary"/>Panel Admin</Link>
+                    <Link href="/admin" className="flex items-center w-full gap-2.5 text-sm"><LayoutDashboard className="h-4 w-4 text-primary"/>Panel Admin</Link>
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                    <Link href="/dashboard" className="flex items-center w-full gap-2"><LayoutDashboard className="h-4 w-4 text-primary"/>Panel</Link>
+                    <Link href="/dashboard" className="flex items-center w-full gap-2.5 text-sm"><LayoutDashboard className="h-4 w-4 text-primary"/>Panel</Link>
                   </DropdownMenuItem>
                 )}
                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                  <Link href="/dashboard/crm" className="flex items-center w-full gap-2"><Users className="h-4 w-4 text-primary"/>Mi CRM</Link>
+                  <Link href="/dashboard/crm" className="flex items-center w-full gap-2.5 text-sm"><Users className="h-4 w-4 text-primary"/>Mi CRM</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 cursor-pointer text-destructive hover:!bg-destructive/10 hover:!text-destructive py-2.5">
+                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2.5 cursor-pointer text-destructive hover:!bg-destructive/10 hover:!text-destructive py-2.5 text-sm">
                   <LogOut className="h-4 w-4" /> Cerrar Sesión
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : isClient ? (
-            <Button variant="outline" size="default" asChild className="hidden md:flex items-center gap-2 hover:bg-primary/10 hover:border-primary hover:text-primary">
+            <Button variant="outline" size="default" asChild className="hidden md:flex items-center gap-2 hover:bg-primary/10 hover:border-primary hover:text-primary text-sm px-4 py-2.5 rounded-lg"> {/* Adjusted padding & added rounded-lg */}
               <Link href="/auth/signin">
                 <LogIn className="h-4 w-4" /> Iniciar Sesión
               </Link>
             </Button>
           ) : (
-             <div className="h-10 w-24 hidden md:block bg-muted/50 rounded-md animate-pulse"></div> 
+             <div className="h-11 w-28 hidden md:block bg-muted/50 rounded-lg animate-pulse"></div> 
           )}
           
           <div className="md:hidden">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="h-10 w-10">
-                  <Menu className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-primary/10">
+                  <Menu className="h-5 w-5 text-primary" />
                   <span className="sr-only">Alternar menú</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 pt-5 bg-card">
+              <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 pt-5 bg-card border-l shadow-2xl">
                 <div className="px-5 pb-4 border-b">
                     <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
                         {logoDisplay}
                     </Link>
                 </div>
-                <nav className="flex-grow flex flex-col gap-1.5 p-5 overflow-y-auto"> 
-                  {commonNavLinks(() => setIsMobileMenuOpen(false))}
-                  <MobileSeparator />
-                   <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Link href="/properties/submit" className="flex items-center gap-2.5 w-full">
-                        <PlusCircle className="h-5 w-5 text-primary" /> Publicar Propiedad
-                      </Link>
-                    </Button>
-                    <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Link href="/requests/submit" className="flex items-center gap-2.5 w-full">
-                        <PlusCircle className="h-5 w-5 text-primary" /> Publicar Solicitud
-                      </Link>
-                    </Button>
-                  <MobileSeparator />
-                  {isClient && loggedInUser ? (
+                <nav className="flex-grow flex flex-col gap-1 p-4 overflow-y-auto"> 
+                  {commonNavLinks(() => setIsMobileMenuOpen(false), true)}
+                  
+                  <Separator className="my-3" />
+                  <p className="px-4 text-sm font-semibold text-muted-foreground mb-1.5">Publicar</p>
+                  <MobileMenuLink href="/properties/submit" icon={<PlusCircle />} label="Publicar Propiedad" closeMenu={() => setIsMobileMenuOpen(false)} />
+                  <MobileMenuLink href="/requests/submit" icon={<PlusCircle />} label="Publicar Solicitud" closeMenu={() => setIsMobileMenuOpen(false)} />
+                  
+                  {isClient && loggedInUser && (
                      <>
-                      <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Link href="/profile" className="flex items-center gap-2.5 w-full">
-                          <UserCircle className="h-5 w-5 text-primary" /> Perfil
-                        </Link>
-                      </Button>
+                      <Separator className="my-3" />
+                       <p className="px-4 text-sm font-semibold text-muted-foreground mb-1.5">Mi Cuenta</p>
+                      <MobileMenuLink href="/profile" icon={<UserCircle />} label="Mi Perfil" closeMenu={() => setIsMobileMenuOpen(false)} />
                       {isUserAdmin ? (
-                        <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
-                            <Link href="/admin" className="flex items-center gap-2.5 w-full">
-                                <LayoutDashboard className="h-5 w-5 text-primary" /> Panel Admin
-                            </Link>
-                        </Button>
+                        <MobileMenuLink href="/admin" icon={<LayoutDashboard />} label="Panel Admin" closeMenu={() => setIsMobileMenuOpen(false)} />
                        ) : (
-                        <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
-                          <Link href="/dashboard" className="flex items-center gap-2.5 w-full">
-                            <LayoutDashboard className="h-5 w-5 text-primary" /> Panel
-                          </Link>
-                        </Button>
+                        <MobileMenuLink href="/dashboard" icon={<LayoutDashboard />} label="Mi Panel" closeMenu={() => setIsMobileMenuOpen(false)} />
                        )}
-                        <Button variant="ghost" asChild className="justify-start text-base px-4 py-3 w-full hover:bg-primary/10 hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
-                          <Link href="/dashboard/crm" className="flex items-center gap-2.5 w-full">
-                            <Users className="h-5 w-5 text-primary" /> Mi CRM
-                          </Link>
-                        </Button>
+                        <MobileMenuLink href="/dashboard/crm" icon={<Users />} label="Mi CRM" closeMenu={() => setIsMobileMenuOpen(false)} />
                     </>
-                  ) : null }
+                  )}
                 </nav>
-                <div className="p-5 mt-auto border-t">
+                <div className="p-4 mt-auto border-t">
                     {isClient && loggedInUser ? (
-                        <Button variant="outline" onClick={handleLogout} className="w-full justify-center text-base py-3.5 flex items-center gap-3 cursor-pointer hover:border-destructive hover:text-destructive hover:bg-destructive/5">
+                        <Button variant="outline" onClick={handleLogout} className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5 cursor-pointer hover:border-destructive hover:text-destructive hover:bg-destructive/5">
                             <LogOut className="h-5 w-5" /> Cerrar Sesión
                         </Button>
                     ) : isClient ? (
-                        <Button variant="default" asChild className="w-full justify-center text-base py-3.5 flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
+                        <Button variant="default" asChild className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
                             <Link href="/auth/signin">
                                 <LogIn className="h-5 w-5" /> Iniciar Sesión
                             </Link>
                         </Button>
                     ) : (
-                      <div className="h-12 w-full bg-muted/50 rounded-md animate-pulse"></div> 
+                      <div className="h-12 w-full bg-muted/50 rounded-lg animate-pulse"></div> 
                     )}
                 </div>
               </SheetContent>
@@ -304,4 +311,3 @@ export default function Navbar() {
   );
 }
 
-const MobileSeparator = () => <Separator className="my-2.5" />;
