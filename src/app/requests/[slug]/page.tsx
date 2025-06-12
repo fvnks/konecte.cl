@@ -1,14 +1,11 @@
 
-import { placeholderUser, type Comment as CommentType, type PropertyType, type ListingCategory, type SearchRequest } from "@/lib/types";
+import type { PropertyType, ListingCategory, SearchRequest } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { MapPin, BedDouble, Bath, DollarSign, Tag, ThumbsUp, MessageSquare, Send, UserCircle, SearchIcon, AlertTriangle } from "lucide-react";
+import { MapPin, BedDouble, Bath, DollarSign, Tag, SearchIcon, AlertTriangle } from "lucide-react";
 import { getRequestBySlugAction } from "@/actions/requestActions";
-
-const sampleComments: CommentType[] = []; // TODO: Implementar carga de comentarios desde BD
+import RequestComments from "@/components/comments/RequestComments"; // Import the new component
 
 const translatePropertyType = (type: PropertyType): string => {
   if (type === 'rent') return 'Arriendo';
@@ -43,19 +40,22 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
   
   const locationCity = request.desiredLocation?.city || 'No especificada';
   const locationNeighborhood = request.desiredLocation?.neighborhood;
+  const authorName = request.author?.name || "Usuario Anónimo";
+  const authorAvatar = request.author?.avatarUrl;
+  const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
-      <Card>
+      <Card className="shadow-lg">
         <CardHeader className="p-6">
            <div className="flex items-center gap-3 mb-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={request.author?.avatarUrl || `https://placehold.co/64x64.png?text=${request.author?.name?.charAt(0).toUpperCase()}`} alt={request.author?.name} data-ai-hint="persona" />
-                <AvatarFallback className="text-2xl">{request.author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={authorAvatar || `https://placehold.co/64x64.png?text=${authorInitials}`} alt={authorName} data-ai-hint="persona" />
+                <AvatarFallback className="text-2xl">{authorInitials}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-xl font-semibold">{request.author?.name || "Usuario Anónimo"}</p>
+                <p className="text-xl font-semibold">{authorName}</p>
                 <p className="text-sm text-muted-foreground">Publicado el {new Date(request.createdAt).toLocaleDateString('es-CL')}</p>
               </div>
             </div>
@@ -119,53 +119,8 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
         </CardContent>
       </Card>
 
-      <Card id="comments">
-        <CardHeader>
-          <CardTitle className="text-2xl font-headline flex items-center">
-            <MessageSquare className="mr-3 h-7 w-7 text-primary"/> Discusiones ({sampleComments.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex gap-3 items-start">
-            <Avatar className="mt-1">
-              <AvatarImage src={placeholderUser.avatarUrl} />
-              <AvatarFallback><UserCircle /></AvatarFallback>
-            </Avatar>
-            <div className="flex-grow space-y-2">
-              <Textarea placeholder="Añade un comentario público o sugerencia..." className="min-h-[80px]" />
-              <Button className="flex items-center gap-2">
-                <Send className="h-4 w-4"/> Publicar Comentario
-              </Button>
-            </div>
-          </div>
+      <RequestComments requestId={request.id} requestSlug={request.slug} />
 
-          <div className="space-y-4">
-            {sampleComments.map(comment => (
-              <div key={comment.id} className="flex gap-3 items-start p-4 bg-secondary/50 rounded-lg">
-                <Avatar>
-                  <AvatarImage src={comment.author?.avatarUrl} alt={comment.author?.name} data-ai-hint="persona" />
-                  <AvatarFallback>{comment.author?.name?.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm">{comment.author?.name || "Usuario Anónimo"}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleString('es-CL')}</span>
-                  </div>
-                  <p className="text-sm mt-1">{comment.content}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Button variant="ghost" size="sm" className="text-xs p-1 h-auto text-muted-foreground hover:text-primary">
-                      <ThumbsUp className="h-3.5 w-3.5 mr-1" /> {comment.upvotes}
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-xs p-1 h-auto text-muted-foreground">Responder</Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {sampleComments.length === 0 && <p className="text-muted-foreground text-center py-4">Aún no hay comentarios. ¡Sé el primero en comentar o hacer una sugerencia!</p>}
-        </CardContent>
-      </Card>
     </div>
   );
 }
-
