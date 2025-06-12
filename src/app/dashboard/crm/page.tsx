@@ -1,17 +1,27 @@
 // src/app/dashboard/crm/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, UserCircle, Users as UsersIcon } from 'lucide-react';
+import { Loader2, PlusCircle, UserCircle, Users as UsersIcon, AlertTriangle } from 'lucide-react';
 import type { Contact, User as StoredUserType } from '@/lib/types';
-import { getUserContactsAction } from '@/actions/crmActions';
+import { getUserContactsAction, deleteContactAction } from '@/actions/crmActions';
 import ContactListItem from '@/components/crm/ContactListItem';
 import AddContactDialog from '@/components/crm/AddContactDialog';
-import EditContactDialog from '@/components/crm/EditContactDialog'; // Importar el nuevo diálogo
+import EditContactDialog from '@/components/crm/EditContactDialog';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function CrmPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUserType | null>(null);
@@ -21,6 +31,11 @@ export default function CrmPage() {
   
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const [contactToDelete, setContactToDelete] = useState<{id: string, name: string} | null>(null);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+
+  const [isPending, startTransition] = useTransition();
   
   const { toast } = useToast();
 
@@ -83,6 +98,34 @@ export default function CrmPage() {
     setEditingContact(null);
   };
 
+  const handleDeleteRequest = (contactId: string, contactName: string) => {
+    setContactToDelete({ id: contactId, name: contactName });
+    setIsDeleteAlertOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!contactToDelete || !loggedInUser?.id) return;
+    setIsDeleteAlertOpen(false);
+    startTransition(async () => {
+      const result = await deleteContactAction(contactToDelete.id, loggedInUser!.id);
+      if (result.success) {
+        toast({
+          title: 'Contacto Eliminado',
+          description: `El contacto "${contactToDelete.name}" ha sido eliminado.`,
+        });
+        setContacts(prev => prev.filter(c => c.id !== contactToDelete.id));
+      } else {
+        toast({
+          title: 'Error al Eliminar',
+          description: result.message || 'No se pudo eliminar el contacto.',
+          variant: 'destructive',
+        });
+      }
+      setContactToDelete(null);
+    });
+  };
+
+
   if (!loggedInUser && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-20rem)]">
@@ -112,7 +155,7 @@ export default function CrmPage() {
             onContactAdded={handleContactAdded}
             userId={loggedInUser?.id}
           >
-            <Button onClick={() => setIsAddContactOpen(true)} disabled={!loggedInUser || isLoading}>
+            <Button onClick={() => setIsAddContactOpen(true)} disabled={!loggedInUser || isLoading || isPending}>
               <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nuevo Contacto
             </Button>
           </AddContactDialog>
@@ -129,7 +172,8 @@ export default function CrmPage() {
                 <ContactListItem 
                   key={contact.id} 
                   contact={contact}
-                  onEdit={handleEditContact} 
+                  onEdit={handleEditContact}
+                  onDeleteRequest={handleDeleteRequest} 
                 />
               ))}
             </div>
@@ -144,7 +188,7 @@ export default function CrmPage() {
                 onContactAdded={handleContactAdded}
                 userId={loggedInUser?.id}
               >
-                <Button onClick={() => setIsAddContactOpen(true)} variant="default" disabled={!loggedInUser || isLoading}>
+                <Button onClick={() => setIsAddContactOpen(true)} variant="default" disabled={!loggedInUser || isLoading || isPending}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Añadir Primer Contacto
                 </Button>
               </AddContactDialog>
@@ -161,6 +205,32 @@ export default function CrmPage() {
           userId={loggedInUser?.id}
           initialData={editingContact}
         />
+      )}
+
+      {contactToDelete && (
+         <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-6 w-6 text-destructive" />
+                    Confirmar Eliminación
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                    ¿Estás seguro de que quieres eliminar al contacto <span className="font-semibold">{contactToDelete.name}</span>? 
+                    Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setIsDeleteAlertOpen(false)} disabled={isPending}>
+                    Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDelete} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
+                    {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                    Sí, Eliminar
+                </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

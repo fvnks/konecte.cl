@@ -2,14 +2,12 @@
 'use server';
 
 import { query } from '@/lib/db';
-import type { Contact, AddContactFormValues, EditContactFormValues } from '@/lib/types'; // Updated import
-import { addContactFormSchema, editContactFormSchema } from '@/lib/types'; // Updated import
+import type { Contact, AddContactFormValues, EditContactFormValues } from '@/lib/types'; 
+import { addContactFormSchema, editContactFormSchema } from '@/lib/types'; 
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 
 // --- Contact Schemas and Actions ---
-// addContactFormSchema and contactStatusValues are now imported from @/lib/types
-
 
 function mapDbRowToContact(row: any): Contact {
   return {
@@ -64,9 +62,7 @@ export async function addContactAction(
 
     await query(sql, params);
 
-    // Revalidate paths where contacts might be displayed
-    revalidatePath('/dashboard/crm'); // Main CRM page for the user
-    // If admins can view user CRM, revalidate that path too, e.g.:
+    revalidatePath('/dashboard/crm'); 
     // revalidatePath(`/admin/users/${userId}/crm`); 
 
     const newContactResult = await query('SELECT * FROM contacts WHERE id = ?', [contactId]);
@@ -126,7 +122,6 @@ export async function updateContactAction(
   const { name, email, phone, company_name, status, source, notes } = validation.data;
 
   try {
-    // First, verify the contact belongs to the user
     const contactCheck = await query('SELECT id FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
     if (contactCheck.length === 0) {
       return { success: false, message: "Contacto no encontrado o no tienes permiso para editarlo." };
@@ -168,6 +163,42 @@ export async function updateContactAction(
   }
 }
 
+export async function deleteContactAction(
+  contactId: string,
+  userId: string
+): Promise<{ success: boolean; message?: string }> {
+  if (!userId) {
+    return { success: false, message: "Usuario no autenticado." };
+  }
+  if (!contactId) {
+    return { success: false, message: "ID de contacto no proporcionado." };
+  }
+
+  try {
+    const contactCheck = await query('SELECT id FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
+    if (contactCheck.length === 0) {
+      return { success: false, message: "Contacto no encontrado o no tienes permiso para eliminarlo." };
+    }
+
+    // Consider if related contact_interactions should be deleted by ON DELETE CASCADE on the FK, or manually here.
+    // Assuming ON DELETE CASCADE for contact_interactions.contact_id is set.
+    const result: any = await query('DELETE FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
+    
+    if (result.affectedRows > 0) {
+      revalidatePath('/dashboard/crm');
+      // revalidatePath(`/admin/users/${userId}/crm`); // If admin view needs revalidation
+      return { success: true, message: "Contacto eliminado exitosamente." };
+    } else {
+      // Should not happen if contactCheck passed, but good for robustness
+      return { success: false, message: "El contacto no fue encontrado o no se pudo eliminar." };
+    }
+
+  } catch (error: any) {
+    console.error(`[CrmAction] Error deleting contact ${contactId}:`, error);
+    return { success: false, message: `Error al eliminar contacto: ${error.message}` };
+  }
+}
+
 
 // --- Interaction Schemas and Actions (to be implemented later) ---
 // export const addInteractionFormSchema = z.object({...});
@@ -175,5 +206,4 @@ export async function updateContactAction(
 // export async function addContactInteractionAction(...) {}
 // export async function getContactInteractionsAction(...) {}
 
-// TODO: Implement getContactByIdAction, deleteContactAction
-// TODO: Implement actions for contact_interactions
+// TODO: Implement getContactByIdAction

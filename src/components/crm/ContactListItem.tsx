@@ -6,15 +6,28 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Mail, Phone, Building, Edit3, Trash2, Info, UserCircle } from 'lucide-react';
 import { contactStatusOptions } from '@/lib/types'; 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useState } from 'react';
 
 interface ContactListItemProps {
   contact: Contact;
-  onEdit: (contact: Contact) => void; // Nueva prop para manejar la edición
-  // onDelete: (contactId: string) => void; // Prop para manejar la eliminación (se añadirá después)
+  onEdit: (contact: Contact) => void;
+  onDeleteRequest: (contactId: string, contactName: string) => void; // Prop para solicitar eliminación
 }
 
-export default function ContactListItem({ contact, onEdit }: ContactListItemProps) {
+export default function ContactListItem({ contact, onEdit, onDeleteRequest }: ContactListItemProps) {
   const statusLabel = contactStatusOptions.find(opt => opt.value === contact.status)?.label || contact.status;
+  const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
 
   const getInitials = (name: string) => {
     if (!name || typeof name !== 'string') return '';
@@ -51,9 +64,35 @@ export default function ContactListItem({ contact, onEdit }: ContactListItemProp
           <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar contacto" onClick={() => onEdit(contact)}>
             <Edit3 className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/90" title="Eliminar (próximamente)" disabled>
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          
+          <AlertDialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/90" title="Eliminar contacto">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción no se puede deshacer. Esto eliminará permanentemente el contacto 
+                  <span className="font-semibold"> {contact.name}</span> y todos sus datos asociados.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setIsAlertDialogOpen(false)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => {
+                    onDeleteRequest(contact.id, contact.name);
+                    setIsAlertDialogOpen(false);
+                  }}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  Sí, eliminar contacto
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
