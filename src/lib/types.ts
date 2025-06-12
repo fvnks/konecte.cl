@@ -99,12 +99,20 @@ export interface Comment {
   property_id?: string | null;
   request_id?: string | null;
   content: string;
-  parent_id?: string | null;
+  parent_id?: string | null; // Para comentarios anidados
   upvotes: number;
   created_at: string;
   updated_at: string;
-  author?: User;
+  author?: Pick<User, 'id' | 'name' | 'avatarUrl'>; // Incluimos solo lo necesario del autor
 }
+
+// Esquema para añadir un nuevo comentario
+export const addCommentFormSchema = z.object({
+  content: z.string().min(1, "El comentario no puede estar vacío.").max(1000, "El comentario no puede exceder los 1000 caracteres."),
+  parentId: z.string().uuid().optional(), // Para respuestas
+});
+export type AddCommentFormValues = z.infer<typeof addCommentFormSchema>;
+
 
 export interface GoogleSheetConfig {
   id?: number;
@@ -260,7 +268,7 @@ const baseInteractionFormSchema = z.object({
 export const addInteractionFormSchema = baseInteractionFormSchema;
 export type AddInteractionFormValues = z.infer<typeof addInteractionFormSchema>;
 
-export const editInteractionFormSchema = baseInteractionFormSchema; // Can be identical for now
+export const editInteractionFormSchema = baseInteractionFormSchema; 
 export type EditInteractionFormValues = z.infer<typeof editInteractionFormSchema>;
 
 
