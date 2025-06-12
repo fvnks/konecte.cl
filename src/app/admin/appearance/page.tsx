@@ -67,21 +67,24 @@ export default function AdminAppearancePage() {
       landing_sections_order: DEFAULT_SECTIONS_ORDER,
     },
   });
+  const { setValue } = form; // Destructure setValue for stable reference
 
   const resetFormAndState = useCallback((settings: SiteSettings) => {
-    const validOrder = settings.landing_sections_order && settings.landing_sections_order.length > 0 
-                       ? settings.landing_sections_order 
+    const validOrder = settings.landing_sections_order && settings.landing_sections_order.length > 0
+                       ? settings.landing_sections_order
                        : DEFAULT_SECTIONS_ORDER;
+    
+    setOrderedSections(validOrder); // This will trigger the useEffect below
+
     form.reset({
       siteTitle: settings.siteTitle || DEFAULT_FALLBACK_TITLE,
       logoUrl: settings.logoUrl || "",
       show_featured_listings_section: settings.show_featured_listings_section === undefined ? true : settings.show_featured_listings_section,
       show_ai_matching_section: settings.show_ai_matching_section === undefined ? true : settings.show_ai_matching_section,
       show_google_sheet_section: settings.show_google_sheet_section === undefined ? true : settings.show_google_sheet_section,
-      landing_sections_order: validOrder,
+      landing_sections_order: validOrder, // Also set in form reset for completeness
     });
     setCurrentSettings(settings);
-    setOrderedSections(validOrder);
   }, [form]);
 
 
@@ -95,6 +98,15 @@ export default function AdminAppearancePage() {
     loadSettings();
   }, [resetFormAndState]);
 
+  // Synchronize react-hook-form's 'landing_sections_order' field
+  // with the local 'orderedSections' state using useEffect.
+  useEffect(() => {
+    setValue('landing_sections_order', orderedSections, {
+      shouldValidate: true,
+      shouldDirty: form.formState.isDirty, // Preserve dirty state or set based on actual changes
+    });
+  }, [orderedSections, setValue, form.formState.isDirty]);
+
   const moveSection = (index: number, direction: 'up' | 'down') => {
     setOrderedSections(prevOrder => {
       const newOrder = [...prevOrder];
@@ -105,20 +117,25 @@ export default function AdminAppearancePage() {
       }
       // Swap elements
       [newOrder[index], newOrder[newIndex]] = [newOrder[newIndex], newOrder[index]];
-      form.setValue('landing_sections_order', newOrder, { shouldValidate: true, shouldDirty: true });
+      // form.setValue is removed from here; useEffect will handle it.
       return newOrder;
     });
+    if (!form.formState.isDirty) {
+        form.control.register('landing_sections_order', { value: orderedSections }); // Manually trigger dirty
+        form.trigger('landing_sections_order'); // And validation if needed
+    }
   };
 
 
   async function onSubmit(values: SiteSettingsFormValues) {
+    // Use the `orderedSections` from local state as the source of truth for submission.
     const result = await saveSiteSettingsAction({
       siteTitle: values.siteTitle,
       logoUrl: values.logoUrl || null,
       show_featured_listings_section: values.show_featured_listings_section,
       show_ai_matching_section: values.show_ai_matching_section,
       show_google_sheet_section: values.show_google_sheet_section,
-      landing_sections_order: orderedSections, // Use state variable for order
+      landing_sections_order: orderedSections,
     });
 
     if (result.success) {
@@ -127,9 +144,8 @@ export default function AdminAppearancePage() {
         description: "La configuración de apariencia del sitio se ha guardado correctamente.",
       });
       const updatedSettings = await getSiteSettingsAction();
-      resetFormAndState(updatedSettings); // This will also update orderedSections from the new settings
-      form.formState.isSubmitted = false; // Reset submission state if needed
-      form.reset(undefined, { keepValues: true }); // keep current form values but reset dirty state
+      resetFormAndState(updatedSettings);
+      // form.formState.isSubmitted = false; // No longer needed, form.reset handles it
     } else {
       toast({
         title: "Error",
@@ -202,11 +218,11 @@ export default function AdminAppearancePage() {
                     <div className="space-y-2">
                         <FormLabel>Vista Previa del Logo:</FormLabel>
                         <div className="p-4 border rounded-md bg-muted flex items-center justify-center h-20">
-                        <Image 
-                            src={form.watch("logoUrl")!} 
-                            alt="Vista previa del logo" 
-                            width={150} 
-                            height={40} 
+                        <Image
+                            src={form.watch("logoUrl")!}
+                            alt="Vista previa del logo"
+                            width={150}
+                            height={40}
                             style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }}
                             onError={(e) => (e.currentTarget.style.display = 'none')}
                             data-ai-hint="logo"
@@ -219,7 +235,7 @@ export default function AdminAppearancePage() {
                     )}
                 </div>
             </div>
-            
+
             <Separator />
 
             <div>
@@ -298,14 +314,14 @@ export default function AdminAppearancePage() {
             </div>
 
             <Separator />
-            
+
             {/* Reordering Sections UI */}
             <div>
               <h3 className="text-lg font-medium mb-2">Orden de Secciones en la Landing Page</h3>
               <Controller
                 control={form.control}
                 name="landing_sections_order"
-                render={({ field }) => ( // field is not directly used for reordering UI but good for context
+                render={() => ( // field is not directly used for reordering UI but good for context
                   <div className="p-4 border rounded-md">
                     <p className="text-sm text-muted-foreground mb-3">
                       Haz clic en las flechas para cambiar el orden de aparición de las secciones en la página de inicio.
@@ -323,7 +339,7 @@ export default function AdminAppearancePage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => moveSection(index, 'up')}
-                              disabled={index === 0}
+                              disabled={index === 0 || form.formState.isSubmitting}
                               aria-label={`Mover ${sectionNames[sectionKey as LandingSectionKeyType]} hacia arriba`}
                             >
                               <ArrowUp className="h-4 w-4" />
@@ -333,7 +349,7 @@ export default function AdminAppearancePage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => moveSection(index, 'down')}
-                              disabled={index === orderedSections.length - 1}
+                              disabled={index === orderedSections.length - 1 || form.formState.isSubmitting}
                               aria-label={`Mover ${sectionNames[sectionKey as LandingSectionKeyType]} hacia abajo`}
                             >
                               <ArrowDown className="h-4 w-4" />
@@ -349,13 +365,13 @@ export default function AdminAppearancePage() {
             </div>
 
 
-            <Button type="submit" disabled={form.formState.isSubmitting}>
+            <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isDirty}>
               {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Guardar Cambios
             </Button>
           </form>
         </Form>
-        
+
         {(currentSettings.siteTitle || currentSettings.logoUrl || Object.keys(currentSettings).some(k => k.startsWith('show_'))) && !isLoading &&(
           <div className="mt-8 p-4 border rounded-md bg-secondary/30 space-y-3">
             <h4 className="font-semibold text-lg mb-2">Configuración Actual Guardada:</h4>
@@ -402,5 +418,3 @@ export default function AdminAppearancePage() {
     </Card>
   );
 }
-
-      
