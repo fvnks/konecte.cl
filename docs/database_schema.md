@@ -259,18 +259,23 @@ CREATE TABLE site_settings (
     show_featured_listings_section BOOLEAN DEFAULT TRUE,
     show_ai_matching_section BOOLEAN DEFAULT TRUE,
     show_google_sheet_section BOOLEAN DEFAULT TRUE,
-    landing_sections_order TEXT DEFAULT '["featured_list_requests", "ai_matching", "google_sheet"]', -- Orden de las secciones como JSON array
+    landing_sections_order TEXT, -- Orden de las secciones como JSON array. No puede tener DEFAULT en TEXT.
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT id_must_be_1_site_settings CHECK (id = 1)
 );
 
 -- Insertar configuración inicial para site_settings
-INSERT INTO site_settings (id, site_title, logo_url, show_featured_listings_section, show_ai_matching_section, show_google_sheet_section, landing_sections_order) 
-VALUES (1, 'PropSpot - Encuentra Tu Próxima Propiedad', NULL, TRUE, TRUE, TRUE, '["featured_list_requests", "ai_matching", "google_sheet"]')
+-- El valor de landing_sections_order se establecerá con un UPDATE después de la creación de la tabla.
+INSERT INTO site_settings (id, site_title, logo_url, show_featured_listings_section, show_ai_matching_section, show_google_sheet_section) 
+VALUES (1, 'PropSpot - Encuentra Tu Próxima Propiedad', NULL, TRUE, TRUE, TRUE)
 ON DUPLICATE KEY UPDATE id = 1;
+
+-- Establecer el orden de secciones por defecto después de la inserción/creación.
+UPDATE site_settings 
+SET landing_sections_order = '["featured_list_requests", "ai_matching", "google_sheet"]' 
+WHERE id = 1;
 ```
 
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
 
-```

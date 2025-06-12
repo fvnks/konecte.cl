@@ -20,9 +20,11 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
         landing_sections_order 
     } = settings;
 
-    const sectionsOrderJson = landing_sections_order && landing_sections_order.length > 0 
-                            ? JSON.stringify(landing_sections_order) 
-                            : JSON.stringify(DEFAULT_SECTIONS_ORDER);
+    // Asegurar que landing_sections_order sea un array válido, sino usar el por defecto
+    const validSectionsOrder = Array.isArray(landing_sections_order) && landing_sections_order.length > 0
+                             ? landing_sections_order
+                             : DEFAULT_SECTIONS_ORDER;
+    const sectionsOrderJson = JSON.stringify(validSectionsOrder);
 
     const sql = `
       INSERT INTO site_settings (
@@ -51,11 +53,12 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
     
     revalidatePath('/'); 
     revalidatePath('/admin/appearance');
-    // Dispatch an event to notify other parts of the app (like Navbar) that settings might have changed
-    // This is a conceptual client-side notification if needed; server actions revalidate paths.
-    // For server components, revalidation is the key. For client components needing immediate update,
-    // a state management or event bus solution would be more robust.
-    // For now, we'll rely on Navbar re-fetching if it's converted to a server component or has its own data fetching.
+    
+    // Disparar un evento para el Navbar (si es necesario para Client Components)
+    // Para Server Components, revalidation es suficiente.
+    // if (typeof window !== 'undefined') {
+    //   window.dispatchEvent(new CustomEvent('siteSettingsUpdated'));
+    // }
 
     return { success: true, message: "Configuración del sitio guardada exitosamente." };
   } catch (error: any) {
@@ -65,6 +68,7 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
 }
 
 export async function getSiteSettingsAction(): Promise<SiteSettings> {
+  let dbSettings: any = null;
   try {
     const result = await query(`
         SELECT 
@@ -75,46 +79,39 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
         FROM site_settings WHERE id = 1
     `);
     if (result && result.length > 0) {
-      const dbSettings = result[0];
-      let parsedSectionsOrder: LandingSectionKey[] | null = DEFAULT_SECTIONS_ORDER;
-      if (dbSettings.landing_sections_order) {
-        try {
-          const parsed = JSON.parse(dbSettings.landing_sections_order);
-          // Validate that parsed is an array of known LandingSectionKey
-          if (Array.isArray(parsed) && parsed.every(s => ["featured_list_requests", "ai_matching", "google_sheet"].includes(s))) {
-            parsedSectionsOrder = parsed;
-          } else {
-            console.warn("landing_sections_order from DB is not a valid LandingSectionKey array, using default. Value:", dbSettings.landing_sections_order);
-            parsedSectionsOrder = DEFAULT_SECTIONS_ORDER;
-          }
-        } catch (e) {
-          console.error("Error parsing landing_sections_order from DB, using default:", e, "Value:", dbSettings.landing_sections_order);
-          parsedSectionsOrder = DEFAULT_SECTIONS_ORDER;
-        }
-      }
-
-      return {
-        id: dbSettings.id,
-        siteTitle: dbSettings.siteTitle === null ? DEFAULT_SITE_TITLE : dbSettings.siteTitle,
-        logoUrl: dbSettings.logoUrl === undefined ? null : dbSettings.logoUrl,
-        show_featured_listings_section: dbSettings.show_featured_listings_section === null || dbSettings.show_featured_listings_section === undefined ? true : Boolean(dbSettings.show_featured_listings_section),
-        show_ai_matching_section: dbSettings.show_ai_matching_section === null || dbSettings.show_ai_matching_section === undefined ? true : Boolean(dbSettings.show_ai_matching_section),
-        show_google_sheet_section: dbSettings.show_google_sheet_section === null || dbSettings.show_google_sheet_section === undefined ? true : Boolean(dbSettings.show_google_sheet_section),
-        landing_sections_order: parsedSectionsOrder,
-        updated_at: dbSettings.updatedAt ? new Date(dbSettings.updatedAt).toISOString() : undefined,
-      };
+      dbSettings = result[0];
     }
   } catch (error) {
     console.error("Error al obtener la configuración del sitio desde la BD:", error);
+    // Continuar para devolver los valores por defecto
   }
-  // Default settings if no config found or error
+
+  let parsedSectionsOrder: LandingSectionKey[] = DEFAULT_SECTIONS_ORDER;
+  if (dbSettings && dbSettings.landing_sections_order) {
+    try {
+      const parsed = JSON.parse(dbSettings.landing_sections_order);
+      if (Array.isArray(parsed) && parsed.every(s => ["featured_list_requests", "ai_matching", "google_sheet"].includes(s)) && parsed.length > 0) {
+        parsedSectionsOrder = parsed;
+      } else {
+        console.warn("landing_sections_order desde BD es inválido o vacío, usando orden por defecto. Valor:", dbSettings.landing_sections_order);
+      }
+    } catch (e) {
+      console.error("Error al parsear landing_sections_order desde la BD, usando orden por defecto:", e, "Valor:", dbSettings.landing_sections_order);
+    }
+  } else if (!dbSettings) {
+    // Si no hay configuración en la BD (ej. tabla vacía), usamos el orden por defecto.
+    // No es necesario advertir en este caso, ya que es esperado.
+  }
+
+
   return {
-    id: 1,
-    siteTitle: DEFAULT_SITE_TITLE,
-    logoUrl: null,
-    show_featured_listings_section: true,
-    show_ai_matching_section: true,
-    show_google_sheet_section: true,
-    landing_sections_order: DEFAULT_SECTIONS_ORDER,
+    id: dbSettings?.id || 1,
+    siteTitle: dbSettings?.siteTitle === null || dbSettings?.siteTitle === undefined ? DEFAULT_SITE_TITLE : dbSettings.siteTitle,
+    logoUrl: dbSettings?.logoUrl === null || dbSettings?.logoUrl === undefined ? null : dbSettings.logoUrl,
+    show_featured_listings_section: dbSettings?.show_featured_listings_section === null || dbSettings?.show_featured_listings_section === undefined ? true : Boolean(dbSettings.show_featured_listings_section),
+    show_ai_matching_section: dbSettings?.show_ai_matching_section === null || dbSettings?.show_ai_matching_section === undefined ? true : Boolean(dbSettings.show_ai_matching_section),
+    show_google_sheet_section: dbSettings?.show_google_sheet_section === null || dbSettings?.show_google_sheet_section === undefined ? true : Boolean(dbSettings.show_google_sheet_section),
+    landing_sections_order: parsedSectionsOrder,
+    updated_at: dbSettings?.updatedAt ? new Date(dbSettings.updatedAt).toISOString() : undefined,
   };
 }
