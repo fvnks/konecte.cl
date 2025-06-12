@@ -6,8 +6,11 @@ import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, UserCircle, Users as UsersIcon, AlertTriangle, History as HistoryIcon } from 'lucide-react';
-import type { Contact, User as StoredUserType, Interaction } from '@/lib/types';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, PlusCircle, UserCircle, Users as UsersIcon, AlertTriangle, History as HistoryIcon, Search, Filter as FilterIcon, ListFilter } from 'lucide-react';
+import type { Contact, User as StoredUserType, Interaction, ContactStatus } from '@/lib/types';
+import { contactStatusOptions } from '@/lib/types';
 import { getUserContactsAction, deleteContactAction, getContactInteractionsAction } from '@/actions/crmActions';
 import ContactListItem from '@/components/crm/ContactListItem';
 import AddContactDialog from '@/components/crm/AddContactDialog';
@@ -25,6 +28,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+type SortOption = 'name-asc' | 'name-desc' | 'last_contacted_at-desc' | 'last_contacted_at-asc' | 'created_at-desc' | 'created_at-asc';
+
 export default function CrmPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUserType | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -41,6 +46,12 @@ export default function CrmPage() {
   const [contactInteractions, setContactInteractions] = useState<Interaction[]>([]);
   const [isLoadingInteractions, setIsLoadingInteractions] = useState(false);
   const [isInteractionsModalOpen, setIsInteractionsModalOpen] = useState(false);
+
+  // States for filtering and sorting
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<ContactStatus | 'all'>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('name-asc');
+  const [displayedContacts, setDisplayedContacts] = useState<Contact[]>([]);
 
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -65,7 +76,7 @@ export default function CrmPage() {
         setIsLoadingContacts(true);
         try {
           const fetchedContacts = await getUserContactsAction(loggedInUser.id);
-          setContacts(fetchedContacts.sort((a, b) => a.name.localeCompare(b.name)));
+          setContacts(fetchedContacts); // Set the original contacts list
         } catch (error) {
           console.error("Error fetching contacts:", error);
           toast({
@@ -80,13 +91,71 @@ export default function CrmPage() {
          setIsLoadingContacts(false);
       }
     }
-    if (!isLoadingContacts || loggedInUser) { // Fetch contacts if not already loading or if user is identified
+    // Fetch contacts only if not already loading or if user is identified
+    // and contacts haven't been fetched yet or loggedInUser changed
+    if (loggedInUser && contacts.length === 0 && !isLoadingContacts) {
         fetchContacts();
+    } else if (!loggedInUser && !isLoadingContacts) {
+        setContacts([]); // Clear contacts if no user
     }
-  }, [loggedInUser, toast, isLoadingContacts]); // Added isLoading to dependency array
+  }, [loggedInUser, toast]); // removed contacts from dependency array, isLoadingContacts
+
+  // Effect for filtering and sorting
+  useEffect(() => {
+    let tempContacts = [...contacts];
+
+    // Apply search term filter
+    if (searchTerm) {
+      tempContacts = tempContacts.filter(contact =>
+        contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (contact.email && contact.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (contact.company_name && contact.company_name.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    // Apply status filter
+    if (filterStatus !== 'all') {
+      tempContacts = tempContacts.filter(contact => contact.status === filterStatus);
+    }
+
+    // Apply sorting
+    tempContacts.sort((a, b) => {
+      switch (sortOption) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'last_contacted_at-desc': {
+          const dateA = a.last_contacted_at ? new Date(a.last_contacted_at).getTime() : 0;
+          const dateB = b.last_contacted_at ? new Date(b.last_contacted_at).getTime() : 0;
+          return dateB - dateA;
+        }
+        case 'last_contacted_at-asc': {
+          const dateA = a.last_contacted_at ? new Date(a.last_contacted_at).getTime() : Infinity;
+          const dateB = b.last_contacted_at ? new Date(b.last_contacted_at).getTime() : Infinity;
+          return dateA - dateB;
+        }
+        case 'created_at-desc': {
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return dateB - dateA;
+        }
+        case 'created_at-asc': {
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return dateA - dateB;
+        }
+        default:
+          return 0;
+      }
+    });
+
+    setDisplayedContacts(tempContacts);
+  }, [contacts, searchTerm, filterStatus, sortOption]);
 
   const handleContactAdded = (newContact: Contact) => {
-    setContacts(prevContacts => [newContact, ...prevContacts].sort((a, b) => a.name.localeCompare(b.name)));
+    // Update the original contacts list, which will trigger the filter/sort useEffect
+    setContacts(prevContacts => [newContact, ...prevContacts]);
     setIsAddContactOpen(false);
   };
 
@@ -98,7 +167,6 @@ export default function CrmPage() {
   const handleContactUpdated = (updatedContact: Contact) => {
     setContacts(prevContacts =>
       prevContacts.map(c => c.id === updatedContact.id ? updatedContact : c)
-                  .sort((a, b) => a.name.localeCompare(b.name))
     );
     setIsEditModalOpen(false);
     setEditingContact(null);
@@ -150,6 +218,7 @@ export default function CrmPage() {
   const handleInteractionAdded = (newInteraction: Interaction) => {
     setContactInteractions(prev => [newInteraction, ...prev].sort((a,b) => new Date(b.interaction_date).getTime() - new Date(a.interaction_date).getTime() ));
     if (viewingInteractionsForContact) {
+      // Also update the main contacts list for last_contacted_at
       setContacts(prevContacts => prevContacts.map(c =>
         c.id === viewingInteractionsForContact.id
         ? { ...c, last_contacted_at: newInteraction.interaction_date }
@@ -160,12 +229,9 @@ export default function CrmPage() {
 
   const handleInteractionDeleted = (deletedInteractionId: string) => {
     setContactInteractions(prev => prev.filter(interaction => interaction.id !== deletedInteractionId));
-    // Optional: Re-fetch last_contacted_at for the contact if needed, or handle in backend
     if (viewingInteractionsForContact && loggedInUser?.id) {
-        // Optimistically update or re-fetch contact to update last_contacted_at
-        // This is a simple re-fetch for now.
         getUserContactsAction(loggedInUser.id).then(fetchedContacts => {
-            setContacts(fetchedContacts.sort((a, b) => a.name.localeCompare(b.name)));
+            setContacts(fetchedContacts);
         });
     }
   };
@@ -182,6 +248,16 @@ export default function CrmPage() {
       </div>
     );
   }
+
+  const sortOptions: { value: SortOption; label: string }[] = [
+    { value: 'name-asc', label: 'Nombre (A-Z)' },
+    { value: 'name-desc', label: 'Nombre (Z-A)' },
+    { value: 'last_contacted_at-desc', label: 'Último Contacto (Más Reciente)' },
+    { value: 'last_contacted_at-asc', label: 'Último Contacto (Más Antiguo)' },
+    { value: 'created_at-desc', label: 'Fecha Creación (Más Reciente)' },
+    { value: 'created_at-asc', label: 'Fecha Creación (Más Antiguo)' },
+  ];
+
 
   return (
     <div className="space-y-6">
@@ -206,14 +282,67 @@ export default function CrmPage() {
           </AddContactDialog>
         </CardHeader>
         <CardContent>
+          {/* Filters and Sort Section */}
+          <div className="mb-6 p-4 bg-secondary/30 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div className="md:col-span-1">
+                <label htmlFor="search-contacts" className="block text-sm font-medium text-muted-foreground mb-1">Buscar Contacto</label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="search-contacts"
+                    type="search"
+                    placeholder="Nombre, email, empresa..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="filter-status" className="block text-sm font-medium text-muted-foreground mb-1">Filtrar por Estado</label>
+                <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as ContactStatus | 'all')}>
+                  <SelectTrigger id="filter-status">
+                    <FilterIcon className="h-4 w-4 mr-2 opacity-50" />
+                    <SelectValue placeholder="Todos los estados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los Estados</SelectItem>
+                    {contactStatusOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value} className="capitalize">
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                 <label htmlFor="sort-contacts" className="block text-sm font-medium text-muted-foreground mb-1">Ordenar Por</label>
+                <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
+                  <SelectTrigger id="sort-contacts">
+                    <ListFilter className="h-4 w-4 mr-2 opacity-50" />
+                    <SelectValue placeholder="Ordenar por..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
           {isLoadingContacts ? (
             <div className="flex justify-center items-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="ml-3 text-muted-foreground">Cargando tus contactos...</p>
             </div>
-          ) : contacts.length > 0 ? (
+          ) : displayedContacts.length > 0 ? (
             <div className="space-y-4">
-              {contacts.map(contact => (
+              {displayedContacts.map(contact => (
                 <ContactListItem
                   key={contact.id}
                   contact={contact}
@@ -226,18 +355,24 @@ export default function CrmPage() {
           ) : (
             <div className="text-center py-10 border-2 border-dashed rounded-lg">
               <UsersIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-lg font-medium text-muted-foreground">Aún no tienes contactos.</p>
-              <p className="text-sm text-muted-foreground mb-4">Empieza añadiendo tu primer contacto para organizar tu red.</p>
-              <AddContactDialog
-                open={isAddContactOpen}
-                onOpenChange={setIsAddContactOpen}
-                onContactAdded={handleContactAdded}
-                userId={loggedInUser?.id}
-              >
-                <Button onClick={() => setIsAddContactOpen(true)} variant="default" disabled={!loggedInUser || isLoadingContacts || isPending}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Añadir Primer Contacto
-                </Button>
-              </AddContactDialog>
+              <p className="text-lg font-medium text-muted-foreground">
+                {contacts.length > 0 ? "No hay contactos que coincidan con tus filtros." : "Aún no tienes contactos."}
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {contacts.length > 0 ? "Intenta ajustar tu búsqueda o filtros." : "Empieza añadiendo tu primer contacto para organizar tu red."}
+              </p>
+              {contacts.length === 0 && (
+                <AddContactDialog
+                    open={isAddContactOpen}
+                    onOpenChange={setIsAddContactOpen}
+                    onContactAdded={handleContactAdded}
+                    userId={loggedInUser?.id}
+                >
+                    <Button onClick={() => setIsAddContactOpen(true)} variant="default" disabled={!loggedInUser || isLoadingContacts || isPending}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Añadir Primer Contacto
+                    </Button>
+                </AddContactDialog>
+              )}
             </div>
           )}
         </CardContent>
@@ -289,7 +424,7 @@ export default function CrmPage() {
             contact={viewingInteractionsForContact}
             interactions={contactInteractions}
             onInteractionAdded={handleInteractionAdded}
-            onInteractionDeleted={handleInteractionDeleted} // Pass the new handler
+            onInteractionDeleted={handleInteractionDeleted}
             isLoadingInteractions={isLoadingInteractions}
             userId={loggedInUser?.id}
         />
@@ -297,3 +432,5 @@ export default function CrmPage() {
     </div>
   );
 }
+
+    
