@@ -3,7 +3,7 @@
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,13 +20,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { saveSiteSettingsAction, getSiteSettingsAction } from "@/actions/siteSettingsActions";
 import type { SiteSettings, LandingSectionKey } from "@/lib/types";
-import { useEffect, useState } from "react";
-import { Loader2, Brush, EyeOff, Eye, ListOrdered } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Loader2, Brush, EyeOff, Eye, ListOrdered, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
 import Image from "next/image";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
 const landingSectionKeySchema = z.enum(["featured_list_requests", "ai_matching", "google_sheet"]);
+export type LandingSectionKeyType = z.infer<typeof landingSectionKeySchema>;
+
 
 const formSchema = z.object({
   siteTitle: z.string().min(5, "El título del sitio debe tener al menos 5 caracteres.").max(100, "El título no puede exceder los 100 caracteres."),
@@ -34,15 +36,15 @@ const formSchema = z.object({
   show_featured_listings_section: z.boolean().default(true).optional(),
   show_ai_matching_section: z.boolean().default(true).optional(),
   show_google_sheet_section: z.boolean().default(true).optional(),
-  landing_sections_order: z.array(landingSectionKeySchema).optional(), // No se usa en el form aun, pero para consistencia
+  landing_sections_order: z.array(landingSectionKeySchema).min(1, "Debe haber al menos una sección en el orden."),
 });
 
 type SiteSettingsFormValues = z.infer<typeof formSchema>;
 
 const DEFAULT_FALLBACK_TITLE = 'PropSpot - Encuentra Tu Próxima Propiedad';
-const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "ai_matching", "google_sheet"];
+const DEFAULT_SECTIONS_ORDER: LandingSectionKeyType[] = ["featured_list_requests", "ai_matching", "google_sheet"];
 
-const sectionNames: Record<LandingSectionKey, string> = {
+const sectionNames: Record<LandingSectionKeyType, string> = {
   featured_list_requests: "Listados Destacados y Solicitudes Recientes",
   ai_matching: "Búsqueda Inteligente (IA)",
   google_sheet: "Datos de Google Sheets",
@@ -52,11 +54,12 @@ export default function AdminAppearancePage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [currentSettings, setCurrentSettings] = useState<Partial<SiteSettings>>({});
+  const [orderedSections, setOrderedSections] = useState<LandingSectionKeyType[]>(DEFAULT_SECTIONS_ORDER);
 
   const form = useForm<SiteSettingsFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      siteTitle: "",
+      siteTitle: DEFAULT_FALLBACK_TITLE,
       logoUrl: "",
       show_featured_listings_section: true,
       show_ai_matching_section: true,
@@ -65,50 +68,68 @@ export default function AdminAppearancePage() {
     },
   });
 
+  const resetFormAndState = useCallback((settings: SiteSettings) => {
+    const validOrder = settings.landing_sections_order && settings.landing_sections_order.length > 0 
+                       ? settings.landing_sections_order 
+                       : DEFAULT_SECTIONS_ORDER;
+    form.reset({
+      siteTitle: settings.siteTitle || DEFAULT_FALLBACK_TITLE,
+      logoUrl: settings.logoUrl || "",
+      show_featured_listings_section: settings.show_featured_listings_section === undefined ? true : settings.show_featured_listings_section,
+      show_ai_matching_section: settings.show_ai_matching_section === undefined ? true : settings.show_ai_matching_section,
+      show_google_sheet_section: settings.show_google_sheet_section === undefined ? true : settings.show_google_sheet_section,
+      landing_sections_order: validOrder,
+    });
+    setCurrentSettings(settings);
+    setOrderedSections(validOrder);
+  }, [form]);
+
+
   useEffect(() => {
     async function loadSettings() {
       setIsLoading(true);
       const settings = await getSiteSettingsAction();
-      form.reset({
-        siteTitle: settings.siteTitle || DEFAULT_FALLBACK_TITLE,
-        logoUrl: settings.logoUrl || "",
-        show_featured_listings_section: settings.show_featured_listings_section === undefined ? true : settings.show_featured_listings_section,
-        show_ai_matching_section: settings.show_ai_matching_section === undefined ? true : settings.show_ai_matching_section,
-        show_google_sheet_section: settings.show_google_sheet_section === undefined ? true : settings.show_google_sheet_section,
-        landing_sections_order: settings.landing_sections_order || DEFAULT_SECTIONS_ORDER,
-      });
-      setCurrentSettings(settings);
+      resetFormAndState(settings);
       setIsLoading(false);
     }
     loadSettings();
-  }, [form]);
+  }, [resetFormAndState]);
+
+  const moveSection = (index: number, direction: 'up' | 'down') => {
+    setOrderedSections(prevOrder => {
+      const newOrder = [...prevOrder];
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+
+      if (newIndex < 0 || newIndex >= newOrder.length) {
+        return prevOrder; // No change if out of bounds
+      }
+      // Swap elements
+      [newOrder[index], newOrder[newIndex]] = [newOrder[newIndex], newOrder[index]];
+      form.setValue('landing_sections_order', newOrder, { shouldValidate: true, shouldDirty: true });
+      return newOrder;
+    });
+  };
+
 
   async function onSubmit(values: SiteSettingsFormValues) {
-    // Aunque landing_sections_order está en el schema, no lo estamos modificando en este form aún.
-    // Así que lo tomamos de currentSettings para no perderlo si ya existe.
     const result = await saveSiteSettingsAction({
       siteTitle: values.siteTitle,
       logoUrl: values.logoUrl || null,
       show_featured_listings_section: values.show_featured_listings_section,
       show_ai_matching_section: values.show_ai_matching_section,
       show_google_sheet_section: values.show_google_sheet_section,
-      landing_sections_order: currentSettings.landing_sections_order || DEFAULT_SECTIONS_ORDER,
+      landing_sections_order: orderedSections, // Use state variable for order
     });
+
     if (result.success) {
       toast({
         title: "Apariencia Guardada",
         description: "La configuración de apariencia del sitio se ha guardado correctamente.",
       });
       const updatedSettings = await getSiteSettingsAction();
-      setCurrentSettings(updatedSettings);
-       form.reset({ 
-        siteTitle: updatedSettings.siteTitle || DEFAULT_FALLBACK_TITLE,
-        logoUrl: updatedSettings.logoUrl || "",
-        show_featured_listings_section: updatedSettings.show_featured_listings_section,
-        show_ai_matching_section: updatedSettings.show_ai_matching_section,
-        show_google_sheet_section: updatedSettings.show_google_sheet_section,
-        landing_sections_order: updatedSettings.landing_sections_order || DEFAULT_SECTIONS_ORDER,
-      });
+      resetFormAndState(updatedSettings); // This will also update orderedSections from the new settings
+      form.formState.isSubmitted = false; // Reset submission state if needed
+      form.reset(undefined, { keepValues: true }); // keep current form values but reset dirty state
     } else {
       toast({
         title: "Error",
@@ -277,27 +298,54 @@ export default function AdminAppearancePage() {
             </div>
 
             <Separator />
-
+            
+            {/* Reordering Sections UI */}
             <div>
-                <h3 className="text-lg font-medium mb-2">Orden de Secciones en la Landing Page</h3>
-                <div className="p-4 border rounded-md bg-secondary/30">
+              <h3 className="text-lg font-medium mb-2">Orden de Secciones en la Landing Page</h3>
+              <Controller
+                control={form.control}
+                name="landing_sections_order"
+                render={({ field }) => ( // field is not directly used for reordering UI but good for context
+                  <div className="p-4 border rounded-md">
                     <p className="text-sm text-muted-foreground mb-3">
-                        Actualmente, el orden de las secciones se gestiona internamente. 
-                        La capacidad de reordenar visualmente las secciones se implementará en una futura actualización.
+                      Haz clic en las flechas para cambiar el orden de aparición de las secciones en la página de inicio.
                     </p>
-                    {currentSettings.landing_sections_order && currentSettings.landing_sections_order.length > 0 ? (
-                        <>
-                            <p className="text-sm font-medium mb-1">Orden Actual:</p>
-                            <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
-                            {(currentSettings.landing_sections_order || DEFAULT_SECTIONS_ORDER).map((sectionKey) => (
-                                <li key={sectionKey}>{sectionNames[sectionKey as LandingSectionKey] || sectionKey}</li>
-                            ))}
-                            </ol>
-                        </>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">No se ha definido un orden específico, se usará el orden por defecto.</p>
-                    )}
-                </div>
+                    <ul className="space-y-2">
+                      {orderedSections.map((sectionKey, index) => (
+                        <li key={sectionKey} className="flex items-center justify-between p-3 border rounded-md bg-secondary/30 shadow-sm">
+                          <div className="flex items-center">
+                            <GripVertical className="h-5 w-5 mr-2 text-muted-foreground cursor-grab" />
+                            <span className="font-medium">{sectionNames[sectionKey as LandingSectionKeyType] || sectionKey}</span>
+                          </div>
+                          <div className="space-x-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moveSection(index, 'up')}
+                              disabled={index === 0}
+                              aria-label={`Mover ${sectionNames[sectionKey as LandingSectionKeyType]} hacia arriba`}
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moveSection(index, 'down')}
+                              disabled={index === orderedSections.length - 1}
+                              aria-label={`Mover ${sectionNames[sectionKey as LandingSectionKeyType]} hacia abajo`}
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                     <FormMessage>{form.formState.errors.landing_sections_order?.message}</FormMessage>
+                  </div>
+                )}
+              />
             </div>
 
 
@@ -336,12 +384,12 @@ export default function AdminAppearancePage() {
              <div>
                  <p className="text-sm font-medium mb-1 flex items-center">
                     <ListOrdered className="h-4 w-4 mr-2 text-primary"/>
-                    Orden Actual de Secciones:
+                    Orden Actual de Secciones Guardado:
                 </p>
                  {(currentSettings.landing_sections_order && currentSettings.landing_sections_order.length > 0) ? (
                     <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground pl-5">
                     {(currentSettings.landing_sections_order || DEFAULT_SECTIONS_ORDER).map((sectionKey) => (
-                        <li key={sectionKey}>{sectionNames[sectionKey as LandingSectionKey] || sectionKey}</li>
+                        <li key={sectionKey}>{sectionNames[sectionKey as LandingSectionKeyType] || sectionKey}</li>
                     ))}
                     </ol>
                  ) : (
@@ -354,3 +402,5 @@ export default function AdminAppearancePage() {
     </Card>
   );
 }
+
+      

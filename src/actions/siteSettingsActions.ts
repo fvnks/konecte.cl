@@ -20,7 +20,9 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
         landing_sections_order 
     } = settings;
 
-    const sectionsOrderJson = landing_sections_order ? JSON.stringify(landing_sections_order) : JSON.stringify(DEFAULT_SECTIONS_ORDER);
+    const sectionsOrderJson = landing_sections_order && landing_sections_order.length > 0 
+                            ? JSON.stringify(landing_sections_order) 
+                            : JSON.stringify(DEFAULT_SECTIONS_ORDER);
 
     const sql = `
       INSERT INTO site_settings (
@@ -49,7 +51,12 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
     
     revalidatePath('/'); 
     revalidatePath('/admin/appearance');
-    
+    // Dispatch an event to notify other parts of the app (like Navbar) that settings might have changed
+    // This is a conceptual client-side notification if needed; server actions revalidate paths.
+    // For server components, revalidation is the key. For client components needing immediate update,
+    // a state management or event bus solution would be more robust.
+    // For now, we'll rely on Navbar re-fetching if it's converted to a server component or has its own data fetching.
+
     return { success: true, message: "Configuración del sitio guardada exitosamente." };
   } catch (error: any) {
     console.error("Error al guardar la configuración del sitio en la BD:", error);
@@ -72,14 +79,16 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
       let parsedSectionsOrder: LandingSectionKey[] | null = DEFAULT_SECTIONS_ORDER;
       if (dbSettings.landing_sections_order) {
         try {
-          parsedSectionsOrder = JSON.parse(dbSettings.landing_sections_order);
-          if (!Array.isArray(parsedSectionsOrder) || !parsedSectionsOrder.every(s => typeof s === 'string')) {
-            // Fallback if parsing gives wrong type
-            console.warn("landing_sections_order from DB is not a valid string array, using default.");
+          const parsed = JSON.parse(dbSettings.landing_sections_order);
+          // Validate that parsed is an array of known LandingSectionKey
+          if (Array.isArray(parsed) && parsed.every(s => ["featured_list_requests", "ai_matching", "google_sheet"].includes(s))) {
+            parsedSectionsOrder = parsed;
+          } else {
+            console.warn("landing_sections_order from DB is not a valid LandingSectionKey array, using default. Value:", dbSettings.landing_sections_order);
             parsedSectionsOrder = DEFAULT_SECTIONS_ORDER;
           }
         } catch (e) {
-          console.error("Error parsing landing_sections_order from DB, using default:", e);
+          console.error("Error parsing landing_sections_order from DB, using default:", e, "Value:", dbSettings.landing_sections_order);
           parsedSectionsOrder = DEFAULT_SECTIONS_ORDER;
         }
       }
@@ -109,5 +118,3 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     landing_sections_order: DEFAULT_SECTIONS_ORDER,
   };
 }
-
-```
