@@ -26,7 +26,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  // AlertDialogTrigger, // Not needed for the main dialog if controlled by state
 } from "@/components/ui/alert-dialog";
 
 interface LoggedInAdmin {
@@ -278,18 +278,16 @@ export default function AdminUsersPage() {
                             <ContactIcon className="h-4 w-4" />
                           </Link>
                         </Button>
-                        <AlertDialogTrigger asChild>
-                           <Button 
-                             variant="destructive" 
-                             size="icon" 
-                             className="h-8 w-8"
-                             title="Eliminar Usuario"
-                             disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id || !loggedInAdmin}
-                             onClick={() => openDeleteDialog(user)}
-                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
+                        <Button 
+                          variant="destructive" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          title="Eliminar Usuario"
+                          disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id || !loggedInAdmin}
+                          onClick={() => openDeleteDialog(user)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -326,3 +324,4 @@ export default function AdminUsersPage() {
     </div>
   );
 }
+
