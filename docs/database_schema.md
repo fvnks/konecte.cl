@@ -271,11 +271,70 @@ VALUES (1, 'PropSpot - Encuentra Tu Próxima Propiedad', NULL, TRUE, TRUE, TRUE)
 ON DUPLICATE KEY UPDATE id = 1;
 
 -- Establecer el orden de secciones por defecto después de la inserción/creación.
+-- Si la columna landing_sections_order no existe, esta instrucción UPDATE fallará.
+-- Se debe añadir la columna primero si es necesario.
 UPDATE site_settings 
 SET landing_sections_order = '["featured_list_requests", "ai_matching", "google_sheet"]' 
 WHERE id = 1;
 ```
 
 ---
+
+## Sección CRM
+
+### Tabla: `contacts` (Contactos del CRM)
+Almacena la información de los contactos gestionados por los usuarios. Cada contacto pertenece a un `user` de PropSpot.
+
+```sql
+CREATE TABLE contacts (
+    id VARCHAR(36) PRIMARY KEY,                          -- UUID
+    user_id VARCHAR(36) NOT NULL,                        -- FK a users.id (El usuario de PropSpot dueño de este contacto)
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NULL,
+    phone VARCHAR(50) NULL,
+    company_name VARCHAR(255) NULL,
+    status ENUM('new', 'contacted', 'qualified', 'proposal_sent', 'negotiation', 'won', 'lost', 'on_hold', 'unqualified') DEFAULT 'new',
+    source VARCHAR(100) NULL,                            -- Origen del contacto (ej: 'Referido', 'Web PropSpot', 'Llamada entrante')
+    notes TEXT NULL,
+    last_contacted_at TIMESTAMP NULL DEFAULT NULL,       -- Se podría actualizar con un trigger o desde la app
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, -- Si se elimina el usuario, se eliminan sus contactos CRM
+
+    INDEX idx_contacts_user_id_status (user_id, status),
+    INDEX idx_contacts_user_id_email (user_id, email)
+);
+```
+
+### Tabla: `contact_interactions` (Interacciones con Contactos del CRM)
+Almacena el historial de conversaciones/interacciones con cada contacto. Cada interacción pertenece a un `contact` y fue registrada por un `user`.
+
+```sql
+CREATE TABLE contact_interactions (
+    id VARCHAR(36) PRIMARY KEY,                          -- UUID
+    contact_id VARCHAR(36) NOT NULL,                     -- FK a contacts.id
+    user_id VARCHAR(36) NOT NULL,                        -- FK a users.id (Quién registró la interacción, usualmente el dueño del contacto)
+    interaction_type ENUM('note', 'email_sent', 'email_received', 'call_made', 'call_received', 'meeting', 'message_sent', 'message_received', 'task_completed', 'property_viewing', 'offer_made', 'other') NOT NULL,
+    interaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    subject VARCHAR(255) NULL,                           -- Asunto (ej: para emails o reuniones)
+    description TEXT NOT NULL,                           -- Detalles de la interacción
+    outcome VARCHAR(255) NULL,                           -- Resultado de la interacción (ej: 'Interesado', 'Necesita seguimiento', 'No interesado')
+    follow_up_needed BOOLEAN DEFAULT FALSE,
+    follow_up_date DATE NULL DEFAULT NULL,               -- Solo fecha para el seguimiento
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, 
+
+    INDEX idx_interactions_contact_id_date (contact_id, interaction_date DESC),
+    INDEX idx_interactions_user_id (user_id),
+    INDEX idx_interactions_follow_up_date (follow_up_date)
+);
+```
+---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
+```
 
