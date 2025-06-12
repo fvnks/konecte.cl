@@ -2,7 +2,7 @@
 // src/app/admin/plans/page.tsx
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import type { Plan } from '@/lib/types';
-import { addPlanAction, deletePlanAction, getPlansAction, togglePlanStatusAction } from '@/actions/planActions';
+import { addPlanAction, deletePlanAction, getPlansAction, togglePlanStatusAction, getPlanByIdAction } from '@/actions/planActions';
 import { Loader2, PlusCircle, CreditCard, Trash2, ToggleLeft, ToggleRight, Edit } from 'lucide-react';
 import {
   AlertDialog,
@@ -25,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
+import EditPlanDialog from '@/components/admin/plans/EditPlanDialog';
 
 export default function AdminPlansPage() {
   const { toast } = useToast();
@@ -35,6 +36,9 @@ export default function AdminPlansPage() {
   const [newPlanName, setNewPlanName] = useState('');
   const [newPlanDescription, setNewPlanDescription] = useState('');
   const [newPlanPrice, setNewPlanPrice] = useState('0');
+
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
 
   const fetchPlans = async () => {
@@ -51,31 +55,24 @@ export default function AdminPlansPage() {
 
   useEffect(() => {
     fetchPlans();
-  }, [toast]); // Added toast to dependency array as it's used in fetchPlans
+  }, []); 
 
   const handleAddPlan = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
     
-    // Clear previous specific errors if any visual indication was used
-    // Example: form.querySelectorAll('.error-message').forEach(el => el.textContent = '');
-
     startTransition(async () => {
       const result = await addPlanAction(formData);
       if (result.success && result.plan) {
         toast({ title: "Plan Añadido", description: result.message });
-        form.reset(); // Reset the form fields
-        setNewPlanName(''); // Reset controlled state if still used for initial values
+        form.reset(); 
+        setNewPlanName(''); 
         setNewPlanDescription('');
         setNewPlanPrice('0');
-        
-        // Optimistically update UI or refetch
-        // setPlans(prev => [...prev, result.plan!].sort((a, b) => a.price_monthly - b.price_monthly || a.name.localeCompare(b.name)));
-        await fetchPlans(); // Or simply refetch
+        await fetchPlans(); 
       } else {
         toast({ title: "Error al Añadir Plan", description: result.message, variant: "destructive" });
-        // Potentially highlight fields based on result.message if it's specific
       }
     });
   };
@@ -104,6 +101,24 @@ export default function AdminPlansPage() {
         toast({ title: "Error al Actualizar Estado", description: result.message, variant: "destructive" });
       }
     });
+  };
+
+  const handleEditPlanRequest = async (planId: string) => {
+    startTransition(async () => {
+      const planToEdit = await getPlanByIdAction(planId);
+      if (planToEdit) {
+        setEditingPlan(planToEdit);
+        setIsEditModalOpen(true);
+      } else {
+        toast({ title: "Error", description: "No se pudo encontrar el plan para editar.", variant: "destructive" });
+      }
+    });
+  };
+
+  const handlePlanUpdated = async () => {
+    setIsEditModalOpen(false);
+    setEditingPlan(null);
+    await fetchPlans(); // Recargar la lista de planes
   };
   
   if (isLoading && plans.length === 0) { 
@@ -212,13 +227,14 @@ export default function AdminPlansPage() {
                           disabled={isPending}
                           className={`h-auto px-2 py-1 text-xs ${plan.is_active ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}`}
                         >
-                          {isPending && plan.id === plans.find(p => p.id === plan.id)?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (plan.is_active ? <ToggleRight className="mr-1 h-4 w-4" /> : <ToggleLeft className="mr-1 h-4 w-4" />)}
+                          {isPending && editingPlan?.id === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (plan.is_active ? <ToggleRight className="mr-1 h-4 w-4" /> : <ToggleLeft className="mr-1 h-4 w-4" />)}
                           {plan.is_active ? 'Activo' : 'Inactivo'}
                         </Button>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" disabled={true} aria-label="Editar plan" title="Editar plan (próximamente)"> {/* TODO: Implementar edición */}
-                          <Edit className="h-3 w-3 md:mr-1"/> <span className="hidden md:inline">Editar</span>
+                        <Button variant="outline" size="sm" onClick={() => handleEditPlanRequest(plan.id)} disabled={isPending} aria-label="Editar plan" title="Editar plan">
+                          {isPending && editingPlan?.id === plan.id ? <Loader2 className="h-3 w-3 animate-spin md:mr-1" /> : <Edit className="h-3 w-3 md:mr-1"/>}
+                          <span className="hidden md:inline">Editar</span>
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -231,13 +247,13 @@ export default function AdminPlansPage() {
                               <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Esta acción no se puede deshacer. Eliminarás permanentemente el plan "{plan.name}".
-                                Los usuarios asignados a este plan quedarán sin plan (o se les asignará uno por defecto si está configurado en la BD como SET NULL).
+                                Los usuarios asignados a este plan quedarán sin plan.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
                               <AlertDialogAction onClick={() => handleDeletePlan(plan.id)} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
-                                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                {isPending && editingPlan?.id === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Sí, eliminar plan
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -260,12 +276,18 @@ export default function AdminPlansPage() {
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
             <p><strong>Campos con asterisco (*) son requeridos.</strong></p>
-            <p>Los límites de propiedades/solicitudes y la duración de publicación pueden ser dejados en blanco (o 0 donde aplique según la validación) para indicar "ilimitado" o "indefinido" respectivamente. Estos se guardarán como NULL en la base de datos.</p>
-            <p>Si un plan se elimina, los usuarios que lo tenían asignado perderán esa asignación (su `plan_id` se volverá `NULL` debido a la configuración `ON DELETE SET NULL` en la clave foránea de la tabla `users`).</p>
-            <p>La funcionalidad de "Destacar Propiedades" y la "Duración de Publicación" deberán ser implementadas y consideradas en la lógica de listado y gestión de propiedades más adelante.</p>
+            <p>Los límites de propiedades/solicitudes y la duración de publicación pueden ser dejados en blanco para indicar "ilimitado" o "indefinido".</p>
+            <p>Si un plan se elimina, los usuarios asignados perderán esa asignación.</p>
         </CardContent>
       </Card>
+      {editingPlan && (
+        <EditPlanDialog
+            open={isEditModalOpen}
+            onOpenChange={setIsEditModalOpen}
+            plan={editingPlan}
+            onPlanUpdated={handlePlanUpdated}
+        />
+      )}
     </div>
   );
 }
-

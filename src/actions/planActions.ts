@@ -36,6 +36,22 @@ export async function getPlansAction(): Promise<Plan[]> {
   }
 }
 
+export async function getPlanByIdAction(planId: string): Promise<Plan | null> {
+  if (!planId) {
+    return null;
+  }
+  try {
+    const rows = await query('SELECT * FROM plans WHERE id = ?', [planId]);
+    if (rows.length > 0) {
+      return mapDbRowToPlan(rows[0]);
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error al obtener el plan con ID ${planId}:`, error);
+    return null;
+  }
+}
+
 export async function addPlanAction(formData: FormData): Promise<{ success: boolean; message?: string; plan?: Plan }> {
   const name = formData.get('name') as string;
   const description = formData.get('description') as string | null;
@@ -43,9 +59,9 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
   const price_currency = formData.get('price_currency') as string || 'CLP';
   const max_properties_allowed_str = formData.get('max_properties_allowed') as string | null;
   const max_requests_allowed_str = formData.get('max_requests_allowed') as string | null;
-  const can_feature_properties = formData.get('can_feature_properties') === 'on'; // Checkbox value
+  const can_feature_properties = formData.get('can_feature_properties') === 'on'; 
   const property_listing_duration_days_str = formData.get('property_listing_duration_days') as string | null;
-  const is_active = formData.get('is_active') === 'on'; // Checkbox value
+  const is_active = formData.get('is_active') === 'on';
 
   if (!name) {
     return { success: false, message: "El nombre del plan es requerido." };
@@ -66,7 +82,6 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
     return { success: false, message: "Los límites y duración deben ser números válidos no negativos si se especifican, o dejados en blanco para ilimitado/indefinido." };
   }
 
-
   try {
     const planId = randomUUID();
     const sql = `
@@ -83,7 +98,7 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
     ]);
     
     revalidatePath('/admin/plans');
-    revalidatePath('/admin/users'); // Users page might show plan names
+    revalidatePath('/admin/users'); 
 
     const newPlan: Plan = {
       id: planId, name, description, price_monthly, price_currency,
@@ -100,13 +115,75 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
   }
 }
 
-// TODO: Implementar updatePlanAction
-export async function updatePlanAction(planId: string, formData: FormData): Promise<{ success: boolean; message?: string }> {
-  console.log("updatePlanAction called for ID:", planId, "Data:", formData);
-  // Implementar la lógica de actualización aquí, similar a addPlanAction pero con UPDATE SQL.
-  // Validar datos, construir la consulta SQL, ejecutarla y revalidar paths.
-  return { success: false, message: "Funcionalidad de actualizar plan aún no implementada." };
+export async function updatePlanAction(planId: string, formData: FormData): Promise<{ success: boolean; message?: string; plan?: Plan }> {
+  const name = formData.get('name') as string;
+  const description = formData.get('description') as string | null;
+  const price_monthly_str = formData.get('price_monthly') as string;
+  const price_currency = formData.get('price_currency') as string || 'CLP';
+  const max_properties_allowed_str = formData.get('max_properties_allowed') as string | null;
+  const max_requests_allowed_str = formData.get('max_requests_allowed') as string | null;
+  const can_feature_properties = formData.get('can_feature_properties') === 'on';
+  const property_listing_duration_days_str = formData.get('property_listing_duration_days') as string | null;
+  const is_active = formData.get('is_active') === 'on';
+
+  if (!planId) {
+    return { success: false, message: "ID de plan no proporcionado para la actualización." };
+  }
+  if (!name) {
+    return { success: false, message: "El nombre del plan es requerido." };
+  }
+
+  const price_monthly = parseFloat(price_monthly_str);
+  if (isNaN(price_monthly) || price_monthly < 0) {
+    return { success: false, message: "El precio mensual debe ser un número válido no negativo." };
+  }
+
+  const max_properties_allowed = max_properties_allowed_str && max_properties_allowed_str.trim() !== '' ? parseInt(max_properties_allowed_str, 10) : null;
+  const max_requests_allowed = max_requests_allowed_str && max_requests_allowed_str.trim() !== '' ? parseInt(max_requests_allowed_str, 10) : null;
+  const property_listing_duration_days = property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '' ? parseInt(property_listing_duration_days_str, 10) : null;
+
+  if ((max_properties_allowed_str && max_properties_allowed_str.trim() !== '' && (isNaN(max_properties_allowed!) || max_properties_allowed! < 0)) ||
+      (max_requests_allowed_str && max_requests_allowed_str.trim() !== '' && (isNaN(max_requests_allowed!) || max_requests_allowed! < 0)) ||
+      (property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '' && (isNaN(property_listing_duration_days!) || property_listing_duration_days! < 0))) {
+    return { success: false, message: "Los límites y duración deben ser números válidos no negativos si se especifican, o dejados en blanco para ilimitado/indefinido." };
+  }
+
+  try {
+    const sql = `
+      UPDATE plans SET
+        name = ?, description = ?, price_monthly = ?, price_currency = ?,
+        max_properties_allowed = ?, max_requests_allowed = ?, can_feature_properties = ?,
+        property_listing_duration_days = ?, is_active = ?, updated_at = NOW()
+      WHERE id = ?
+    `;
+    const result: any = await query(sql, [
+      name, description || null, price_monthly, price_currency,
+      max_properties_allowed, max_requests_allowed, can_feature_properties,
+      property_listing_duration_days, is_active, planId
+    ]);
+
+    if (result.affectedRows === 0) {
+        return { success: false, message: "Plan no encontrado o los datos eran los mismos." };
+    }
+    
+    revalidatePath('/admin/plans');
+    revalidatePath('/admin/users');
+
+    const updatedPlan = await getPlanByIdAction(planId);
+    if (!updatedPlan) {
+        return { success: false, message: "Plan actualizado, pero no se pudo recuperar para confirmación."}
+    }
+
+    return { success: true, message: "Plan actualizado exitosamente.", plan: updatedPlan };
+  } catch (error: any) {
+    console.error(`Error al actualizar plan ${planId}:`, error);
+    if (error.code === 'ER_DUP_ENTRY' && error.message.includes("'plans.name'")) {
+      return { success: false, message: "Error: Ya existe otro plan con ese nombre." };
+    }
+    return { success: false, message: `Error al actualizar plan: ${error.message}` };
+  }
 }
+
 
 export async function deletePlanAction(planId: string): Promise<{ success: boolean; message?: string }> {
   if (!planId) {
@@ -114,8 +191,6 @@ export async function deletePlanAction(planId: string): Promise<{ success: boole
   }
 
   try {
-    // Desvincular usuarios del plan. La FK en users es ON DELETE SET NULL,
-    // pero es más explícito y seguro hacerlo así también.
     await query('UPDATE users SET plan_id = NULL WHERE plan_id = ?', [planId]);
 
     const result: any = await query('DELETE FROM plans WHERE id = ?', [planId]);
@@ -129,7 +204,6 @@ export async function deletePlanAction(planId: string): Promise<{ success: boole
   } catch (error: any)
 {
     console.error("Error al eliminar plan:", error);
-    // ER_ROW_IS_REFERENCED_2 puede ocurrir si hay otras restricciones, aunque no debería con users.plan_id ON DELETE SET NULL
     if (error.code === 'ER_ROW_IS_REFERENCED_2') { 
         return { success: false, message: "Error de referencia: No se puede eliminar el plan porque aún está referenciado en otra tabla (que no es 'users' para plan_id). Contacte al administrador." };
     }
