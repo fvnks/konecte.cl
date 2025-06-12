@@ -25,7 +25,7 @@ async function FeaturedListingsAndRequestsSection() {
   const recentRequests = allRequests.slice(0, 2);
 
   return (
-    <Card className="shadow-xl rounded-2xl overflow-hidden"> {/* Increased rounding and shadow */}
+    <Card className="shadow-xl rounded-2xl overflow-hidden">
       <CardHeader className="p-6 md:p-8 bg-secondary/30">
         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
           <ListChecks className="h-8 w-8 mr-3 text-primary" />
@@ -35,16 +35,16 @@ async function FeaturedListingsAndRequestsSection() {
       </CardHeader>
       <CardContent className="p-6 md:p-8">
         <Tabs defaultValue="properties" className="w-full">
-          <TabsList className="grid w-full sm:grid-cols-2 mb-8 rounded-lg bg-muted p-1"> {/* MODIFIED: p-1 (4px padding) */}
+          <TabsList className="p-1.5 rounded-lg bg-muted grid w-full sm:grid-cols-2 mb-8">
             <TabsTrigger 
               value="properties" 
-              className="text-base px-3 py-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-sm transition-all" /* MODIFIED: py-1.5, rounded-sm, shadow-sm */
+              className="px-3 py-1.5 text-base data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-sm transition-all"
             >
               Propiedades Destacadas
             </TabsTrigger>
             <TabsTrigger 
               value="requests" 
-              className="text-base px-3 py-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-sm transition-all" /* MODIFIED: py-1.5, rounded-sm, shadow-sm */
+              className="px-3 py-1.5 text-base data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-sm transition-all"
             >
               Solicitudes Recientes
             </TabsTrigger>
@@ -95,7 +95,7 @@ async function FeaturedListingsAndRequestsSection() {
 
 function AIMatchingSection() {
   return (
-    <Card className="shadow-xl rounded-2xl overflow-hidden bg-gradient-to-br from-primary/80 to-primary"> {/* Gradient background */}
+    <Card className="shadow-xl rounded-2xl overflow-hidden bg-gradient-to-br from-primary/80 to-primary">
       <CardHeader className="p-6 md:p-8 text-primary-foreground">
         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
             <Brain className="h-8 w-8 mr-3" />
@@ -223,20 +223,20 @@ export default async function HomePage() {
   };
 
   return (
-    <div className="space-y-16 md:space-y-20"> {/* Increased spacing */}
+    <div className="space-y-16 md:space-y-20"> 
       {/* Hero Section (Always Visible) */}
       <section className="text-center py-16 md:py-24 bg-card rounded-2xl shadow-2xl overflow-hidden relative">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-70"></div>
         <div className="container mx-auto px-4 relative z-10">
-          <h1 className="text-4xl font-headline font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl !leading-tight"> {/* Increased leading */}
+          <h1 className="text-4xl font-headline font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl !leading-tight"> 
             {siteTitle.includes('PropSpot') ? siteTitle.replace('PropSpot', '').trim() : siteTitle}
             {siteTitle.includes('PropSpot') && <span className="text-primary"> PropSpot</span>}
           </h1>
           <p className="mt-6 max-w-xl mx-auto text-lg text-muted-foreground sm:text-xl md:mt-8 md:text-2xl md:max-w-3xl">
             Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!
           </p>
-          <div className="mt-12 max-w-2xl mx-auto"> {/* Increased width */}
-            <form className="flex flex-col sm:flex-row gap-4"> {/* Increased gap */}
+          <div className="mt-12 max-w-2xl mx-auto"> 
+            <form className="flex flex-col sm:flex-row gap-4"> 
               <Input
                 type="search"
                 placeholder="Buscar por ubicación, tipo, características..."
@@ -272,3 +272,4 @@ export default async function HomePage() {
   );
 }
 
+    
