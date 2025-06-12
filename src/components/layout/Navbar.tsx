@@ -1,4 +1,3 @@
-
 // src/components/layout/Navbar.tsx
 'use client';
 
@@ -15,9 +14,10 @@ import { getSiteSettingsAction } from '@/actions/siteSettingsActions';
 import type { SiteSettings } from '@/lib/types';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from '@/lib/utils'; // Ensure cn is imported
+import { cn } from '@/lib/utils';
 
 const navItems = [
+  { href: '/', label: 'Inicio', icon: <Home /> }, // Added Home link
   { href: '/properties', label: 'Propiedades', icon: <Briefcase /> },
   { href: '/requests', label: 'Solicitudes', icon: <Search /> },
 ];
@@ -59,7 +59,6 @@ export default function Navbar() {
   useEffect(() => {
     fetchSiteSettings();
     const handleSettingsUpdate = () => fetchSiteSettings();
-    // Ensure event listener is only added on the client
     if (typeof window !== 'undefined') {
         window.addEventListener('siteSettingsUpdated', handleSettingsUpdate);
         return () => window.removeEventListener('siteSettingsUpdated', handleSettingsUpdate);
@@ -96,15 +95,12 @@ export default function Navbar() {
     
     if (typeof window !== 'undefined') {
         window.addEventListener('storage', handleStorageChange);
-        // Consider if 'document' listener is duplicative or necessary based on event dispatch
-        // document.addEventListener('storage', handleStorageChange);
     }
 
 
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('storage', handleStorageChange);
-        // document.removeEventListener('storage', handleStorageChange);
       }
     };
   }, [updateLoginState]);
@@ -128,7 +124,7 @@ export default function Navbar() {
           asChild 
           className={cn(
             "font-medium hover:bg-primary/10 hover:text-primary w-full md:w-auto",
-            isMobile ? "text-lg justify-start px-4 py-3.5" : "text-sm md:text-base md:px-4 py-2" // Adjusted padding & text size
+            isMobile ? "text-lg justify-start px-4 py-3.5" : "text-sm md:text-base md:px-3 py-2" 
           )}
           onClick={closeMenu}
         >
@@ -167,18 +163,18 @@ export default function Navbar() {
           {logoDisplay}
         </Link>
 
-        <nav className="hidden md:flex items-center gap-2 mx-auto"> {/* Increased gap */}
+        <nav className="hidden md:flex items-center gap-1 mx-auto"> {/* Reduced gap for desktop nav */}
           {commonNavLinks()}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3"> {/* Adjusted gap */}
+        <div className="flex items-center gap-2 sm:gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
-                variant="default" // Changed to default for more emphasis
-                className="hidden md:flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg shadow-sm hover:bg-primary/80" // Adjusted padding & added rounded-lg
+                variant="default" 
+                className="hidden md:flex items-center gap-2 text-sm font-medium px-3 py-2 h-9 rounded-lg shadow-sm hover:bg-primary/90" // Adjusted padding & size
               >
-                <PlusCircle className="h-5 w-5" /> Publicar
+                <PlusCircle className="h-4 w-4" /> Publicar
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60 bg-card shadow-xl rounded-lg border mt-2">
@@ -194,7 +190,7 @@ export default function Navbar() {
           {isClient && loggedInUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                 <Button variant="ghost" className="relative h-11 w-11 rounded-full p-0 hover:opacity-80 transition-opacity"> {/* Increased size */}
+                 <Button variant="ghost" className="relative h-11 w-11 rounded-full p-0 hover:opacity-80 transition-opacity">
                     <Avatar className="h-11 w-11 border-2 border-primary/50">
                       <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/44x44.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona avatar"/>
                       <AvatarFallback className="bg-muted text-muted-foreground text-base">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
@@ -242,13 +238,13 @@ export default function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : isClient ? (
-            <Button variant="outline" size="default" asChild className="hidden md:flex items-center gap-2 hover:bg-primary/10 hover:border-primary hover:text-primary text-sm px-4 py-2.5 rounded-lg"> {/* Adjusted padding & added rounded-lg */}
+            <Button variant="outline" size="default" asChild className="hidden md:flex items-center gap-2 hover:bg-primary/10 hover:border-primary hover:text-primary text-sm px-3 py-2 h-9 rounded-lg"> {/* Adjusted padding & size */}
               <Link href="/auth/signin">
                 <LogIn className="h-4 w-4" /> Iniciar Sesión
               </Link>
             </Button>
           ) : (
-             <div className="h-11 w-28 hidden md:block bg-muted/50 rounded-lg animate-pulse"></div> 
+             <div className="h-9 w-28 hidden md:block bg-muted/50 rounded-lg animate-pulse"></div> 
           )}
           
           <div className="md:hidden">
@@ -310,4 +306,3 @@ export default function Navbar() {
     </header>
   );
 }
-
