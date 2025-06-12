@@ -35,7 +35,7 @@ export function getDbPool(): Pool {
       password: process.env.MYSQL_PASSWORD, // Updated to MYSQL_PASSWORD
       database: process.env.MYSQL_DATABASE, // Updated to MYSQL_DATABASE
       waitForConnections: true,
-      connectionLimit: 50, // Aumentado de 25 a 50
+      connectionLimit: 100, // Aumentado de 50 a 100
       queueLimit: 0,
       // ssl: { // Uncomment and configure if Aiven requires SSL and provides CA cert
       //   rejectUnauthorized: true, 
