@@ -30,7 +30,7 @@ export default function CrmPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
-  
+
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -55,7 +55,7 @@ export default function CrmPage() {
         localStorage.removeItem('loggedInUser');
       }
     } else {
-      setIsLoadingContacts(false); 
+      setIsLoadingContacts(false);
     }
   }, []);
 
@@ -80,8 +80,10 @@ export default function CrmPage() {
          setIsLoadingContacts(false);
       }
     }
-    fetchContacts();
-  }, [loggedInUser, toast]);
+    if (!isLoadingContacts || loggedInUser) { // Fetch contacts if not already loading or if user is identified
+        fetchContacts();
+    }
+  }, [loggedInUser, toast, isLoadingContacts]); // Added isLoading to dependency array
 
   const handleContactAdded = (newContact: Contact) => {
     setContacts(prevContacts => [newContact, ...prevContacts].sort((a, b) => a.name.localeCompare(b.name)));
@@ -94,7 +96,7 @@ export default function CrmPage() {
   };
 
   const handleContactUpdated = (updatedContact: Contact) => {
-    setContacts(prevContacts => 
+    setContacts(prevContacts =>
       prevContacts.map(c => c.id === updatedContact.id ? updatedContact : c)
                   .sort((a, b) => a.name.localeCompare(b.name))
     );
@@ -144,16 +146,27 @@ export default function CrmPage() {
       setIsLoadingInteractions(false);
     }
   };
-  
+
   const handleInteractionAdded = (newInteraction: Interaction) => {
     setContactInteractions(prev => [newInteraction, ...prev].sort((a,b) => new Date(b.interaction_date).getTime() - new Date(a.interaction_date).getTime() ));
-    // Optimistically update last_contacted_at on the main contact list for better UX
     if (viewingInteractionsForContact) {
-      setContacts(prevContacts => prevContacts.map(c => 
-        c.id === viewingInteractionsForContact.id 
-        ? { ...c, last_contacted_at: newInteraction.interaction_date } 
+      setContacts(prevContacts => prevContacts.map(c =>
+        c.id === viewingInteractionsForContact.id
+        ? { ...c, last_contacted_at: newInteraction.interaction_date }
         : c
       ));
+    }
+  };
+
+  const handleInteractionDeleted = (deletedInteractionId: string) => {
+    setContactInteractions(prev => prev.filter(interaction => interaction.id !== deletedInteractionId));
+    // Optional: Re-fetch last_contacted_at for the contact if needed, or handle in backend
+    if (viewingInteractionsForContact && loggedInUser?.id) {
+        // Optimistically update or re-fetch contact to update last_contacted_at
+        // This is a simple re-fetch for now.
+        getUserContactsAction(loggedInUser.id).then(fetchedContacts => {
+            setContacts(fetchedContacts.sort((a, b) => a.name.localeCompare(b.name)));
+        });
     }
   };
 
@@ -201,11 +214,11 @@ export default function CrmPage() {
           ) : contacts.length > 0 ? (
             <div className="space-y-4">
               {contacts.map(contact => (
-                <ContactListItem 
-                  key={contact.id} 
+                <ContactListItem
+                  key={contact.id}
                   contact={contact}
                   onEdit={handleEditContact}
-                  onDeleteRequest={handleDeleteRequest} 
+                  onDeleteRequest={handleDeleteRequest}
                   onViewInteractions={handleViewInteractions}
                 />
               ))}
@@ -249,7 +262,7 @@ export default function CrmPage() {
                     Confirmar Eliminación
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                    ¿Estás seguro de que quieres eliminar al contacto <span className="font-semibold">{contactToDelete.name}</span>? 
+                    ¿Estás seguro de que quieres eliminar al contacto <span className="font-semibold">{contactToDelete.name}</span>?
                     Esta acción no se puede deshacer y eliminará también todas sus interacciones.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -271,11 +284,12 @@ export default function CrmPage() {
             open={isInteractionsModalOpen}
             onOpenChange={(open) => {
                 setIsInteractionsModalOpen(open);
-                if (!open) setViewingInteractionsForContact(null); // Clear contact when closing
+                if (!open) setViewingInteractionsForContact(null);
             }}
             contact={viewingInteractionsForContact}
             interactions={contactInteractions}
             onInteractionAdded={handleInteractionAdded}
+            onInteractionDeleted={handleInteractionDeleted} // Pass the new handler
             isLoadingInteractions={isLoadingInteractions}
             userId={loggedInUser?.id}
         />

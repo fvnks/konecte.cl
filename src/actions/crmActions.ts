@@ -3,8 +3,8 @@
 'use server';
 
 import { query } from '@/lib/db';
-import type { Contact, AddContactFormValues, EditContactFormValues, Interaction, AddInteractionFormValues } from '@/lib/types'; 
-import { addContactFormSchema, editContactFormSchema, addInteractionFormSchema } from '@/lib/types'; 
+import type { Contact, AddContactFormValues, EditContactFormValues, Interaction, AddInteractionFormValues } from '@/lib/types';
+import { addContactFormSchema, editContactFormSchema, addInteractionFormSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 
@@ -63,14 +63,14 @@ export async function addContactAction(
 
     await query(sql, params);
 
-    revalidatePath('/dashboard/crm'); 
-    // revalidatePath(`/admin/users/${userId}/crm`); 
+    revalidatePath('/dashboard/crm');
+    // revalidatePath(`/admin/users/${userId}/crm`);
 
     const newContactResult = await query('SELECT * FROM contacts WHERE id = ?', [contactId]);
-    if (newContactResult.length === 0) {
+    if (!Array.isArray(newContactResult) || newContactResult.length === 0) {
         return { success: false, message: "Error al crear el contacto, no se pudo recuperar." };
     }
-    
+
     return { success: true, message: "Contacto añadido exitosamente.", contact: mapDbRowToContact(newContactResult[0]) };
 
   } catch (error: any) {
@@ -186,12 +186,12 @@ export async function deleteContactAction(
     if (contactCheckResult[0].user_id !== userId) {
       return { success: false, message: "No tienes permiso para eliminar este contacto." };
     }
-    
+
     // Eliminar interacciones asociadas primero, debido a la FK
     await query('DELETE FROM contact_interactions WHERE contact_id = ? AND user_id = ?', [contactId, userId]);
-    
+
     const result: any = await query('DELETE FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
-    
+
     if (result.affectedRows > 0) {
       revalidatePath('/dashboard/crm');
       return { success: true, message: "Contacto y sus interacciones eliminados exitosamente." };
@@ -271,7 +271,7 @@ export async function addContactInteractionAction(
     `;
     const params = [
       interactionId, contactId, userId, interaction_type,
-      new Date(interaction_date), 
+      new Date(interaction_date),
       subject || null,
       description,
       outcome || null,
@@ -280,16 +280,16 @@ export async function addContactInteractionAction(
     ];
 
     await query(sql, params);
-    
+
     await query('UPDATE contacts SET last_contacted_at = ? WHERE id = ? AND user_id = ?', [new Date(interaction_date), contactId, userId]);
 
-    revalidatePath(`/dashboard/crm`);
+    revalidatePath(`/dashboard/crm`); // Revalidates the page where interactions are listed
 
     const newInteractionResult = await query('SELECT * FROM contact_interactions WHERE id = ?', [interactionId]);
     if (!Array.isArray(newInteractionResult) || newInteractionResult.length === 0) {
         return { success: false, message: "Error al añadir la interacción, no se pudo recuperar." };
     }
-    
+
     return { success: true, message: "Interacción añadida exitosamente.", interaction: mapDbRowToInteraction(newInteractionResult[0]) };
 
   } catch (error: any) {
@@ -319,9 +319,9 @@ export async function getContactInteractionsAction(
     }
 
     const sql = `
-      SELECT ci.* 
+      SELECT ci.*
       FROM contact_interactions ci
-      WHERE ci.contact_id = ? AND ci.user_id = ? 
+      WHERE ci.contact_id = ? AND ci.user_id = ?
       ORDER BY ci.interaction_date DESC, ci.created_at DESC
     `;
     const rows = await query(sql, [contactId, userId]);
@@ -333,5 +333,57 @@ export async function getContactInteractionsAction(
   } catch (error: any) {
     console.error(`[CrmAction] Error fetching interactions for contact ${contactId}:`, error);
     return [];
+  }
+}
+
+export async function deleteInteractionAction(
+  interactionId: string,
+  userId: string,
+  contactId: string // Used to verify ownership and potentially update contact's last_contacted_at
+): Promise<{ success: boolean; message?: string }> {
+  if (!userId) {
+    return { success: false, message: "Usuario no autenticado." };
+  }
+  if (!interactionId) {
+    return { success: false, message: "ID de interacción no proporcionado." };
+  }
+   if (!contactId) {
+    return { success: false, message: "ID de contacto no proporcionado para la verificación." };
+  }
+
+  try {
+    // Verify the interaction belongs to a contact owned by the user
+    const interactionCheckResult = await query(
+      `SELECT ci.id 
+       FROM contact_interactions ci
+       JOIN contacts c ON ci.contact_id = c.id
+       WHERE ci.id = ? AND c.user_id = ? AND ci.contact_id = ?`,
+      [interactionId, userId, contactId]
+    );
+
+    if (!Array.isArray(interactionCheckResult) || interactionCheckResult.length === 0) {
+      return { success: false, message: "Interacción no encontrada o no tienes permiso para eliminarla." };
+    }
+
+    const result: any = await query('DELETE FROM contact_interactions WHERE id = ?', [interactionId]);
+
+    if (result.affectedRows > 0) {
+      // Optional: Recalculate last_contacted_at for the parent contact
+      // This involves finding the latest interaction date for this contactId and updating contacts table.
+      // For simplicity now, we'll just revalidate. A more robust solution would update last_contacted_at.
+      // Example logic:
+      // const latestInteraction = await query('SELECT MAX(interaction_date) as max_date FROM contact_interactions WHERE contact_id = ? AND user_id = ?', [contactId, userId]);
+      // const newLastContactedDate = latestInteraction[0]?.max_date || null;
+      // await query('UPDATE contacts SET last_contacted_at = ? WHERE id = ? AND user_id = ?', [newLastContactedDate, contactId, userId]);
+
+      revalidatePath(`/dashboard/crm`); // Revalidates the page where interactions are listed
+      return { success: true, message: "Interacción eliminada exitosamente." };
+    } else {
+      return { success: false, message: "La interacción no fue encontrada o no se pudo eliminar." };
+    }
+
+  } catch (error: any) {
+    console.error(`[CrmAction] Error deleting interaction ${interactionId}:`, error);
+    return { success: false, message: `Error al eliminar interacción: ${error.message}` };
   }
 }
