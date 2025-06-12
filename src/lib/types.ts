@@ -135,6 +135,21 @@ export interface SiteSettings {
   updated_at?: string;
 }
 
+// --- User Management by Admin ---
+export const adminCreateUserFormSchema = z.object({
+  name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
+  email: z.string().email("Correo electrónico inválido.").max(255),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").max(100),
+  confirmPassword: z.string().min(6, "La confirmación de contraseña debe tener al menos 6 caracteres."),
+  role_id: z.string().min(1, "El rol es requerido."),
+  plan_id: z.string().optional().nullable(), // Puede ser string, undefined, o null
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden.",
+  path: ["confirmPassword"],
+});
+export type AdminCreateUserFormValues = z.infer<typeof adminCreateUserFormSchema>;
+
+
 // --- CRM Types ---
 
 export type ContactStatus =
@@ -282,3 +297,4 @@ export const placeholderUser: User = {
   role_id: 'user',
   role_name: 'Usuario'
 };
+
