@@ -4,11 +4,12 @@ import type { Interaction, InteractionType } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isPast, isToday } from 'date-fns'; // Añadido isPast, isToday
 import { es } from 'date-fns/locale';
 import {
   StickyNote, MessageSquareText, Mail, PhoneOutgoing, PhoneIncoming, Users,
-  Send, CheckSquare, Eye, Sparkles, History, Briefcase, Building, Trash2, AlertTriangle, Edit3
+  Send, CheckSquare, Eye, Sparkles, History, Briefcase, Building, Trash2, AlertTriangle, Edit3,
+  AlertCircle, // Para seguimiento pendiente/vencido
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -82,6 +83,32 @@ export default function InteractionListItem({ interaction, onDeleteRequest, onEd
   const typeColorClass = interactionTypeColors[interaction.interaction_type] || interactionTypeColors.other;
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  const followUpDate = interaction.follow_up_date ? parseISO(interaction.interaction_date.split('T')[0] + 'T' + interaction.follow_up_date.split('T')[1]) : null;
+  // Necesitamos usar la fecha parseada de interaction.follow_up_date para isPast e isToday
+  const parsedFollowUpDateOnly = interaction.follow_up_date ? parseISO(interaction.follow_up_date.split('T')[0]) : null;
+
+
+  let followUpIsDueOrToday = false;
+  let followUpStyle = "text-muted-foreground"; // Default for "Requiere seguimiento" if no date
+  let followUpIcon = null;
+
+  if (interaction.follow_up_needed && parsedFollowUpDateOnly) {
+    if (isPast(parsedFollowUpDateOnly) && !isToday(parsedFollowUpDateOnly)) {
+      followUpIsDueOrToday = true;
+      followUpStyle = "text-red-600 dark:text-red-500"; // Vencido
+      followUpIcon = <AlertCircle className="h-3.5 w-3.5 mr-1 flex-shrink-0" />;
+    } else if (isToday(parsedFollowUpDateOnly)) {
+      followUpIsDueOrToday = true;
+      followUpStyle = "text-orange-500 dark:text-orange-400"; // Para hoy
+      followUpIcon = <AlertCircle className="h-3.5 w-3.5 mr-1 flex-shrink-0" />;
+    } else { // Futuro
+      followUpStyle = "text-green-600 dark:text-green-500"; // Programado
+    }
+  } else if (interaction.follow_up_needed) {
+     followUpStyle = "text-blue-500 dark:text-blue-400"; // Requiere seguimiento pero sin fecha específica
+  }
+
+
   return (
     <Card className="shadow-sm border-l-4 border-primary/50 relative group">
       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center">
@@ -142,9 +169,10 @@ export default function InteractionListItem({ interaction, onDeleteRequest, onEd
                     <p className="text-xs"><strong>Resultado:</strong> {interaction.outcome}</p>
                 )}
                 {interaction.follow_up_needed && (
-                    <p className={`text-xs font-semibold ${interaction.follow_up_date ? 'text-orange-500 dark:text-orange-400' : 'text-blue-500 dark:text-blue-400'}`}>
+                    <p className={`text-xs font-semibold ${followUpStyle} flex items-center`}>
+                        {followUpIcon}
                         Requiere seguimiento
-                        {interaction.follow_up_date && ` para el ${format(parseISO(interaction.follow_up_date), "dd MMM yyyy", { locale: es })}`}
+                        {parsedFollowUpDateOnly && ` para el ${format(parsedFollowUpDateOnly, "dd MMM yyyy", { locale: es })}`}
                     </p>
                 )}
             </div>
@@ -153,3 +181,4 @@ export default function InteractionListItem({ interaction, onDeleteRequest, onEd
     </Card>
   );
 }
+
