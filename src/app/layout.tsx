@@ -14,6 +14,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'PropSpot - Encuentra Tu Próxima Propiedad',
   description: 'Descubre, publica y comenta propiedades en arriendo o venta.',
+  icons: null, // Explicitly set to null to prevent processing src/app/favicon.ico as a metadata module
   // Opcional: añadir Open Graph y Twitter card metadata para mejor sharing
   // openGraph: {
   //   title: 'PropSpot',
