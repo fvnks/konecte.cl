@@ -320,8 +320,8 @@ export async function updatePropertyStatusAction(propertyId: string, isActive: b
   try {
     await query('UPDATE properties SET is_active = ? WHERE id = ?', [isActive, propertyId]);
     revalidatePath('/admin/properties');
-    revalidatePath('/properties'); // Revalidate public listing
-    revalidatePath(`/properties/[slug]`); // Revalidate specific property page, though slug is not directly known here
+    revalidatePath('/properties'); 
+    revalidatePath(`/properties/[slug]`, 'layout'); 
     return { success: true, message: `Propiedad ${isActive ? 'activada' : 'desactivada'} correctamente.` };
   } catch (error: any) {
     console.error("Error al cambiar estado de la propiedad:", error);
@@ -335,20 +335,18 @@ export async function deletePropertyByAdminAction(propertyId: string): Promise<{
   }
 
   try {
-    // Consider deleting related comments first if ON DELETE CASCADE is not set for comments.property_id or if explicit control is needed.
-    // For now, assuming ON DELETE CASCADE handles comments linked to properties.
     const result: any = await query('DELETE FROM properties WHERE id = ?', [propertyId]);
     if (result.affectedRows > 0) {
       revalidatePath('/admin/properties');
       revalidatePath('/properties');
-      revalidatePath('/'); // Homepage might show featured properties
+      revalidatePath('/'); 
+      revalidatePath(`/properties/[slug]`, 'layout');
       return { success: true, message: "Propiedad eliminada exitosamente." };
     } else {
       return { success: false, message: "La propiedad no fue encontrada o no se pudo eliminar." };
     }
   } catch (error: any) {
     console.error("Error al eliminar propiedad por admin:", error);
-    // ER_ROW_IS_REFERENCED_2 puede ocurrir si hay otras restricciones no cubiertas por ON DELETE CASCADE
     if (error.code === 'ER_ROW_IS_REFERENCED_2') {
         return { success: false, message: "Error de referencia: No se puede eliminar la propiedad porque aún está referenciada en otra tabla. Contacte al administrador." };
     }
@@ -356,4 +354,106 @@ export async function deletePropertyByAdminAction(propertyId: string): Promise<{
   }
 }
 
+export async function getPropertyByIdForAdminAction(propertyId: string): Promise<PropertyListing | null> {
+  if (!propertyId) return null;
+  try {
+    const sql = `
+      SELECT
+        p.*,
+        u.name as author_name,
+        u.avatar_url as author_avatar_url,
+        u.role_id as author_role_id
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      WHERE p.id = ?
+    `; // No filter by is_active for admin
+    const rows = await query(sql, [propertyId]);
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return null;
+    }
+    return mapDbRowToPropertyListing(rows[0]);
+  } catch (error: any) {
+    console.error(`[PropertyAction Admin] Error fetching property by ID ${propertyId}:`, error);
+    return null;
+  }
+}
+
+export async function adminUpdatePropertyAction(
+  propertyId: string,
+  data: PropertyFormValues
+): Promise<{ success: boolean; message?: string; propertySlug?: string }> {
+  console.log("[PropertyAction Admin] Property update data received on server:", data, "PropertyID:", propertyId);
+
+  if (!propertyId) {
+    return { success: false, message: "ID de propiedad no proporcionado para la actualización." };
+  }
+
+  // No se permite cambiar el user_id ni el slug (para evitar complicaciones)
+  // El slug original se mantiene. Si se necesita cambiar el slug, se debe hacer con cuidado (redirecciones, etc.)
+
+  try {
+    const imagesJson = data.images ? JSON.stringify(data.images.split(',').map(img => img.trim()).filter(img => img.length > 0)) : null;
+    const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
+
+    const sql = `
+      UPDATE properties SET
+        title = ?, description = ?, property_type = ?, category = ?,
+        price = ?, currency = ?, address = ?, city = ?, country = ?, 
+        bedrooms = ?, bathrooms = ?, area_sq_meters = ?, 
+        images = ?, features = ?, 
+        updated_at = NOW()
+      WHERE id = ?
+    `;
+
+    const params = [
+      data.title,
+      data.description,
+      data.propertyType,
+      data.category,
+      data.price,
+      data.currency,
+      data.address,
+      data.city,
+      data.country,
+      data.bedrooms,
+      data.bathrooms,
+      data.areaSqMeters,
+      imagesJson,
+      featuresJson,
+      propertyId
+    ];
+
+    const result: any = await query(sql, params);
+
+    if (result.affectedRows === 0) {
+      return { success: false, message: "Propiedad no encontrada o los datos eran los mismos." };
+    }
     
+    // Obtener el slug de la propiedad para la revalidación
+    const propertyDetails = await getPropertyByIdForAdminAction(propertyId);
+    const currentSlug = propertyDetails?.slug;
+
+    console.log(`[PropertyAction Admin] Property updated successfully. ID: ${propertyId}, Slug: ${currentSlug}`);
+
+    revalidatePath('/admin/properties');
+    revalidatePath('/properties'); // Revalidate the general listings page
+    if (currentSlug) {
+      revalidatePath(`/properties/${currentSlug}`); // Revalidate the specific property page
+    } else {
+      revalidatePath(`/properties/[slug]`, 'layout'); // Fallback if slug isn't fetched quickly
+    }
+    revalidatePath('/'); // Revalidate homepage if it shows featured properties
+
+    return { success: true, message: "Propiedad actualizada exitosamente.", propertySlug: currentSlug };
+
+  } catch (error: any) {
+    console.error(`[PropertyAction Admin] Error updating property ${propertyId}:`, error);
+    // ER_DUP_ENTRY no debería ocurrir si no cambiamos el slug, pero se mantiene por si acaso
+    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('properties.slug')) {
+        message = "Error: Ya existe una propiedad con un título muy similar (slug duplicado).";
+    } else if (error.message) {
+      message = error.message;
+    }
+    return { success: false, message: `Error al actualizar propiedad: ${message}` };
+  }
+}

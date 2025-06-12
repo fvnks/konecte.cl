@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { PropertyListing } from '@/lib/types';
 import { getPropertiesAction, updatePropertyStatusAction, deletePropertyByAdminAction } from '@/actions/propertyActions';
-import { Loader2, ListOrdered, Trash2, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Loader2, ListOrdered, Trash2, Eye, ToggleLeft, ToggleRight, Edit3 } from 'lucide-react'; // Added Edit3
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -42,7 +42,8 @@ export default function AdminPropertiesPage() {
   const fetchProperties = async () => {
     setIsLoading(true);
     try {
-      const fetchedProperties = await getPropertiesAction({ includeInactive: true });
+      // includeInactive: true to show all properties to admin
+      const fetchedProperties = await getPropertiesAction({ includeInactive: true, orderBy: 'createdAt_desc' });
       setProperties(fetchedProperties);
     } catch (error) {
       toast({ title: "Error", description: "No se pudieron cargar las propiedades.", variant: "destructive" });
@@ -105,7 +106,7 @@ export default function AdminPropertiesPage() {
           <CardTitle className="text-2xl font-headline flex items-center">
             <ListOrdered className="h-6 w-6 mr-2 text-primary" /> Gestión de Propiedades
           </CardTitle>
-          <CardDescription>Visualiza, activa/desactiva y elimina propiedades listadas en el sistema.</CardDescription>
+          <CardDescription>Visualiza, activa/desactiva, edita y elimina propiedades listadas en el sistema.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading && properties.length > 0 && <p className="text-sm text-muted-foreground mb-2">Actualizando lista de propiedades...</p>}
@@ -120,7 +121,7 @@ export default function AdminPropertiesPage() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Fecha Creación</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
-                    <TableHead className="text-right min-w-[180px]">Acciones</TableHead>
+                    <TableHead className="text-right min-w-[220px]">Acciones</TableHead> 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -153,9 +154,14 @@ export default function AdminPropertiesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" asChild title="Ver propiedad">
+                        <Button variant="ghost" size="icon" asChild title="Ver propiedad pública">
                           <Link href={`/properties/${prop.slug}`} target="_blank">
                             <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button variant="ghost" size="icon" asChild title="Editar propiedad">
+                          <Link href={`/admin/properties/${prop.id}/edit`}>
+                            <Edit3 className="h-4 w-4" />
                           </Link>
                         </Button>
                         <AlertDialog>
@@ -169,7 +175,7 @@ export default function AdminPropertiesPage() {
                               <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Esta acción no se puede deshacer. Eliminarás permanentemente la propiedad "{prop.title}".
-                                Todos los datos asociados, como comentarios, también podrían ser eliminados (dependiendo de la configuración de la BD).
+                                Todos los datos asociados, como comentarios, también podrían ser eliminados.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
