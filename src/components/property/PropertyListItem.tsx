@@ -68,7 +68,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
 
 
   return (
-    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full flex flex-col md:flex-row group">
+    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full flex flex-col md:flex-row group border">
       <Link href={`/properties/${slug}`} className="md:w-[240px] lg:w-[280px] block flex-shrink-0 relative">
         <div className="aspect-video md:aspect-square w-full h-full overflow-hidden md:rounded-l-xl md:rounded-r-none rounded-t-xl">
           <Image
@@ -148,3 +148,5 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     </Card>
   );
 }
+
+    

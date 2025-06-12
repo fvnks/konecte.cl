@@ -53,7 +53,7 @@ export default function RequestListItem({ request }: RequestListItemProps) {
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
   return (
-    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full group">
+    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full group border">
       <div className="flex flex-1 flex-col p-4 sm:p-5 justify-between">
         <div>
           <CardHeader className="p-0 mb-2 sm:mb-3">
@@ -93,7 +93,7 @@ export default function RequestListItem({ request }: RequestListItemProps) {
                 <span className="flex items-center"><Bath className="mr-1.5 h-3.5 w-3.5 text-primary/80 flex-shrink-0" /> {minBathrooms}+ baños</span>
               )}
             </div>
-            {budgetMax && (
+            {budgetMax !== undefined && budgetMax > 0 && (
                 <span className="flex items-center text-sm text-accent font-semibold"><DollarSign className="mr-1 h-4 w-4 text-accent/80 flex-shrink-0" /> Hasta ${budgetMax.toLocaleString('es-CL')}</span>
             )}
             <div className="mt-2.5 space-x-1.5 space-y-1.5">
@@ -118,3 +118,5 @@ export default function RequestListItem({ request }: RequestListItemProps) {
     </Card>
   );
 }
+
+    

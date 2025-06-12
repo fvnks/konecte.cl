@@ -94,7 +94,7 @@ export default function RequestCard({ request }: RequestCardProps) {
             <Badge variant="outline" className="text-[10px] sm:text-xs py-0.5 px-1.5 rounded-md">+{desiredCategories.length - 2}</Badge>
           )}
         </div>
-         {budgetMax && (
+         {budgetMax !== undefined && budgetMax > 0 && (
              <div className="flex items-center text-xs text-accent font-semibold mt-1.5">
               <DollarSign className="mr-0.5 h-3.5 w-3.5 text-accent/80 flex-shrink-0" />
               <span>Hasta ${budgetMax.toLocaleString('es-CL', {notation: 'compact', compactDisplay: 'short'})}</span>
@@ -115,3 +115,5 @@ export default function RequestCard({ request }: RequestCardProps) {
     </Card>
   );
 }
+
+    

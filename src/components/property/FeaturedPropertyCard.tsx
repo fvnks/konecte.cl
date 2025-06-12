@@ -85,7 +85,7 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2.5">
             <Avatar className="h-6 w-6">
               <AvatarImage src={authorAvatar || `https://placehold.co/24x24.png?text=${authorInitials}`} alt={authorName} data-ai-hint="agente inmobiliario"/>
-              <AvatarFallback className="text-[10px]">{authorInitials || <UserIcon className="h-3 w-3"/>}</AvatarFallback>
+              <AvatarFallback className="text-[10px] bg-muted">{authorInitials || <UserIcon className="h-3 w-3"/>}</AvatarFallback>
             </Avatar>
             <span className="truncate line-clamp-1" title={authorName}>{authorName}</span>
              <span className="text-muted-foreground/70 ml-auto whitespace-nowrap">
@@ -104,3 +104,5 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
     </Card>
   );
 }
+
+    

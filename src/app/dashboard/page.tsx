@@ -12,6 +12,7 @@ import type { PropertyListing, SearchRequest, User as StoredUserType } from '@/l
 import { useEffect, useState } from 'react';
 import { getUserPropertiesAction } from '@/actions/propertyActions';
 import { getUserRequestsAction } from '@/actions/requestActions';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface DashboardUser extends StoredUserType {
   planId?: string | null;
@@ -66,6 +67,9 @@ export default function DashboardPage() {
     }
   }, [loggedInUser, isClient]);
 
+  const userName = loggedInUser?.name || "Usuario";
+  const userAvatar = loggedInUser?.avatarUrl;
+  const userInitials = userName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
   if (!isClient || isLoading) {
     return (
@@ -88,29 +92,30 @@ export default function DashboardPage() {
     );
   }
 
-  const userName = loggedInUser?.name || "Usuario";
-
   return (
     <div className="space-y-8 md:space-y-10">
       <Card className="shadow-xl rounded-xl border overflow-hidden">
         <CardHeader className="p-6 md:p-8 bg-gradient-to-br from-primary/10 to-accent/5">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <UserCircle className="h-16 w-16 md:h-20 md:w-20 text-primary flex-shrink-0" />
+              <Avatar className="h-16 w-16 md:h-20 md:w-20 border-2 border-card shadow-md">
+                <AvatarImage src={userAvatar} alt={userName} data-ai-hint="usuario perfil"/>
+                <AvatarFallback className="text-2xl md:text-3xl bg-muted">{userInitials}</AvatarFallback>
+              </Avatar>
               <div>
                 <CardTitle className="text-3xl md:text-4xl font-headline font-bold">¡Hola, {userName}!</CardTitle>
                 <CardDescription className="text-base md:text-lg text-muted-foreground mt-1">Bienvenido a tu centro de control en PropSpot.</CardDescription>
               </div>
             </div>
             {loggedInUser && (
-                 <div className="text-sm bg-card p-4 rounded-lg shadow-sm border text-right sm:text-left min-w-[200px]">
-                    <p className="font-semibold text-foreground">Tu Plan Actual:</p>
-                    <p className="text-primary font-medium flex items-center gap-1.5 text-lg">
-                        <CreditCard className="h-5 w-5" />
+                 <div className="text-sm bg-card p-4 rounded-lg shadow-sm border text-right sm:text-left min-w-[220px] self-start sm:self-center">
+                    <p className="font-semibold text-foreground mb-0.5">Tu Plan Actual:</p>
+                    <p className="text-primary font-medium flex items-center sm:items-start md:items-center gap-1.5 text-lg">
+                        <CreditCard className="h-5 w-5 mt-0.5" />
                         {loggedInUser.planName || "Básico"}
                     </p>
-                    <Button variant="link" size="sm" className="p-0 h-auto mt-1.5 text-xs text-accent hover:text-accent/80" asChild>
-                        <Link href="#"> {/* TODO: Link to plans/upgrade page */}
+                    <Button variant="link" size="sm" className="p-0 h-auto mt-1 text-xs text-accent hover:text-accent/80" asChild>
+                        <Link href="/profile"> {/* TODO: Link to plans/upgrade page if exists */}
                             {loggedInUser.planName ? "Gestionar Plan" : "Ver Planes"} <ArrowRight className="h-3 w-3 ml-1"/>
                         </Link>
                     </Button>
@@ -161,7 +166,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </CardContent>
-             {userProperties.length > 2 && (
+             {userProperties.length > 0 && (
                <CardFooter className="p-6 md:p-8 pt-0">
                   <Button variant="outline" className="w-full rounded-md" asChild>
                       <Link href="/properties" className="flex items-center gap-2">Ver todas mis propiedades <ArrowRight className="h-4 w-4"/></Link>
@@ -194,7 +199,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </CardContent>
-             {userRequests.length > 2 && (
+             {userRequests.length > 0 && (
               <CardFooter className="p-6 md:p-8 pt-0">
                   <Button variant="outline" className="w-full rounded-md" asChild>
                       <Link href="/requests" className="flex items-center gap-2">Ver todas mis solicitudes <ArrowRight className="h-4 w-4"/></Link>
@@ -207,3 +212,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
