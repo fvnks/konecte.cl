@@ -35,7 +35,7 @@ async function FeaturedListingsAndRequestsSection() {
       </CardHeader>
       <CardContent className="p-6 md:p-8">
         <Tabs defaultValue="properties" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 sm:w-auto mb-8 rounded-lg bg-muted p-1.5">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 mb-8 rounded-lg bg-muted p-1.5">
             <TabsTrigger value="properties" className="text-base py-3 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-lg rounded-md transition-all">Propiedades Destacadas</TabsTrigger>
             <TabsTrigger value="requests" className="text-base py-3 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-lg rounded-md transition-all">Solicitudes Recientes</TabsTrigger>
           </TabsList>
