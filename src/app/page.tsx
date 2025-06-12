@@ -35,7 +35,7 @@ async function FeaturedListingsAndRequestsSection() {
       </CardHeader>
       <CardContent className="p-6 md:p-8">
         <Tabs defaultValue="properties" className="w-full">
-          <TabsList className="p-1.5 rounded-lg bg-muted grid w-full sm:grid-cols-2 mb-8">
+          <TabsList className="p-1 rounded-lg bg-muted grid w-full sm:grid-cols-2 mb-8">
             <TabsTrigger 
               value="properties" 
               className="px-3 py-1.5 text-base data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-sm transition-all"
@@ -271,5 +271,4 @@ export default async function HomePage() {
     </div>
   );
 }
-
     
