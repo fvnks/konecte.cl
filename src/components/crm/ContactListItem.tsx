@@ -1,0 +1,79 @@
+
+// src/components/crm/ContactListItem.tsx
+import type { Contact } from '@/lib/types';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Mail, Phone, Building, Edit3, Trash2, UserCircle, Info } from 'lucide-react';
+import { contactStatusOptions } from '@/lib/types'; // Import options for status display
+
+interface ContactListItemProps {
+  contact: Contact;
+}
+
+export default function ContactListItem({ contact }: ContactListItemProps) {
+  const statusLabel = contactStatusOptions.find(opt => opt.value === contact.status)?.label || contact.status;
+
+  const getInitials = (name: string) => {
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  return (
+    <Card className="shadow-sm hover:shadow-md transition-shadow">
+      <CardHeader className="p-4 flex flex-row items-start gap-4 space-y-0">
+        <Avatar className="h-12 w-12 border">
+           {/* Placeholder for contact image - could be a future feature */}
+          <AvatarFallback className="text-lg bg-secondary">
+            {getInitials(contact.name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <CardTitle className="text-lg font-semibold">{contact.name}</CardTitle>
+          {contact.company_name && (
+            <CardDescription className="text-xs text-muted-foreground flex items-center">
+              <Building className="h-3 w-3 mr-1" /> {contact.company_name}
+            </CardDescription>
+          )}
+          <Badge variant="outline" className="mt-1 text-xs capitalize">{statusLabel}</Badge>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar (próximamente)" disabled>
+            <Edit3 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/90" title="Eliminar (próximamente)" disabled>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
+        {contact.email && (
+          <div className="flex items-center mb-1">
+            <Mail className="h-3.5 w-3.5 mr-2 text-primary" />
+            <a href={`mailto:${contact.email}`} className="hover:underline">{contact.email}</a>
+          </div>
+        )}
+        {contact.phone && (
+          <div className="flex items-center">
+            <Phone className="h-3.5 w-3.5 mr-2 text-primary" />
+            <a href={`tel:${contact.phone}`} className="hover:underline">{contact.phone}</a>
+          </div>
+        )}
+        {contact.notes && (
+            <p className="mt-2 text-xs border-l-2 border-primary pl-2 italic line-clamp-2" title={contact.notes}>
+                <Info className="h-3 w-3 mr-1 inline-block relative -top-px"/>
+                {contact.notes}
+            </p>
+        )}
+      </CardContent>
+      <CardFooter className="p-4 pt-0 text-xs text-muted-foreground flex justify-between">
+        <span>Fuente: {contact.source || 'N/A'}</span>
+        <span>Creado: {new Date(contact.created_at).toLocaleDateString('es-CL')}</span>
+      </CardFooter>
+    </Card>
+  );
+}

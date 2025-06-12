@@ -5,15 +5,14 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { PlusCircle, ListTree, SearchCheck, Building, UserCircle, Loader2, CreditCard } from 'lucide-react';
+import { PlusCircle, ListTree, SearchCheck, Building, UserCircle, Loader2, CreditCard, Users } from 'lucide-react'; // Added Users
 import PropertyListItem from '@/components/property/PropertyListItem';
-import RequestCard from '@/components/request/RequestCard'; // RequestCard para una vista más detallada en el dashboard
+import RequestCard from '@/components/request/RequestCard'; 
 import type { PropertyListing, SearchRequest, User as StoredUserType } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { getUserPropertiesAction } from '@/actions/propertyActions';
 import { getUserRequestsAction } from '@/actions/requestActions'; 
 
-// Extender StoredUser para incluir planId y planName, si no están ya en StoredUserType
 interface DashboardUser extends StoredUserType {
   planId?: string | null;
   planName?: string | null;
@@ -50,8 +49,6 @@ export default function DashboardPage() {
         setUserRequests(requests);
         setIsLoading(false);
       } else {
-        // Si no hay loggedInUser después del primer chequeo, paramos la carga
-        // esto puede pasar si el usuario llega directamente y no hay nada en localStorage aún
         if (localStorage.getItem('loggedInUser') === null) {
             setIsLoading(false);
         }
@@ -105,15 +102,20 @@ export default function DashboardPage() {
             )}
           </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Button asChild size="lg" variant="default">
             <Link href="/properties/submit" className="flex items-center gap-2">
-              <PlusCircle className="h-5 w-5" /> Publicar Nueva Propiedad
+              <PlusCircle className="h-5 w-5" /> Publicar Propiedad
             </Link>
           </Button>
           <Button asChild size="lg" variant="secondary">
             <Link href="/requests/submit" className="flex items-center gap-2">
-              <PlusCircle className="h-5 w-5" /> Publicar Nueva Solicitud
+              <PlusCircle className="h-5 w-5" /> Publicar Solicitud
+            </Link>
+          </Button>
+           <Button asChild size="lg" variant="outline">
+            <Link href="/dashboard/crm" className="flex items-center gap-2">
+              <Users className="h-5 w-5" /> Ir a Mi CRM
             </Link>
           </Button>
         </CardContent>
@@ -132,7 +134,7 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl font-headline flex items-center gap-2">
-                  <ListTree className="h-6 w-6 text-primary" /> Mis Propiedades Publicadas ({userProperties.length})
+                  <ListTree className="h-6 w-6 text-primary" /> Mis Propiedades ({userProperties.length})
                 </CardTitle>
                 <CardDescription>Gestiona las propiedades que has listado en PropSpot.</CardDescription>
               </CardHeader>
@@ -165,7 +167,7 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-2xl font-headline flex items-center gap-2">
-                  <SearchCheck className="h-6 w-6 text-primary" /> Mis Solicitudes Activas ({userRequests.length})
+                  <SearchCheck className="h-6 w-6 text-primary" /> Mis Solicitudes ({userRequests.length})
                 </CardTitle>
                 <CardDescription>Revisa y gestiona tus solicitudes de búsqueda de propiedades.</CardDescription>
               </CardHeader>
@@ -200,3 +202,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
