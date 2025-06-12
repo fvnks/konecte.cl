@@ -41,9 +41,9 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle as AlertDialogPrimitiveTitle, // Renamed to avoid conflict
+  AlertDialogTitle as AlertDialogPrimitiveTitle,
 } from "@/components/ui/alert-dialog";
-
+// import EditInteractionDialog from './EditInteractionDialog'; // Placeholder for future import
 
 interface ContactInteractionsDialogProps {
   open: boolean;
@@ -51,7 +51,8 @@ interface ContactInteractionsDialogProps {
   contact: Contact | null;
   interactions: Interaction[];
   onInteractionAdded: (interaction: Interaction) => void;
-  onInteractionDeleted: (interactionId: string) => void; // New prop
+  onInteractionDeleted: (interactionId: string) => void;
+  onInteractionUpdated: (updatedInteraction: Interaction) => void; // New prop for update
   isLoadingInteractions: boolean;
   userId: string | undefined;
 }
@@ -62,7 +63,8 @@ export default function ContactInteractionsDialog({
   contact,
   interactions,
   onInteractionAdded,
-  onInteractionDeleted, // New prop
+  onInteractionDeleted,
+  onInteractionUpdated, // New prop
   isLoadingInteractions,
   userId,
 }: ContactInteractionsDialogProps) {
@@ -74,6 +76,8 @@ export default function ContactInteractionsDialog({
   const [interactionToDeleteId, setInteractionToDeleteId] = useState<string | null>(null);
   const [isDeleteInteractionAlertOpen, setIsDeleteInteractionAlertOpen] = useState(false);
 
+  const [editingInteraction, setEditingInteraction] = useState<Interaction | null>(null);
+  const [isEditInteractionDialogOpen, setIsEditInteractionDialogOpen] = useState(false);
 
   const form = useForm<AddInteractionFormValues>({
     resolver: zodResolver(addInteractionFormSchema),
@@ -110,6 +114,8 @@ export default function ContactInteractionsDialog({
         follow_up_date: null,
       });
       setShowFollowUpDate(false);
+      setEditingInteraction(null); // Ensure editing state is cleared when dialog reopens
+      setIsEditInteractionDialogOpen(false);
     }
   }, [open, form]);
 
@@ -166,6 +172,18 @@ export default function ContactInteractionsDialog({
       }
       setInteractionToDeleteId(null);
     });
+  };
+
+  const handleEditInteractionRequest = (interaction: Interaction) => {
+    setEditingInteraction(interaction);
+    setIsEditInteractionDialogOpen(true);
+    // The actual EditInteractionDialog component will handle its own form and API call
+  };
+
+  const handleLocalInteractionUpdated = (updatedInteraction: Interaction) => {
+    onInteractionUpdated(updatedInteraction); // Call prop to update parent state
+    setIsEditInteractionDialogOpen(false);
+    setEditingInteraction(null);
   };
 
 
@@ -274,7 +292,7 @@ export default function ContactInteractionsDialog({
                             <FormLabel>Fecha de Seguimiento</FormLabel>
                              <DatePicker
                               value={field.value ? new Date(field.value) : null}
-                              onChange={(date) => field.onChange(date ? date.toISOString().split('T')[0] : null)} // Store as YYYY-MM-DD
+                              onChange={(date) => field.onChange(date ? date.toISOString().split('T')[0] : null)}
                               placeholder="Elige fecha de seguimiento"
                             />
                             <FormMessage />
@@ -307,7 +325,7 @@ export default function ContactInteractionsDialog({
                         key={interaction.id}
                         interaction={interaction}
                         onDeleteRequest={handleDeleteInteractionRequest}
-                        // onEditRequest={handleEditInteractionRequest} // Placeholder for future edit
+                        onEditRequest={handleEditInteractionRequest}
                       />
                     ))}
                   </div>
@@ -352,6 +370,18 @@ export default function ContactInteractionsDialog({
             </AlertDialogContent>
         </AlertDialog>
       )}
+
+      {/* Placeholder for EditInteractionDialog - will be implemented in the next step */}
+      {/* {editingInteraction && isEditInteractionDialogOpen && (
+        <EditInteractionDialog
+          open={isEditInteractionDialogOpen}
+          onOpenChange={setIsEditInteractionDialogOpen}
+          interaction={editingInteraction}
+          contactId={contact.id}
+          userId={userId}
+          onInteractionUpdated={handleLocalInteractionUpdated}
+        />
+      )} */}
     </>
   );
 }

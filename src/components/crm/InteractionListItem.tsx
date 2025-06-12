@@ -1,14 +1,14 @@
 
 // src/components/crm/InteractionListItem.tsx
 import type { Interaction, InteractionType } from '@/lib/types';
-import { Card, CardContent } from '@/components/ui/card'; // CardHeader, CardDescription, CardTitle removed as not used
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   StickyNote, MessageSquareText, Mail, PhoneOutgoing, PhoneIncoming, Users,
-  Send, CheckSquare, Eye, Sparkles, History, Briefcase, Building, Trash2, AlertTriangle
+  Send, CheckSquare, Eye, Sparkles, History, Briefcase, Building, Trash2, AlertTriangle, Edit3
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -27,7 +27,7 @@ import { useState } from 'react';
 interface InteractionListItemProps {
   interaction: Interaction;
   onDeleteRequest: (interactionId: string) => void;
-  // onEditRequest: (interaction: Interaction) => void; // Placeholder for future edit functionality
+  onEditRequest: (interaction: Interaction) => void;
 }
 
 const interactionTypeIcons: Record<InteractionType, LucideIcon> = {
@@ -76,7 +76,7 @@ const interactionTypeColors: Record<InteractionType, string> = {
 };
 
 
-export default function InteractionListItem({ interaction, onDeleteRequest /*, onEditRequest */ }: InteractionListItemProps) {
+export default function InteractionListItem({ interaction, onDeleteRequest, onEditRequest }: InteractionListItemProps) {
   const IconComponent = interactionTypeIcons[interaction.interaction_type] || Sparkles;
   const typeLabel = interactionTypeLabels[interaction.interaction_type] || 'Interacción';
   const typeColorClass = interactionTypeColors[interaction.interaction_type] || interactionTypeColors.other;
@@ -84,10 +84,10 @@ export default function InteractionListItem({ interaction, onDeleteRequest /*, o
 
   return (
     <Card className="shadow-sm border-l-4 border-primary/50 relative group">
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        {/* <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditRequest(interaction)} title="Editar Interacción">
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditRequest(interaction)} title="Editar Interacción">
           <Edit3 className="h-4 w-4" />
-        </Button> */}
+        </Button>
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive/90" title="Eliminar Interacción">

@@ -76,7 +76,7 @@ export default function CrmPage() {
         setIsLoadingContacts(true);
         try {
           const fetchedContacts = await getUserContactsAction(loggedInUser.id);
-          setContacts(fetchedContacts); // Set the original contacts list
+          setContacts(fetchedContacts); 
         } catch (error) {
           console.error("Error fetching contacts:", error);
           toast({
@@ -91,20 +91,17 @@ export default function CrmPage() {
          setIsLoadingContacts(false);
       }
     }
-    // Fetch contacts only if not already loading or if user is identified
-    // and contacts haven't been fetched yet or loggedInUser changed
+    
     if (loggedInUser && contacts.length === 0 && !isLoadingContacts) {
         fetchContacts();
     } else if (!loggedInUser && !isLoadingContacts) {
-        setContacts([]); // Clear contacts if no user
+        setContacts([]); 
     }
-  }, [loggedInUser, toast]); // removed contacts from dependency array, isLoadingContacts
+  }, [loggedInUser, toast]);
 
-  // Effect for filtering and sorting
   useEffect(() => {
     let tempContacts = [...contacts];
 
-    // Apply search term filter
     if (searchTerm) {
       tempContacts = tempContacts.filter(contact =>
         contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -113,12 +110,10 @@ export default function CrmPage() {
       );
     }
 
-    // Apply status filter
     if (filterStatus !== 'all') {
       tempContacts = tempContacts.filter(contact => contact.status === filterStatus);
     }
 
-    // Apply sorting
     tempContacts.sort((a, b) => {
       switch (sortOption) {
         case 'name-asc':
@@ -154,7 +149,6 @@ export default function CrmPage() {
   }, [contacts, searchTerm, filterStatus, sortOption]);
 
   const handleContactAdded = (newContact: Contact) => {
-    // Update the original contacts list, which will trigger the filter/sort useEffect
     setContacts(prevContacts => [newContact, ...prevContacts]);
     setIsAddContactOpen(false);
   };
@@ -218,7 +212,6 @@ export default function CrmPage() {
   const handleInteractionAdded = (newInteraction: Interaction) => {
     setContactInteractions(prev => [newInteraction, ...prev].sort((a,b) => new Date(b.interaction_date).getTime() - new Date(a.interaction_date).getTime() ));
     if (viewingInteractionsForContact) {
-      // Also update the main contacts list for last_contacted_at
       setContacts(prevContacts => prevContacts.map(c =>
         c.id === viewingInteractionsForContact.id
         ? { ...c, last_contacted_at: newInteraction.interaction_date }
@@ -230,6 +223,19 @@ export default function CrmPage() {
   const handleInteractionDeleted = (deletedInteractionId: string) => {
     setContactInteractions(prev => prev.filter(interaction => interaction.id !== deletedInteractionId));
     if (viewingInteractionsForContact && loggedInUser?.id) {
+        getUserContactsAction(loggedInUser.id).then(fetchedContacts => {
+            setContacts(fetchedContacts);
+        });
+    }
+  };
+
+  const handleInteractionUpdated = (updatedInteraction: Interaction) => {
+    setContactInteractions(prevInteractions =>
+      prevInteractions.map(i => (i.id === updatedInteraction.id ? updatedInteraction : i))
+        .sort((a,b) => new Date(b.interaction_date).getTime() - new Date(a.interaction_date).getTime())
+    );
+     if (viewingInteractionsForContact && loggedInUser?.id) {
+        // Re-fetch contacts to update last_contacted_at if necessary
         getUserContactsAction(loggedInUser.id).then(fetchedContacts => {
             setContacts(fetchedContacts);
         });
@@ -282,7 +288,6 @@ export default function CrmPage() {
           </AddContactDialog>
         </CardHeader>
         <CardContent>
-          {/* Filters and Sort Section */}
           <div className="mb-6 p-4 bg-secondary/30 rounded-lg">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               <div className="md:col-span-1">
@@ -425,6 +430,7 @@ export default function CrmPage() {
             interactions={contactInteractions}
             onInteractionAdded={handleInteractionAdded}
             onInteractionDeleted={handleInteractionDeleted}
+            onInteractionUpdated={handleInteractionUpdated} // Pass the new handler
             isLoadingInteractions={isLoadingInteractions}
             userId={loggedInUser?.id}
         />
@@ -432,5 +438,3 @@ export default function CrmPage() {
     </div>
   );
 }
-
-    
