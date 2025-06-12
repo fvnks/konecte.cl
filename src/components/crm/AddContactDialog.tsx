@@ -3,8 +3,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-// Updated import paths
-import { addContactFormSchema, type AddContactFormValues } from '@/lib/types';
+import { addContactFormSchema, type AddContactFormValues, contactStatusOptions, type Contact } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +17,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -30,7 +28,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { addContactAction } from '@/actions/crmActions';
 import { Loader2, UserPlus } from 'lucide-react';
-import { contactStatusOptions, type Contact } from '@/lib/types'; // contactStatusOptions is still imported from @/lib/types
 import type React from 'react';
 import { useState } from 'react';
 
@@ -72,6 +69,7 @@ export default function AddContactDialog({
         description: 'No se pudo identificar al usuario. Por favor, inicia sesión de nuevo.',
         variant: 'destructive',
       });
+      onOpenChange(false); // Close dialog if user is not identified
       return;
     }
     setIsSubmitting(true);
@@ -95,6 +93,13 @@ export default function AddContactDialog({
     }
   }
 
+  // Reset form when dialog is closed externally or on cancel
+  React.useEffect(() => {
+    if (!open) {
+      form.reset();
+    }
+  }, [open, form]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -108,7 +113,7 @@ export default function AddContactDialog({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-3 pl-1">
             <FormField
               control={form.control}
               name="name"

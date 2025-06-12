@@ -1,4 +1,3 @@
-
 // src/app/dashboard/crm/page.tsx
 'use client';
 
@@ -30,7 +29,7 @@ export default function CrmPage() {
         localStorage.removeItem('loggedInUser');
       }
     } else {
-      setIsLoading(false); // No user, stop loading
+      setIsLoading(false); // No user, stop loading if not already stopped
     }
   }, []);
 
@@ -40,7 +39,7 @@ export default function CrmPage() {
         setIsLoading(true);
         try {
           const fetchedContacts = await getUserContactsAction(loggedInUser.id);
-          setContacts(fetchedContacts);
+          setContacts(fetchedContacts.sort((a, b) => a.name.localeCompare(b.name)));
         } catch (error) {
           console.error("Error fetching contacts:", error);
           toast({
@@ -51,13 +50,16 @@ export default function CrmPage() {
         } finally {
           setIsLoading(false);
         }
-      } else if (!loggedInUser && !localStorage.getItem('loggedInUser')) {
+      } else if (!localStorage.getItem('loggedInUser')) {
         // If there's definitively no user (checked both state and localStorage)
         setIsLoading(false);
       }
     }
-    fetchContacts();
-  }, [loggedInUser, toast]);
+    // Only fetch contacts if loggedInUser is set, or if it's the initial load (where loggedInUser might still be null but about to be set)
+    if (loggedInUser || isLoading) { // isLoading check ensures initial fetch attempt if user is being loaded
+        fetchContacts();
+    }
+  }, [loggedInUser, toast, isLoading]); // Added isLoading to dependencies to re-trigger if it changes
 
   const handleContactAdded = (newContact: Contact) => {
     setContacts(prevContacts => [newContact, ...prevContacts].sort((a, b) => a.name.localeCompare(b.name)));
@@ -93,7 +95,7 @@ export default function CrmPage() {
             onContactAdded={handleContactAdded}
             userId={loggedInUser?.id}
           >
-            <Button onClick={() => setIsAddContactOpen(true)} disabled={!loggedInUser}>
+            <Button onClick={() => setIsAddContactOpen(true)} disabled={!loggedInUser || isLoading}>
               <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nuevo Contacto
             </Button>
           </AddContactDialog>
@@ -121,7 +123,7 @@ export default function CrmPage() {
                 onContactAdded={handleContactAdded}
                 userId={loggedInUser?.id}
               >
-                <Button onClick={() => setIsAddContactOpen(true)} variant="default" disabled={!loggedInUser}>
+                <Button onClick={() => setIsAddContactOpen(true)} variant="default" disabled={!loggedInUser || isLoading}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Añadir Primer Contacto
                 </Button>
               </AddContactDialog>
