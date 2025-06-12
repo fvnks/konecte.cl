@@ -35,16 +35,16 @@ async function FeaturedListingsAndRequestsSection() {
       </CardHeader>
       <CardContent className="p-6 md:p-8">
         <Tabs defaultValue="properties" className="w-full">
-          <TabsList className="grid w-full sm:grid-cols-2 mb-8 rounded-lg bg-muted p-1.5"> {/* MODIFIED: Added p-1.5 */}
+          <TabsList className="grid w-full sm:grid-cols-2 mb-8 rounded-lg bg-muted p-1"> {/* MODIFIED: p-1 (4px padding) */}
             <TabsTrigger 
               value="properties" 
-              className="text-base py-3 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md rounded-md transition-all px-3" /* MODIFIED: Removed m-1, added px-3 */
+              className="text-base px-3 py-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-sm transition-all" /* MODIFIED: py-1.5, rounded-sm, shadow-sm */
             >
               Propiedades Destacadas
             </TabsTrigger>
             <TabsTrigger 
               value="requests" 
-              className="text-base py-3 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md rounded-md transition-all px-3" /* MODIFIED: Removed m-1, added px-3 */
+              className="text-base px-3 py-1.5 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm rounded-sm transition-all" /* MODIFIED: py-1.5, rounded-sm, shadow-sm */
             >
               Solicitudes Recientes
             </TabsTrigger>
