@@ -35,9 +35,19 @@ async function FeaturedListingsAndRequestsSection() {
       </CardHeader>
       <CardContent className="p-6 md:p-8">
         <Tabs defaultValue="properties" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 mb-8 rounded-lg bg-muted"> {/* REMOVED p-2, ADDED gap-1 (optional) */}
-            <TabsTrigger value="properties" className="text-base py-3 m-1 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md rounded-md transition-all">Propiedades Destacadas</TabsTrigger> {/* ADDED m-1 */}
-            <TabsTrigger value="requests" className="text-base py-3 m-1 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md rounded-md transition-all">Solicitudes Recientes</TabsTrigger> {/* ADDED m-1 */}
+          <TabsList className="grid w-full sm:grid-cols-2 mb-8 rounded-lg bg-muted p-1.5"> {/* MODIFIED: Added p-1.5 */}
+            <TabsTrigger 
+              value="properties" 
+              className="text-base py-3 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md rounded-md transition-all px-3" /* MODIFIED: Removed m-1, added px-3 */
+            >
+              Propiedades Destacadas
+            </TabsTrigger>
+            <TabsTrigger 
+              value="requests" 
+              className="text-base py-3 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md rounded-md transition-all px-3" /* MODIFIED: Removed m-1, added px-3 */
+            >
+              Solicitudes Recientes
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="properties" className="mt-2">
             {featuredProperties.length > 0 ? (
