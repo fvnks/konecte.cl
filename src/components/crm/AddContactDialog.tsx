@@ -1,11 +1,10 @@
-
 // src/components/crm/AddContactDialog.tsx
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import type { AddContactFormValues } from '@/actions/crmActions';
-import { addContactFormSchema } from '@/actions/crmActions';
+// Updated import paths
+import { addContactFormSchema, type AddContactFormValues } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -31,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { addContactAction } from '@/actions/crmActions';
 import { Loader2, UserPlus } from 'lucide-react';
-import { contactStatusOptions, type Contact } from '@/lib/types';
+import { contactStatusOptions, type Contact } from '@/lib/types'; // contactStatusOptions is still imported from @/lib/types
 import type React from 'react';
 import { useState } from 'react';
 

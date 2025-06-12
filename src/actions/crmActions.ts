@@ -1,31 +1,15 @@
-
 // src/actions/crmActions.ts
 'use server';
 
-import { z } from 'zod';
 import { query } from '@/lib/db';
-import type { Contact, ContactStatus } from '@/lib/types';
+import type { Contact } from '@/lib/types';
+import { addContactFormSchema, type AddContactFormValues } from '@/lib/types'; // Updated import
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 
 // --- Contact Schemas and Actions ---
+// addContactFormSchema and contactStatusValues are now imported from @/lib/types
 
-const contactStatusValues = [
-  'new', 'contacted', 'qualified', 'proposal_sent', 
-  'negotiation', 'won', 'lost', 'on_hold', 'unqualified'
-] as const;
-
-export const addContactFormSchema = z.object({
-  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres.").max(255),
-  email: z.string().email("Correo electrónico inválido.").max(255).optional().or(z.literal('')),
-  phone: z.string().max(50).optional().or(z.literal('')),
-  company_name: z.string().max(255).optional().or(z.literal('')),
-  status: z.enum(contactStatusValues).default('new'),
-  source: z.string().max(100).optional().or(z.literal('')),
-  notes: z.string().optional().or(z.literal('')),
-});
-
-export type AddContactFormValues = z.infer<typeof addContactFormSchema>;
 
 function mapDbRowToContact(row: any): Contact {
   return {
@@ -64,17 +48,17 @@ export async function addContactAction(
   try {
     const sql = `
       INSERT INTO contacts (
-        id, user_id, name, email, phone, company_name, 
+        id, user_id, name, email, phone, company_name,
         status, source, notes, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `;
     const params = [
-      contactId, userId, name, 
-      email || null, 
-      phone || null, 
+      contactId, userId, name,
+      email || null,
+      phone || null,
       company_name || null,
-      status, 
-      source || null, 
+      status,
+      source || null,
       notes || null
     ];
 
@@ -82,8 +66,8 @@ export async function addContactAction(
 
     // Revalidate paths where contacts might be displayed
     // Example: A dashboard CRM section or a dedicated contacts page
-    revalidatePath('/dashboard/crm'); 
-    revalidatePath('/crm/contacts'); 
+    revalidatePath('/dashboard/crm');
+    revalidatePath('/crm/contacts');
 
     const newContact: Contact = {
       id: contactId,
@@ -113,8 +97,8 @@ export async function getUserContactsAction(userId: string): Promise<Contact[]> 
   }
   try {
     const sql = `
-      SELECT * FROM contacts 
-      WHERE user_id = ? 
+      SELECT * FROM contacts
+      WHERE user_id = ?
       ORDER BY name ASC
     `;
     const rows = await query(sql, [userId]);
