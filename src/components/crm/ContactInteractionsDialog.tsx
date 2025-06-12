@@ -1,10 +1,9 @@
-
 // src/components/crm/ContactInteractionsDialog.tsx
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { addInteractionFormSchema, type AddInteractionFormValues, type Interaction, type Contact, interactionTypeOptions } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,7 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle as AlertDialogPrimitiveTitle,
 } from "@/components/ui/alert-dialog";
-// import EditInteractionDialog from './EditInteractionDialog'; // Placeholder for future import
+import EditInteractionDialog from './EditInteractionDialog'; // Importar el nuevo diálogo
 
 interface ContactInteractionsDialogProps {
   open: boolean;
@@ -52,7 +51,7 @@ interface ContactInteractionsDialogProps {
   interactions: Interaction[];
   onInteractionAdded: (interaction: Interaction) => void;
   onInteractionDeleted: (interactionId: string) => void;
-  onInteractionUpdated: (updatedInteraction: Interaction) => void; // New prop for update
+  onInteractionUpdated: (updatedInteraction: Interaction) => void;
   isLoadingInteractions: boolean;
   userId: string | undefined;
 }
@@ -64,7 +63,7 @@ export default function ContactInteractionsDialog({
   interactions,
   onInteractionAdded,
   onInteractionDeleted,
-  onInteractionUpdated, // New prop
+  onInteractionUpdated,
   isLoadingInteractions,
   userId,
 }: ContactInteractionsDialogProps) {
@@ -114,7 +113,7 @@ export default function ContactInteractionsDialog({
         follow_up_date: null,
       });
       setShowFollowUpDate(false);
-      setEditingInteraction(null); // Ensure editing state is cleared when dialog reopens
+      setEditingInteraction(null); 
       setIsEditInteractionDialogOpen(false);
     }
   }, [open, form]);
@@ -174,14 +173,13 @@ export default function ContactInteractionsDialog({
     });
   };
 
-  const handleEditInteractionRequest = (interaction: Interaction) => {
-    setEditingInteraction(interaction);
+  const handleEditInteractionRequest = (interactionToEdit: Interaction) => {
+    setEditingInteraction(interactionToEdit);
     setIsEditInteractionDialogOpen(true);
-    // The actual EditInteractionDialog component will handle its own form and API call
   };
 
   const handleLocalInteractionUpdated = (updatedInteraction: Interaction) => {
-    onInteractionUpdated(updatedInteraction); // Call prop to update parent state
+    onInteractionUpdated(updatedInteraction); 
     setIsEditInteractionDialogOpen(false);
     setEditingInteraction(null);
   };
@@ -325,7 +323,7 @@ export default function ContactInteractionsDialog({
                         key={interaction.id}
                         interaction={interaction}
                         onDeleteRequest={handleDeleteInteractionRequest}
-                        onEditRequest={handleEditInteractionRequest}
+                        onEditRequest={handleEditInteractionRequest} // Pasar la función para editar
                       />
                     ))}
                   </div>
@@ -371,8 +369,7 @@ export default function ContactInteractionsDialog({
         </AlertDialog>
       )}
 
-      {/* Placeholder for EditInteractionDialog - will be implemented in the next step */}
-      {/* {editingInteraction && isEditInteractionDialogOpen && (
+      {editingInteraction && isEditInteractionDialogOpen && contact && (
         <EditInteractionDialog
           open={isEditInteractionDialogOpen}
           onOpenChange={setIsEditInteractionDialogOpen}
@@ -381,7 +378,7 @@ export default function ContactInteractionsDialog({
           userId={userId}
           onInteractionUpdated={handleLocalInteractionUpdated}
         />
-      )} */}
+      )}
     </>
   );
 }
