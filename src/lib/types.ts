@@ -1,5 +1,4 @@
 
-
 export interface Role {
   id: string; // ej: admin, editor_contenido
   name: string; // ej: Administrador, Editor de Contenido
@@ -118,11 +117,97 @@ export interface SiteSettings {
   id?: number;
   siteTitle: string | null;
   logoUrl: string | null;
-  show_featured_listings_section?: boolean; // Renamed to match DB and avoid conflict
+  show_featured_listings_section?: boolean; 
   show_ai_matching_section?: boolean;
   show_google_sheet_section?: boolean;
-  landing_sections_order?: LandingSectionKey[] | null; // Array of section keys
+  landing_sections_order?: LandingSectionKey[] | null; 
   updated_at?: string;
+}
+
+// --- CRM Types ---
+
+export type ContactStatus = 
+  | 'new' 
+  | 'contacted' 
+  | 'qualified' 
+  | 'proposal_sent' 
+  | 'negotiation' 
+  | 'won' 
+  | 'lost' 
+  | 'on_hold'
+  | 'unqualified';
+
+export const contactStatusOptions: { value: ContactStatus; label: string }[] = [
+    { value: 'new', label: 'Nuevo' },
+    { value: 'contacted', label: 'Contactado' },
+    { value: 'qualified', label: 'Calificado' },
+    { value: 'proposal_sent', label: 'Propuesta Enviada' },
+    { value: 'negotiation', label: 'En Negociación' },
+    { value: 'won', label: 'Ganado' },
+    { value: 'lost', label: 'Perdido' },
+    { value: 'on_hold', label: 'En Espera' },
+    { value: 'unqualified', label: 'No Calificado' },
+];
+
+
+export interface Contact {
+  id: string;
+  user_id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  company_name?: string | null;
+  status: ContactStatus;
+  source?: string | null;
+  notes?: string | null;
+  last_contacted_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type InteractionType = 
+  | 'note' 
+  | 'email_sent' 
+  | 'email_received' 
+  | 'call_made' 
+  | 'call_received' 
+  | 'meeting' 
+  | 'message_sent' 
+  | 'message_received' 
+  | 'task_completed'
+  | 'property_viewing'
+  | 'offer_made'
+  | 'other';
+
+export const interactionTypeOptions: { value: InteractionType; label: string }[] = [
+    { value: 'note', label: 'Nota' },
+    { value: 'email_sent', label: 'Email Enviado' },
+    { value: 'email_received', label: 'Email Recibido' },
+    { value: 'call_made', label: 'Llamada Realizada' },
+    { value: 'call_received', label: 'Llamada Recibida' },
+    { value: 'meeting', label: 'Reunión' },
+    { value: 'message_sent', label: 'Mensaje Enviado' },
+    { value: 'message_received', label: 'Mensaje Recibido' },
+    { value: 'task_completed', label: 'Tarea Completada' },
+    { value: 'property_viewing', label: 'Visita a Propiedad' },
+    { value: 'offer_made', label: 'Oferta Realizada' },
+    { value: 'other', label: 'Otro' },
+];
+
+export interface Interaction {
+  id: string;
+  contact_id: string;
+  user_id: string; // User who logged this interaction, usually the contact owner
+  interaction_type: InteractionType;
+  interaction_date: string;
+  subject?: string | null;
+  description: string;
+  outcome?: string | null;
+  follow_up_needed: boolean;
+  follow_up_date?: string | null; // Date only
+  created_at: string;
+  updated_at: string;
+  contact_name?: string; // For display purposes, joined from contacts table
 }
 
 
@@ -133,11 +218,6 @@ export const placeholderUser: User = {
   name: 'Juanita Pérez',
   avatarUrl: 'https://placehold.co/40x40.png?text=JP',
   email: 'juanita.perez@example.com',
-  role_id: 'user', // Defaulting to 'user' for placeholder, can be admin if needed for testing specific flows
+  role_id: 'user', 
   role_name: 'Usuario'
 };
-
-// Los datos de ejemplo como sampleProperties, sampleRequests, sampleUsers, sampleComments han sido eliminados.
-// La aplicación ahora dependerá de los datos de la base de datos o mostrará estados vacíos/mensajes apropiados.
-
-```
