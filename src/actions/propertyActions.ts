@@ -4,7 +4,7 @@
 
 import type { PropertyFormValues } from "@/components/property/PropertyForm";
 import { query } from "@/lib/db";
-import type { PropertyListing, User } from "@/lib/types";
+import type { PropertyListing, User, PropertyType, ListingCategory } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 
@@ -53,7 +53,7 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     isActive: Boolean(row.is_active),
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
-    author: row.author_name ? { 
+    author: row.author_name ? {
       id: row.user_id,
       name: row.author_name,
       avatarUrl: row.author_avatar_url || undefined,
@@ -87,7 +87,7 @@ export async function submitPropertyAction(
         area_sq_meters, images, features, is_active, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
     `;
-    
+
     const params = [
       propertyId,
       userId,
@@ -132,37 +132,121 @@ export async function submitPropertyAction(
   }
 }
 
-interface GetPropertiesActionOptions {
+export interface GetPropertiesActionOptions {
   includeInactive?: boolean;
   limit?: number;
   offset?: number;
+  searchTerm?: string;
+  propertyType?: PropertyType;
+  category?: ListingCategory;
+  city?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minBedrooms?: number;
+  minBathrooms?: number;
+  orderBy?: 'createdAt_desc' | 'price_asc' | 'price_desc' | 'popularity_desc';
 }
 
 export async function getPropertiesAction(options: GetPropertiesActionOptions = {}): Promise<PropertyListing[]> {
-  const { includeInactive = false, limit, offset } = options;
+  const {
+    includeInactive = false,
+    limit,
+    offset,
+    searchTerm,
+    propertyType,
+    category,
+    city,
+    minPrice,
+    maxPrice,
+    minBedrooms,
+    minBathrooms,
+    orderBy = 'createdAt_desc', // Default order
+  } = options;
+
   try {
     let sql = `
-      SELECT 
-        p.*, 
-        u.name as author_name, 
+      SELECT
+        p.*,
+        u.name as author_name,
         u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id 
+        u.role_id as author_role_id
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
     `;
     const queryParams: any[] = [];
+    const whereClauses: string[] = [];
 
     if (!includeInactive) {
-      sql += ' WHERE p.is_active = TRUE';
+      whereClauses.push('p.is_active = TRUE');
     }
-    
-    sql += ' ORDER BY p.created_at DESC';
+
+    if (searchTerm) {
+      whereClauses.push('(p.title LIKE ? OR p.description LIKE ? OR p.city LIKE ? OR p.address LIKE ?)');
+      const searchTermLike = `%${searchTerm}%`;
+      queryParams.push(searchTermLike, searchTermLike, searchTermLike, searchTermLike);
+    }
+
+    if (propertyType) {
+      whereClauses.push('p.property_type = ?');
+      queryParams.push(propertyType);
+    }
+
+    if (category) {
+      whereClauses.push('p.category = ?');
+      queryParams.push(category);
+    }
+
+    if (city) {
+      whereClauses.push('p.city LIKE ?');
+      queryParams.push(`%${city}%`);
+    }
+
+    if (minPrice !== undefined) {
+      whereClauses.push('p.price >= ?');
+      queryParams.push(minPrice);
+    }
+
+    if (maxPrice !== undefined) {
+      whereClauses.push('p.price <= ?');
+      queryParams.push(maxPrice);
+    }
+
+    if (minBedrooms !== undefined) {
+      whereClauses.push('p.bedrooms >= ?');
+      queryParams.push(minBedrooms);
+    }
+
+    if (minBathrooms !== undefined) {
+      whereClauses.push('p.bathrooms >= ?');
+      queryParams.push(minBathrooms);
+    }
+
+    if (whereClauses.length > 0) {
+      sql += ' WHERE ' + whereClauses.join(' AND ');
+    }
+
+    // ORDER BY clause
+    switch (orderBy) {
+      case 'price_asc':
+        sql += ' ORDER BY p.price ASC, p.created_at DESC';
+        break;
+      case 'price_desc':
+        sql += ' ORDER BY p.price DESC, p.created_at DESC';
+        break;
+      case 'popularity_desc':
+        sql += ' ORDER BY p.upvotes DESC, p.comments_count DESC, p.created_at DESC';
+        break;
+      case 'createdAt_desc':
+      default:
+        sql += ' ORDER BY p.created_at DESC';
+        break;
+    }
 
     if (limit !== undefined) {
       sql += ' LIMIT ?';
       queryParams.push(limit);
     }
-    if (offset !== undefined && limit !== undefined) { // offset typically used with limit
+    if (offset !== undefined && limit !== undefined) {
       sql += ' OFFSET ?';
       queryParams.push(offset);
     }
@@ -182,14 +266,14 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
 export async function getPropertyBySlugAction(slug: string): Promise<PropertyListing | null> {
   try {
     const sql = `
-      SELECT 
-        p.*, 
-        u.name as author_name, 
+      SELECT
+        p.*,
+        u.name as author_name,
         u.avatar_url as author_avatar_url,
         u.role_id as author_role_id
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.slug = ? 
+      WHERE p.slug = ?
         AND p.is_active = TRUE
     `; // For public view, only active properties by slug
     const rows = await query(sql, [slug]);
@@ -207,7 +291,7 @@ export async function getUserPropertiesAction(userId: string): Promise<PropertyL
   if (!userId) return [];
   try {
     const sql = `
-      SELECT 
+      SELECT
         p.*,
         u.name as author_name,
         u.avatar_url as author_avatar_url,
@@ -265,9 +349,11 @@ export async function deletePropertyByAdminAction(propertyId: string): Promise<{
   } catch (error: any) {
     console.error("Error al eliminar propiedad por admin:", error);
     // ER_ROW_IS_REFERENCED_2 puede ocurrir si hay otras restricciones no cubiertas por ON DELETE CASCADE
-    if (error.code === 'ER_ROW_IS_REFERENCED_2') { 
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
         return { success: false, message: "Error de referencia: No se puede eliminar la propiedad porque aún está referenciada en otra tabla. Contacte al administrador." };
     }
     return { success: false, message: `Error al eliminar propiedad: ${error.message}` };
   }
 }
+
+    
