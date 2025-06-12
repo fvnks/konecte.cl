@@ -2,10 +2,21 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import AppLayout from '@/components/layout/AppLayout';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter', // This will create a CSS variable
+});
 
 export const metadata: Metadata = {
   title: 'PropSpot - Encuentra Tu Próxima Propiedad',
   description: 'Descubre, publica y comenta propiedades en arriendo o venta.',
+  // If you need to add other link tags for head, you can do it here, e.g., icons
+  // icons: {
+  //   icon: '/favicon.ico', // Next.js will handle this if favicon.ico is in app directory
+  // },
 };
 
 export default function RootLayout({
@@ -14,12 +25,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es-CL">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
-      </head>
+    <html lang="es-CL" className={`${inter.variable}`}>
+      {/* The <head> tag is automatically managed by Next.js.
+          Font links are handled by next/font.
+          Other metadata comes from the 'metadata' export. */}
       <body className="font-body antialiased">
         <AppLayout>
           {children}
