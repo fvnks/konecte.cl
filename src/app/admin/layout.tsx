@@ -1,5 +1,5 @@
 
-import type { ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import Link from 'next/link';
 import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
