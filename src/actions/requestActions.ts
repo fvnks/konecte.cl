@@ -115,6 +115,8 @@ export async function submitRequestAction(
     revalidatePath('/requests');
     revalidatePath(`/requests/${slug}`);
     revalidatePath('/dashboard');
+    revalidatePath('/admin/requests');
+
 
     return { success: true, message: "Solicitud publicada exitosamente.", requestId, requestSlug: slug };
 
@@ -130,18 +132,29 @@ export async function submitRequestAction(
   }
 }
 
-export async function getRequestsAction(): Promise<SearchRequest[]> {
+interface GetRequestsActionOptions {
+  includeInactive?: boolean;
+  // Add other filter/sort options here later if needed
+}
+
+export async function getRequestsAction(options: GetRequestsActionOptions = {}): Promise<SearchRequest[]> {
+  const { includeInactive = false } = options;
   try {
-    const sql = `
+    let sql = `
       SELECT 
         pr.*, 
         u.name as author_name, 
         u.avatar_url as author_avatar_url 
       FROM property_requests pr
       LEFT JOIN users u ON pr.user_id = u.id
-      WHERE pr.is_active = TRUE
-      ORDER BY pr.created_at DESC
     `;
+    
+    if (!includeInactive) {
+      sql += ' WHERE pr.is_active = TRUE';
+    }
+    
+    sql += ' ORDER BY pr.created_at DESC';
+
     const rows = await query(sql);
     if (!Array.isArray(rows)) {
         console.error("[RequestAction] Expected array from getRequestsAction, got:", typeof rows);
@@ -200,3 +213,141 @@ export async function getUserRequestsAction(userId: string): Promise<SearchReque
     return [];
   }
 }
+
+export async function updateRequestStatusAction(requestId: string, isActive: boolean): Promise<{ success: boolean; message?: string }> {
+  if (!requestId) {
+    return { success: false, message: "ID de solicitud no proporcionado." };
+  }
+  try {
+    await query('UPDATE property_requests SET is_active = ? WHERE id = ?', [isActive, requestId]);
+    revalidatePath('/admin/requests');
+    revalidatePath('/requests'); 
+    revalidatePath(`/requests/[slug]`, 'layout'); 
+    return { success: true, message: `Solicitud ${isActive ? 'activada' : 'desactivada'} correctamente.` };
+  } catch (error: any) {
+    console.error("Error al cambiar estado de la solicitud:", error);
+    return { success: false, message: `Error al cambiar estado de la solicitud: ${error.message}` };
+  }
+}
+
+export async function adminDeleteRequestAction(requestId: string): Promise<{ success: boolean; message?: string }> {
+  if (!requestId) {
+    return { success: false, message: "ID de solicitud no proporcionado." };
+  }
+
+  try {
+    // Comentarios asociados se eliminan por ON DELETE CASCADE desde la tabla 'comments'
+    const result: any = await query('DELETE FROM property_requests WHERE id = ?', [requestId]);
+    if (result.affectedRows > 0) {
+      revalidatePath('/admin/requests');
+      revalidatePath('/requests');
+      revalidatePath('/'); 
+      revalidatePath(`/requests/[slug]`, 'layout');
+      return { success: true, message: "Solicitud eliminada exitosamente." };
+    } else {
+      return { success: false, message: "La solicitud no fue encontrada o no se pudo eliminar." };
+    }
+  } catch (error: any) {
+    console.error("Error al eliminar solicitud por admin:", error);
+    // No hay otras FK directas a property_requests que impidan su eliminación,
+    // excepto 'comments' que tiene ON DELETE CASCADE.
+    return { success: false, message: `Error al eliminar solicitud: ${error.message}` };
+  }
+}
+
+export async function getRequestByIdForAdminAction(requestId: string): Promise<SearchRequest | null> {
+  if (!requestId) return null;
+  try {
+    const sql = `
+      SELECT 
+        pr.*, 
+        u.name as author_name, 
+        u.avatar_url as author_avatar_url
+      FROM property_requests pr
+      LEFT JOIN users u ON pr.user_id = u.id
+      WHERE pr.id = ?
+    `; // No filter by is_active for admin
+    const rows = await query(sql, [requestId]);
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return null;
+    }
+    return mapDbRowToSearchRequest(rows[0]);
+  } catch (error: any) {
+    console.error(`[RequestAction Admin] Error fetching request by ID ${requestId}:`, error);
+    return null;
+  }
+}
+
+export async function adminUpdateRequestAction(
+  requestId: string,
+  data: RequestFormValues
+): Promise<{ success: boolean; message?: string; requestSlug?: string }> {
+  console.log("[RequestAction Admin] Request update data received:", data, "RequestID:", requestId);
+
+  if (!requestId) {
+    return { success: false, message: "ID de solicitud no proporcionado para la actualización." };
+  }
+
+  try {
+    // El slug se mantiene, si se necesita cambiar, requiere lógica adicional.
+    const sql = `
+      UPDATE property_requests SET
+        title = ?, description = ?,
+        desired_property_type_rent = ?, desired_property_type_sale = ?,
+        desired_category_apartment = ?, desired_category_house = ?, desired_category_condo = ?,
+        desired_category_land = ?, desired_category_commercial = ?, desired_category_other = ?,
+        desired_location_city = ?, desired_location_neighborhood = ?,
+        min_bedrooms = ?, min_bathrooms = ?, budget_max = ?,
+        updated_at = NOW()
+      WHERE id = ?
+    `;
+
+    const params = [
+      data.title,
+      data.description,
+      data.desiredPropertyType.includes('rent'),
+      data.desiredPropertyType.includes('sale'),
+      data.desiredCategories.includes('apartment'),
+      data.desiredCategories.includes('house'),
+      data.desiredCategories.includes('condo'),
+      data.desiredCategories.includes('land'),
+      data.desiredCategories.includes('commercial'),
+      data.desiredCategories.includes('other'),
+      data.desiredLocationCity,
+      data.desiredLocationNeighborhood || null,
+      data.minBedrooms !== undefined && data.minBedrooms !== '' ? data.minBedrooms : null,
+      data.minBathrooms !== undefined && data.minBathrooms !== '' ? data.minBathrooms : null,
+      data.budgetMax !== undefined && data.budgetMax !== '' ? data.budgetMax : null,
+      requestId
+    ];
+    
+    const result: any = await query(sql, params);
+
+    if (result.affectedRows === 0) {
+      return { success: false, message: "Solicitud no encontrada o los datos eran los mismos." };
+    }
+    
+    const requestDetails = await getRequestByIdForAdminAction(requestId);
+    const currentSlug = requestDetails?.slug;
+
+    console.log(`[RequestAction Admin] Request updated. ID: ${requestId}, Slug: ${currentSlug}`);
+
+    revalidatePath('/admin/requests');
+    revalidatePath('/requests'); 
+    if (currentSlug) {
+      revalidatePath(`/requests/${currentSlug}`); 
+    } else {
+       revalidatePath(`/requests/[slug]`, 'layout');
+    }
+    revalidatePath('/');
+
+    return { success: true, message: "Solicitud actualizada exitosamente.", requestSlug: currentSlug };
+
+  } catch (error: any) {
+    console.error(`[RequestAction Admin] Error updating request ${requestId}:`, error);
+    // ER_DUP_ENTRY no debería ocurrir si no cambiamos el slug.
+    return { success: false, message: `Error al actualizar solicitud: ${error.message}` };
+  }
+}
+
+    

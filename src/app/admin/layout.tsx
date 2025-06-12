@@ -1,6 +1,7 @@
+
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush } from 'lucide-react';
+import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -16,6 +17,7 @@ const adminNavItems = [
   { href: '/admin/roles', label: 'Gestión de Roles', icon: <ShieldAlert className="h-5 w-5" /> },
   { href: '/admin/plans', label: 'Gestión de Planes', icon: <CreditCard className="h-5 w-5" /> },
   { href: '/admin/properties', label: 'Gestión de Propiedades', icon: <ListOrdered className="h-5 w-5" /> },
+  { href: '/admin/requests', label: 'Gestión de Solicitudes', icon: <FileSearch className="h-5 w-5" /> },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -62,3 +64,4 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     </div>
   );
 }
+    
