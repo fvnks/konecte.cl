@@ -35,7 +35,7 @@ export function getDbPool(): Pool {
       password: process.env.MYSQL_PASSWORD, // Updated to MYSQL_PASSWORD
       database: process.env.MYSQL_DATABASE, // Updated to MYSQL_DATABASE
       waitForConnections: true,
-      connectionLimit: 10,
+      connectionLimit: 25, // Aumentado de 10 a 25
       queueLimit: 0,
       // ssl: { // Uncomment and configure if Aiven requires SSL and provides CA cert
       //   rejectUnauthorized: true, 
@@ -86,3 +86,4 @@ export async function query(sql: string, params?: any[]): Promise<any> {
     throw new Error(`Error executing SQL query: ${error.message}`);
   }
 }
+
