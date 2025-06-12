@@ -1,3 +1,4 @@
+
 // src/lib/types.ts
 import { z } from 'zod';
 
@@ -169,7 +170,7 @@ const baseContactSchema = {
 export const addContactFormSchema = z.object(baseContactSchema);
 export type AddContactFormValues = z.infer<typeof addContactFormSchema>;
 
-export const editContactFormSchema = z.object(baseContactSchema); // Can be identical or diverge later
+export const editContactFormSchema = z.object(baseContactSchema);
 export type EditContactFormValues = z.infer<typeof editContactFormSchema>;
 
 
@@ -202,6 +203,12 @@ export type InteractionType =
   | 'offer_made'
   | 'other';
 
+export const interactionTypeValues = [
+  'note', 'email_sent', 'email_received', 'call_made', 'call_received', 
+  'meeting', 'message_sent', 'message_received', 'task_completed', 
+  'property_viewing', 'offer_made', 'other'
+] as const;
+
 export const interactionTypeOptions: { value: InteractionType; label: string }[] = [
     { value: 'note', label: 'Nota' },
     { value: 'email_sent', label: 'Email Enviado' },
@@ -222,16 +229,35 @@ export interface Interaction {
   contact_id: string;
   user_id: string; // User who logged this interaction, usually the contact owner
   interaction_type: InteractionType;
-  interaction_date: string;
+  interaction_date: string; // ISO string date
   subject?: string | null;
   description: string;
   outcome?: string | null;
   follow_up_needed: boolean;
-  follow_up_date?: string | null; // Date only
+  follow_up_date?: string | null; // ISO string date (date part only)
   created_at: string;
   updated_at: string;
   contact_name?: string; // For display purposes, joined from contacts table
 }
+
+export const addInteractionFormSchema = z.object({
+  interaction_type: z.enum(interactionTypeValues, {
+    required_error: "El tipo de interacción es requerido.",
+  }),
+  interaction_date: z.string().refine((date) => !isNaN(Date.parse(date)), {
+    message: "La fecha de interacción es inválida.",
+  }),
+  subject: z.string().max(255).optional().or(z.literal('')),
+  description: z.string().min(1, "La descripción es requerida.").max(2000, "La descripción no puede exceder los 2000 caracteres."),
+  outcome: z.string().max(255).optional().or(z.literal('')),
+  follow_up_needed: z.boolean().default(false),
+  follow_up_date: z.string().optional().nullable().refine(
+    (date) => date === null || date === undefined || date === '' || !isNaN(Date.parse(date)), {
+    message: "La fecha de seguimiento es inválida.",
+  }),
+});
+
+export type AddInteractionFormValues = z.infer<typeof addInteractionFormSchema>;
 
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
@@ -244,3 +270,4 @@ export const placeholderUser: User = {
   role_id: 'user',
   role_name: 'Usuario'
 };
+
