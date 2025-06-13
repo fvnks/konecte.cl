@@ -78,9 +78,9 @@ CREATE TABLE users (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,                 -- Hash de la contraseña
-    rut_tin VARCHAR(20) NULL DEFAULT NULL,               -- RUT (Chile) o Tax ID Number
-    phone_number VARCHAR(50) NULL DEFAULT NULL,          -- Número de teléfono
-    avatar_url VARCHAR(2048),
+    rut_tin VARCHAR(20) DEFAULT NULL,                    -- RUT (Chile) o Tax ID Number
+    phone_number VARCHAR(50) DEFAULT NULL,               -- Número de teléfono
+    avatar_url VARCHAR(2048) DEFAULT NULL,
     role_id VARCHAR(36) NOT NULL,                        -- FK a roles.id
     plan_id VARCHAR(36) DEFAULT NULL,                    -- FK a plans.id, NULL si no tiene plan o para plan por defecto no asignado explícitamente
     plan_expires_at TIMESTAMP DEFAULT NULL,              -- Fecha de expiración del plan actual
@@ -175,10 +175,10 @@ CREATE TABLE property_requests (
     desired_category_other BOOLEAN DEFAULT FALSE,
     
     desired_location_city VARCHAR(100) NOT NULL,
-    desired_location_neighborhood VARCHAR(100),
-    min_bedrooms INT,
-    min_bathrooms INT,
-    budget_max DECIMAL(15,2),
+    desired_location_neighborhood VARCHAR(100) DEFAULT NULL,
+    min_bedrooms INT DEFAULT NULL,
+    min_bathrooms INT DEFAULT NULL,
+    budget_max DECIMAL(15,2) DEFAULT NULL,
     -- budget_currency VARCHAR(3) DEFAULT 'CLP', -- Considerar si el presupuesto puede ser en diferentes monedas
     comments_count INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
@@ -205,10 +205,10 @@ CREATE TABLE comments (
     id VARCHAR(36) PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,                          -- FK a users.id
     content TEXT NOT NULL,
-    parent_id VARCHAR(36),                                 -- Para comentarios anidados (referencia a comments.id)
+    parent_id VARCHAR(36) DEFAULT NULL,                    -- Para comentarios anidados (referencia a comments.id)
     
-    property_id VARCHAR(36),                               -- FK a properties.id (NULL si es para una solicitud)
-    request_id VARCHAR(36),                                -- FK a property_requests.id (NULL si es para una propiedad)
+    property_id VARCHAR(36) DEFAULT NULL,                  -- FK a properties.id (NULL si es para una solicitud)
+    request_id VARCHAR(36) DEFAULT NULL,                   -- FK a property_requests.id (NULL si es para una propiedad)
 
     upvotes INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -239,9 +239,9 @@ Almacena la configuración para la integración con Google Sheets. Se espera que
 ```sql
 CREATE TABLE google_sheet_configs (
     id INT PRIMARY KEY DEFAULT 1, -- Asumimos una única fila de configuración global
-    sheet_id VARCHAR(255),
-    sheet_name VARCHAR(255),
-    columns_to_display TEXT,      -- Nombres de encabezados separados por coma
+    sheet_id VARCHAR(255) DEFAULT NULL,
+    sheet_name VARCHAR(255) DEFAULT NULL,
+    columns_to_display TEXT DEFAULT NULL,      -- Nombres de encabezados separados por coma
     is_configured BOOLEAN DEFAULT FALSE,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT id_must_be_1_google_sheet CHECK (id = 1) -- Asegura que solo exista la fila con id=1
@@ -264,8 +264,7 @@ CREATE TABLE site_settings (
     show_featured_listings_section BOOLEAN DEFAULT TRUE,
     show_ai_matching_section BOOLEAN DEFAULT TRUE,
     show_google_sheet_section BOOLEAN DEFAULT TRUE,
-    landing_sections_order TEXT,
-    -- Nuevos campos para la barra de anuncios
+    landing_sections_order TEXT DEFAULT NULL, -- JSON array: e.g., '["featured_list_requests", "ai_matching", "google_sheet"]'
     announcement_bar_text TEXT DEFAULT NULL,
     announcement_bar_link_url VARCHAR(2048) DEFAULT NULL,
     announcement_bar_link_text VARCHAR(255) DEFAULT NULL,
@@ -281,6 +280,7 @@ CREATE TABLE site_settings (
 INSERT INTO site_settings (
     id, site_title, logo_url,
     show_featured_listings_section, show_ai_matching_section, show_google_sheet_section,
+    landing_sections_order,
     announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color
 )
 VALUES (
@@ -290,6 +290,7 @@ VALUES (
     TRUE, 
     TRUE, 
     TRUE, 
+    '["featured_list_requests", "ai_matching", "google_sheet"]', -- Valor por defecto para el orden
     FALSE, -- announcement_bar_is_active
     '#FFB74D', -- announcement_bar_bg_color
     '#18181b'  -- announcement_bar_text_color
@@ -309,7 +310,7 @@ ON DUPLICATE KEY UPDATE
     announcement_bar_text_color = VALUES(announcement_bar_text_color),
     updated_at = CURRENT_TIMESTAMP;
 
--- Establecer el orden de secciones por defecto después de la inserción/creación si es NULL.
+-- Asegurar que landing_sections_order tenga un valor por defecto si es NULL después de una posible inserción/actualización
 UPDATE site_settings
 SET landing_sections_order = '["featured_list_requests", "ai_matching", "google_sheet"]'
 WHERE id = 1 AND landing_sections_order IS NULL;
@@ -327,12 +328,12 @@ CREATE TABLE contacts (
     id VARCHAR(36) PRIMARY KEY,                          -- UUID
     user_id VARCHAR(36) NOT NULL,                        -- FK a users.id (El usuario de PropSpot dueño de este contacto)
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NULL,
-    phone VARCHAR(50) NULL,
-    company_name VARCHAR(255) NULL,
+    email VARCHAR(255) DEFAULT NULL,
+    phone VARCHAR(50) DEFAULT NULL,
+    company_name VARCHAR(255) DEFAULT NULL,
     status ENUM('new', 'contacted', 'qualified', 'proposal_sent', 'negotiation', 'won', 'lost', 'on_hold', 'unqualified') DEFAULT 'new',
-    source VARCHAR(100) NULL,                            -- Origen del contacto (ej: 'Referido', 'Web PropSpot', 'Llamada entrante')
-    notes TEXT NULL,
+    source VARCHAR(100) DEFAULT NULL,                    -- Origen del contacto (ej: 'Referido', 'Web PropSpot', 'Llamada entrante')
+    notes TEXT DEFAULT NULL,
     last_contacted_at TIMESTAMP NULL DEFAULT NULL,       -- Se podría actualizar con un trigger o desde la app
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -354,11 +355,11 @@ CREATE TABLE contact_interactions (
     user_id VARCHAR(36) NOT NULL,                        -- FK a users.id (Quién registró la interacción, usualmente el dueño del contacto)
     interaction_type ENUM('note', 'email_sent', 'email_received', 'call_made', 'call_received', 'meeting', 'message_sent', 'message_received', 'task_completed', 'property_viewing', 'offer_made', 'other') NOT NULL,
     interaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    subject VARCHAR(255) NULL,                           -- Asunto (ej: para emails o reuniones)
+    subject VARCHAR(255) DEFAULT NULL,                   -- Asunto (ej: para emails o reuniones)
     description TEXT NOT NULL,                           -- Detalles de la interacción
-    outcome VARCHAR(255) NULL,                           -- Resultado de la interacción (ej: 'Interesado', 'Necesita seguimiento', 'No interesado')
+    outcome VARCHAR(255) DEFAULT NULL,                   -- Resultado de la interacción (ej: 'Interesado', 'Necesita seguimiento', 'No interesado')
     follow_up_needed BOOLEAN DEFAULT FALSE,
-    follow_up_date DATE NULL DEFAULT NULL,               -- Solo fecha para el seguimiento
+    follow_up_date DATE DEFAULT NULL,                    -- Solo fecha para el seguimiento
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -380,8 +381,8 @@ Almacena las conversaciones entre dos usuarios, opcionalmente vinculadas a una p
 ```sql
 CREATE TABLE chat_conversations (
     id VARCHAR(36) PRIMARY KEY,
-    property_id VARCHAR(36) NULL,
-    request_id VARCHAR(36) NULL,
+    property_id VARCHAR(36) DEFAULT NULL,
+    request_id VARCHAR(36) DEFAULT NULL,
     user_a_id VARCHAR(36) NOT NULL,
     user_b_id VARCHAR(36) NOT NULL,
     user_a_unread_count INT UNSIGNED NOT NULL DEFAULT 0,
