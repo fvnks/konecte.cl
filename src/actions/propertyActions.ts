@@ -242,14 +242,26 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
         break;
     }
 
+    // Interpolate LIMIT and OFFSET directly and safely
     if (limit !== undefined) {
-      sql += ' LIMIT ?';
-      queryParams.push(limit);
+      const numLimit = parseInt(String(limit), 10);
+      if (!isNaN(numLimit) && numLimit >= 0) { // Allow 0 for limit
+        if (offset !== undefined) {
+          const numOffset = parseInt(String(offset), 10);
+          if (!isNaN(numOffset) && numOffset >= 0) {
+            sql += ` LIMIT ${numOffset}, ${numLimit}`; // LIMIT offset, count
+          } else {
+            // Offset is invalid, but limit is valid
+            sql += ` LIMIT ${numLimit}`;
+          }
+        } else {
+          // Limit is valid, no offset
+          sql += ` LIMIT ${numLimit}`;
+        }
+      }
+      // If limit is invalid (NaN or negative), it's simply not added to the SQL query.
     }
-    if (offset !== undefined && limit !== undefined) {
-      sql += ' OFFSET ?';
-      queryParams.push(offset);
-    }
+    // Parameters for LIMIT and OFFSET are NOT added to queryParams.
 
     const rows = await query(sql, queryParams);
     if (!Array.isArray(rows)) {
@@ -320,8 +332,8 @@ export async function updatePropertyStatusAction(propertyId: string, isActive: b
   try {
     await query('UPDATE properties SET is_active = ? WHERE id = ?', [isActive, propertyId]);
     revalidatePath('/admin/properties');
-    revalidatePath('/properties'); 
-    revalidatePath(`/properties/[slug]`, 'layout'); 
+    revalidatePath('/properties');
+    revalidatePath(`/properties/[slug]`, 'layout');
     return { success: true, message: `Propiedad ${isActive ? 'activada' : 'desactivada'} correctamente.` };
   } catch (error: any) {
     console.error("Error al cambiar estado de la propiedad:", error);
@@ -339,7 +351,7 @@ export async function deletePropertyByAdminAction(propertyId: string): Promise<{
     if (result.affectedRows > 0) {
       revalidatePath('/admin/properties');
       revalidatePath('/properties');
-      revalidatePath('/'); 
+      revalidatePath('/');
       revalidatePath(`/properties/[slug]`, 'layout');
       return { success: true, message: "Propiedad eliminada exitosamente." };
     } else {
@@ -398,9 +410,9 @@ export async function adminUpdatePropertyAction(
     const sql = `
       UPDATE properties SET
         title = ?, description = ?, property_type = ?, category = ?,
-        price = ?, currency = ?, address = ?, city = ?, country = ?, 
-        bedrooms = ?, bathrooms = ?, area_sq_meters = ?, 
-        images = ?, features = ?, 
+        price = ?, currency = ?, address = ?, city = ?, country = ?,
+        bedrooms = ?, bathrooms = ?, area_sq_meters = ?,
+        images = ?, features = ?,
         updated_at = NOW()
       WHERE id = ?
     `;
@@ -428,7 +440,7 @@ export async function adminUpdatePropertyAction(
     if (result.affectedRows === 0) {
       return { success: false, message: "Propiedad no encontrada o los datos eran los mismos." };
     }
-    
+
     // Obtener el slug de la propiedad para la revalidación
     const propertyDetails = await getPropertyByIdForAdminAction(propertyId);
     const currentSlug = propertyDetails?.slug;
@@ -448,7 +460,7 @@ export async function adminUpdatePropertyAction(
 
   } catch (error: any) {
     console.error(`[PropertyAction Admin] Error updating property ${propertyId}:`, error);
-    // ER_DUP_ENTRY no debería ocurrir si no cambiamos el slug, pero se mantiene por si acaso
+    let message = "Error al actualizar propiedad."; // Default message
     if (error.code === 'ER_DUP_ENTRY' && error.message.includes('properties.slug')) {
         message = "Error: Ya existe una propiedad con un título muy similar (slug duplicado).";
     } else if (error.message) {
@@ -457,3 +469,4 @@ export async function adminUpdatePropertyAction(
     return { success: false, message: `Error al actualizar propiedad: ${message}` };
   }
 }
+
