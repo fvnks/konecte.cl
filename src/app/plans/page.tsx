@@ -4,9 +4,10 @@ import { getPlansAction } from '@/actions/planActions';
 import type { Plan } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, CreditCard, ChevronRight } from 'lucide-react';
+import { Check, CreditCard } from 'lucide-react';
 import PlanDisplayCard from '@/components/plan/PlanDisplayCard';
 import Link from 'next/link';
+import { Separator } from '@/components/ui/separator';
 
 const whyPropSpotBenefits = [
   "Tu propiedad en los principales portales.",
@@ -34,14 +35,11 @@ export default async function PlansPage() {
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-headline font-bold tracking-tight text-purple-600">
           ¡Contratación 100% online!
         </h1>
-        {/* <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground sm:text-xl">
-          Elige el plan que mejor se adapte a tus necesidades para publicar y gestionar tus propiedades y solicitudes.
-        </p> */}
       </section>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-8 lg:gap-12 items-start">
-        {/* Columna Izquierda - Información */}
-        <div className="md:col-span-3 space-y-6">
+        {/* Columna Izquierda - Información Consolidada */}
+        <div className="md:col-span-3">
           <Card className="shadow-xl rounded-xl border bg-card">
             <CardHeader className="p-6">
               <CardTitle className="text-xl sm:text-2xl font-semibold text-foreground">¿Por qué contratar en PropSpot?</CardTitle>
@@ -56,10 +54,10 @@ export default async function PlansPage() {
                 ))}
               </ul>
             </CardContent>
-          </Card>
 
-          <Card className="shadow-xl rounded-xl border bg-card">
-            <CardHeader className="p-6">
+            <Separator className="my-4 mx-6" />
+
+            <CardHeader className="p-6 pt-2">
               <CardTitle className="text-xl sm:text-2xl font-semibold text-foreground">Con cada plan obtendrás:</CardTitle>
             </CardHeader>
             <CardContent className="p-6 pt-0">
@@ -72,22 +70,26 @@ export default async function PlansPage() {
                 ))}
               </ul>
             </CardContent>
-          </Card>
-          
-          <Card className="shadow-xl rounded-xl border bg-card p-6 space-y-3">
-            <div>
-                <h3 className="text-lg font-semibold text-foreground mb-1.5">¿Tienes dudas?</h3>
-                <p className="text-sm text-muted-foreground">
-                Revisa nuestras <Link href="/faq" className="text-purple-600 hover:underline font-medium">preguntas frecuentes</Link> o <Link href="/contact" className="text-purple-600 hover:underline font-medium">contáctanos</Link>.
-                </p>
-            </div>
-             <div className="pt-3 border-t">
+            
+            <Separator className="my-4 mx-6" />
+
+            <CardContent className="p-6 pt-2 space-y-3">
+                <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-1.5">¿Tienes dudas?</h3>
+                    <p className="text-sm text-muted-foreground">
+                    Revisa nuestras <Link href="/faq" className="text-purple-600 hover:underline font-medium">preguntas frecuentes</Link> o <Link href="/contact" className="text-purple-600 hover:underline font-medium">contáctanos</Link>.
+                    </p>
+                </div>
+            </CardContent>
+            
+            <Separator className="my-4 mx-6" />
+
+            <CardContent className="p-6 pt-2">
                 <h3 className="text-lg font-semibold text-foreground mb-2">Nuestros medios de pago:</h3>
                 <div className="p-4 bg-teal-50 dark:bg-teal-900/30 rounded-lg">
                     <p className="text-sm text-teal-800 dark:text-teal-200">Aceptamos: VISA, Mastercard, American Express, Transferencia Bancaria.</p>
-                    {/* En el futuro, podrías agregar logos aquí si los tienes */}
                 </div>
-            </div>
+            </CardContent>
           </Card>
         </div>
 
