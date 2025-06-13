@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare } from 'lucide-react'; // Added MessageSquare
+import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus } from 'lucide-react'; // Added UserPlus
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -299,15 +299,27 @@ export default function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : isClient ? (
-            <Button variant="outline" size="default" asChild className="hidden md:flex items-center gap-2 hover:bg-primary/10 hover:border-primary hover:text-primary text-sm px-3 py-2 h-9 rounded-lg">
-              <Link href="/auth/signin">
-                <span className="flex items-center gap-2">
-                    <LogIn className="h-4 w-4" /> Iniciar Sesión
-                </span>
-              </Link>
-            </Button>
+            <div className="hidden md:flex items-center gap-2">
+              <Button variant="outline" size="default" asChild className="hover:bg-primary/5 hover:border-primary/70 hover:text-primary text-sm px-3 py-2 h-9 rounded-lg">
+                <Link href="/auth/signin">
+                  <span className="flex items-center gap-2">
+                      <LogIn className="h-4 w-4" /> Iniciar Sesión
+                  </span>
+                </Link>
+              </Button>
+              <Button variant="default" size="default" asChild className="text-sm px-3 py-2 h-9 rounded-lg shadow-sm hover:bg-primary/90">
+                <Link href="/auth/signup">
+                  <span className="flex items-center gap-2">
+                      <UserPlus className="h-4 w-4" /> Regístrate
+                  </span>
+                </Link>
+              </Button>
+            </div>
           ) : (
-             <div className="h-9 w-28 hidden md:block bg-muted/50 rounded-lg animate-pulse"></div>
+             <div className="h-9 w-48 hidden md:flex gap-2">
+                <div className="flex-1 bg-muted/50 rounded-lg animate-pulse"></div>
+                <div className="flex-1 bg-muted/50 rounded-lg animate-pulse"></div>
+             </div>
           )}
 
           <div className="md:hidden">
@@ -357,15 +369,27 @@ export default function Navbar() {
                             <LogOut className="h-5 w-5" /> Cerrar Sesión
                         </Button>
                     ) : isClient ? (
-                        <Button variant="default" asChild className="w-full justify-center text-lg py-3.5" onClick={() => setIsMobileMenuOpen(false)}>
-                            <Link href="/auth/signin">
-                                <span className="flex items-center gap-2.5">
-                                    <LogIn className="h-5 w-5" /> Iniciar Sesión
-                                </span>
-                            </Link>
-                        </Button>
+                        <div className="space-y-3">
+                            <Button variant="default" asChild className="w-full justify-center text-lg py-3.5" onClick={() => setIsMobileMenuOpen(false)}>
+                                <Link href="/auth/signup">
+                                    <span className="flex items-center gap-2.5">
+                                        <UserPlus className="h-5 w-5" /> Regístrate
+                                    </span>
+                                </Link>
+                            </Button>
+                            <Button variant="outline" asChild className="w-full justify-center text-lg py-3.5" onClick={() => setIsMobileMenuOpen(false)}>
+                                <Link href="/auth/signin">
+                                    <span className="flex items-center gap-2.5">
+                                        <LogIn className="h-5 w-5" /> Iniciar Sesión
+                                    </span>
+                                </Link>
+                            </Button>
+                        </div>
                     ) : (
-                      <div className="h-12 w-full bg-muted/50 rounded-lg animate-pulse"></div>
+                      <div className="space-y-3">
+                        <div className="h-12 w-full bg-muted/50 rounded-lg animate-pulse"></div>
+                        <div className="h-12 w-full bg-muted/50 rounded-lg animate-pulse"></div>
+                      </div>
                     )}
                 </div>
               </SheetContent>
@@ -376,3 +400,4 @@ export default function Navbar() {
     </header>
   );
 }
+
