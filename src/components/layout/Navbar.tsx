@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import AnnouncementBar from './AnnouncementBar'; // Nueva importación
+import AnnouncementBar from './AnnouncementBar';
 
 const navItems = [
   { href: '/', label: 'Inicio', icon: <Home /> },
@@ -38,6 +38,8 @@ interface StoredUser {
   avatarUrl?: string;
 }
 
+const DEFAULT_NAVBAR_TITLE = "PropSpot"; // Fallback si siteSettings.siteTitle es nulo o vacío
+
 export default function Navbar() {
   const router = useRouter();
   const { toast } = useToast();
@@ -46,7 +48,7 @@ export default function Navbar() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [totalUnreadMessages, setTotalUnreadMessages] = useState(0);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true); // Nuevo estado para carga de settings
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
@@ -54,23 +56,23 @@ export default function Navbar() {
 
 
   const fetchSiteSettings = useCallback(async () => {
-    setIsLoadingSettings(true); // Iniciar carga
+    setIsLoadingSettings(true);
     try {
       const settings = await getSiteSettingsAction();
       setSiteSettings(settings);
     } catch (error) {
       console.error("Error fetching site settings for Navbar:", error);
-      setSiteSettings(null); // En caso de error, establecer a null
+      setSiteSettings(null);
     } finally {
-      setIsLoadingSettings(false); // Finalizar carga
+      setIsLoadingSettings(false);
     }
   }, []);
 
   useEffect(() => {
-    if (isClient) { // Solo ejecutar en el cliente
+    if (isClient) {
         fetchSiteSettings();
         const handleSettingsUpdate = () => fetchSiteSettings();
-        window.addEventListener('siteSettingsUpdated', handleSettingsUpdate); // Escuchar evento de actualización (si existe)
+        window.addEventListener('siteSettingsUpdated', handleSettingsUpdate);
         return () => window.removeEventListener('siteSettingsUpdated', handleSettingsUpdate);
     }
   }, [isClient, fetchSiteSettings]);
@@ -105,8 +107,6 @@ export default function Navbar() {
       updateLoginStateAndUnreadCount();
 
       const handleStorageChange = (event: StorageEvent | Event) => {
-        // Usamos un event custom 'storage' para cuando se actualiza localStorage desde la misma ventana
-        // El evento 'storage' nativo solo se dispara para otras pestañas/ventanas.
         const eventIsCustom = event.type === 'storage' && (event as CustomEvent).detail?.key === 'loggedInUser';
         const eventIsStorage = event instanceof StorageEvent && event.key === 'loggedInUser';
         
@@ -115,9 +115,8 @@ export default function Navbar() {
         }
       };
       
-      // Suscribirse a eventos personalizados y de storage
-      window.addEventListener('storage', handleStorageChange); // Custom event para logout/login desde la misma app
-      window.addEventListener('messagesUpdated', handleStorageChange); // Custom event para cuando se actualizan mensajes
+      window.addEventListener('storage', handleStorageChange);
+      window.addEventListener('messagesUpdated', handleStorageChange);
 
       return () => {
         window.removeEventListener('storage', handleStorageChange);
@@ -131,9 +130,8 @@ export default function Navbar() {
     setLoggedInUser(null);
     setTotalUnreadMessages(0);
     toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-    router.push('/'); // Redirige a la página de inicio
-    if (isMobileMenuOpen) setIsMobileMenuOpen(false); // Cierra el menú móvil si está abierto
-     // Dispara el evento custom para que otros componentes (como el propio navbar) se actualicen
+    router.push('/');
+    if (isMobileMenuOpen) setIsMobileMenuOpen(false);
     window.dispatchEvent(new CustomEvent('storage', { detail: { key: 'loggedInUser' } }));
   };
 
@@ -162,13 +160,23 @@ export default function Navbar() {
       ))}
     </>
   );
-
+  
+  // Determine logo or text title
+  const siteTitleForDisplay = siteSettings?.siteTitle || DEFAULT_NAVBAR_TITLE;
   const logoDisplay = siteSettings?.logoUrl ? (
-    <Image src={siteSettings.logoUrl} alt={siteSettings.siteTitle || "PropSpot Logo"} width={140} height={36} style={{ objectFit: 'contain', maxHeight: '36px' }} priority data-ai-hint="logo empresa"/>
+    <Image 
+      src={siteSettings.logoUrl} 
+      alt={siteTitleForDisplay} 
+      width={140} 
+      height={36} 
+      style={{ objectFit: 'contain', maxHeight: '36px' }} 
+      priority 
+      data-ai-hint="logo empresa"
+    />
   ) : (
     <>
       <Home className="h-7 w-7 text-primary" />
-      <span className="text-2xl font-bold font-headline text-primary">PropSpot</span>
+      <span className="text-2xl font-bold font-headline text-primary">{siteTitleForDisplay}</span>
     </>
   );
   
@@ -199,11 +207,11 @@ export default function Navbar() {
 
 
   return (
-    <> {/* Envolvemos la barra de anuncios y el header */}
+    <>
       {isClient && siteSettings && !isLoadingSettings && (
         <AnnouncementBar settings={siteSettings} />
       )}
-      {isClient && isLoadingSettings && ( // Placeholder para la barra de anuncios mientras carga
+      {isClient && isLoadingSettings && (
          <Skeleton className="h-10 w-full" />
       )}
 
@@ -430,3 +438,4 @@ export default function Navbar() {
     </>
   );
 }
+
