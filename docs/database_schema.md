@@ -362,9 +362,6 @@ CREATE TABLE chat_conversations (
     CONSTRAINT uq_conversation_participants UNIQUE (user_a_id, user_b_id, property_id, request_id), -- Prevenir duplicados exactos. Ajustar según lógica de unicidad.
                                                                                                 -- Se puede hacer más complejo para asegurar que (A,B) es igual a (B,A) a nivel de aplicación o con triggers.
                                                                                                 -- Por simplicidad, la aplicación se encargará de ordenar user_a_id y user_b_id al crear.
-    CONSTRAINT chk_conversation_context CHECK (
-        (property_id IS NULL OR request_id IS NULL) -- Una conversación puede estar ligada a una propiedad O una solicitud, O ninguna, pero no ambas.
-    ),
     CONSTRAINT chk_different_users CHECK (user_a_id <> user_b_id) -- Un usuario no puede tener una conversación consigo mismo.
 );
 
@@ -400,3 +397,4 @@ CREATE INDEX idx_chat_messages_receiver_read ON chat_messages(receiver_id, read_
 ```
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
+
