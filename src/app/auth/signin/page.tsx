@@ -43,11 +43,11 @@ export default function SignInPage() {
         id: result.user.id, 
         name: result.user.name, 
         email: result.user.email,
-        roleId: result.user.role_id,
+        role_id: result.user.role_id, // Corregido de roleId a role_id
         roleName: result.user.role_name,
-        planId: result.user.plan_id, // Añadido
-        planName: result.user.plan_name, // Añadido
-        avatarUrl: result.user.avatarUrl // Añadido para consistencia con Navbar
+        planId: result.user.plan_id,
+        planName: result.user.plan_name,
+        avatarUrl: result.user.avatarUrl
       }));
       // Disparar un evento para que el Navbar pueda actualizarse
       window.dispatchEvent(new Event('storage')); 
