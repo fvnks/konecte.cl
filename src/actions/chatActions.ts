@@ -164,7 +164,7 @@ export async function sendMessageAction(
         return { success: false, message: "Error al enviar el mensaje, no se pudo recuperar." };
     }
     
-    revalidatePath(`/dashboard/messages`); // Or a specific conversation page
+    revalidatePath(`/dashboard/messages`); 
     revalidatePath(`/dashboard/messages/${conversationId}`); 
 
     return { success: true, message: 'Mensaje enviado.', chatMessage: mapDbRowToChatMessage(newMessageResult[0]) };
@@ -318,6 +318,3 @@ export async function getTotalUnreadMessagesCountAction(userId: string): Promise
     return 0;
   }
 }
-
-
-    

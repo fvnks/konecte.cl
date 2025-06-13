@@ -1,3 +1,4 @@
+
 // src/app/profile/page.tsx
 'use client';
 
@@ -7,11 +8,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { UserCircle, Mail, ShieldCheck, CreditCard, Edit, Lock, LogIn, Loader2, ExternalLink } from 'lucide-react';
-import type { User as StoredUserType } from '@/lib/types'; // Asumiendo que User en types.ts tiene los campos necesarios
+import { UserCircle, Mail, ShieldCheck, CreditCard, Edit, Lock, LogIn, Loader2, ExternalLink, MessageSquare, LayoutDashboard } from 'lucide-react';
+import type { User as StoredUserType } from '@/lib/types'; 
 
 interface ProfileUser extends StoredUserType {
-  // Campos adicionales que podrían estar en localStorage si se guardaron
   roleName?: string;
   planName?: string;
 }
@@ -22,7 +22,7 @@ export default function ProfilePage() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsClient(true); // Componente montado en el cliente
+    setIsClient(true); 
   }, []);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function ProfilePage() {
           setUser(parsedUser);
         } catch (error) {
           console.error("Error parsing user from localStorage:", error);
-          localStorage.removeItem('loggedInUser'); // Limpiar si hay error
+          localStorage.removeItem('loggedInUser'); 
         }
       }
       setIsLoading(false);
@@ -115,13 +115,25 @@ export default function ProfilePage() {
             <Button variant="outline" className="w-full text-base py-2.5 h-auto rounded-md" disabled>
               <Lock className="mr-2 h-4 w-4" /> Cambiar Contraseña
             </Button>
-          </div>
-          {user.roleId === 'admin' && (
-             <Button variant="default" asChild className="w-full text-base py-2.5 h-auto rounded-md mt-4">
-                <Link href="/admin" className="flex items-center gap-2">
-                    Ir al Panel de Administración <ExternalLink className="h-4 w-4"/>
+             <Button variant="outline" asChild className="w-full text-base py-2.5 h-auto rounded-md sm:col-span-2">
+                <Link href="/dashboard/messages" className="flex items-center gap-2">
+                    <MessageSquare className="mr-2 h-4 w-4" /> Mis Mensajes
                 </Link>
              </Button>
+          </div>
+          
+           {user.roleId === 'admin' ? (
+             <Button variant="default" asChild className="w-full text-base py-2.5 h-auto rounded-md mt-4">
+                <Link href="/admin" className="flex items-center gap-2">
+                    <LayoutDashboard className="mr-2 h-4 w-4"/> Ir al Panel de Admin <ExternalLink className="h-4 w-4"/>
+                </Link>
+             </Button>
+          ) : (
+            <Button variant="default" asChild className="w-full text-base py-2.5 h-auto rounded-md mt-4">
+                <Link href="/dashboard" className="flex items-center gap-2">
+                    <LayoutDashboard className="mr-2 h-4 w-4"/> Ir a Mi Panel <ExternalLink className="h-4 w-4"/>
+                </Link>
+            </Button>
           )}
         </CardContent>
       </Card>

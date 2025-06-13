@@ -300,9 +300,9 @@ export interface ChatMessage {
   sender_id: string;
   receiver_id: string;
   content: string;
-  created_at: string;
-  read_at?: string | null;
-  sender?: Pick<User, 'id' | 'name' | 'avatarUrl'>; // Optional sender details for display
+  created_at: string; // ISO string date
+  read_at?: string | null; // ISO string date
+  sender?: Pick<User, 'id' | 'name' | 'avatarUrl'>;
 }
 
 export interface ChatConversation {
@@ -313,32 +313,24 @@ export interface ChatConversation {
   user_b_id: string;
   user_a_unread_count: number;
   user_b_unread_count: number;
-  last_message_at?: string | null;
-  created_at: string;
-  updated_at: string;
-  // Fields for display in a list
-  other_user?: Pick<User, 'id' | 'name' | 'avatarUrl'>; // Details of the other participant
-  last_message_content?: string | null; // Snippet of the last message
-  unread_count_for_current_user?: number; // Specific unread count for the logged-in user in this convo
-  context_title?: string; // e.g., Property title or Request title
-  context_slug?: string; // Slug for linking
-  context_type?: 'property' | 'request' | null;
+  last_message_at?: string | null; // ISO string date
+  created_at: string; // ISO string date
+  updated_at: string; // ISO string date
 }
 
-// Simplified version for listing conversations, might include a snippet of the last message etc.
-export type ChatConversationListItem = Pick<
-  ChatConversation,
-  | 'id'
-  | 'last_message_at'
-  | 'other_user'
-  | 'last_message_content'
-  | 'unread_count_for_current_user'
-  | 'property_id'
-  | 'request_id'
-  | 'context_title'
-  | 'context_slug'
-  | 'context_type'
->;
+// Type for displaying a list of conversations
+export interface ChatConversationListItem {
+  id: string;
+  last_message_at?: string | null; // ISO string date
+  other_user: Pick<User, 'id' | 'name' | 'avatarUrl'>;
+  last_message_content?: string | null;
+  unread_count_for_current_user: number;
+  property_id?: string | null;
+  request_id?: string | null;
+  context_title?: string | null; // e.g., Property title or Request title
+  context_slug?: string | null; // Slug for linking
+  context_type?: 'property' | 'request' | null;
+}
 
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
@@ -351,5 +343,3 @@ export const placeholderUser: User = {
   role_id: 'user',
   role_name: 'Usuario'
 };
-
-    

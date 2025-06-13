@@ -1,8 +1,9 @@
+
 // src/components/layout/Navbar.tsx
 'use client';
 
 import Link from 'next/link';
-import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard } from 'lucide-react';
+import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare } from 'lucide-react'; // Added MessageSquare
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -15,6 +16,8 @@ import type { SiteSettings } from '@/lib/types';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
+import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions'; // Importar acción de conteo
+import { Badge } from '@/components/ui/badge'; // Para el contador
 
 const navItems = [
   { href: '/', label: 'Inicio', icon: <Home /> },
@@ -26,7 +29,7 @@ interface StoredUser {
   id: string;
   name: string;
   email: string;
-  role_id: string; // Corrected key
+  role_id: string;
   roleName?: string;
   planId?: string | null;
   planName?: string | null;
@@ -40,6 +43,7 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [totalUnreadMessages, setTotalUnreadMessages] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
@@ -66,49 +70,58 @@ export default function Navbar() {
   }, [fetchSiteSettings]);
 
 
-  const updateLoginState = useCallback(() => {
+  const updateLoginStateAndUnreadCount = useCallback(async () => {
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
-        setLoggedInUser(JSON.parse(userJson));
+        const user: StoredUser = JSON.parse(userJson);
+        setLoggedInUser(user);
+        const unreadCount = await getTotalUnreadMessagesCountAction(user.id);
+        setTotalUnreadMessages(unreadCount);
       } catch (error) {
-        console.error("Error parsing loggedInUser from localStorage", error);
+        console.error("Error parsing loggedInUser from localStorage or fetching unread count", error);
         localStorage.removeItem('loggedInUser');
         setLoggedInUser(null);
+        setTotalUnreadMessages(0);
       }
     } else {
       setLoggedInUser(null);
+      setTotalUnreadMessages(0);
     }
   }, []);
 
   useEffect(() => {
-    updateLoginState();
+    if (isClient) {
+      updateLoginStateAndUnreadCount();
 
-    const handleStorageChange = (event: StorageEvent | Event) => {
-      // Check if it's a custom event for 'loggedInUser' or a standard storage event
-      const eventIsCustom = event.type === 'storage' && (event as CustomEvent).detail?.key === 'loggedInUser';
-      const eventIsStorage = event instanceof StorageEvent && event.key === 'loggedInUser';
+      const handleStorageChange = (event: StorageEvent | Event) => {
+        const eventIsCustom = event.type === 'storage' && (event as CustomEvent).detail?.key === 'loggedInUser';
+        const eventIsStorage = event instanceof StorageEvent && event.key === 'loggedInUser';
 
-      if (eventIsCustom || eventIsStorage) {
-         updateLoginState();
-      }
-    };
+        if (eventIsCustom || eventIsStorage) {
+           updateLoginStateAndUnreadCount();
+        }
+      };
 
-    if (typeof window !== 'undefined') {
-        window.addEventListener('storage', handleStorageChange);
-    }
+      // Listen for revalidation event from chat actions
+      const handleMessagesUpdated = () => {
+        updateLoginStateAndUnreadCount();
+      };
 
+      window.addEventListener('storage', handleStorageChange);
+      window.addEventListener('messagesUpdated', handleMessagesUpdated); // Custom event
 
-    return () => {
-      if (typeof window !== 'undefined') {
+      return () => {
         window.removeEventListener('storage', handleStorageChange);
-      }
-    };
-  }, [updateLoginState]);
+        window.removeEventListener('messagesUpdated', handleMessagesUpdated);
+      };
+    }
+  }, [updateLoginStateAndUnreadCount, isClient]);
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
     setLoggedInUser(null);
+    setTotalUnreadMessages(0);
     toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
     router.push('/');
     if (isMobileMenuOpen) setIsMobileMenuOpen(false);
@@ -149,12 +162,19 @@ export default function Navbar() {
     </>
   );
 
-  const MobileMenuLink = ({ href, icon, label, closeMenu }: { href: string; icon: React.ReactNode; label: string; closeMenu?: () => void }) => (
+  const MobileMenuLink = ({ href, icon, label, closeMenu, showBadge, badgeCount }: { href: string; icon: React.ReactNode; label: string; closeMenu?: () => void; showBadge?: boolean; badgeCount?: number; }) => (
     <Button variant="ghost" asChild className="justify-start text-lg px-4 py-3.5 w-full hover:bg-primary/10 hover:text-primary" onClick={closeMenu}>
       <Link href={href}>
-        <span className="flex items-center gap-2.5 w-full">
-            {React.cloneElement(icon as React.ReactElement, { className: "h-5 w-5 text-primary"})}
-            {label}
+        <span className="flex items-center justify-between w-full">
+            <span className="flex items-center gap-2.5">
+                {React.cloneElement(icon as React.ReactElement, { className: "h-5 w-5 text-primary"})}
+                {label}
+            </span>
+            {showBadge && badgeCount && badgeCount > 0 && (
+                 <Badge variant="destructive" className="h-6 px-2 text-xs">
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </Badge>
+            )}
         </span>
       </Link>
     </Button>
@@ -208,6 +228,11 @@ export default function Navbar() {
                       <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/44x44.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona avatar"/>
                       <AvatarFallback className="bg-muted text-muted-foreground text-base">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
                     </Avatar>
+                     {totalUnreadMessages > 0 && (
+                        <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center">
+                            {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                        </Badge>
+                    )}
                   </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64 bg-card shadow-xl rounded-lg border mt-2">
@@ -247,8 +272,15 @@ export default function Navbar() {
                 ) : (
                   <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
                     <Link href="/dashboard">
-                        <span className="flex items-center w-full gap-2.5 text-sm">
-                            <LayoutDashboard className="h-4 w-4 text-primary"/>Panel
+                        <span className="flex items-center w-full justify-between text-sm">
+                            <span className="flex items-center gap-2.5">
+                                <LayoutDashboard className="h-4 w-4 text-primary"/>Panel Usuario
+                            </span>
+                             {totalUnreadMessages > 0 && (
+                                <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                                    {totalUnreadMessages > 99 ? '99+' : totalUnreadMessages}
+                                </Badge>
+                            )}
                         </span>
                     </Link>
                   </DropdownMenuItem>
@@ -281,9 +313,14 @@ export default function Navbar() {
           <div className="md:hidden">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-primary/10">
+                <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-primary/10 relative">
                   <Menu className="h-5 w-5 text-primary" />
                   <span className="sr-only">Alternar menú</span>
+                   {isClient && loggedInUser && totalUnreadMessages > 0 && (
+                        <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 text-[10px] rounded-full flex items-center justify-center">
+                             {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                        </Badge>
+                    )}
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 pt-5 bg-card border-l shadow-2xl">
@@ -308,7 +345,7 @@ export default function Navbar() {
                       {isUserAdmin ? (
                         <MobileMenuLink href="/admin" icon={<LayoutDashboard />} label="Panel Admin" closeMenu={() => setIsMobileMenuOpen(false)} />
                        ) : (
-                        <MobileMenuLink href="/dashboard" icon={<LayoutDashboard />} label="Mi Panel" closeMenu={() => setIsMobileMenuOpen(false)} />
+                        <MobileMenuLink href="/dashboard" icon={<LayoutDashboard />} label="Mi Panel" closeMenu={() => setIsMobileMenuOpen(false)} showBadge={true} badgeCount={totalUnreadMessages} />
                        )}
                         <MobileMenuLink href="/dashboard/crm" icon={<Users />} label="Mi CRM" closeMenu={() => setIsMobileMenuOpen(false)} />
                     </>
