@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { signInAction, type SignInFormValues } from "@/actions/authActions";
 import { useRouter } from "next/navigation";
-import Image from "next/image"; // Importar Image
+import Image from "next/image";
 
 const signInSchema = z.object({
   email: z.string().email("Correo electrónico inválido."),
@@ -69,7 +69,7 @@ export default function SignInPage() {
       {/* Columna Izquierda: Imagen */}
       <div className="hidden lg:flex relative h-full bg-primary/10">
         <Image
-          src="https://bukmy.cl/img/login.png"
+          src="https://bukmy.cl/img/login.jpg"
           alt="Ilustración de inicio de sesión"
           layout="fill"
           objectFit="cover"
