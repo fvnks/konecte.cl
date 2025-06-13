@@ -3,7 +3,7 @@
 import type { Plan } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, ThumbsUp, Clock, Infinite, Tag } from 'lucide-react';
+import { ChevronRight, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PlanDisplayCardProps {
@@ -11,74 +11,72 @@ interface PlanDisplayCardProps {
 }
 
 function formatPrice(price: number, currency: string) {
-  try {
-    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: currency || 'CLP', minimumFractionDigits: 0 }).format(price);
-  } catch {
+  if (currency?.toUpperCase() === 'UF') {
+    return `${new Intl.NumberFormat('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(price)}`;
+  }
+  try { // Para CLP u otras monedas
+    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: currency || 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price);
+  } catch { // Fallback si la moneda no es reconocida por Intl
     return `${price.toLocaleString('es-CL')} ${currency}`;
   }
 }
 
+// Simulación de usuarios por corredora según el nombre del plan (esto debería venir de la BD idealmente)
+function getUsersForPlan(planName: string): string {
+    const nameLower = planName.toLowerCase();
+    if (nameLower.includes("inicia")) return "1 usuario";
+    if (nameLower.includes("crece")) return "3 usuarios";
+    if (nameLower.includes("avanza")) return "5 usuarios";
+    if (nameLower.includes("premium")) return "Usuarios Ilimitados";
+    return "Múltiples usuarios"; // Fallback
+}
+
 export default function PlanDisplayCard({ plan }: PlanDisplayCardProps) {
   const isFreePlan = plan.price_monthly === 0;
+  const formattedPrice = isFreePlan ? 'Gratis' : formatPrice(plan.price_monthly, plan.price_currency);
+  const priceSuffix = plan.price_currency?.toUpperCase() === 'UF' ? ' UF' : '';
+  const usersByBrokerage = getUsersForPlan(plan.name);
 
   return (
-    <Card className={cn(
-      "flex flex-col shadow-xl rounded-xl border-2 hover:shadow-2xl transition-all duration-300",
-      isFreePlan ? "border-muted-foreground/30 bg-card" : "border-primary bg-gradient-to-br from-primary/5 via-card to-card"
-    )}>
-      <CardHeader className="p-6 text-center">
-        <CardTitle className={cn(
-          "text-2xl font-headline font-bold",
-          isFreePlan ? "text-foreground" : "text-primary"
-        )}>
-          {plan.name}
-        </CardTitle>
-        {plan.description && (
-          <CardDescription className="text-sm text-muted-foreground mt-1 min-h-[40px] line-clamp-2">
-            {plan.description}
-          </CardDescription>
-        )}
-        <div className={cn(
-            "text-4xl font-extrabold mt-4",
-            isFreePlan ? "text-foreground" : "text-accent"
-          )}>
-          {isFreePlan ? 'Gratis' : formatPrice(plan.price_monthly, plan.price_currency)}
-          {!isFreePlan && <span className="text-sm font-normal text-muted-foreground">/mes</span>}
+    <Card className="shadow-lg rounded-xl border bg-card hover:shadow-2xl transition-shadow duration-300">
+      <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* Sección Izquierda: Información del Plan */}
+        <div className="flex-grow">
+          <CardTitle className="text-2xl font-bold text-purple-600 mb-1.5">
+            {plan.name}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Publica hasta {plan.max_properties_allowed ?? 'ilimitadas'} propiedades
+          </p>
+          <p className="text-sm text-muted-foreground flex items-center">
+            <Users className="h-4 w-4 mr-1.5 text-purple-600/70"/> {usersByBrokerage} por corredora
+          </p>
+          {plan.description && <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2">{plan.description}</p>}
         </div>
-      </CardHeader>
-      <CardContent className="p-6 space-y-3 flex-grow">
-        <ul className="space-y-2.5 text-sm text-muted-foreground">
-          <li className="flex items-center">
-            <Tag className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
-            Propiedades permitidas: <span className="font-semibold text-foreground ml-1">{plan.max_properties_allowed ?? <Infinite className="inline h-4 w-4"/>}{plan.max_properties_allowed === null ? ' Ilimitadas' : ''}</span>
-          </li>
-          <li className="flex items-center">
-            <Tag className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
-            Solicitudes permitidas: <span className="font-semibold text-foreground ml-1">{plan.max_requests_allowed ?? <Infinite className="inline h-4 w-4"/>}{plan.max_requests_allowed === null ? ' Ilimitadas' : ''}</span>
-          </li>
-          <li className="flex items-center">
-            {plan.can_feature_properties ? <CheckCircle className="h-4 w-4 mr-2 text-green-500 flex-shrink-0" /> : <XCircle className="h-4 w-4 mr-2 text-red-500 flex-shrink-0" />}
-            Destacar propiedades: <span className="font-semibold text-foreground ml-1">{plan.can_feature_properties ? 'Sí' : 'No'}</span>
-          </li>
-          <li className="flex items-center">
-            <Clock className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
-            Duración publicación: 
-            <span className="font-semibold text-foreground ml-1">
-              {plan.property_listing_duration_days ? `${plan.property_listing_duration_days} días` : <><Infinite className="inline h-4 w-4"/> Indefinida</>}
-            </span>
-          </li>
-        </ul>
-         {/* Puedes añadir más detalles del plan aquí si es necesario */}
+
+        {/* Sección Derecha: Precio y Botón */}
+        <div className="flex-shrink-0 text-left sm:text-right mt-3 sm:mt-0">
+          <div className="text-2xl font-bold text-foreground mb-0.5">
+            {formattedPrice}
+            {!isFreePlan && <span className="font-normal">{priceSuffix}</span>}
+          </div>
+          {!isFreePlan && (
+            <p className="text-xs text-muted-foreground -mt-1 mb-2.5">
+              + IVA mensual
+            </p>
+          )}
+          <Button 
+            variant="outline" 
+            className={cn(
+              "border-purple-600 text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:hover:bg-purple-600/10 dark:hover:text-purple-500 w-full sm:w-auto rounded-md text-sm py-2 px-4 h-auto",
+              isFreePlan && "border-primary text-primary hover:bg-primary/10"
+            )}
+          >
+            {isFreePlan ? 'Comenzar Ahora' : 'Contratar'}
+            <ChevronRight className="ml-1.5 h-4 w-4" />
+          </Button>
+        </div>
       </CardContent>
-      <CardFooter className="p-6 mt-auto">
-        <Button 
-          className="w-full text-base py-3 h-auto rounded-lg shadow-md hover:shadow-lg transition-shadow"
-          variant={isFreePlan ? "outline" : "default"}
-        >
-          {isFreePlan ? 'Comenzar Gratis' : 'Elegir Plan'} <ThumbsUp className="ml-2 h-4 w-4"/>
-        </Button>
-      </CardFooter>
     </Card>
   );
 }
-    
