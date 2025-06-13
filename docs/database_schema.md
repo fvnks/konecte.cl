@@ -78,6 +78,8 @@ CREATE TABLE users (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,                 -- Hash de la contraseña
+    rut_tin VARCHAR(20) NULL DEFAULT NULL,               -- RUT (Chile) o Tax ID Number
+    phone_number VARCHAR(50) NULL DEFAULT NULL,          -- Número de teléfono
     avatar_url VARCHAR(2048),
     role_id VARCHAR(36) NOT NULL,                        -- FK a roles.id
     plan_id VARCHAR(36) DEFAULT NULL,                    -- FK a plans.id, NULL si no tiene plan o para plan por defecto no asignado explícitamente
@@ -93,6 +95,8 @@ CREATE TABLE users (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE INDEX idx_users_plan_id ON users(plan_id);
+CREATE INDEX idx_users_rut_tin ON users(rut_tin);
+CREATE INDEX idx_users_phone_number ON users(phone_number);
 
 -- Ejemplo para insertar un usuario administrador (ejecutar después de crear las tablas 'roles' y 'users'):
 -- Contraseña: "admin123" (hasheada con bcrypt, salt rounds: 10)
@@ -343,29 +347,27 @@ Almacena las conversaciones entre dos usuarios, opcionalmente vinculadas a una p
 
 ```sql
 CREATE TABLE chat_conversations (
-    id VARCHAR(36) PRIMARY KEY,                                     -- UUID para la conversación
-    property_id VARCHAR(36) NULL,                                   -- FK a properties.id, si la conversación es sobre una propiedad
-    request_id VARCHAR(36) NULL,                                    -- FK a property_requests.id, si es sobre una solicitud
-    user_a_id VARCHAR(36) NOT NULL,                                 -- FK a users.id, primer participante
-    user_b_id VARCHAR(36) NOT NULL,                                 -- FK a users.id, segundo participante
-    user_a_unread_count INT UNSIGNED NOT NULL DEFAULT 0,            -- Mensajes no leídos por user_a en esta conversación
-    user_b_unread_count INT UNSIGNED NOT NULL DEFAULT 0,            -- Mensajes no leídos por user_b en esta conversación
-    last_message_at TIMESTAMP NULL DEFAULT NULL,                    -- Timestamp del último mensaje para ordenar conversaciones
+    id VARCHAR(36) PRIMARY KEY,
+    property_id VARCHAR(36) NULL,
+    request_id VARCHAR(36) NULL,
+    user_a_id VARCHAR(36) NOT NULL,
+    user_b_id VARCHAR(36) NOT NULL,
+    user_a_unread_count INT UNSIGNED NOT NULL DEFAULT 0,
+    user_b_unread_count INT UNSIGNED NOT NULL DEFAULT 0,
+    last_message_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL, -- O CASCADE si se prefiere eliminar la conversación
-    FOREIGN KEY (request_id) REFERENCES property_requests(id) ON DELETE SET NULL, -- O CASCADE
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL,
+    FOREIGN KEY (request_id) REFERENCES property_requests(id) ON DELETE SET NULL,
     FOREIGN KEY (user_a_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (user_b_id) REFERENCES users(id) ON DELETE CASCADE,
 
-    CONSTRAINT uq_conversation_participants UNIQUE (user_a_id, user_b_id, property_id, request_id), -- Prevenir duplicados exactos. Ajustar según lógica de unicidad.
-                                                                                                -- Se puede hacer más complejo para asegurar que (A,B) es igual a (B,A) a nivel de aplicación o con triggers.
-                                                                                                -- Por simplicidad, la aplicación se encargará de ordenar user_a_id y user_b_id al crear.
-    CONSTRAINT chk_different_users CHECK (user_a_id <> user_b_id) -- Un usuario no puede tener una conversación consigo mismo.
+    CONSTRAINT uq_conversation_participants UNIQUE (user_a_id, user_b_id, property_id, request_id),
+    CONSTRAINT chk_different_users CHECK (user_a_id <> user_b_id)
 );
 
--- Índices
+-- Índices para chat_conversations
 CREATE INDEX idx_chat_conversations_user_a ON chat_conversations(user_a_id, last_message_at DESC);
 CREATE INDEX idx_chat_conversations_user_b ON chat_conversations(user_b_id, last_message_at DESC);
 CREATE INDEX idx_chat_conversations_property ON chat_conversations(property_id);
@@ -377,20 +379,20 @@ Almacena los mensajes individuales de cada conversación.
 
 ```sql
 CREATE TABLE chat_messages (
-    id VARCHAR(36) PRIMARY KEY,                                     -- UUID para el mensaje
-    conversation_id VARCHAR(36) NOT NULL,                           -- FK a chat_conversations.id
-    sender_id VARCHAR(36) NOT NULL,                                 -- FK a users.id, quién envió el mensaje
-    receiver_id VARCHAR(36) NOT NULL,                               -- FK a users.id, quién debe recibirlo (para contadores de no leídos)
-    content TEXT NOT NULL,                                          -- Contenido del mensaje
+    id VARCHAR(36) PRIMARY KEY,
+    conversation_id VARCHAR(36) NOT NULL,
+    sender_id VARCHAR(36) NOT NULL,
+    receiver_id VARCHAR(36) NOT NULL,
+    content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    read_at TIMESTAMP NULL DEFAULT NULL,                            -- Timestamp de cuándo el receptor leyó el mensaje
+    read_at TIMESTAMP NULL DEFAULT NULL,
 
-    FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE, -- Si se elimina una conversación, se eliminan sus mensajes
+    FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
     FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Índices
+-- Índices para chat_messages
 CREATE INDEX idx_chat_messages_conversation_created ON chat_messages(conversation_id, created_at DESC);
 CREATE INDEX idx_chat_messages_sender ON chat_messages(sender_id);
 CREATE INDEX idx_chat_messages_receiver_read ON chat_messages(receiver_id, read_at);

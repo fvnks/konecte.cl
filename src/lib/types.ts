@@ -29,6 +29,8 @@ export interface User {
   avatarUrl?: string;
   email?: string;
   password_hash?: string; // Only present when fetched from DB, should not be sent to client
+  rut_tin?: string | null; // RUT (Chile) o Tax ID Number
+  phone_number?: string | null; // Número de teléfono
   role_id: string; // FK a Role.id
   role_name?: string; // Nombre del rol (para mostrar en UI, obtenido de un JOIN)
   plan_id?: string | null; // FK a Plan.id
@@ -292,6 +294,23 @@ export type AddInteractionFormValues = z.infer<typeof addInteractionFormSchema>;
 
 export const editInteractionFormSchema = baseInteractionFormSchema;
 export type EditInteractionFormValues = z.infer<typeof editInteractionFormSchema>;
+
+// --- Auth Schemas ---
+export const signUpSchema = z.object({
+  name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
+  email: z.string().email("Correo electrónico inválido.").max(255),
+  rut: z.string().min(8, "El RUT/DNI debe tener al menos 8 caracteres.").max(20, "El RUT/DNI no puede exceder los 20 caracteres.").optional().or(z.literal('')),
+  phone: z.string().min(7, "El teléfono debe tener al menos 7 dígitos.").max(20, "El teléfono no puede exceder los 20 caracteres.").optional().or(z.literal('')),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").max(100),
+  confirmPassword: z.string().min(6, "La confirmación de contraseña debe tener al menos 6 caracteres."),
+  acceptTerms: z.boolean().refine(val => val === true, {
+    message: "Debes aceptar los términos y condiciones.",
+  }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden.",
+  path: ["confirmPassword"], // Path of error
+});
+export type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 // --- Chat Types ---
 export interface ChatMessage {

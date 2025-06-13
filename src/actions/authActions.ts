@@ -6,14 +6,11 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import type { User } from '@/lib/types';
+import { signUpSchema } from '@/lib/types'; // Importar el schema actualizado
 import { randomUUID } from 'crypto';
 
 // --- Sign Up ---
-const signUpSchema = z.object({
-  name: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
-  email: z.string().email("Correo electrónico inválido."),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
-});
+// El signUpSchema se importa ahora desde types.ts
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 export async function signUpAction(values: SignUpFormValues): Promise<{ success: boolean; message?: string; user?: Omit<User, 'password_hash'> }> {
@@ -22,7 +19,7 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
     return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const { name, email, password } = validation.data;
+  const { name, email, password, rut, phone } = validation.data; // acceptTerms se valida pero no se guarda directamente aquí
   console.log(`[AuthAction] Attempting sign-up for email: ${email}`);
 
   try {
@@ -45,25 +42,24 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
 
 
     await query(
-      'INSERT INTO users (id, name, email, password_hash, role_id) VALUES (?, ?, ?, ?, ?)',
-      [userId, name, email, hashedPassword, defaultUserRoleId]
+      'INSERT INTO users (id, name, email, password_hash, rut_tin, phone_number, role_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [userId, name, email, hashedPassword, rut || null, phone || null, defaultUserRoleId]
     );
     console.log(`[AuthAction] Sign-up successful for email: ${email}, userID: ${userId}`);
 
-    const newUser: Omit<User, 'password_hash'> = {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password_hash, ...userWithoutPasswordHash } = {
       id: userId,
       name,
       email,
+      rut_tin: rut || null,
+      phone_number: phone || null,
       role_id: defaultUserRoleId,
-      // role_name will not be available immediately here without another query,
-      // but the Navbar logic can fetch it or handle its absence.
     };
 
-    return { success: true, message: "Usuario registrado exitosamente.", user: newUser };
+    return { success: true, message: "Usuario registrado exitosamente.", user: userWithoutPasswordHash };
   } catch (error: any) {
     console.error("[AuthAction] Error in signUpAction:", error);
-    // Check for duplicate email specifically, as the previous check might have a race condition
-    // or if the UNIQUE constraint on email column triggers the error.
     if (error.code === 'ER_DUP_ENTRY' && error.message.includes('users.email')) {
         return { success: false, message: "Ya existe un usuario con este correo electrónico." };
     }
@@ -75,7 +71,7 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
 // --- Sign In ---
 const signInSchema = z.object({
   email: z.string().email("Correo electrónico inválido."),
-  password: z.string().min(1, "La contraseña es requerida."), // Min 1, as bcrypt handles empty strings
+  password: z.string().min(1, "La contraseña es requerida."),
 });
 export type SignInFormValues = z.infer<typeof signInSchema>;
 
@@ -89,10 +85,10 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
   console.log(`[AuthAction] Attempting sign-in for email: ${email}`);
 
   try {
-    // Fetch user including role name and plan name
     const usersFound: any[] = await query(
         `SELECT 
-            u.id, u.name, u.email, u.password_hash, u.avatar_url, 
+            u.id, u.name, u.email, u.password_hash, 
+            u.rut_tin, u.phone_number, u.avatar_url, 
             u.role_id, r.name as role_name,
             u.plan_id, p.name as plan_name, u.plan_expires_at
          FROM users u
@@ -107,12 +103,11 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
       return { success: false, message: "Credenciales inválidas." };
     }
 
-    const user = usersFound[0] as User & { password_hash: string }; // Ensure password_hash is expected
+    const user = usersFound[0] as User & { password_hash: string }; 
     console.log(`[AuthAction] User found: ${user.email}. Stored hash: ${user.password_hash ? user.password_hash.substring(0, 10) + "..." : "NOT FOUND"}, Length: ${user.password_hash?.length}`);
 
 
     if (!user.password_hash) {
-        // This case should ideally not happen if password_hash is NOT NULL in DB schema
         console.error(`[AuthAction] CRITICAL Sign-in Error: password_hash is missing for user ${user.email}.`);
         return { success: false, message: "Error de cuenta de usuario. Contacte al administrador." };
     }
