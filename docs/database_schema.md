@@ -260,27 +260,59 @@ Almacena configuraciones globales del sitio, como título, logo y visibilidad de
 CREATE TABLE site_settings (
     id INT PRIMARY KEY DEFAULT 1,
     site_title VARCHAR(255) DEFAULT 'PropSpot - Encuentra Tu Próxima Propiedad',
-    logo_url VARCHAR(2048) DEFAULT NULL, -- URL para el logo personalizado
+    logo_url VARCHAR(2048) DEFAULT NULL,
     show_featured_listings_section BOOLEAN DEFAULT TRUE,
     show_ai_matching_section BOOLEAN DEFAULT TRUE,
     show_google_sheet_section BOOLEAN DEFAULT TRUE,
-    landing_sections_order TEXT, -- Orden de las secciones como JSON array. No puede tener DEFAULT en TEXT.
+    landing_sections_order TEXT,
+    -- Nuevos campos para la barra de anuncios
+    announcement_bar_text TEXT DEFAULT NULL,
+    announcement_bar_link_url VARCHAR(2048) DEFAULT NULL,
+    announcement_bar_link_text VARCHAR(255) DEFAULT NULL,
+    announcement_bar_is_active BOOLEAN DEFAULT FALSE,
+    announcement_bar_bg_color VARCHAR(20) DEFAULT '#FFB74D', -- Naranja de acento por defecto
+    announcement_bar_text_color VARCHAR(20) DEFAULT '#18181b', -- Foreground oscuro por defecto
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT id_must_be_1_site_settings CHECK (id = 1)
 );
 
--- Insertar configuración inicial para site_settings
--- El valor de landing_sections_order se establecerá con un UPDATE después de la creación de la tabla.
-INSERT INTO site_settings (id, site_title, logo_url, show_featured_listings_section, show_ai_matching_section, show_google_sheet_section) 
-VALUES (1, 'PropSpot - Encuentra Tu Próxima Propiedad', NULL, TRUE, TRUE, TRUE)
-ON DUPLICATE KEY UPDATE id = 1;
+-- Insertar configuración inicial para site_settings (incluyendo nuevos campos)
+-- Los valores existentes se mantienen gracias a ON DUPLICATE KEY UPDATE y COALESCE para los campos actualizables
+INSERT INTO site_settings (
+    id, site_title, logo_url,
+    show_featured_listings_section, show_ai_matching_section, show_google_sheet_section,
+    announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color
+)
+VALUES (
+    1, 
+    'PropSpot - Encuentra Tu Próxima Propiedad', 
+    NULL, 
+    TRUE, 
+    TRUE, 
+    TRUE, 
+    FALSE, -- announcement_bar_is_active
+    '#FFB74D', -- announcement_bar_bg_color
+    '#18181b'  -- announcement_bar_text_color
+)
+ON DUPLICATE KEY UPDATE
+    site_title = VALUES(site_title),
+    logo_url = VALUES(logo_url),
+    show_featured_listings_section = VALUES(show_featured_listings_section),
+    show_ai_matching_section = VALUES(show_ai_matching_section),
+    show_google_sheet_section = VALUES(show_google_sheet_section),
+    landing_sections_order = COALESCE(VALUES(landing_sections_order), landing_sections_order),
+    announcement_bar_text = COALESCE(VALUES(announcement_bar_text), announcement_bar_text),
+    announcement_bar_link_url = COALESCE(VALUES(announcement_bar_link_url), announcement_bar_link_url),
+    announcement_bar_link_text = COALESCE(VALUES(announcement_bar_link_text), announcement_bar_link_text),
+    announcement_bar_is_active = VALUES(announcement_bar_is_active),
+    announcement_bar_bg_color = VALUES(announcement_bar_bg_color),
+    announcement_bar_text_color = VALUES(announcement_bar_text_color),
+    updated_at = CURRENT_TIMESTAMP;
 
--- Establecer el orden de secciones por defecto después de la inserción/creación.
--- Si la columna landing_sections_order no existe, esta instrucción UPDATE fallará.
--- Se debe añadir la columna primero si es necesario.
-UPDATE site_settings 
-SET landing_sections_order = '["featured_list_requests", "ai_matching", "google_sheet"]' 
-WHERE id = 1;
+-- Establecer el orden de secciones por defecto después de la inserción/creación si es NULL.
+UPDATE site_settings
+SET landing_sections_order = '["featured_list_requests", "ai_matching", "google_sheet"]'
+WHERE id = 1 AND landing_sections_order IS NULL;
 ```
 
 ---

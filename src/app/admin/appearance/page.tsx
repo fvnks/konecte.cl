@@ -16,12 +16,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { saveSiteSettingsAction, getSiteSettingsAction } from "@/actions/siteSettingsActions";
 import type { SiteSettings, LandingSectionKey } from "@/lib/types";
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Brush, EyeOff, Eye, ListOrdered, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
+import { Loader2, Brush, EyeOff, Eye, ListOrdered, ArrowUp, ArrowDown, GripVertical, Megaphone, Palette } from "lucide-react";
 import Image from "next/image";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -29,6 +30,7 @@ import { Separator } from "@/components/ui/separator";
 const landingSectionKeySchema = z.enum(["featured_list_requests", "ai_matching", "google_sheet"]);
 export type LandingSectionKeyType = z.infer<typeof landingSectionKeySchema>;
 
+const hexColorRegex = /^#([0-9a-f]{3}){1,2}$/i;
 
 const formSchema = z.object({
   siteTitle: z.string().min(5, "El título del sitio debe tener al menos 5 caracteres.").max(100, "El título no puede exceder los 100 caracteres."),
@@ -37,12 +39,36 @@ const formSchema = z.object({
   show_ai_matching_section: z.boolean().default(true).optional(),
   show_google_sheet_section: z.boolean().default(true).optional(),
   landing_sections_order: z.array(landingSectionKeySchema).min(1, "Debe haber al menos una sección en el orden.").default(["featured_list_requests", "ai_matching", "google_sheet"]),
+  // Nuevos campos para la barra de anuncios
+  announcement_bar_is_active: z.boolean().default(false).optional(),
+  announcement_bar_text: z.string().max(250, "El texto del anuncio no puede exceder los 250 caracteres.").optional().or(z.literal('')),
+  announcement_bar_link_text: z.string().max(50, "El texto del enlace no puede exceder los 50 caracteres.").optional().or(z.literal('')),
+  announcement_bar_link_url: z.string().url("Debe ser una URL válida para el enlace.").or(z.literal('')).optional(),
+  announcement_bar_bg_color: z.string()
+    .regex(hexColorRegex, "Debe ser un código hexadecimal de color válido (ej: #FFB74D o #FBD).")
+    .optional().or(z.literal('')),
+  announcement_bar_text_color: z.string()
+    .regex(hexColorRegex, "Debe ser un código hexadecimal de color válido (ej: #18181B o #000).")
+    .optional().or(z.literal('')),
+}).refine(data => {
+  const textProvided = data.announcement_bar_link_text && data.announcement_bar_link_text.trim() !== '';
+  const urlProvided = data.announcement_bar_link_url && data.announcement_bar_link_url.trim() !== '';
+  if ((textProvided && !urlProvided) || (!textProvided && urlProvided)) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Si proporcionas un texto para el enlace del anuncio, también debes proporcionar una URL (y viceversa). Ambos o ninguno.",
+  path: ["announcement_bar_link_url"], 
 });
 
 type SiteSettingsFormValues = z.infer<typeof formSchema>;
 
 const DEFAULT_FALLBACK_TITLE = 'PropSpot - Encuentra Tu Próxima Propiedad';
 const DEFAULT_SECTIONS_ORDER: LandingSectionKeyType[] = ["featured_list_requests", "ai_matching", "google_sheet"];
+const DEFAULT_ANNOUNCEMENT_BG_COLOR = '#FFB74D';
+const DEFAULT_ANNOUNCEMENT_TEXT_COLOR = '#18181b';
+
 
 const sectionNames: Record<LandingSectionKeyType, string> = {
   featured_list_requests: "Listados Destacados y Solicitudes Recientes",
@@ -65,21 +91,26 @@ export default function AdminAppearancePage() {
       show_ai_matching_section: true,
       show_google_sheet_section: true,
       landing_sections_order: DEFAULT_SECTIONS_ORDER,
+      announcement_bar_is_active: false,
+      announcement_bar_text: "",
+      announcement_bar_link_text: "",
+      announcement_bar_link_url: "",
+      announcement_bar_bg_color: DEFAULT_ANNOUNCEMENT_BG_COLOR,
+      announcement_bar_text_color: DEFAULT_ANNOUNCEMENT_TEXT_COLOR,
     },
   });
-  const { setValue } = form;
+  const { setValue, watch } = form;
+  const watchedBgColor = watch("announcement_bar_bg_color");
+  const watchedTextColor = watch("announcement_bar_text_color");
+
 
   const resetFormAndState = useCallback((settings: SiteSettings) => {
     const validOrder = settings.landing_sections_order && settings.landing_sections_order.length > 0
                        ? settings.landing_sections_order
                        : DEFAULT_SECTIONS_ORDER;
     
-    // Actualizar el estado local primero
     setOrderedSections(validOrder); 
     
-    // Luego resetear el formulario. El useEffect se encargará de sincronizar
-    // el valor de landing_sections_order del formulario si es necesario,
-    // pero es bueno establecerlo aquí también para consistencia inicial.
     form.reset({
       siteTitle: settings.siteTitle || DEFAULT_FALLBACK_TITLE,
       logoUrl: settings.logoUrl || "",
@@ -87,6 +118,12 @@ export default function AdminAppearancePage() {
       show_ai_matching_section: settings.show_ai_matching_section === undefined ? true : settings.show_ai_matching_section,
       show_google_sheet_section: settings.show_google_sheet_section === undefined ? true : settings.show_google_sheet_section,
       landing_sections_order: validOrder,
+      announcement_bar_is_active: settings.announcement_bar_is_active || false,
+      announcement_bar_text: settings.announcement_bar_text || "",
+      announcement_bar_link_text: settings.announcement_bar_link_text || "",
+      announcement_bar_link_url: settings.announcement_bar_link_url || "",
+      announcement_bar_bg_color: settings.announcement_bar_bg_color || DEFAULT_ANNOUNCEMENT_BG_COLOR,
+      announcement_bar_text_color: settings.announcement_bar_text_color || DEFAULT_ANNOUNCEMENT_TEXT_COLOR,
     });
     setCurrentSettings(settings);
   }, [form]);
@@ -102,11 +139,10 @@ export default function AdminAppearancePage() {
     loadSettings();
   }, [resetFormAndState]);
   
-  // Sincronizar el estado local `orderedSections` con el campo del formulario `landing_sections_order`
   useEffect(() => {
     setValue('landing_sections_order', orderedSections, {
-      shouldValidate: true, // Validar después de cambiar el orden
-      shouldDirty: true,    // Marcar como dirty si el orden es diferente al valor inicial del form
+      shouldValidate: true, 
+      shouldDirty: true,    
     });
   }, [orderedSections, setValue]);
 
@@ -125,15 +161,8 @@ export default function AdminAppearancePage() {
 
 
   async function onSubmit(values: SiteSettingsFormValues) {
-    // Usar el `orderedSections` del estado local como la fuente de verdad para el guardado.
-    // Los `values` del formulario ya deberían estar sincronizados por el useEffect,
-    // pero es más seguro usar el estado que controla directamente la UI de reordenamiento.
     const result = await saveSiteSettingsAction({
-      siteTitle: values.siteTitle,
-      logoUrl: values.logoUrl || null,
-      show_featured_listings_section: values.show_featured_listings_section,
-      show_ai_matching_section: values.show_ai_matching_section,
-      show_google_sheet_section: values.show_google_sheet_section,
+      ...values, // Incluye todos los valores del formulario validados
       landing_sections_order: orderedSections, 
     });
 
@@ -143,7 +172,7 @@ export default function AdminAppearancePage() {
         description: "La configuración de apariencia del sitio se ha guardado correctamente.",
       });
       const updatedSettings = await getSiteSettingsAction();
-      resetFormAndState(updatedSettings); // Esto reiniciará isDirty
+      resetFormAndState(updatedSettings); 
     } else {
       toast({
         title: "Error",
@@ -170,15 +199,17 @@ export default function AdminAppearancePage() {
           Configuración de Apariencia del Sitio
         </CardTitle>
         <CardDescription>
-          Personaliza el título, logo, visibilidad y orden de secciones de la página de inicio.
+          Personaliza el título, logo, barra de anuncios, visibilidad y orden de secciones de la página de inicio.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {/* Identidad del Sitio */}
             <div>
                 <h3 className="text-lg font-medium mb-2">Identidad del Sitio</h3>
                 <div className="space-y-6 p-4 border rounded-md">
+                    {/* ... campos de siteTitle y logoUrl existentes ... */}
                     <FormField
                     control={form.control}
                     name="siteTitle"
@@ -235,10 +266,119 @@ export default function AdminAppearancePage() {
             </div>
 
             <Separator />
+            
+            {/* Barra de Anuncios */}
+            <div>
+              <h3 className="text-lg font-medium mb-2 flex items-center"><Megaphone className="h-5 w-5 mr-2 text-primary"/>Barra de Anuncios</h3>
+              <div className="space-y-6 p-4 border rounded-md">
+                <FormField
+                  control={form.control}
+                  name="announcement_bar_is_active"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Mostrar Barra de Anuncios</FormLabel>
+                        <FormDescription>Activa para mostrar la barra en la parte superior del sitio.</FormDescription>
+                      </div>
+                      <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="announcement_bar_text"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Texto del Anuncio</FormLabel>
+                      <FormControl><Textarea placeholder="Ej: ¡Oferta especial! 20% de descuento en todas las publicaciones." {...field} value={field.value ?? ''} rows={2} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="announcement_bar_link_text"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Texto del Enlace (Opcional)</FormLabel>
+                        <FormControl><Input placeholder="Ej: Ver oferta" {...field} value={field.value ?? ''} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="announcement_bar_link_url"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>URL del Enlace (Opcional)</FormLabel>
+                        <FormControl><Input placeholder="https://ejemplo.com/oferta" {...field} value={field.value ?? ''} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="announcement_bar_bg_color"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Color de Fondo (HEX)</FormLabel>
+                            <FormControl><Input placeholder="#FFB74D" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormDescription>Ej: #FFB74D (Naranja)</FormDescription>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    <FormField
+                        control={form.control}
+                        name="announcement_bar_text_color"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Color del Texto (HEX)</FormLabel>
+                            <FormControl><Input placeholder="#18181B" {...field} value={field.value ?? ''} /></FormControl>
+                             <FormDescription>Ej: #18181B (Oscuro)</FormDescription>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <FormLabel>Vista Previa de la Barra de Anuncios:</FormLabel>
+                    <div 
+                        style={{
+                            backgroundColor: form.watch("announcement_bar_bg_color") || DEFAULT_ANNOUNCEMENT_BG_COLOR, 
+                            color: form.watch("announcement_bar_text_color") || DEFAULT_ANNOUNCEMENT_TEXT_COLOR
+                        }}
+                        className="p-3 rounded-md text-center text-sm"
+                    >
+                        {form.watch("announcement_bar_text") || "Tu texto de anuncio aquí."}
+                        {form.watch("announcement_bar_link_text") && form.watch("announcement_bar_link_url") && (
+                            <a 
+                                href={form.watch("announcement_bar_link_url") || '#'} // Usar '#' como fallback para preview
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="underline ml-2 hover:opacity-80"
+                                style={{color: form.watch("announcement_bar_text_color") || DEFAULT_ANNOUNCEMENT_TEXT_COLOR}}
+                                onClick={(e) => e.preventDefault()} // Prevenir navegación en la preview
+                            >
+                                {form.watch("announcement_bar_link_text")}
+                            </a>
+                        )}
+                    </div>
+                 </div>
+              </div>
+            </div>
 
+            <Separator />
+
+            {/* Visibilidad de Secciones */}
             <div>
                 <h3 className="text-lg font-medium mb-2">Visibilidad de Secciones en la Landing Page</h3>
                  <div className="space-y-4 p-4 border rounded-md">
+                    {/* ... campos de show_featured_listings_section, show_ai_matching_section, show_google_sheet_section existentes ... */}
                     <FormField
                     control={form.control}
                     name="show_featured_listings_section"
@@ -313,9 +453,9 @@ export default function AdminAppearancePage() {
 
             <Separator />
 
+            {/* Orden de Secciones */}
             <div>
               <h3 className="text-lg font-medium mb-2">Orden de Secciones en la Landing Page</h3>
-              {/* Usamos Controller aquí para conectar `orderedSections` con el form state para validación/dirty-checking */}
               <Controller
                 control={form.control}
                 name="landing_sections_order"
@@ -362,7 +502,6 @@ export default function AdminAppearancePage() {
               />
             </div>
 
-
             <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isDirty}>
               {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Guardar Cambios
@@ -370,9 +509,11 @@ export default function AdminAppearancePage() {
           </form>
         </Form>
 
-        {(currentSettings.siteTitle || currentSettings.logoUrl || Object.keys(currentSettings).some(k => k.startsWith('show_'))) && !isLoading &&(
+        {/* Vista previa de la Configuración Actual */}
+        {!isLoading && (
           <div className="mt-8 p-4 border rounded-md bg-secondary/30 space-y-3">
             <h4 className="font-semibold text-lg mb-2">Configuración Actual Guardada:</h4>
+            {/* ... Título y Logo ... */}
             <div>
                 <p className="text-sm font-medium">Título del Sitio:</p>
                 <p className="text-sm text-muted-foreground">{currentSettings.siteTitle || DEFAULT_FALLBACK_TITLE}</p>
@@ -388,6 +529,31 @@ export default function AdminAppearancePage() {
                 )}
             </div>
             <Separator/>
+            {/* Barra de Anuncios Actual */}
+             <div>
+                <p className="text-sm font-medium mb-1 flex items-center"><Megaphone className="h-4 w-4 mr-1.5 text-primary"/>Barra de Anuncios:</p>
+                 <p className="text-sm text-muted-foreground"><strong>Estado:</strong> {currentSettings.announcement_bar_is_active ? "Activa" : "Inactiva"}</p>
+                {currentSettings.announcement_bar_is_active && (
+                    <>
+                        <p className="text-sm text-muted-foreground"><strong>Texto:</strong> {currentSettings.announcement_bar_text || "N/A"}</p>
+                        {currentSettings.announcement_bar_link_text && currentSettings.announcement_bar_link_url && (
+                             <p className="text-sm text-muted-foreground"><strong>Enlace:</strong> {currentSettings.announcement_bar_link_text} ({currentSettings.announcement_bar_link_url})</p>
+                        )}
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Palette className="h-3 w-3"/>
+                            <strong>Colores:</strong> 
+                            <span style={{backgroundColor: currentSettings.announcement_bar_bg_color || DEFAULT_ANNOUNCEMENT_BG_COLOR, padding: '0.1em 0.3em', borderRadius: '3px', color: currentSettings.announcement_bar_text_color || DEFAULT_ANNOUNCEMENT_TEXT_COLOR, border: '1px solid var(--border)'}}>
+                                Fondo: {currentSettings.announcement_bar_bg_color}
+                            </span>
+                            <span style={{backgroundColor: currentSettings.announcement_bar_text_color || DEFAULT_ANNOUNCEMENT_TEXT_COLOR, padding: '0.1em 0.3em', borderRadius: '3px', color: currentSettings.announcement_bar_bg_color || DEFAULT_ANNOUNCEMENT_BG_COLOR, border: '1px solid var(--border)'}}>
+                                Texto: {currentSettings.announcement_bar_text_color}
+                            </span>
+                        </p>
+                    </>
+                )}
+            </div>
+            <Separator/>
+            {/* ... Visibilidad y Orden de Secciones ... */}
             <div>
                  <p className="text-sm font-medium mb-1">Visibilidad de Secciones:</p>
                  <p className="text-sm text-muted-foreground"><strong>Listados Destacados:</strong> {currentSettings.show_featured_listings_section ? "Visible" : "Oculta"}</p>
@@ -416,5 +582,3 @@ export default function AdminAppearancePage() {
     </Card>
   );
 }
-
-    

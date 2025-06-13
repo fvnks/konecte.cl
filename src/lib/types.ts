@@ -134,6 +134,13 @@ export interface SiteSettings {
   show_ai_matching_section?: boolean;
   show_google_sheet_section?: boolean;
   landing_sections_order?: LandingSectionKey[] | null;
+  // Nuevos campos para la barra de anuncios
+  announcement_bar_text?: string | null;
+  announcement_bar_link_url?: string | null;
+  announcement_bar_link_text?: string | null;
+  announcement_bar_is_active?: boolean;
+  announcement_bar_bg_color?: string | null;
+  announcement_bar_text_color?: string | null;
   updated_at?: string;
 }
 

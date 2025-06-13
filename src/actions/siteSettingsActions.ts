@@ -8,6 +8,8 @@ import { revalidatePath } from "next/cache";
 
 const DEFAULT_SITE_TITLE = 'PropSpot - Encuentra Tu Próxima Propiedad';
 const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "ai_matching", "google_sheet"];
+const DEFAULT_ANNOUNCEMENT_BG_COLOR = '#FFB74D'; // Accent
+const DEFAULT_ANNOUNCEMENT_TEXT_COLOR = '#18181b'; // Dark foreground
 
 export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' | 'updated_at'>): Promise<{ success: boolean; message?: string }> {
   try {
@@ -17,10 +19,15 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
         show_featured_listings_section,
         show_ai_matching_section,
         show_google_sheet_section,
-        landing_sections_order 
+        landing_sections_order,
+        announcement_bar_text,
+        announcement_bar_link_url,
+        announcement_bar_link_text,
+        announcement_bar_is_active,
+        announcement_bar_bg_color,
+        announcement_bar_text_color
     } = settings;
 
-    // Asegurar que landing_sections_order sea un array válido, sino usar el por defecto
     const validSectionsOrder = Array.isArray(landing_sections_order) && landing_sections_order.length > 0
                              ? landing_sections_order
                              : DEFAULT_SECTIONS_ORDER;
@@ -30,9 +37,11 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
       INSERT INTO site_settings (
         id, site_title, logo_url, 
         show_featured_listings_section, show_ai_matching_section, show_google_sheet_section,
-        landing_sections_order
+        landing_sections_order,
+        announcement_bar_text, announcement_bar_link_url, announcement_bar_link_text,
+        announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color
       )
-      VALUES (1, ?, ?, ?, ?, ?, ?)
+      VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         site_title = VALUES(site_title),
         logo_url = VALUES(logo_url),
@@ -40,6 +49,12 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
         show_ai_matching_section = VALUES(show_ai_matching_section),
         show_google_sheet_section = VALUES(show_google_sheet_section),
         landing_sections_order = VALUES(landing_sections_order),
+        announcement_bar_text = VALUES(announcement_bar_text),
+        announcement_bar_link_url = VALUES(announcement_bar_link_url),
+        announcement_bar_link_text = VALUES(announcement_bar_link_text),
+        announcement_bar_is_active = VALUES(announcement_bar_is_active),
+        announcement_bar_bg_color = VALUES(announcement_bar_bg_color),
+        announcement_bar_text_color = VALUES(announcement_bar_text_color),
         updated_at = CURRENT_TIMESTAMP
     `;
     await query(sql, [
@@ -48,18 +63,18 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
         show_featured_listings_section === undefined ? true : Boolean(show_featured_listings_section),
         show_ai_matching_section === undefined ? true : Boolean(show_ai_matching_section),
         show_google_sheet_section === undefined ? true : Boolean(show_google_sheet_section),
-        sectionsOrderJson
+        sectionsOrderJson,
+        announcement_bar_text || null,
+        announcement_bar_link_url || null,
+        announcement_bar_link_text || null,
+        Boolean(announcement_bar_is_active),
+        announcement_bar_bg_color || DEFAULT_ANNOUNCEMENT_BG_COLOR,
+        announcement_bar_text_color || DEFAULT_ANNOUNCEMENT_TEXT_COLOR
     ]);
     
     revalidatePath('/'); 
     revalidatePath('/admin/appearance');
     
-    // Disparar un evento para el Navbar (si es necesario para Client Components)
-    // Para Server Components, revalidation es suficiente.
-    // if (typeof window !== 'undefined') {
-    //   window.dispatchEvent(new CustomEvent('siteSettingsUpdated'));
-    // }
-
     return { success: true, message: "Configuración del sitio guardada exitosamente." };
   } catch (error: any) {
     console.error("Error al guardar la configuración del sitio en la BD:", error);
@@ -75,6 +90,8 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
             id, site_title as siteTitle, logo_url as logoUrl, 
             show_featured_listings_section, show_ai_matching_section, show_google_sheet_section, 
             landing_sections_order,
+            announcement_bar_text, announcement_bar_link_url, announcement_bar_link_text,
+            announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color,
             updated_at as updatedAt 
         FROM site_settings WHERE id = 1
     `);
@@ -99,10 +116,8 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
       console.error("Error al parsear landing_sections_order desde la BD, usando orden por defecto:", e, "Valor:", dbSettings.landing_sections_order);
     }
   } else if (!dbSettings) {
-    // Si no hay configuración en la BD (ej. tabla vacía), usamos el orden por defecto.
-    // No es necesario advertir en este caso, ya que es esperado.
+    // No es necesario advertir si no hay config en BD, ya que es esperado
   }
-
 
   return {
     id: dbSettings?.id || 1,
@@ -112,6 +127,13 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     show_ai_matching_section: dbSettings?.show_ai_matching_section === null || dbSettings?.show_ai_matching_section === undefined ? true : Boolean(dbSettings.show_ai_matching_section),
     show_google_sheet_section: dbSettings?.show_google_sheet_section === null || dbSettings?.show_google_sheet_section === undefined ? true : Boolean(dbSettings.show_google_sheet_section),
     landing_sections_order: parsedSectionsOrder,
+    // Campos de la barra de anuncios con valores por defecto
+    announcement_bar_text: dbSettings?.announcement_bar_text === null || dbSettings?.announcement_bar_text === undefined ? null : dbSettings.announcement_bar_text,
+    announcement_bar_link_url: dbSettings?.announcement_bar_link_url === null || dbSettings?.announcement_bar_link_url === undefined ? null : dbSettings.announcement_bar_link_url,
+    announcement_bar_link_text: dbSettings?.announcement_bar_link_text === null || dbSettings?.announcement_bar_link_text === undefined ? null : dbSettings.announcement_bar_link_text,
+    announcement_bar_is_active: dbSettings?.announcement_bar_is_active === null || dbSettings?.announcement_bar_is_active === undefined ? false : Boolean(dbSettings.announcement_bar_is_active),
+    announcement_bar_bg_color: dbSettings?.announcement_bar_bg_color === null || dbSettings?.announcement_bar_bg_color === undefined ? DEFAULT_ANNOUNCEMENT_BG_COLOR : dbSettings.announcement_bar_bg_color,
+    announcement_bar_text_color: dbSettings?.announcement_bar_text_color === null || dbSettings?.announcement_bar_text_color === undefined ? DEFAULT_ANNOUNCEMENT_TEXT_COLOR : dbSettings.announcement_bar_text_color,
     updated_at: dbSettings?.updatedAt ? new Date(dbSettings.updatedAt).toISOString() : undefined,
   };
 }
