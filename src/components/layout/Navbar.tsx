@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/', label: 'Inicio', icon: <Home /> }, // Added Home link
+  { href: '/', label: 'Inicio', icon: <Home /> },
   { href: '/properties', label: 'Propiedades', icon: <Briefcase /> },
   { href: '/requests', label: 'Solicitudes', icon: <Search /> },
 ];
@@ -26,7 +26,7 @@ interface StoredUser {
   id: string;
   name: string;
   email: string;
-  roleId: string;
+  role_id: string; // Corrected key
   roleName?: string;
   planId?: string | null;
   planName?: string | null;
@@ -55,7 +55,7 @@ export default function Navbar() {
       setSiteSettings(null);
     }
   }, []);
-  
+
   useEffect(() => {
     fetchSiteSettings();
     const handleSettingsUpdate = () => fetchSiteSettings();
@@ -82,9 +82,10 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    updateLoginState(); 
+    updateLoginState();
 
     const handleStorageChange = (event: StorageEvent | Event) => {
+      // Check if it's a custom event for 'loggedInUser' or a standard storage event
       const eventIsCustom = event.type === 'storage' && (event as CustomEvent).detail?.key === 'loggedInUser';
       const eventIsStorage = event instanceof StorageEvent && event.key === 'loggedInUser';
 
@@ -92,7 +93,7 @@ export default function Navbar() {
          updateLoginState();
       }
     };
-    
+
     if (typeof window !== 'undefined') {
         window.addEventListener('storage', handleStorageChange);
     }
@@ -113,24 +114,26 @@ export default function Navbar() {
     if (isMobileMenuOpen) setIsMobileMenuOpen(false);
   };
 
-  const isUserAdmin = loggedInUser?.roleId === 'admin';
+  const isUserAdmin = loggedInUser?.role_id === 'admin';
 
   const commonNavLinks = (closeMenu?: () => void, isMobile?: boolean) => (
     <>
       {navItems.map((item) => (
-        <Button 
-          key={item.label} 
-          variant="ghost" 
-          asChild 
+        <Button
+          key={item.label}
+          variant="ghost"
+          asChild
           className={cn(
             "font-medium hover:bg-primary/10 hover:text-primary w-full md:w-auto",
-            isMobile ? "text-lg justify-start px-4 py-3.5" : "text-sm md:text-base md:px-3 py-2" 
+            isMobile ? "text-lg justify-start px-4 py-3.5" : "text-sm md:text-base md:px-3 py-2"
           )}
           onClick={closeMenu}
         >
-          <Link href={item.href} className="flex items-center gap-2.5">
-            {React.cloneElement(item.icon, { className: "h-5 w-5"})}
-            {item.label}
+          <Link href={item.href}>
+            <span className="flex items-center gap-2.5">
+              {React.cloneElement(item.icon, { className: "h-5 w-5"})}
+              {item.label}
+            </span>
           </Link>
         </Button>
       ))}
@@ -148,9 +151,11 @@ export default function Navbar() {
 
   const MobileMenuLink = ({ href, icon, label, closeMenu }: { href: string; icon: React.ReactNode; label: string; closeMenu?: () => void }) => (
     <Button variant="ghost" asChild className="justify-start text-lg px-4 py-3.5 w-full hover:bg-primary/10 hover:text-primary" onClick={closeMenu}>
-      <Link href={href} className="flex items-center gap-2.5 w-full">
-        {React.cloneElement(icon as React.ReactElement, { className: "h-5 w-5 text-primary"})}
-        {label}
+      <Link href={href}>
+        <span className="flex items-center gap-2.5 w-full">
+            {React.cloneElement(icon as React.ReactElement, { className: "h-5 w-5 text-primary"})}
+            {label}
+        </span>
       </Link>
     </Button>
   );
@@ -163,30 +168,38 @@ export default function Navbar() {
           {logoDisplay}
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1 mx-auto"> {/* Reduced gap for desktop nav */}
+        <nav className="hidden md:flex items-center gap-1 mx-auto">
           {commonNavLinks()}
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="default" 
-                className="hidden md:flex items-center gap-2 text-sm font-medium px-3 py-2 h-9 rounded-lg shadow-sm hover:bg-primary/90" // Adjusted padding & size
+              <Button
+                variant="default"
+                className="hidden md:flex items-center gap-2 text-sm font-medium px-3 py-2 h-9 rounded-lg shadow-sm hover:bg-primary/90"
               >
                 <PlusCircle className="h-4 w-4" /> Publicar
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60 bg-card shadow-xl rounded-lg border mt-2">
               <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                <Link href="/properties/submit" className="flex items-center gap-2.5 text-sm"><Briefcase className="h-4 w-4 text-primary"/>Publicar Propiedad</Link>
+                <Link href="/properties/submit">
+                    <span className="flex items-center gap-2.5 text-sm w-full">
+                        <Briefcase className="h-4 w-4 text-primary"/>Publicar Propiedad
+                    </span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                <Link href="/requests/submit" className="flex items-center gap-2.5 text-sm"><Search className="h-4 w-4 text-primary"/>Publicar Solicitud</Link>
+                <Link href="/requests/submit">
+                    <span className="flex items-center gap-2.5 text-sm w-full">
+                        <Search className="h-4 w-4 text-primary"/>Publicar Solicitud
+                    </span>
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
+
           {isClient && loggedInUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -206,7 +219,7 @@ export default function Navbar() {
                     <div className="mt-2.5 space-y-1.5">
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                             <ShieldCheck className="h-4 w-4 text-primary/80"/>
-                            Rol: <span className="font-medium text-foreground">{loggedInUser.roleName || loggedInUser.roleId}</span>
+                            Rol: <span className="font-medium text-foreground">{loggedInUser.roleName || loggedInUser.role_id}</span>
                         </p>
                         {loggedInUser.planName && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
@@ -217,19 +230,35 @@ export default function Navbar() {
                   </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                  <Link href="/profile" className="flex items-center w-full gap-2.5 text-sm"><UserCircle className="h-4 w-4 text-primary"/>Perfil</Link>
+                  <Link href="/profile">
+                    <span className="flex items-center w-full gap-2.5 text-sm">
+                        <UserCircle className="h-4 w-4 text-primary"/>Perfil
+                    </span>
+                  </Link>
                 </DropdownMenuItem>
                 {isUserAdmin ? (
                   <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                    <Link href="/admin" className="flex items-center w-full gap-2.5 text-sm"><LayoutDashboard className="h-4 w-4 text-primary"/>Panel Admin</Link>
+                    <Link href="/admin">
+                        <span className="flex items-center w-full gap-2.5 text-sm">
+                            <LayoutDashboard className="h-4 w-4 text-primary"/>Panel Admin
+                        </span>
+                    </Link>
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                    <Link href="/dashboard" className="flex items-center w-full gap-2.5 text-sm"><LayoutDashboard className="h-4 w-4 text-primary"/>Panel</Link>
+                    <Link href="/dashboard">
+                        <span className="flex items-center w-full gap-2.5 text-sm">
+                            <LayoutDashboard className="h-4 w-4 text-primary"/>Panel
+                        </span>
+                    </Link>
                   </DropdownMenuItem>
                 )}
                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                  <Link href="/dashboard/crm" className="flex items-center w-full gap-2.5 text-sm"><Users className="h-4 w-4 text-primary"/>Mi CRM</Link>
+                  <Link href="/dashboard/crm">
+                    <span className="flex items-center w-full gap-2.5 text-sm">
+                        <Users className="h-4 w-4 text-primary"/>Mi CRM
+                    </span>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2.5 cursor-pointer text-destructive hover:!bg-destructive/10 hover:!text-destructive py-2.5 text-sm">
@@ -238,15 +267,17 @@ export default function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : isClient ? (
-            <Button variant="outline" size="default" asChild className="hidden md:flex items-center gap-2 hover:bg-primary/10 hover:border-primary hover:text-primary text-sm px-3 py-2 h-9 rounded-lg"> {/* Adjusted padding & size */}
+            <Button variant="outline" size="default" asChild className="hidden md:flex items-center gap-2 hover:bg-primary/10 hover:border-primary hover:text-primary text-sm px-3 py-2 h-9 rounded-lg">
               <Link href="/auth/signin">
-                <LogIn className="h-4 w-4" /> Iniciar Sesión
+                <span className="flex items-center gap-2">
+                    <LogIn className="h-4 w-4" /> Iniciar Sesión
+                </span>
               </Link>
             </Button>
           ) : (
-             <div className="h-9 w-28 hidden md:block bg-muted/50 rounded-lg animate-pulse"></div> 
+             <div className="h-9 w-28 hidden md:block bg-muted/50 rounded-lg animate-pulse"></div>
           )}
-          
+
           <div className="md:hidden">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -261,14 +292,14 @@ export default function Navbar() {
                         {logoDisplay}
                     </Link>
                 </div>
-                <nav className="flex-grow flex flex-col gap-1 p-4 overflow-y-auto"> 
+                <nav className="flex-grow flex flex-col gap-1 p-4 overflow-y-auto">
                   {commonNavLinks(() => setIsMobileMenuOpen(false), true)}
-                  
+
                   <Separator className="my-3" />
                   <p className="px-4 text-sm font-semibold text-muted-foreground mb-1.5">Publicar</p>
                   <MobileMenuLink href="/properties/submit" icon={<PlusCircle />} label="Publicar Propiedad" closeMenu={() => setIsMobileMenuOpen(false)} />
                   <MobileMenuLink href="/requests/submit" icon={<PlusCircle />} label="Publicar Solicitud" closeMenu={() => setIsMobileMenuOpen(false)} />
-                  
+
                   {isClient && loggedInUser && (
                      <>
                       <Separator className="my-3" />
@@ -289,13 +320,15 @@ export default function Navbar() {
                             <LogOut className="h-5 w-5" /> Cerrar Sesión
                         </Button>
                     ) : isClient ? (
-                        <Button variant="default" asChild className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
+                        <Button variant="default" asChild className="w-full justify-center text-lg py-3.5" onClick={() => setIsMobileMenuOpen(false)}>
                             <Link href="/auth/signin">
-                                <LogIn className="h-5 w-5" /> Iniciar Sesión
+                                <span className="flex items-center gap-2.5">
+                                    <LogIn className="h-5 w-5" /> Iniciar Sesión
+                                </span>
                             </Link>
                         </Button>
                     ) : (
-                      <div className="h-12 w-full bg-muted/50 rounded-lg animate-pulse"></div> 
+                      <div className="h-12 w-full bg-muted/50 rounded-lg animate-pulse"></div>
                     )}
                 </div>
               </SheetContent>
