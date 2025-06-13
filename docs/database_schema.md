@@ -1,4 +1,5 @@
 
+
 # Esquema de la Base de Datos PropSpot (MySQL)
 
 Este documento describe la estructura propuesta para las tablas de la base de datos de PropSpot.
@@ -335,6 +336,67 @@ CREATE TABLE contact_interactions (
 );
 ```
 ---
-Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
+## Sección Mensajería Directa (Chat)
+
+### Tabla: `chat_conversations` (Conversaciones de Chat)
+Almacena las conversaciones entre dos usuarios, opcionalmente vinculadas a una propiedad o solicitud.
+
+```sql
+CREATE TABLE chat_conversations (
+    id VARCHAR(36) PRIMARY KEY,                                     -- UUID para la conversación
+    property_id VARCHAR(36) NULL,                                   -- FK a properties.id, si la conversación es sobre una propiedad
+    request_id VARCHAR(36) NULL,                                    -- FK a property_requests.id, si es sobre una solicitud
+    user_a_id VARCHAR(36) NOT NULL,                                 -- FK a users.id, primer participante
+    user_b_id VARCHAR(36) NOT NULL,                                 -- FK a users.id, segundo participante
+    user_a_unread_count INT UNSIGNED NOT NULL DEFAULT 0,            -- Mensajes no leídos por user_a en esta conversación
+    user_b_unread_count INT UNSIGNED NOT NULL DEFAULT 0,            -- Mensajes no leídos por user_b en esta conversación
+    last_message_at TIMESTAMP NULL DEFAULT NULL,                    -- Timestamp del último mensaje para ordenar conversaciones
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL, -- O CASCADE si se prefiere eliminar la conversación
+    FOREIGN KEY (request_id) REFERENCES property_requests(id) ON DELETE SET NULL, -- O CASCADE
+    FOREIGN KEY (user_a_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_b_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    CONSTRAINT uq_conversation_participants UNIQUE (user_a_id, user_b_id, property_id, request_id), -- Prevenir duplicados exactos. Ajustar según lógica de unicidad.
+                                                                                                -- Se puede hacer más complejo para asegurar que (A,B) es igual a (B,A) a nivel de aplicación o con triggers.
+                                                                                                -- Por simplicidad, la aplicación se encargará de ordenar user_a_id y user_b_id al crear.
+    CONSTRAINT chk_conversation_context CHECK (
+        (property_id IS NULL OR request_id IS NULL) -- Una conversación puede estar ligada a una propiedad O una solicitud, O ninguna, pero no ambas.
+    ),
+    CONSTRAINT chk_different_users CHECK (user_a_id <> user_b_id) -- Un usuario no puede tener una conversación consigo mismo.
+);
+
+-- Índices
+CREATE INDEX idx_chat_conversations_user_a ON chat_conversations(user_a_id, last_message_at DESC);
+CREATE INDEX idx_chat_conversations_user_b ON chat_conversations(user_b_id, last_message_at DESC);
+CREATE INDEX idx_chat_conversations_property ON chat_conversations(property_id);
+CREATE INDEX idx_chat_conversations_request ON chat_conversations(request_id);
 ```
 
+### Tabla: `chat_messages` (Mensajes de Chat)
+Almacena los mensajes individuales de cada conversación.
+
+```sql
+CREATE TABLE chat_messages (
+    id VARCHAR(36) PRIMARY KEY,                                     -- UUID para el mensaje
+    conversation_id VARCHAR(36) NOT NULL,                           -- FK a chat_conversations.id
+    sender_id VARCHAR(36) NOT NULL,                                 -- FK a users.id, quién envió el mensaje
+    receiver_id VARCHAR(36) NOT NULL,                               -- FK a users.id, quién debe recibirlo (para contadores de no leídos)
+    content TEXT NOT NULL,                                          -- Contenido del mensaje
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    read_at TIMESTAMP NULL DEFAULT NULL,                            -- Timestamp de cuándo el receptor leyó el mensaje
+
+    FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE, -- Si se elimina una conversación, se eliminan sus mensajes
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Índices
+CREATE INDEX idx_chat_messages_conversation_created ON chat_messages(conversation_id, created_at DESC);
+CREATE INDEX idx_chat_messages_sender ON chat_messages(sender_id);
+CREATE INDEX idx_chat_messages_receiver_read ON chat_messages(receiver_id, read_at);
+```
+---
+Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
