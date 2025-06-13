@@ -52,13 +52,13 @@ export default function SignUpPage() {
 
   return (
     <div className="min-h-[calc(100vh-var(--header-height,0px))] w-full lg:grid lg:grid-cols-2">
-      <div className="hidden lg:flex items-center justify-center bg-primary/10 p-8 xl:p-12">
+      <div className="hidden lg:flex relative items-center justify-center bg-primary/10 h-full">
         <Image
           src="https://bukmy.cl/img/register.png"
           alt="Ilustración de registro"
-          width={600} 
-          height={600}
-          className="object-contain max-w-full max-h-[70vh]"
+          layout="fill"
+          objectFit="cover" 
+          className="object-cover"
           priority
           data-ai-hint="registro usuarios"
         />
