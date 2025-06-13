@@ -1,3 +1,4 @@
+
 // src/app/ai-matching-properties/page.tsx
 'use client';
 
@@ -19,7 +20,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { findMatchingPropertiesForRequest, type FindMatchingPropertiesInput, type FindMatchingPropertiesOutput, type PropertyMatchResult } from '@/ai/flows/find-matching-properties-flow';
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from 'next/navigation';
 import { Loader2, Sparkles, Percent, MessageSquareText, AlertTriangle, Building, FileSearch } from "lucide-react";
 
 const formSchema = z.object({
@@ -30,9 +32,11 @@ type AiMatchPropertiesFormValues = z.infer<typeof formSchema>;
 
 export default function AiMatchPropertiesPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<FindMatchingPropertiesOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [initialSearchDone, setInitialSearchDone] = useState(false);
 
   const form = useForm<AiMatchPropertiesFormValues>({
     resolver: zodResolver(formSchema),
@@ -41,7 +45,7 @@ export default function AiMatchPropertiesPage() {
     },
   });
 
-  async function onSubmit(values: AiMatchPropertiesFormValues) {
+  const onSubmit = useCallback(async (values: AiMatchPropertiesFormValues) => {
     setIsLoading(true);
     setSearchResult(null);
     setError(null);
@@ -75,7 +79,16 @@ export default function AiMatchPropertiesPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [toast]);
+
+  useEffect(() => {
+    const requestIdFromUrl = searchParams.get('requestId');
+    if (requestIdFromUrl && !initialSearchDone && form.getValues('requestId') !== requestIdFromUrl) {
+      form.setValue('requestId', requestIdFromUrl, { shouldValidate: true });
+      onSubmit({ requestId: requestIdFromUrl });
+      setInitialSearchDone(true);
+    }
+  }, [searchParams, form, onSubmit, initialSearchDone]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">

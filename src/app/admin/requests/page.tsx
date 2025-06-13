@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { SearchRequest } from '@/lib/types';
 import { getRequestsAction, updateRequestStatusAction, adminDeleteRequestAction } from '@/actions/requestActions';
-import { Loader2, FileSearch, Trash2, Eye, ToggleLeft, ToggleRight, Edit3 } from 'lucide-react';
+import { Loader2, FileSearch, Trash2, Eye, ToggleLeft, ToggleRight, Edit3, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -105,7 +105,7 @@ export default function AdminRequestsPage() {
                     <TableHead>Ciudad Deseada</TableHead>
                     <TableHead>Fecha Creación</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
-                    <TableHead className="text-right min-w-[220px]">Acciones</TableHead> 
+                    <TableHead className="text-right min-w-[260px]">Acciones</TableHead> 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -146,6 +146,11 @@ export default function AdminRequestsPage() {
                           {/* <Link href={`/admin/requests/${req.id}/edit`}> */}
                             <Edit3 className="h-4 w-4" />
                           {/* </Link> */}
+                        </Button>
+                        <Button variant="ghost" size="icon" asChild title="Buscar propiedades coincidentes (IA)" className="text-purple-600 hover:text-purple-700">
+                          <Link href={`/ai-matching-properties?requestId=${req.id}`}>
+                            <Sparkles className="h-4 w-4" />
+                          </Link>
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>

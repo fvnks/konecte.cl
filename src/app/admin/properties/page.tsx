@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { PropertyListing } from '@/lib/types';
 import { getPropertiesAction, updatePropertyStatusAction, deletePropertyByAdminAction } from '@/actions/propertyActions';
-import { Loader2, ListOrdered, Trash2, Eye, ToggleLeft, ToggleRight, Edit3 } from 'lucide-react'; // Added Edit3
+import { Loader2, ListOrdered, Trash2, Eye, ToggleLeft, ToggleRight, Edit3, Sparkles } from 'lucide-react'; // Added Edit3 and Sparkles
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -121,7 +121,7 @@ export default function AdminPropertiesPage() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Fecha Creación</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
-                    <TableHead className="text-right min-w-[220px]">Acciones</TableHead> 
+                    <TableHead className="text-right min-w-[260px]">Acciones</TableHead> 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -162,6 +162,11 @@ export default function AdminPropertiesPage() {
                         <Button variant="ghost" size="icon" asChild title="Editar propiedad">
                           <Link href={`/admin/properties/${prop.id}/edit`}>
                             <Edit3 className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button variant="ghost" size="icon" asChild title="Buscar solicitudes coincidentes (IA)" className="text-purple-600 hover:text-purple-700">
+                          <Link href={`/ai-matching?propertyId=${prop.id}`}>
+                            <Sparkles className="h-4 w-4" />
                           </Link>
                         </Button>
                         <AlertDialog>

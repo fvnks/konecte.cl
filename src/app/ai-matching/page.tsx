@@ -20,7 +20,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { findMatchingRequestsForProperty, type FindMatchingRequestsInput, type FindMatchingRequestsOutput, type MatchResult } from '@/ai/flows/find-matching-requests-flow';
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from 'next/navigation';
 import { Loader2, Sparkles, Percent, MessageSquareText, AlertTriangle, SearchCheck, Building } from "lucide-react";
 
 const formSchema = z.object({
@@ -31,9 +32,11 @@ type AiMatchSearchFormValues = z.infer<typeof formSchema>;
 
 export default function AiMatchSearchPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<FindMatchingRequestsOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [initialSearchDone, setInitialSearchDone] = useState(false);
 
   const form = useForm<AiMatchSearchFormValues>({
     resolver: zodResolver(formSchema),
@@ -42,7 +45,7 @@ export default function AiMatchSearchPage() {
     },
   });
 
-  async function onSubmit(values: AiMatchSearchFormValues) {
+  const onSubmit = useCallback(async (values: AiMatchSearchFormValues) => {
     setIsLoading(true);
     setSearchResult(null);
     setError(null);
@@ -76,7 +79,17 @@ export default function AiMatchSearchPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [toast]);
+
+  useEffect(() => {
+    const propertyIdFromUrl = searchParams.get('propertyId');
+    if (propertyIdFromUrl && !initialSearchDone && form.getValues('propertyId') !== propertyIdFromUrl) {
+      form.setValue('propertyId', propertyIdFromUrl, { shouldValidate: true });
+      onSubmit({ propertyId: propertyIdFromUrl });
+      setInitialSearchDone(true);
+    }
+  }, [searchParams, form, onSubmit, initialSearchDone]);
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
