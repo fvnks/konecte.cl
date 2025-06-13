@@ -14,7 +14,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'PropSpot - Encuentra Tu Próxima Propiedad',
   description: 'Descubre, publica y comenta propiedades en arriendo o venta.',
-  icons: null, // Explicitly set to null to prevent processing src/app/favicon.ico
+  // Explicitly set icon types to empty arrays
+  // to prevent Next.js from looking for default files in src/app/
+  icons: {
+    icon: [], // For favicon.ico, icon.svg, icon.png
+    shortcut: [], // For shortcut icon
+    apple: [], // For apple-touch-icon.png
+    other: [], // For other custom icons
+  },
   // Opcional: añadir Open Graph y Twitter card metadata para mejor sharing
   // openGraph: {
   //   title: 'PropSpot',

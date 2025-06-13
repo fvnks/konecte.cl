@@ -12,15 +12,16 @@ import { getSiteSettingsAction } from "@/actions/siteSettingsActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable"; 
 import FeaturedListingsClient from '@/components/landing/FeaturedListingsClient';
+import InteractiveAIMatching from '@/components/landing/InteractiveAIMatching'; // Nueva importación
 
 // --- Section Data Fetching (remains on server) ---
 
 async function getFeaturedListingsAndRequestsData() {
-  const allProperties: PropertyListing[] = await getPropertiesAction();
+  const allProperties: PropertyListing[] = await getPropertiesAction({limit: 8, orderBy: 'createdAt_desc'});
   // Tomar hasta 8 propiedades para la cuadrícula
-  const featuredProperties = allProperties.slice(0, 8); 
+  const featuredProperties = allProperties; 
   
-  const allRequests: SearchRequest[] = await getRequestsAction();
+  const allRequests: SearchRequest[] = await getRequestsAction(); // Asumiendo que getRequestsAction por defecto ya los trae ordenados o no necesitamos un orden específico aquí
   // Tomar hasta 8 solicitudes para la cuadrícula
   const recentRequests = allRequests.slice(0, 8);
   return { featuredProperties, recentRequests };
@@ -30,23 +31,18 @@ async function getFeaturedListingsAndRequestsData() {
 
 function AIMatchingSection() {
   return (
-    <Card className="shadow-xl rounded-2xl overflow-hidden bg-gradient-to-br from-primary/80 to-primary">
-      <CardHeader className="p-6 md:p-8 text-primary-foreground">
+    <Card className="shadow-xl rounded-2xl overflow-hidden border bg-card"> {/* Cambiado el fondo */}
+      <CardHeader className="p-6 md:p-8">
         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
-            <Brain className="h-8 w-8 mr-3" />
+            <Brain className="h-8 w-8 mr-3 text-primary" />
             Búsqueda Inteligente con IA
         </CardTitle>
-         <CardDescription className="text-lg text-primary-foreground/80 mt-1">
-              Nuestra IA te ayuda a encontrar la propiedad o el arrendatario/comprador perfecto.
+         <CardDescription className="text-lg text-muted-foreground mt-1"> {/* Color de texto ajustado */}
+              Ingresa los detalles de una propiedad y una solicitud de búsqueda para que nuestra IA evalúe su compatibilidad.
         </CardDescription>
       </CardHeader>
-      <CardContent className="text-center p-6 md:p-8">
-          <p className="mt-1 text-primary-foreground/90 max-w-2xl mx-auto text-lg leading-relaxed">
-              Relacionamos inteligentemente los listados con las solicitudes de búsqueda para ofrecerte las mejores coincidencias.
-          </p>
-          <Button size="lg" variant="secondary" className="mt-8 text-base h-14 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 bg-accent text-accent-foreground hover:bg-accent/90" asChild>
-              <Link href="/ai-matching">Descubrir Coincidencias <ArrowRight className="ml-2 h-5 w-5"/></Link>
-          </Button>
+      <CardContent className="p-6 md:p-8 pt-0 md:pt-0"> {/* Ajustado padding si es necesario */}
+          <InteractiveAIMatching /> {/* Componente interactivo en lugar del texto y botón */}
       </CardContent>
     </Card>
   );
