@@ -68,11 +68,11 @@ const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
     colorClass: "from-yellow-500/10 to-yellow-500/5 text-yellow-600 dark:text-yellow-400",
   },
   {
-    title: "Config. Google Sheets",
-    description: "Conecta y configura la integración con Google Sheets para mostrar datos.",
+    title: "Integración Google Sheets",
+    description: "Configura la integración con Google Sheets para mostrar datos en la página de inicio.",
     href: "/admin/settings",
     icon: <Settings className="h-8 w-8 text-primary" />,
-    cta: "Ir a Configuración",
+    cta: "Configurar Google Sheets",
     colorClass: "from-gray-500/10 to-gray-500/5 text-gray-600 dark:text-gray-400",
   },
   {
@@ -161,3 +161,4 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
