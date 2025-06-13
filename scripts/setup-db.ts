@@ -23,8 +23,6 @@ async function getCredentials(rl: readline.Interface): Promise<PoolOptions> {
 }
 
 // --- Definición de todas las tablas y datos iniciales ---
-// Nota: CREATE INDEX IF NOT EXISTS es para SQLite/PostgreSQL, MySQL usa ALTER TABLE o lo ignora si ya existe.
-// Para simplificar, se asume que los índices se crean si no existen sin error.
 const SQL_STATEMENTS: string[] = [
   // roles
   `CREATE TABLE IF NOT EXISTS roles (
@@ -53,7 +51,6 @@ const SQL_STATEMENTS: string[] = [
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   );`,
-  // Insertar plan gratuito por defecto (opcional, puede ser gestionado desde la app)
   `INSERT IGNORE INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days) VALUES
     ('${randomUUID()}', 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30);`,
   
@@ -74,7 +71,6 @@ const SQL_STATEMENTS: string[] = [
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT,
     FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE SET NULL
   );`,
-  // Índices para users (MySQL crea índices para PK y FK automáticamente, estos son adicionales)
   `CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`,
   `CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);`,
   `CREATE INDEX IF NOT EXISTS idx_users_plan_id ON users(plan_id);`,
@@ -178,7 +174,8 @@ const SQL_STATEMENTS: string[] = [
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT id_must_be_1_google_sheet CHECK (id = 1)
   );`,
-  `INSERT IGNORE INTO google_sheet_configs (id, is_configured) VALUES (1, FALSE);`,
+  `INSERT INTO google_sheet_configs (id, is_configured) VALUES (1, FALSE)
+   ON DUPLICATE KEY UPDATE id = 1;`,
 
   // site_settings
   `CREATE TABLE IF NOT EXISTS site_settings (
@@ -188,7 +185,7 @@ const SQL_STATEMENTS: string[] = [
     show_featured_listings_section BOOLEAN DEFAULT TRUE,
     show_ai_matching_section BOOLEAN DEFAULT TRUE,
     show_google_sheet_section BOOLEAN DEFAULT TRUE,
-    landing_sections_order TEXT DEFAULT '["featured_list_requests", "ai_matching", "google_sheet"]',
+    landing_sections_order TEXT DEFAULT NULL,
     announcement_bar_text TEXT DEFAULT NULL,
     announcement_bar_link_url VARCHAR(2048) DEFAULT NULL,
     announcement_bar_link_text VARCHAR(255) DEFAULT NULL,
@@ -198,8 +195,41 @@ const SQL_STATEMENTS: string[] = [
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT id_must_be_1_site_settings CHECK (id = 1)
   );`,
-  `INSERT IGNORE INTO site_settings (id, site_title, landing_sections_order) VALUES
-    (1, 'PropSpot - Encuentra Tu Próxima Propiedad', '["featured_list_requests", "ai_matching", "google_sheet"]');`,
+  `INSERT INTO site_settings (
+    id, site_title, logo_url,
+    show_featured_listings_section, show_ai_matching_section, show_google_sheet_section,
+    landing_sections_order,
+    announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color
+  )
+  VALUES (
+    1, 
+    'PropSpot - Encuentra Tu Próxima Propiedad', 
+    NULL, 
+    TRUE, 
+    TRUE, 
+    TRUE, 
+    '["featured_list_requests", "ai_matching", "google_sheet"]',
+    FALSE,
+    '#FFB74D',
+    '#18181b'
+  )
+  ON DUPLICATE KEY UPDATE
+    site_title = VALUES(site_title),
+    logo_url = VALUES(logo_url),
+    show_featured_listings_section = VALUES(show_featured_listings_section),
+    show_ai_matching_section = VALUES(show_ai_matching_section),
+    show_google_sheet_section = VALUES(show_google_sheet_section),
+    landing_sections_order = COALESCE(site_settings.landing_sections_order, VALUES(landing_sections_order)),
+    announcement_bar_text = COALESCE(site_settings.announcement_bar_text, VALUES(announcement_bar_text)),
+    announcement_bar_link_url = COALESCE(site_settings.announcement_bar_link_url, VALUES(announcement_bar_link_url)),
+    announcement_bar_link_text = COALESCE(site_settings.announcement_bar_link_text, VALUES(announcement_bar_link_text)),
+    announcement_bar_is_active = VALUES(announcement_bar_is_active),
+    announcement_bar_bg_color = VALUES(announcement_bar_bg_color),
+    announcement_bar_text_color = VALUES(announcement_bar_text_color),
+    updated_at = CURRENT_TIMESTAMP;`,
+  `UPDATE site_settings
+   SET landing_sections_order = '["featured_list_requests", "ai_matching", "google_sheet"]'
+   WHERE id = 1 AND landing_sections_order IS NULL;`,
   
   // contacts
   `CREATE TABLE IF NOT EXISTS contacts (
@@ -296,59 +326,70 @@ async function setupDatabase() {
   try {
     dbConfig = await getCredentials(rl);
 
-    // 1. Verificar conexión
     console.log('\nIntentando conectar a la base de datos...');
     pool = mysql.createPool(dbConfig);
     const connection = await pool.getConnection();
     console.log('✅ Conexión a la base de datos exitosa.');
     connection.release();
 
-    // 2. Crear tablas
-    console.log('\nCreando tablas...');
+    console.log('\nCreando tablas y datos iniciales...');
     for (const stmt of SQL_STATEMENTS) {
       try {
-        // MySQL no soporta múltiples sentencias en una sola llamada a execute() por defecto,
-        // a menos que 'multipleStatements: true' esté en la config, lo cual es un riesgo.
-        // Ejecutaremos una por una.
-        // También, MySQL trata 'CREATE INDEX IF NOT EXISTS' como sintaxis válida
-        // o la ignora si el índice ya existe, dependiendo de la versión.
-        // Para declaraciones DDL como CREATE TABLE, execute no devuelve filas significativas.
         await pool.query(stmt);
-        // Pequeño indicador de progreso
         if (stmt.trim().toUpperCase().startsWith('CREATE TABLE')) {
-            const tableName = stmt.trim().split(' ')[2].replace('IF NOT EXISTS', '').trim();
-            console.log(`  -> Tabla ${tableName} procesada.`);
-        } else if (stmt.trim().toUpperCase().startsWith('INSERT IGNORE INTO')) {
-             const tableName = stmt.trim().split(' ')[3].trim();
-             console.log(`  -> Datos iniciales para ${tableName} procesados.`);
+            const tableNameMatch = stmt.match(/CREATE TABLE IF NOT EXISTS (\w+)/i);
+            if (tableNameMatch && tableNameMatch[1]) {
+                 console.log(`  -> Tabla ${tableNameMatch[1]} procesada.`);
+            } else {
+                 console.log(`  -> Sentencia CREATE TABLE procesada.`);
+            }
+        } else if (stmt.trim().toUpperCase().startsWith('INSERT INTO') || stmt.trim().toUpperCase().startsWith('INSERT IGNORE INTO')) {
+             const tableNameMatch = stmt.match(/INSERT (?:IGNORE )?INTO (\w+)/i);
+             if (tableNameMatch && tableNameMatch[1]) {
+                 console.log(`  -> Datos iniciales para ${tableNameMatch[1]} procesados.`);
+             } else {
+                  console.log(`  -> Sentencia INSERT procesada.`);
+             }
+        } else if (stmt.trim().toUpperCase().startsWith('UPDATE')) {
+            const tableNameMatch = stmt.match(/UPDATE (\w+)/i);
+            if (tableNameMatch && tableNameMatch[1]) {
+                console.log(`  -> Sentencia UPDATE para ${tableNameMatch[1]} procesada.`);
+            } else {
+                 console.log(`  -> Sentencia UPDATE procesada.`);
+            }
         }
-
       } catch (err: any) {
-        // IGNORAR errores de "Duplicate key name" para CREATE INDEX
         if (err.code === 'ER_DUP_KEYNAME' && stmt.toUpperCase().includes('CREATE INDEX')) {
-          const indexName = stmt.split(' ')[2];
+          const indexNameMatch = stmt.match(/CREATE INDEX IF NOT EXISTS (\w+)/i) || stmt.match(/INDEX (\w+)/i);
+          const indexName = indexNameMatch ? indexNameMatch[1] : 'desconocido';
           console.warn(`  ⚠️  Índice ${indexName} ya existe, omitiendo.`);
         } else if (err.code === 'ER_CONSTRAINT_FORMAT_ERROR' && stmt.toUpperCase().includes('CHECK (ID = 1)')) {
           console.warn(`  ⚠️  Constraint de CHECK (id=1) puede no ser soportado o ya existe, omitiendo error específico.`);
+        } else if (err.code === 'ER_WRONG_VALUE_FOR_TYPE' && stmt.toUpperCase().includes('CONSTRAINT CHK_COMMENT_TARGET CHECK')) {
+          console.warn(`  ⚠️  Constraint CHECK para comments (chk_comment_target) puede no ser soportado en su versión de MySQL o ya existe. Omitiendo error específico.`);
+        } else if (err.code === 'ER_CANT_CREATE_TABLE' && err.message.includes('errno: 150')) {
+            console.warn(`  ⚠️  Error al crear tabla (posiblemente FK a tabla no existente aún, o error de tipo). MySQL a veces es sensible al orden. Statement: ${stmt.substring(0,100)}... Error: ${err.message}`);
         }
         else {
-          console.error(`\n❌ Error ejecutando SQL: \n${stmt}\nError: ${err.message}`);
-          throw err; // Detener si hay un error crítico
+          console.error(`\n❌ Error ejecutando SQL: \n${stmt.substring(0, 200)}...\nError: ${err.message}`);
+          // Considerar no detener el script por errores no críticos, o hacer el error handling más granular.
+          // Por ahora, continuaremos para intentar crear el resto.
+          // throw err; // Descomentar para detener en error crítico
         }
       }
     }
     console.log('✅ Todas las tablas y datos iniciales han sido procesados.');
 
-    // 3. Crear usuario administrador
     console.log('\nCreando usuario administrador...');
     const adminEmail = 'admin@konecte.cl';
     const adminPassword = 'ola12345';
     const adminName = 'Administrador PropSpot';
-    const adminRoleId = 'admin'; // Asegúrate que este rol exista desde los INSERTs anteriores
+    const adminRoleId = 'admin'; 
 
-    const existingAdmin = await pool.query('SELECT id FROM users WHERE email = ?', [adminEmail]);
-    
-    if (Array.isArray(existingAdmin[0]) && existingAdmin[0].length > 0) {
+    const existingAdminResult = await pool.query('SELECT id FROM users WHERE email = ?', [adminEmail]);
+    const existingAdmin = Array.isArray(existingAdminResult) ? existingAdminResult[0] : []; // MySQL/Promise returns [rows, fields]
+
+    if (Array.isArray(existingAdmin) && existingAdmin.length > 0) {
       console.log(`  ⚠️  El usuario administrador ${adminEmail} ya existe.`);
     } else {
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
@@ -378,3 +419,6 @@ async function setupDatabase() {
 }
 
 setupDatabase();
+
+
+    
