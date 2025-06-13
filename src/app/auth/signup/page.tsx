@@ -40,7 +40,7 @@ export default function SignUpPage() {
         title: "Registro Exitoso",
         description: "¡Tu cuenta ha sido creada! Ahora puedes iniciar sesión.",
       });
-      router.push('/auth/signin'); 
+      router.push('/auth/signin');
     } else {
       toast({
         title: "Error de Registro",
@@ -51,20 +51,21 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-var(--header-height,0px))] w-full lg:grid lg:grid-cols-2">
-      <div className="hidden lg:flex relative items-center justify-center bg-primary/10 h-full">
+    // Ajuste aquí: min-h-[calc(100vh-5rem)] para la altura debajo del Navbar (asumiendo que el Navbar es h-20 = 5rem)
+    <div className="min-h-[calc(100vh-5rem)] w-full lg:grid lg:grid-cols-2">
+      <div className="hidden lg:flex relative h-full bg-primary/10">
         <Image
           src="https://bukmy.cl/img/register.png"
           alt="Ilustración de registro"
           layout="fill"
-          objectFit="cover" 
+          objectFit="cover"
           className="object-cover"
           priority
           data-ai-hint="registro usuarios"
         />
       </div>
-      <div className="flex items-center justify-center p-6 py-12 sm:p-10 md:p-12 bg-card lg:bg-background">
-        <Card className="w-full max-w-md border-0 shadow-none lg:shadow-xl lg:border lg:rounded-xl lg:p-4">
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 h-full bg-card lg:bg-background">
+        <Card className="w-full max-w-md lg:shadow-xl lg:border lg:rounded-xl lg:p-4 shadow-none border-0">
           <CardHeader className="text-center px-0 sm:px-2">
             <CardTitle className="text-2xl sm:text-3xl font-headline">Crear una Cuenta</CardTitle>
             <CardDescription className="text-sm sm:text-base">Únete a PropSpot para listar, encontrar y discutir propiedades.</CardDescription>
