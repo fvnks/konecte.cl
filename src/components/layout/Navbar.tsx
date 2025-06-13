@@ -25,6 +25,7 @@ const navItems = [
   { href: '/', label: 'Inicio', icon: <Home /> },
   { href: '/properties', label: 'Propiedades', icon: <Briefcase /> },
   { href: '/requests', label: 'Solicitudes', icon: <Search /> },
+  { href: '/plans', label: 'Planes', icon: <CreditCard /> },
 ];
 
 interface StoredUser {
@@ -72,7 +73,8 @@ export default function Navbar() {
     if (isClient) {
         fetchSiteSettings();
         const handleSettingsUpdate = () => fetchSiteSettings();
-        window.addEventListener('siteSettingsUpdated', handleSettingsUpdate);
+        // Asumiendo que `saveSiteSettingsAction` o una acción similar podría disparar este evento
+        window.addEventListener('siteSettingsUpdated', handleSettingsUpdate); 
         return () => window.removeEventListener('siteSettingsUpdated', handleSettingsUpdate);
     }
   }, [isClient, fetchSiteSettings]);
@@ -107,20 +109,28 @@ export default function Navbar() {
       updateLoginStateAndUnreadCount();
 
       const handleStorageChange = (event: StorageEvent | Event) => {
-        const eventIsCustom = event.type === 'storage' && (event as CustomEvent).detail?.key === 'loggedInUser';
-        const eventIsStorage = event instanceof StorageEvent && event.key === 'loggedInUser';
-        
-        if (eventIsCustom || eventIsStorage || event.type === 'messagesUpdated') {
+        // Check if the event is a CustomEvent and has the correct detail key
+        const eventIsCustomForLogin = event.type === 'storage' && (event instanceof CustomEvent) && event.detail?.key === 'loggedInUser';
+        // Check if the event is a standard StorageEvent for 'loggedInUser'
+        const eventIsStorageAPI = event instanceof StorageEvent && event.key === 'loggedInUser';
+        // Check for messagesUpdated custom event
+        const eventIsMessagesUpdated = event.type === 'messagesUpdated';
+
+        if (eventIsCustomForLogin || eventIsStorageAPI || eventIsMessagesUpdated) {
            updateLoginStateAndUnreadCount();
         }
       };
       
-      window.addEventListener('storage', handleStorageChange);
-      window.addEventListener('messagesUpdated', handleStorageChange);
+      window.addEventListener('storage', handleStorageChange); // For other tabs
+      window.addEventListener('messagesUpdated', handleStorageChange); // Custom event for same-tab updates
+      // Also listen to our custom 'storage' event for same-tab updates from logout/login actions
+      window.addEventListener('storage', handleStorageChange  as EventListener);
+
 
       return () => {
         window.removeEventListener('storage', handleStorageChange);
         window.removeEventListener('messagesUpdated', handleStorageChange);
+        window.removeEventListener('storage', handleStorageChange as EventListener);
       };
     }
   }, [updateLoginStateAndUnreadCount, isClient]);
@@ -132,6 +142,7 @@ export default function Navbar() {
     toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
     router.push('/');
     if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+    // Dispatch a custom event to notify other components/tabs if necessary
     window.dispatchEvent(new CustomEvent('storage', { detail: { key: 'loggedInUser' } }));
   };
 
@@ -161,7 +172,6 @@ export default function Navbar() {
     </>
   );
   
-  // Determine logo or text title
   const siteTitleForDisplay = siteSettings?.siteTitle || DEFAULT_NAVBAR_TITLE;
   const logoDisplay = siteSettings?.logoUrl ? (
     <Image 
@@ -212,13 +222,13 @@ export default function Navbar() {
         <AnnouncementBar settings={siteSettings} />
       )}
       {isClient && isLoadingSettings && (
-         <Skeleton className="h-10 w-full" />
+         <Skeleton className="h-10 w-full" /> // Placeholder for announcement bar loading
       )}
 
       <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
         <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2 shrink-0" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
-            {isClient && !isLoadingSettings && siteSettings ? logoDisplay : logoPlaceholder}
+            {isClient && !isLoadingSettings ? logoDisplay : logoPlaceholder}
           </Link>
 
           <nav className="hidden md:flex items-center gap-1 mx-auto">
@@ -375,7 +385,7 @@ export default function Navbar() {
                 <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 pt-5 bg-card border-l shadow-2xl">
                   <div className="px-5 pb-4 border-b">
                       <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                          {isClient && !isLoadingSettings && siteSettings ? logoDisplay : logoPlaceholder}
+                          {isClient && !isLoadingSettings ? logoDisplay : logoPlaceholder}
                       </Link>
                   </div>
                   <nav className="flex-grow flex flex-col gap-1 p-4 overflow-y-auto">
@@ -439,3 +449,4 @@ export default function Navbar() {
   );
 }
 
+    
