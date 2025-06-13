@@ -26,7 +26,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  // AlertDialogTrigger, // Not needed for the main dialog if controlled by state
 } from "@/components/ui/alert-dialog";
 
 interface LoggedInAdmin {
@@ -39,8 +38,8 @@ const getRoleBadgeVariant = (roleId: string) => {
 };
 
 const getPlanBadgeVariant = (planId?: string | null) => {
-  if (!planId) return 'outline'; 
-  return 'default'; 
+  if (!planId) return 'outline';
+  return 'default';
 };
 
 
@@ -53,22 +52,34 @@ export default function AdminUsersPage() {
   const [isPending, startTransition] = useTransition();
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [loggedInAdmin, setLoggedInAdmin] = useState<LoggedInAdmin | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
 
   useEffect(() => {
-    // Simular la obtención del ID del administrador logueado (en una app real, esto vendría de la sesión)
-    const adminUserJson = localStorage.getItem('loggedInUser');
-    if (adminUserJson) {
-        try {
-            const parsedAdmin: User = JSON.parse(adminUserJson);
-            if (parsedAdmin.role_id === 'admin') { // Asegurarse que el usuario es admin
-                setLoggedInAdmin({ id: parsedAdmin.id });
-            } else {
-                 toast({ title: "Acceso Denegado", description: "No tienes permisos de administrador.", variant: "destructive" });
-            }
-        } catch (e) { console.error("Error parsing admin user from storage", e)}
+    if (isClient) { // Ensure this runs only on the client
+      const adminUserJson = localStorage.getItem('loggedInUser');
+      if (adminUserJson) {
+          try {
+              const parsedAdmin: User = JSON.parse(adminUserJson);
+              if (parsedAdmin.role_id === 'admin') {
+                  setLoggedInAdmin({ id: parsedAdmin.id });
+              } else {
+                   toast({ title: "Acceso Denegado", description: "No tienes permisos de administrador.", variant: "destructive" });
+              }
+          } catch (e) {
+              console.error("Error parsing admin user from storage", e);
+              toast({ title: "Error de Sesión", description: "No se pudo verificar tu sesión. Intenta iniciar sesión de nuevo.", variant: "destructive" });
+              localStorage.removeItem('loggedInUser'); // Clear corrupted data
+          }
+      } else {
+          toast({ title: "Acceso Denegado", description: "Debes iniciar sesión como administrador.", variant: "destructive" });
+      }
     }
-  }, [toast]);
+  }, [isClient, toast]); // Added isClient to dependency array
 
   const fetchData = useCallback(async () => {
     setIsLoadingData(true);
@@ -80,7 +91,7 @@ export default function AdminUsersPage() {
       ]);
       setUsers(fetchedUsers);
       setRoles(fetchedRoles);
-      setPlans(fetchedPlans); 
+      setPlans(fetchedPlans);
     } catch (error) {
       toast({ title: "Error", description: "No se pudieron cargar los datos de usuarios, roles o planes.", variant: "destructive" });
     } finally {
@@ -89,8 +100,10 @@ export default function AdminUsersPage() {
   }, [toast]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (isClient) { // Also guard fetchData with isClient if it could run too early
+        fetchData();
+    }
+  }, [fetchData, isClient]); // Added isClient to dependency array
 
   const handleRoleChange = (userId: string, newRoleId: string) => {
     startTransition(async () => {
@@ -124,9 +137,9 @@ export default function AdminUsersPage() {
       }
     });
   };
-  
+
   const handleUserCreated = () => {
-    fetchData(); 
+    fetchData();
   };
 
   const openDeleteDialog = (user: User) => {
@@ -154,7 +167,7 @@ export default function AdminUsersPage() {
   };
 
 
-  if (isLoadingData && users.length === 0) {
+  if (isLoadingData && users.length === 0 && isClient) { // Show loader only if client and initial load
      return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -162,7 +175,7 @@ export default function AdminUsersPage() {
       </div>
     );
   }
-  
+
   const activePlans = plans.filter(plan => plan.is_active);
 
   return (
@@ -212,7 +225,7 @@ export default function AdminUsersPage() {
                       <TableCell className="text-xs text-muted-foreground">{user.email}</TableCell>
                       <TableCell>
                         <Badge variant={getRoleBadgeVariant(user.role_id)} className="capitalize text-xs">
-                          {user.role_name || user.role_id} 
+                          {user.role_name || user.role_id}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -246,9 +259,9 @@ export default function AdminUsersPage() {
                        <TableCell>
                          <div className="flex items-center">
                           <CreditCard className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
-                          {plans.length > 0 || !isLoadingData ? ( 
+                          {plans.length > 0 || !isLoadingData ? (
                               <Select
-                              value={user.plan_id || 'none'} 
+                              value={user.plan_id || 'none'}
                               onValueChange={(newPlan: string) => handlePlanChange(user.id, newPlan)}
                               disabled={isPending || isLoadingData}
                               >
@@ -269,7 +282,7 @@ export default function AdminUsersPage() {
                       </TableCell>
                       <TableCell className="text-center space-x-1">
                         <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Editar Usuario (Nombre/Email)">
-                            <span onClick={() => alert("Funcionalidad de editar usuario pendiente.")}> {/* Temporal */}
+                            <span onClick={() => toast({ title: "Pendiente", description: "Funcionalidad de editar datos básicos del usuario pendiente de implementación."})}>
                                 <Edit className="h-4 w-4" />
                             </span>
                         </Button>
@@ -278,9 +291,9 @@ export default function AdminUsersPage() {
                             <ContactIcon className="h-4 w-4" />
                           </Link>
                         </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="icon" 
+                        <Button
+                          variant="destructive"
+                          size="icon"
                           className="h-8 w-8"
                           title="Eliminar Usuario"
                           disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id || !loggedInAdmin}
