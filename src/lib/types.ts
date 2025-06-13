@@ -234,8 +234,8 @@ export type InteractionType =
   | 'other';
 
 export const interactionTypeValues = [
-  'note', 'email_sent', 'email_received', 'call_made', 'call_received', 
-  'meeting', 'message_sent', 'message_received', 'task_completed', 
+  'note', 'email_sent', 'email_received', 'call_made', 'call_received',
+  'meeting', 'message_sent', 'message_received', 'task_completed',
   'property_viewing', 'offer_made', 'other'
 ] as const;
 
@@ -290,8 +290,55 @@ const baseInteractionFormSchema = z.object({
 export const addInteractionFormSchema = baseInteractionFormSchema;
 export type AddInteractionFormValues = z.infer<typeof addInteractionFormSchema>;
 
-export const editInteractionFormSchema = baseInteractionFormSchema; 
+export const editInteractionFormSchema = baseInteractionFormSchema;
 export type EditInteractionFormValues = z.infer<typeof editInteractionFormSchema>;
+
+// --- Chat Types ---
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+  read_at?: string | null;
+  sender?: Pick<User, 'id' | 'name' | 'avatarUrl'>; // Optional sender details for display
+}
+
+export interface ChatConversation {
+  id: string;
+  property_id?: string | null;
+  request_id?: string | null;
+  user_a_id: string;
+  user_b_id: string;
+  user_a_unread_count: number;
+  user_b_unread_count: number;
+  last_message_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Fields for display in a list
+  other_user?: Pick<User, 'id' | 'name' | 'avatarUrl'>; // Details of the other participant
+  last_message_content?: string | null; // Snippet of the last message
+  unread_count_for_current_user?: number; // Specific unread count for the logged-in user in this convo
+  context_title?: string; // e.g., Property title or Request title
+  context_slug?: string; // Slug for linking
+  context_type?: 'property' | 'request' | null;
+}
+
+// Simplified version for listing conversations, might include a snippet of the last message etc.
+export type ChatConversationListItem = Pick<
+  ChatConversation,
+  | 'id'
+  | 'last_message_at'
+  | 'other_user'
+  | 'last_message_content'
+  | 'unread_count_for_current_user'
+  | 'property_id'
+  | 'request_id'
+  | 'context_title'
+  | 'context_slug'
+  | 'context_type'
+>;
 
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
@@ -305,3 +352,4 @@ export const placeholderUser: User = {
   role_name: 'Usuario'
 };
 
+    
