@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus } from 'lucide-react'; // Added UserPlus
+import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -16,8 +16,9 @@ import type { SiteSettings } from '@/lib/types';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
-import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions'; // Importar acción de conteo
-import { Badge } from '@/components/ui/badge'; // Para el contador
+import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const navItems = [
   { href: '/', label: 'Inicio', icon: <Home /> },
@@ -76,8 +77,12 @@ export default function Navbar() {
       try {
         const user: StoredUser = JSON.parse(userJson);
         setLoggedInUser(user);
-        const unreadCount = await getTotalUnreadMessagesCountAction(user.id);
-        setTotalUnreadMessages(unreadCount);
+        if (user?.id) { // Fetch unread count only if user ID is available
+          const unreadCount = await getTotalUnreadMessagesCountAction(user.id);
+          setTotalUnreadMessages(unreadCount);
+        } else {
+          setTotalUnreadMessages(0);
+        }
       } catch (error) {
         console.error("Error parsing loggedInUser from localStorage or fetching unread count", error);
         localStorage.removeItem('loggedInUser');
@@ -103,13 +108,12 @@ export default function Navbar() {
         }
       };
 
-      // Listen for revalidation event from chat actions
       const handleMessagesUpdated = () => {
         updateLoginStateAndUnreadCount();
       };
 
       window.addEventListener('storage', handleStorageChange);
-      window.addEventListener('messagesUpdated', handleMessagesUpdated); // Custom event
+      window.addEventListener('messagesUpdated', handleMessagesUpdated);
 
       return () => {
         window.removeEventListener('storage', handleStorageChange);
@@ -161,6 +165,14 @@ export default function Navbar() {
       <span className="text-2xl font-bold font-headline text-primary">PropSpot</span>
     </>
   );
+  
+  // Placeholder for logo when siteSettings are not yet loaded
+  const logoPlaceholder = (
+    <>
+      <Skeleton className="h-7 w-7 rounded-md" />
+      <Skeleton className="h-7 w-32 rounded-md" />
+    </>
+  );
 
   const MobileMenuLink = ({ href, icon, label, closeMenu, showBadge, badgeCount }: { href: string; icon: React.ReactNode; label: string; closeMenu?: () => void; showBadge?: boolean; badgeCount?: number; }) => (
     <Button variant="ghost" asChild className="justify-start text-lg px-4 py-3.5 w-full hover:bg-primary/10 hover:text-primary" onClick={closeMenu}>
@@ -185,7 +197,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
       <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 shrink-0" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
-          {logoDisplay}
+          {isClient && siteSettings ? logoDisplay : logoPlaceholder}
         </Link>
 
         <nav className="hidden md:flex items-center gap-1 mx-auto">
@@ -193,32 +205,36 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="default"
-                className="hidden md:flex items-center gap-2 text-sm font-medium px-3 py-2 h-9 rounded-lg shadow-sm hover:bg-primary/90"
-              >
-                <PlusCircle className="h-4 w-4" /> Publicar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60 bg-card shadow-xl rounded-lg border mt-2">
-              <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                <Link href="/properties/submit">
-                    <span className="flex items-center gap-2.5 text-sm w-full">
-                        <Briefcase className="h-4 w-4 text-primary"/>Publicar Propiedad
-                    </span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
-                <Link href="/requests/submit">
-                    <span className="flex items-center gap-2.5 text-sm w-full">
-                        <Search className="h-4 w-4 text-primary"/>Publicar Solicitud
-                    </span>
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isClient ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="default"
+                  className="hidden md:flex items-center gap-2 text-sm font-medium px-3 py-2 h-9 rounded-lg shadow-sm hover:bg-primary/90"
+                >
+                  <PlusCircle className="h-4 w-4" /> Publicar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 bg-card shadow-xl rounded-lg border mt-2">
+                <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                  <Link href="/properties/submit">
+                      <span className="flex items-center gap-2.5 text-sm w-full">
+                          <Briefcase className="h-4 w-4 text-primary"/>Publicar Propiedad
+                      </span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                  <Link href="/requests/submit">
+                      <span className="flex items-center gap-2.5 text-sm w-full">
+                          <Search className="h-4 w-4 text-primary"/>Publicar Solicitud
+                      </span>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+           ) : (
+             <Skeleton className="h-9 w-28 hidden md:flex rounded-lg" />
+           )}
 
           {isClient && loggedInUser ? (
             <DropdownMenu>
@@ -298,7 +314,7 @@ export default function Navbar() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : isClient ? (
+          ) : isClient ? ( // Only show login/signup if isClient is true and user is not logged in
             <div className="hidden md:flex items-center gap-2">
               <Button variant="outline" size="default" asChild className="hover:bg-primary/5 hover:border-primary/70 hover:text-primary text-sm px-3 py-2 h-9 rounded-lg">
                 <Link href="/auth/signin">
@@ -316,9 +332,10 @@ export default function Navbar() {
               </Button>
             </div>
           ) : (
+            // Skeleton for Login/Signup buttons
              <div className="h-9 w-48 hidden md:flex gap-2">
-                <div className="flex-1 bg-muted/50 rounded-lg animate-pulse"></div>
-                <div className="flex-1 bg-muted/50 rounded-lg animate-pulse"></div>
+                <Skeleton className="flex-1 rounded-lg" />
+                <Skeleton className="flex-1 rounded-lg" />
              </div>
           )}
 
@@ -338,7 +355,7 @@ export default function Navbar() {
               <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 pt-5 bg-card border-l shadow-2xl">
                 <div className="px-5 pb-4 border-b">
                     <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                        {logoDisplay}
+                        {isClient && siteSettings ? logoDisplay : logoPlaceholder}
                     </Link>
                 </div>
                 <nav className="flex-grow flex flex-col gap-1 p-4 overflow-y-auto">
@@ -386,9 +403,10 @@ export default function Navbar() {
                             </Button>
                         </div>
                     ) : (
+                      // Skeleton for mobile login/signup buttons
                       <div className="space-y-3">
-                        <div className="h-12 w-full bg-muted/50 rounded-lg animate-pulse"></div>
-                        <div className="h-12 w-full bg-muted/50 rounded-lg animate-pulse"></div>
+                        <Skeleton className="h-12 w-full rounded-lg" />
+                        <Skeleton className="h-12 w-full rounded-lg" />
                       </div>
                     )}
                 </div>
