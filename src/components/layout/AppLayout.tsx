@@ -13,24 +13,24 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
-  const isAdminRoute = pathname.startsWith('/admin');
+  const isAdminOrDashboardRoute = pathname.startsWith('/admin') || pathname.startsWith('/dashboard');
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {!isAdminRoute && <Navbar />} {/* Mostrar Navbar solo en rutas no-admin */}
+      {!isAdminOrDashboardRoute && <Navbar />} {/* Mostrar Navbar solo si NO es admin NI dashboard */}
       
       <main
         className={cn(
           "flex-grow", // Clase base para ocupar el espacio vertical
-          isAdminRoute 
-            ? "animate-fade-in" // Para rutas de admin: ancho completo, AdminLayout maneja su padding
+          isAdminOrDashboardRoute 
+            ? "animate-fade-in" // Para rutas de admin/dashboard: ancho completo, el layout específico maneja padding
             : "container mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-12 animate-fade-in" // Para rutas no-admin: centrado y con padding
         )}
       >
         {children}
       </main>
       
-      {!isAdminRoute && <Footer />} {/* Mostrar Footer solo en rutas no-admin */}
+      {!isAdminOrDashboardRoute && <Footer />} {/* Mostrar Footer solo si NO es admin NI dashboard */}
     </div>
   );
 }
