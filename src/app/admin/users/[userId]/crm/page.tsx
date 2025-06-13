@@ -2,7 +2,7 @@
 // src/app/admin/users/[userId]/crm/page.tsx
 'use client';
 
-import { useEffect, useState, use } from 'react'; // Added 'use'
+import { useEffect, useState } from 'react'; // Removed 'use'
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,17 +12,17 @@ import { getUserContactsAction } from '@/actions/crmActions';
 import ContactListItem from '@/components/crm/ContactListItem';
 import { useToast } from '@/hooks/use-toast';
 import { getUsersAction } from '@/actions/userActions'; // Para obtener el nombre del usuario
+import { useParams } from 'next/navigation'; // Import useParams
 
-interface AdminUserCrmPageProps {
-  params: { // params will be a Promise in the future, but for now it's an object
-    userId: string;
-  };
-}
+// interface AdminUserCrmPageProps { // No longer needed if using useParams
+//   params: {
+//     userId: string;
+//   };
+// }
 
-export default function AdminUserCrmPage({ params }: AdminUserCrmPageProps) {
-  // Use React.use to unwrap the params promise (best practice for future Next.js versions)
-  const resolvedParams = use(params);
-  const { userId } = resolvedParams;
+export default function AdminUserCrmPage(/*{ params }: AdminUserCrmPageProps*/) {
+  const params = useParams(); // Use the hook
+  const userId = params.userId as string; // Access userId from the hook's result
 
   const [user, setUser] = useState<StoredUserType | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -92,7 +92,7 @@ export default function AdminUserCrmPage({ params }: AdminUserCrmPageProps) {
     );
   }
   
-  const userName = user?.name || `Usuario (ID: ${userId.substring(0,8)}...)`;
+  const userName = user?.name || `Usuario (ID: ${userId ? userId.substring(0,8) : 'N/A'}...)`;
 
   return (
     <div className="space-y-6">
