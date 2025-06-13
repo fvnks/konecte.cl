@@ -288,6 +288,9 @@ export async function adminUpdateRequestAction(
     return { success: false, message: "ID de solicitud no proporcionado para la actualización." };
   }
 
+  // El slug original se mantiene para esta acción de actualización.
+  // Si se necesita cambiar el slug, se debería hacer con una lógica más compleja (ej. verificar duplicados).
+
   try {
     const sql = `
       UPDATE property_requests SET
@@ -336,14 +339,15 @@ export async function adminUpdateRequestAction(
     if (currentSlug) {
       revalidatePath(`/requests/${currentSlug}`); 
     } else {
-       revalidatePath(`/requests/[slug]`, 'layout');
+       revalidatePath(`/requests/[slug]`, 'layout'); // Fallback
     }
-    revalidatePath('/');
+    revalidatePath('/'); // Revalidar página de inicio por si aparecen en "Recientes"
 
     return { success: true, message: "Solicitud actualizada exitosamente.", requestSlug: currentSlug };
 
   } catch (error: any) {
     console.error(`[RequestAction Admin] Error updating request ${requestId}:`, error);
+    // No verificamos ER_DUP_ENTRY para el slug aquí, ya que no lo estamos cambiando.
     return { success: false, message: `Error al actualizar solicitud: ${error.message}` };
   }
 }

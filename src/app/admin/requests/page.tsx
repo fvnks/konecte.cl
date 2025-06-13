@@ -142,10 +142,10 @@ export default function AdminRequestsPage() {
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
-                        <Button variant="ghost" size="icon" asChild title="Editar solicitud (Próximamente)" disabled>
-                          {/* <Link href={`/admin/requests/${req.id}/edit`}> */}
+                        <Button variant="ghost" size="icon" asChild title="Editar solicitud">
+                          <Link href={`/admin/requests/${req.id}/edit`}>
                             <Edit3 className="h-4 w-4" />
-                          {/* </Link> */}
+                          </Link>
                         </Button>
                         <Button variant="ghost" size="icon" asChild title="Buscar propiedades coincidentes (IA)" className="text-purple-600 hover:text-purple-700">
                           <Link href={`/ai-matching-properties?requestId=${req.id}`}>
