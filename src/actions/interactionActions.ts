@@ -3,7 +3,7 @@
 'use server';
 
 import { query } from '@/lib/db';
-import type { RecordInteractionValues, UserListingInteraction, ListingType, RecordInteractionResult, User } from '@/lib/types';
+import type { RecordInteractionValues, UserListingInteraction, ListingType, RecordInteractionResult, User as StoredUserType } from '@/lib/types';
 import { recordInteractionSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
@@ -57,7 +57,6 @@ export async function recordUserListingInteractionAction(
       return {
         success: true,
         message: `Interacción (${interactionType}) registrada para el listado ${likedListingId}.`,
-        // We might need to fetch the actual interaction ID if UPSERT updated, but for now, this is fine.
         interaction: { id: interactionId, user_id: likerUserId, listing_id: likedListingId, listing_type: likedListingType, interaction_type: interactionType, created_at: new Date().toISOString() }
       };
     }
@@ -80,13 +79,13 @@ export async function recordUserListingInteractionAction(
     let reciprocalListingTitle: string | undefined;
     let conversationContext: { propertyId?: string; requestId?: string } = {};
 
-    const likerUserDetailsRows: User[] = await query('SELECT name FROM users WHERE id = ?', [likerUserId]);
-    const likedListingOwnerDetailsRows: User[] = await query('SELECT name FROM users WHERE id = ?', [likedListingOwnerId]);
+    const likerUserDetailsRows: any[] = await query('SELECT name FROM users WHERE id = ?', [likerUserId]);
+    const likedListingOwnerDetailsRows: any[] = await query('SELECT name FROM users WHERE id = ?', [likedListingOwnerId]);
     const likerUserName = likerUserDetailsRows[0]?.name || 'Usuario';
     const likedListingOwnerName = likedListingOwnerDetailsRows[0]?.name || 'Anunciante';
 
 
-    if (likedListingType === 'property') { // Liker liked a Property
+    if (likedListingType === 'property') { // Liker (likerUserId) liked a Property (likedListingId, owner: likedListingOwnerId)
       // Check if likedListingOwnerId (property owner) liked any Request by likerUserId
       const mutualLikeQuery = `
         SELECT uli.listing_id, pr.title
@@ -102,11 +101,11 @@ export async function recordUserListingInteractionAction(
       const mutualRows: any[] = await query(mutualLikeQuery, [likedListingOwnerId, likerUserId]);
       if (mutualRows.length > 0) {
         mutualLikeFound = true;
-        reciprocalListingId = mutualRows[0].listing_id;
-        reciprocalListingTitle = mutualRows[0].title;
+        reciprocalListingId = mutualRows[0].listing_id; // This is the ID of the request owned by likerUserId
+        reciprocalListingTitle = mutualRows[0].title;   // Title of the request owned by likerUserId
         conversationContext = { propertyId: likedListingId, requestId: reciprocalListingId };
       }
-    } else { // Liker liked a Request
+    } else { // Liker (likerUserId) liked a Request (likedListingId, owner: likedListingOwnerId)
       // Check if likedListingOwnerId (request owner) liked any Property by likerUserId
       const mutualLikeQuery = `
         SELECT uli.listing_id, p.title
@@ -122,8 +121,8 @@ export async function recordUserListingInteractionAction(
       const mutualRows: any[] = await query(mutualLikeQuery, [likedListingOwnerId, likerUserId]);
       if (mutualRows.length > 0) {
         mutualLikeFound = true;
-        reciprocalListingId = mutualRows[0].listing_id;
-        reciprocalListingTitle = mutualRows[0].title;
+        reciprocalListingId = mutualRows[0].listing_id; // This is the ID of the property owned by likerUserId
+        reciprocalListingTitle = mutualRows[0].title;   // Title of the property owned by likerUserId
         conversationContext = { propertyId: reciprocalListingId, requestId: likedListingId };
       }
     }
@@ -136,11 +135,17 @@ export async function recordUserListingInteractionAction(
       );
 
       if (conversationResult.success && conversationResult.conversation) {
-        // Revalidate paths related to messages
-        revalidatePath('/dashboard/messages');
-        revalidatePath(`/dashboard/messages/${conversationResult.conversation.id}`);
-        // Notify client to update message counts, e.g., via a custom event if Navbar is listening
-        // Or, a more robust solution would be server-sent events or websockets for real-time.
+        // Dispatch event for Navbar to update message counts
+        // This needs to be done in a way that client-side can pick it up.
+        // For server actions, we can't directly call window.dispatchEvent.
+        // This is typically handled by revalidating paths or client-side polling/websockets.
+        // For now, we rely on the client that initiated the action to update its state,
+        // and other clients will see updates on next load or refresh.
+        // However, we can pass enough info back for the client to trigger it.
+        
+        // Since this is a server action, we cannot directly call window.dispatchEvent.
+        // The client side (InteractiveAIMatching.tsx) will handle dispatching 'messagesUpdated'
+        // based on the response. Here, we simply return the details for the client.
 
         return {
           success: true,
@@ -148,10 +153,10 @@ export async function recordUserListingInteractionAction(
           matchDetails: {
             matchFound: true,
             conversationId: conversationResult.conversation.id,
-            userAName: likerUserName,
-            userBName: likedListingOwnerName,
-            likedListingTitle: likedListingTitle,
-            reciprocalListingTitle: reciprocalListingTitle,
+            userAName: likerUserName, // The user who performed the "like"
+            userBName: likedListingOwnerName, // The owner of the listing that was "liked"
+            likedListingTitle: likedListingTitle, // Title of the item that received the "like"
+            reciprocalListingTitle: reciprocalListingTitle, // Title of the item that completed the mutual "like"
           }
         };
       } else {
@@ -175,3 +180,5 @@ export async function recordUserListingInteractionAction(
     return { success: false, message: `Error al registrar interacción: ${error.message}` };
   }
 }
+
+    

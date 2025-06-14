@@ -37,8 +37,8 @@ type AiMatchingFormValues = z.infer<typeof formSchema>;
 export default function InteractiveAIMatching() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [aiSearchResults, setAiSearchResults] = useState<FoundMatch[]>([]); // Raw results from AI
-  const [propertiesToShow, setPropertiesToShow] = useState<FoundMatch[]>([]); // Filtered properties
+  const [aiSearchResults, setAiSearchResults] = useState<FoundMatch[]>([]); 
+  const [propertiesToShow, setPropertiesToShow] = useState<FoundMatch[]>([]); 
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -76,9 +76,8 @@ export default function InteractiveAIMatching() {
         userSearchDescription: values.userSearchDescription,
       };
       const result = await findListingsForFreeTextSearch(input);
-      setAiSearchResults(result.matches); // Store all matches
+      setAiSearchResults(result.matches); 
       
-      // Filter to show only properties
       const onlyProperties = result.matches.filter(match => match.type === 'property');
       setPropertiesToShow(onlyProperties);
 
@@ -121,12 +120,12 @@ export default function InteractiveAIMatching() {
     try {
       const result = await recordUserListingInteractionAction(loggedInUser.id, {
         listingId,
-        listingType: 'property',
+        listingType: 'property', 
         interactionType,
       });
 
       if (result.success) {
-        if (result.matchDetails?.matchFound) {
+        if (result.matchDetails?.matchFound && result.matchDetails.conversationId) {
             toast({
                 title: "¡Es un Match Mutuo!",
                 description: `Se ha iniciado una conversación con ${result.matchDetails.userBName} sobre "${result.matchDetails.likedListingTitle}" y "${result.matchDetails.reciprocalListingTitle}".`,
@@ -139,6 +138,8 @@ export default function InteractiveAIMatching() {
                     </Button>
                 )
             });
+            // Notify Navbar to update unread counts
+            window.dispatchEvent(new CustomEvent('messagesUpdated'));
         } else {
             toast({
                 title: "Preferencia Guardada",
@@ -285,29 +286,33 @@ export default function InteractiveAIMatching() {
                     </p>
                 )}
             </Card>
-          ) : (
-            <CardContent className="px-0 pt-4 text-center">
-              <HeartHandshake className="mx-auto h-16 w-16 text-primary mb-4" />
-              <h3 className="text-xl font-semibold mb-2">
-                {propertiesToShow.length > 0 && currentIndex >= propertiesToShow.length 
-                  ? "¡Has revisado todas las sugerencias!" 
-                  : "No encontramos propiedades para tu búsqueda."}
-              </h3>
-              <p className="text-muted-foreground text-base mb-4">
-                {propertiesToShow.length > 0 && currentIndex >= propertiesToShow.length 
-                  ? "Esperamos que hayas encontrado algo interesante. Puedes refinar tu búsqueda o publicarla." 
-                  : "Intenta ser más específico o publica tu búsqueda para que otros te encuentren."}
-              </p>
-              <Button asChild variant="default" size="lg">
-                <Link href="/requests/submit">
-                  <PlusCircle className="mr-2 h-5 w-5" />
-                  Publicar Mi Búsqueda
-                </Link>
-              </Button>
-            </CardContent>
+          ) : ( // Este bloque se ejecuta si propertiesToShow está vacío o si currentIndex >= propertiesToShow.length
+            <Card>
+                <CardContent className="px-0 pt-4 text-center">
+                <HeartHandshake className="mx-auto h-16 w-16 text-primary mb-4" />
+                <h3 className="text-xl font-semibold mb-2">
+                    {propertiesToShow.length > 0 && currentIndex >= propertiesToShow.length 
+                    ? "¡Has revisado todas las sugerencias!" 
+                    : "No encontramos propiedades para tu búsqueda."}
+                </h3>
+                <p className="text-muted-foreground text-base mb-4">
+                    {propertiesToShow.length > 0 && currentIndex >= propertiesToShow.length 
+                    ? "Esperamos que hayas encontrado algo interesante. Puedes refinar tu búsqueda o publicarla." 
+                    : "Intenta ser más específico o publica tu búsqueda para que otros te encuentren."}
+                </p>
+                <Button asChild variant="default" size="lg">
+                    <Link href="/requests/submit">
+                    <PlusCircle className="mr-2 h-5 w-5" />
+                    Publicar Mi Búsqueda
+                    </Link>
+                </Button>
+                </CardContent>
+            </Card>
           )}
         </div>
       )}
     </div>
   );
 }
+
+    
