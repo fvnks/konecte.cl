@@ -403,6 +403,69 @@ export const propertyInquiryFormSchema = z.object({
 });
 export type PropertyInquiryFormValues = z.infer<typeof propertyInquiryFormSchema>;
 
+// --- Property Visits Types ---
+export type PropertyVisitStatus =
+  | 'pending_confirmation'
+  | 'confirmed'
+  | 'cancelled_by_visitor'
+  | 'cancelled_by_owner'
+  | 'rescheduled_by_owner'
+  | 'completed'
+  | 'visitor_no_show'
+  | 'owner_no_show';
+
+export const propertyVisitStatusValues: PropertyVisitStatus[] = [
+  'pending_confirmation',
+  'confirmed',
+  'cancelled_by_visitor',
+  'cancelled_by_owner',
+  'rescheduled_by_owner',
+  'completed',
+  'visitor_no_show',
+  'owner_no_show',
+];
+
+export interface PropertyVisit {
+  id: string;
+  property_id: string;
+  visitor_user_id: string;
+  property_owner_user_id: string;
+  proposed_datetime: string; // ISO string date
+  confirmed_datetime?: string | null; // ISO string date
+  status: PropertyVisitStatus;
+  visitor_notes?: string | null;
+  owner_notes?: string | null;
+  cancellation_reason?: string | null;
+  created_at: string; // ISO string date
+  updated_at: string; // ISO string date
+  // Optional joined data for display
+  property_title?: string;
+  property_slug?: string;
+  visitor_name?: string;
+  visitor_avatar_url?: string;
+  owner_name?: string;
+  owner_avatar_url?: string;
+}
+
+export const requestVisitFormSchema = z.object({
+  proposed_datetime: z.string().refine((date) => !isNaN(Date.parse(date)), {
+    message: "La fecha y hora propuestas son inválidas.",
+  }),
+  visitor_notes: z.string().max(1000, "Las notas no pueden exceder los 1000 caracteres.").optional().or(z.literal('')),
+});
+export type RequestVisitFormValues = z.infer<typeof requestVisitFormSchema>;
+
+export const updateVisitStatusFormSchema = z.object({
+  new_status: z.enum(propertyVisitStatusValues, { required_error: "El nuevo estado es requerido." }),
+  confirmed_datetime: z.string().optional().nullable().refine(
+    (date) => date === null || date === undefined || date === '' || !isNaN(Date.parse(date)), {
+    message: "La fecha confirmada es inválida si se proporciona.",
+  }),
+  owner_notes: z.string().max(1000).optional().or(z.literal('')),
+  cancellation_reason: z.string().max(500).optional().or(z.literal('')),
+});
+export type UpdateVisitStatusFormValues = z.infer<typeof updateVisitStatusFormSchema>;
+
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
 
@@ -414,5 +477,3 @@ export const placeholderUser: User = {
   role_id: 'user',
   role_name: 'Usuario'
 };
-
-
