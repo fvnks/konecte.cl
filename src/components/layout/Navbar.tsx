@@ -39,7 +39,7 @@ interface StoredUser {
   avatarUrl?: string;
 }
 
-const DEFAULT_NAVBAR_TITLE = "PropSpot"; // Fallback si siteSettings.siteTitle es nulo o vacío
+const DEFAULT_NAVBAR_TITLE = "PropSpot";
 
 export default function Navbar() {
   const router = useRouter();
@@ -63,7 +63,8 @@ export default function Navbar() {
       setSiteSettings(settings);
     } catch (error) {
       console.error("Error fetching site settings for Navbar:", error);
-      setSiteSettings(null);
+      // En caso de error, siteSettings permanecerá null, y se usará el título por defecto.
+      setSiteSettings(null); 
     } finally {
       setIsLoadingSettings(false);
     }
@@ -109,11 +110,8 @@ export default function Navbar() {
       updateLoginStateAndUnreadCount();
 
       const handleStorageChange = (event: StorageEvent | Event) => {
-        // Check if the event is a CustomEvent and has the correct detail key
         const eventIsCustomForLogin = event.type === 'storage' && (event instanceof CustomEvent) && event.detail?.key === 'loggedInUser';
-        // Check if the event is a standard StorageEvent for 'loggedInUser'
         const eventIsStorageAPI = event instanceof StorageEvent && event.key === 'loggedInUser';
-        // Check for messagesUpdated custom event
         const eventIsMessagesUpdated = event.type === 'messagesUpdated';
 
         if (eventIsCustomForLogin || eventIsStorageAPI || eventIsMessagesUpdated) {
@@ -121,9 +119,8 @@ export default function Navbar() {
         }
       };
       
-      window.addEventListener('storage', handleStorageChange); // For other tabs
-      window.addEventListener('messagesUpdated', handleStorageChange); // Custom event for same-tab updates
-      // Also listen to our custom 'storage' event for same-tab updates from logout/login actions
+      window.addEventListener('storage', handleStorageChange); 
+      window.addEventListener('messagesUpdated', handleStorageChange); 
       window.addEventListener('storage', handleStorageChange  as EventListener);
 
 
@@ -142,7 +139,6 @@ export default function Navbar() {
     toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
     router.push('/');
     if (isMobileMenuOpen) setIsMobileMenuOpen(false);
-    // Dispatch a custom event to notify other components/tabs if necessary
     window.dispatchEvent(new CustomEvent('storage', { detail: { key: 'loggedInUser' } }));
   };
 
@@ -173,29 +169,52 @@ export default function Navbar() {
   );
   
   const siteTitleForDisplay = siteSettings?.siteTitle || DEFAULT_NAVBAR_TITLE;
-  const logoDisplay = siteSettings?.logoUrl ? (
-    <Image 
-      src={siteSettings.logoUrl} 
-      alt={siteTitleForDisplay} 
-      width={140} 
-      height={36} 
-      style={{ objectFit: 'contain', maxHeight: '36px' }} 
-      priority 
-      data-ai-hint="logo empresa"
-    />
-  ) : (
-    <>
-      <Home className="h-7 w-7 text-primary" />
-      <span className="text-2xl font-bold font-headline text-primary">{siteTitleForDisplay}</span>
-    </>
-  );
   
-  const logoPlaceholder = (
-    <div className="flex items-center gap-2">
-      <Skeleton className="h-7 w-7 rounded-md" />
-      <Skeleton className="h-7 w-32 rounded-md" />
-    </div>
-  );
+  const logoDisplayContent = () => {
+    if (isLoadingSettings) {
+      return (
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-32 rounded-md" />
+        </div>
+      );
+    }
+    if (siteSettings?.logoUrl) {
+      return (
+        <Image 
+          src={siteSettings.logoUrl} 
+          alt={siteTitleForDisplay} 
+          width={140} 
+          height={36} 
+          style={{ objectFit: 'contain', maxHeight: '36px', maxWidth: '140px' }} 
+          priority 
+          data-ai-hint="logo empresa"
+          onError={(e) => {
+            // Fallback a título si el logo no carga
+            const target = e.target as HTMLImageElement;
+            const parent = target.parentElement;
+            if (parent) {
+              const textNode = document.createTextNode(siteTitleForDisplay);
+              const span = document.createElement('span');
+              span.className = "text-2xl font-bold font-headline text-primary"; // Aplicar estilo de título
+              const homeIcon = document.createElement('span'); // Para el icono Home si es necesario
+              homeIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-7 w-7 text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
+              parent.insertBefore(homeIcon, target);
+              parent.insertBefore(span, target);
+              span.appendChild(textNode);
+            }
+            target.style.display = 'none';
+          }}
+        />
+      );
+    }
+    return (
+      <>
+        <Home className="h-7 w-7 text-primary" />
+        <span className="text-2xl font-bold font-headline text-primary">{siteTitleForDisplay}</span>
+      </>
+    );
+  };
 
   const MobileMenuLink = ({ href, icon, label, closeMenu, showBadge, badgeCount }: { href: string; icon: React.ReactNode; label: string; closeMenu?: () => void; showBadge?: boolean; badgeCount?: number; }) => (
     <Button variant="ghost" asChild className="justify-start text-lg px-4 py-3.5 w-full hover:bg-primary/10 hover:text-primary" onClick={closeMenu}>
@@ -218,17 +237,17 @@ export default function Navbar() {
 
   return (
     <>
-      {isClient && siteSettings && !isLoadingSettings && (
+      {isClient && siteSettings && !isLoadingSettings && siteSettings.announcement_bar_is_active && (
         <AnnouncementBar settings={siteSettings} />
       )}
       {isClient && isLoadingSettings && (
-         <Skeleton className="h-10 w-full" /> // Placeholder for announcement bar loading
+         <Skeleton className="h-10 w-full" /> 
       )}
 
       <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
         <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2 shrink-0" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
-            {isClient && !isLoadingSettings ? logoDisplay : logoPlaceholder}
+            {isClient ? logoDisplayContent() : <div className="flex items-center gap-2"><Home className="h-7 w-7 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
           </Link>
 
           <nav className="hidden md:flex items-center gap-1 mx-auto">
@@ -385,7 +404,7 @@ export default function Navbar() {
                 <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 pt-5 bg-card border-l shadow-2xl">
                   <div className="px-5 pb-4 border-b">
                       <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                          {isClient && !isLoadingSettings ? logoDisplay : logoPlaceholder}
+                          {isClient ? logoDisplayContent() : <div className="flex items-center gap-2"><Home className="h-7 w-7 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
                       </Link>
                   </div>
                   <nav className="flex-grow flex flex-col gap-1 p-4 overflow-y-auto">
@@ -448,5 +467,3 @@ export default function Navbar() {
     </>
   );
 }
-
-    
