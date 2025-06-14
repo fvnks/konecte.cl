@@ -76,9 +76,9 @@ export async function requestVisitAction(
 
     await query(sql, params);
 
-    // Revalidate paths related to visits (to be created later)
     revalidatePath('/dashboard/visits');
-    // revalidatePath(`/admin/properties/${propertyId}/visits`); 
+    revalidatePath(`/admin/visits`); 
+    revalidatePath(`/properties/${visitId}`); // Assuming property slug might be visitId for revalidation logic, adjust if needed
 
     // Fetch the newly created visit to return it
     const newVisitResult = await query('SELECT * FROM property_visits WHERE id = ?', [visitId]);
@@ -97,7 +97,7 @@ export async function requestVisitAction(
 
 export async function getVisitsForUserAction(
   userId: string,
-  type: 'visitor' | 'owner' | 'all_for_user' // 'all_for_user' for an admin viewing a user's visits
+  type: 'visitor' | 'owner' | 'all_for_user'
 ): Promise<PropertyVisit[]> {
   if (!userId) return [];
 
@@ -124,11 +124,11 @@ export async function getVisitsForUserAction(
     } else if (type === 'owner') {
       sql += ' WHERE pv.property_owner_user_id = ? ORDER BY pv.proposed_datetime DESC';
       params.push(userId);
-    } else if (type === 'all_for_user') { // Example for an admin view, might need different sorting or more complex logic
+    } else if (type === 'all_for_user') { 
       sql += ' WHERE pv.visitor_user_id = ? OR pv.property_owner_user_id = ? ORDER BY pv.created_at DESC';
       params.push(userId, userId);
     } else {
-      return []; // Invalid type
+      return []; 
     }
 
     const rows = await query(sql, params);
@@ -146,7 +146,7 @@ export async function getVisitsForUserAction(
 
 export async function updateVisitStatusAction(
   visitId: string,
-  currentUserId: string, // User performing the action
+  currentUserId: string, 
   values: UpdateVisitStatusFormValues
 ): Promise<{ success: boolean; message?: string; visit?: PropertyVisit }> {
   if (!visitId || !currentUserId) {
@@ -167,15 +167,13 @@ export async function updateVisitStatusAction(
     }
     const visit = mapDbRowToPropertyVisit(visitRows[0]);
 
-    // Authorization: Only visitor or property owner can update
     const isVisitor = visit.visitor_user_id === currentUserId;
     const isOwner = visit.property_owner_user_id === currentUserId;
 
     if (!isVisitor && !isOwner) {
       return { success: false, message: "No tienes permiso para actualizar esta visita." };
     }
-
-    // Specific status transition logic
+    
     if (new_status === 'cancelled_by_visitor' && !isVisitor) {
         return { success: false, message: "Solo el visitante puede cancelar su propia solicitud de visita." };
     }
@@ -183,7 +181,6 @@ export async function updateVisitStatusAction(
         return { success: false, message: "Solo el propietario puede gestionar las visitas a su propiedad." };
     }
     
-    // Prevent visitor from confirming/rescheduling
     if (isVisitor && (new_status === 'confirmed' || new_status === 'rescheduled_by_owner')) {
         return { success: false, message: "Los visitantes no pueden confirmar ni reagendar visitas de esta manera." };
     }
@@ -199,13 +196,12 @@ export async function updateVisitStatusAction(
         updateFields.push('confirmed_datetime = ?');
         updateParams.push(new Date(confirmed_datetime));
       } else if (new_status === 'confirmed') {
-         // If confirming, and no new datetime provided, use proposed_datetime as confirmed
          updateFields.push('confirmed_datetime = ?');
          updateParams.push(new Date(visit.proposed_datetime));
       }
     }
     
-    if (owner_notes && isOwner) { // Only owner can add/update owner_notes
+    if (owner_notes && isOwner) { 
         updateFields.push('owner_notes = ?');
         updateParams.push(owner_notes);
     }
@@ -216,14 +212,14 @@ export async function updateVisitStatusAction(
     }
 
     updateFields.push('updated_at = NOW()');
-    updateParams.push(visitId); // For the WHERE clause
+    updateParams.push(visitId); 
 
     const sql = `UPDATE property_visits SET ${updateFields.join(', ')} WHERE id = ?`;
     
     await query(sql, updateParams);
 
     revalidatePath('/dashboard/visits');
-    // revalidatePath(`/admin/properties/${visit.property_id}/visits`);
+    revalidatePath(`/admin/visits`);
 
     const updatedVisitResult = await query('SELECT * FROM property_visits WHERE id = ?', [visitId]);
      if (!Array.isArray(updatedVisitResult) || updatedVisitResult.length === 0) {
@@ -267,15 +263,43 @@ export async function getVisitByIdAction(
     }
     const visit = mapDbRowToPropertyVisit(rows[0]);
 
-    // Authorization check: user must be visitor or owner
     if (visit.visitor_user_id !== currentUserId && visit.property_owner_user_id !== currentUserId) {
       console.warn(`[VisitAction] Unauthorized attempt to access visit ${visitId} by user ${currentUserId}`);
-      return null; // Or throw an error
+      return null; 
     }
 
     return visit;
   } catch (error: any) {
     console.error(`[VisitAction] Error fetching visit by ID ${visitId}:`, error);
     return null;
+  }
+}
+
+export async function getAllVisitsForAdminAction(): Promise<PropertyVisit[]> {
+  try {
+    const sql = `
+      SELECT 
+        pv.*,
+        p.title as property_title,
+        p.slug as property_slug,
+        visitor.name as visitor_name,
+        visitor.avatar_url as visitor_avatar_url,
+        owner.name as owner_name,
+        owner.avatar_url as owner_avatar_url
+      FROM property_visits pv
+      JOIN properties p ON pv.property_id = p.id
+      JOIN users visitor ON pv.visitor_user_id = visitor.id
+      JOIN users owner ON pv.property_owner_user_id = owner.id
+      ORDER BY pv.created_at DESC
+    `;
+    const rows = await query(sql);
+    if (!Array.isArray(rows)) {
+        console.error("[VisitAction Admin] Expected array from getAllVisitsForAdminAction query, got:", typeof rows);
+        return [];
+    }
+    return rows.map(mapDbRowToPropertyVisit);
+  } catch (error: any) {
+    console.error(`[VisitAction Admin] Error fetching all visits:`, error);
+    return [];
   }
 }
