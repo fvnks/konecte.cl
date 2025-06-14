@@ -425,6 +425,17 @@ export const propertyVisitStatusValues: PropertyVisitStatus[] = [
   'owner_no_show',
 ];
 
+export const PropertyVisitStatusLabels: Record<PropertyVisitStatus, string> = {
+  pending_confirmation: 'Pendiente Confirmación',
+  confirmed: 'Confirmada',
+  cancelled_by_visitor: 'Cancelada por Visitante',
+  cancelled_by_owner: 'Cancelada por Propietario',
+  rescheduled_by_owner: 'Reagendada por Propietario',
+  completed: 'Completada',
+  visitor_no_show: 'Visitante No Asistió',
+  owner_no_show: 'Propietario No Asistió',
+};
+
 export interface PropertyVisit {
   id: string;
   property_id: string;
@@ -466,6 +477,15 @@ export const updateVisitStatusFormSchema = z.object({
 });
 export type UpdateVisitStatusFormValues = z.infer<typeof updateVisitStatusFormSchema>;
 
+export type PropertyVisitAction = 
+  | 'confirm' 
+  | 'cancel_by_owner' 
+  | 'reschedule' 
+  | 'mark_completed' 
+  | 'mark_visitor_no_show' 
+  | 'mark_owner_no_show'
+  | 'cancel_by_visitor';
+
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
 
@@ -477,3 +497,6 @@ export const placeholderUser: User = {
   role_id: 'user',
   role_name: 'Usuario'
 };
+
+
+    
