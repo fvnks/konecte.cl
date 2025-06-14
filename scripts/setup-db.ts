@@ -231,7 +231,7 @@ const SQL_STATEMENTS: string[] = [
    SET landing_sections_order = '["featured_list_requests", "ai_matching", "google_sheet"]'
    WHERE id = 1 AND landing_sections_order IS NULL;`,
   
-  // contacts
+  // contacts (CRM)
   `CREATE TABLE IF NOT EXISTS contacts (
     id VARCHAR(36) PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,
@@ -250,7 +250,7 @@ const SQL_STATEMENTS: string[] = [
     INDEX idx_contacts_user_id_email (user_id, email)
   );`,
 
-  // contact_interactions
+  // contact_interactions (CRM)
   `CREATE TABLE IF NOT EXISTS contact_interactions (
     id VARCHAR(36) PRIMARY KEY,
     contact_id VARCHAR(36) NOT NULL,
@@ -379,6 +379,10 @@ async function setupDatabase() {
             } else {
                  console.log(`  -> Sentencia UPDATE procesada.`);
             }
+        } else if (stmt.trim().toUpperCase().startsWith('CREATE INDEX')) {
+            const indexNameMatch = stmt.match(/CREATE INDEX IF NOT EXISTS (\w+)/i) || stmt.match(/INDEX (\w+)/i);
+            const indexName = indexNameMatch ? indexNameMatch[1] : 'desconocido';
+            console.log(`  -> Índice ${indexName} procesado.`);
         }
       } catch (err: any) {
         if (err.code === 'ER_DUP_KEYNAME' && stmt.toUpperCase().includes('CREATE INDEX')) {
@@ -409,7 +413,9 @@ async function setupDatabase() {
     const adminRoleId = 'admin'; 
 
     const existingAdminResult = await pool.query('SELECT id FROM users WHERE email = ?', [adminEmail]);
-    const existingAdmin = Array.isArray(existingAdminResult) ? existingAdminResult[0] : []; // MySQL/Promise returns [rows, fields]
+    // MySQL/Promise returns [rows, fields]
+    const existingAdmin = Array.isArray(existingAdminResult) && Array.isArray(existingAdminResult[0]) ? existingAdminResult[0] : [];
+
 
     if (Array.isArray(existingAdmin) && existingAdmin.length > 0) {
       console.log(`  ⚠️  El usuario administrador ${adminEmail} ya existe.`);
