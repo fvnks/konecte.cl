@@ -494,12 +494,12 @@ export const updateVisitStatusFormSchema = z.object({
 });
 export type UpdateVisitStatusFormValues = z.infer<typeof updateVisitStatusFormSchema>;
 
-export type PropertyVisitAction = 
-  | 'confirm' 
-  | 'cancel_by_owner' 
-  | 'reschedule' 
-  | 'mark_completed' 
-  | 'mark_visitor_no_show' 
+export type PropertyVisitAction =
+  | 'confirm'
+  | 'cancel_by_owner'
+  | 'reschedule'
+  | 'mark_completed'
+  | 'mark_visitor_no_show'
   | 'mark_owner_no_show'
   | 'cancel_by_visitor';
 
@@ -531,7 +531,7 @@ export const listingTypeValues = ['property', 'request'] as const;
 export type ListingType = (typeof listingTypeValues)[number];
 
 // Renamed this to avoid conflict with CRM's InteractionType
-export const listingInteractionTypeValues = ['like', 'dislike', 'skip'] as const; 
+export const listingInteractionTypeValues = ['like', 'dislike', 'skip'] as const;
 export type InteractionTypeEnum = (typeof listingInteractionTypeValues)[number];
 
 export interface UserListingInteraction {
@@ -546,10 +546,24 @@ export interface UserListingInteraction {
 export const recordInteractionSchema = z.object({
   listingId: z.string().uuid("ID de listado inválido."),
   listingType: z.enum(listingTypeValues, { required_error: "Tipo de listado requerido." }),
-  interactionType: z.enum(listingInteractionTypeValues, { required_error: "Tipo de interacción requerido." }), // Use renamed constant
+  interactionType: z.enum(listingInteractionTypeValues, { required_error: "Tipo de interacción requerido." }),
 });
 export type RecordInteractionValues = z.infer<typeof recordInteractionSchema>;
 
+// Type for the return value of recordUserListingInteractionAction
+export interface RecordInteractionResult {
+  success: boolean;
+  message?: string;
+  interaction?: UserListingInteraction;
+  matchDetails?: {
+    matchFound: boolean;
+    conversationId?: string;
+    userAName?: string; // Liker
+    userBName?: string; // Liked listing owner
+    likedListingTitle?: string; // Title of the property/request that received the like
+    reciprocalListingTitle?: string; // Title of the other listing that completed the match
+  }
+}
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
 

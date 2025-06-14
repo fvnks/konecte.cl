@@ -20,11 +20,13 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { findListingsForFreeTextSearch, type FindListingsForFreeTextSearchInput, type FindListingsForFreeTextSearchOutput, type FoundMatch } from '@/ai/flows/find-listings-for-free-text-search-flow';
-import { recordUserListingInteractionAction } from '@/actions/interactionActions'; // Import the new action
-import type { User as StoredUser, InteractionTypeEnum } from '@/lib/types'; // Import StoredUser
+import { recordUserListingInteractionAction } from '@/actions/interactionActions';
+import type { User as StoredUser, InteractionTypeEnum, PropertyListing, SearchRequest } from '@/lib/types';
 import { useState, useEffect } from "react";
-import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, PlusCircle, ThumbsUp, ThumbsDown, UserCircle as UserIconLucide } from "lucide-react";
+import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, PlusCircle, ThumbsUp, ThumbsDown, UserCircle as UserIconLucide, MessagesSquare, HeartHandshake } from "lucide-react";
 import FeaturedPropertyCard from '@/components/property/FeaturedPropertyCard';
+// RequestCard no se usará directamente aquí ya que solo mostraremos propiedades
+// import RequestCard from '@/components/request/RequestCard';
 
 const formSchema = z.object({
   userSearchDescription: z.string().min(10, "La descripción de tu búsqueda debe tener al menos 10 caracteres.").max(1000, "Máximo 1000 caracteres."),
@@ -35,11 +37,14 @@ type AiMatchingFormValues = z.infer<typeof formSchema>;
 export default function InteractiveAIMatching() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [filteredProperties, setFilteredProperties] = useState<FoundMatch[]>([]);
+  const [aiSearchResults, setAiSearchResults] = useState<FoundMatch[]>([]); // Raw results from AI
+  const [propertiesToShow, setPropertiesToShow] = useState<FoundMatch[]>([]); // Filtered properties
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
+  const [isInteracting, setIsInteracting] = useState(false);
+
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -61,7 +66,8 @@ export default function InteractiveAIMatching() {
 
   async function onSubmit(values: AiMatchingFormValues) {
     setIsLoading(true);
-    setFilteredProperties([]);
+    setAiSearchResults([]);
+    setPropertiesToShow([]);
     setError(null);
     setHasSearched(true);
     setCurrentIndex(0);
@@ -70,14 +76,16 @@ export default function InteractiveAIMatching() {
         userSearchDescription: values.userSearchDescription,
       };
       const result = await findListingsForFreeTextSearch(input);
+      setAiSearchResults(result.matches); // Store all matches
       
-      const propertiesOnly = result.matches.filter(match => match.type === 'property');
-      setFilteredProperties(propertiesOnly);
+      // Filter to show only properties
+      const onlyProperties = result.matches.filter(match => match.type === 'property');
+      setPropertiesToShow(onlyProperties);
 
-      if (propertiesOnly.length > 0) {
+      if (onlyProperties.length > 0) {
         toast({
           title: "Búsqueda IA Completada",
-          description: `Se encontraron ${propertiesOnly.length} propiedad(es) sugerida(s). ¡Ahora puedes indicar cuáles te gustan!`,
+          description: `Se encontraron ${onlyProperties.length} propiedad(es) sugerida(s). ¡Ahora puedes indicar cuáles te gustan!`,
         });
       } else {
         toast({
@@ -109,31 +117,56 @@ export default function InteractiveAIMatching() {
       });
       return;
     }
-
+    setIsInteracting(true);
     try {
-      await recordUserListingInteractionAction(loggedInUser.id, {
+      const result = await recordUserListingInteractionAction(loggedInUser.id, {
         listingId,
-        listingType: 'property', // Since we are only showing properties here
+        listingType: 'property',
         interactionType,
       });
-      toast({
-        title: "Preferencia Guardada",
-        description: `Tu preferencia (${interactionType === 'like' ? 'Me gusta' : 'No me gusta'}) ha sido registrada.`,
-        duration: 2000,
-      });
+
+      if (result.success) {
+        if (result.matchDetails?.matchFound) {
+            toast({
+                title: "¡Es un Match Mutuo!",
+                description: `Se ha iniciado una conversación con ${result.matchDetails.userBName} sobre "${result.matchDetails.likedListingTitle}" y "${result.matchDetails.reciprocalListingTitle}".`,
+                duration: 7000,
+                action: (
+                    <Button variant="link" size="sm" asChild>
+                        <Link href={`/dashboard/messages/${result.matchDetails.conversationId}`}>
+                            Ver Chat
+                        </Link>
+                    </Button>
+                )
+            });
+        } else {
+            toast({
+                title: "Preferencia Guardada",
+                description: `Tu preferencia (${interactionType === 'like' ? 'Me gusta' : 'No me gusta'}) ha sido registrada.`,
+                duration: 2000,
+            });
+        }
+      } else {
+         toast({
+            title: "Error",
+            description: result.message || `No se pudo guardar tu preferencia.`,
+            variant: "destructive",
+        });
+      }
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: "Error Inesperado",
         description: `No se pudo guardar tu preferencia: ${error.message}`,
         variant: "destructive",
       });
+    } finally {
+       setIsInteracting(false);
     }
 
-    // Avanzar a la siguiente tarjeta
     setCurrentIndex(prevIndex => prevIndex + 1);
   };
 
-  const currentPropertyMatch = filteredProperties[currentIndex];
+  const currentPropertyMatch = propertiesToShow[currentIndex];
 
   return (
     <div className="space-y-6">
@@ -144,11 +177,11 @@ export default function InteractiveAIMatching() {
             name="userSearchDescription"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-md font-medium">Describe lo que buscas</FormLabel>
+                <FormLabel className="text-md font-medium">Describe la propiedad que buscas:</FormLabel>
                 <FormControl>
                   <Textarea
                     placeholder="Ej: Busco un departamento para arriendo en la V Región, mínimo 2 dormitorios, que acepte mascotas y tenga buena conexión a internet. Presupuesto máximo $700.000..."
-                    className="min-h-[120px]"
+                    className="min-h-[100px]"
                     {...field}
                     disabled={isLoading}
                   />
@@ -201,7 +234,7 @@ export default function InteractiveAIMatching() {
                 <div className="w-full flex justify-between items-start mb-2">
                     <Badge variant={'default'} className="capitalize text-xs">
                     <Building className="mr-1.5 h-3.5 w-3.5"/>
-                    Propiedad Sugerida
+                    Propiedad Sugerida ({currentIndex + 1} de {propertiesToShow.length})
                     </Badge>
                     <div className="text-right">
                     <span className="text-lg font-bold text-accent">
@@ -212,7 +245,7 @@ export default function InteractiveAIMatching() {
                 </div>
                 <Progress value={currentPropertyMatch.matchScore * 100} className="w-full h-1.5 [&>div]:bg-accent mb-3" />
                 
-                <FeaturedPropertyCard property={currentPropertyMatch.item as any} />
+                <FeaturedPropertyCard property={currentPropertyMatch.item as PropertyListing} />
                 
                 <div className="mt-3 pt-3 border-t border-dashed w-full">
                     <h4 className="text-xs font-semibold flex items-center mb-1 text-muted-foreground">
@@ -229,20 +262,20 @@ export default function InteractiveAIMatching() {
                         size="lg" 
                         className="text-red-500 border-red-500 hover:bg-red-50 hover:text-red-600 h-12 w-28"
                         onClick={() => handleInteraction(currentPropertyMatch.item.id, 'dislike')}
-                        disabled={!loggedInUser}
+                        disabled={!loggedInUser || isInteracting}
                         title={!loggedInUser ? "Inicia sesión para interactuar" : "No me gusta"}
                     >
-                        <ThumbsDown className="h-6 w-6" />
+                        {isInteracting ? <Loader2 className="h-6 w-6 animate-spin"/> : <ThumbsDown className="h-6 w-6" />}
                     </Button>
                     <Button 
                         variant="outline" 
                         size="lg" 
                         className="text-green-500 border-green-500 hover:bg-green-50 hover:text-green-600 h-12 w-28"
                         onClick={() => handleInteraction(currentPropertyMatch.item.id, 'like')}
-                        disabled={!loggedInUser}
+                        disabled={!loggedInUser || isInteracting}
                         title={!loggedInUser ? "Inicia sesión para interactuar" : "Me gusta"}
                     >
-                        <ThumbsUp className="h-6 w-6" />
+                         {isInteracting ? <Loader2 className="h-6 w-6 animate-spin"/> : <ThumbsUp className="h-6 w-6" />}
                     </Button>
                 </div>
                 {!loggedInUser && (
@@ -252,15 +285,18 @@ export default function InteractiveAIMatching() {
                     </p>
                 )}
             </Card>
-          ) : ( // No hay más propiedades en la lista actual O la lista inicial estaba vacía
+          ) : (
             <CardContent className="px-0 pt-4 text-center">
+              <HeartHandshake className="mx-auto h-16 w-16 text-primary mb-4" />
+              <h3 className="text-xl font-semibold mb-2">
+                {propertiesToShow.length > 0 && currentIndex >= propertiesToShow.length 
+                  ? "¡Has revisado todas las sugerencias!" 
+                  : "No encontramos propiedades para tu búsqueda."}
+              </h3>
               <p className="text-muted-foreground text-base mb-4">
-                {filteredProperties.length > 0 && currentIndex >= filteredProperties.length 
-                  ? "Has revisado todas las sugerencias de IA para esta búsqueda." 
-                  : "No encontramos propiedades que coincidan con tu descripción en este momento."}
-              </p>
-              <p className="text-sm text-muted-foreground mb-3">
-                Puedes intentar reformular tu búsqueda o publicarla para que otros usuarios y corredores puedan encontrarla y ofrecerte propiedades.
+                {propertiesToShow.length > 0 && currentIndex >= propertiesToShow.length 
+                  ? "Esperamos que hayas encontrado algo interesante. Puedes refinar tu búsqueda o publicarla." 
+                  : "Intenta ser más específico o publica tu búsqueda para que otros te encuentren."}
               </p>
               <Button asChild variant="default" size="lg">
                 <Link href="/requests/submit">
@@ -275,6 +311,3 @@ export default function InteractiveAIMatching() {
     </div>
   );
 }
-
-
-    
