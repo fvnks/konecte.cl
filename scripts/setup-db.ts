@@ -98,6 +98,8 @@ const SQL_STATEMENTS: string[] = [
     features JSON,
     upvotes INT DEFAULT 0,
     comments_count INT DEFAULT 0,
+    views_count INT DEFAULT 0,
+    inquiries_count INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -355,7 +357,42 @@ const SQL_STATEMENTS: string[] = [
     ('auth_signup_terms_label_part3', 'auth_signup', 'Texto de términos (parte 3)', '. *', '. *'),
     ('auth_signup_button_text', 'auth_signup', 'Texto del botón de registro', 'Registrarse', 'Registrarse'),
     ('auth_signup_signin_prompt', 'auth_signup', 'Texto del prompt para iniciar sesión', '¿Ya tienes una cuenta?', '¿Ya tienes una cuenta?'),
-    ('auth_signup_signin_link_text', 'auth_signup', 'Texto del enlace para iniciar sesión', 'Inicia sesión', 'Inicia sesión');`
+    ('auth_signup_signin_link_text', 'auth_signup', 'Texto del enlace para iniciar sesión', 'Inicia sesión', 'Inicia sesión');`,
+  
+  // --- Lead Tracking Tables ---
+  `CREATE TABLE IF NOT EXISTS property_views (
+    id VARCHAR(36) PRIMARY KEY,
+    property_id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) DEFAULT NULL,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    user_agent TEXT DEFAULT NULL,
+    viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_property_views_property_id ON property_views(property_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_property_views_user_id ON property_views(user_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_property_views_viewed_at ON property_views(viewed_at);`,
+
+  `CREATE TABLE IF NOT EXISTS property_inquiries (
+    id VARCHAR(36) PRIMARY KEY,
+    property_id VARCHAR(36) NOT NULL,
+    property_owner_id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) DEFAULT NULL,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(50) DEFAULT NULL,
+    message TEXT NOT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+    FOREIGN KEY (property_owner_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_property_inquiries_property_id ON property_inquiries(property_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_property_inquiries_property_owner_id ON property_inquiries(property_owner_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_property_inquiries_user_id ON property_inquiries(user_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_property_inquiries_submitted_at ON property_inquiries(submitted_at);`
 ];
 
 // --- Función principal del script ---

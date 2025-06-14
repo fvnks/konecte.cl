@@ -133,6 +133,8 @@ CREATE TABLE properties (
     features JSON,                                         -- JSON array de características
     upvotes INT DEFAULT 0,
     comments_count INT DEFAULT 0,                          -- Se puede actualizar con triggers o lógica de app
+    views_count INT DEFAULT 0,                             -- Contador de vistas (actualizado por lógica de app)
+    inquiries_count INT DEFAULT 0,                         -- Contador de consultas (actualizado por lógica de app)
     is_active BOOLEAN DEFAULT TRUE,                        -- Para activar/desactivar listados
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -452,6 +454,60 @@ CREATE INDEX idx_editable_texts_page_group ON editable_texts(page_group);
 ```
 
 ---
+## Sección Seguimiento de Leads
+
+### Tabla: `property_views` (Vistas de Propiedad)
+Registra las vistas de las páginas de detalle de propiedades.
+
+```sql
+CREATE TABLE property_views (
+    id VARCHAR(36) PRIMARY KEY,
+    property_id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) DEFAULT NULL,                      -- FK a users.id (si el usuario está logueado)
+    ip_address VARCHAR(45) DEFAULT NULL,                   -- Para seguimiento anónimo básico
+    user_agent TEXT DEFAULT NULL,                          -- Para análisis
+    viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL -- Si se elimina el usuario, la vista permanece anónima
+);
+
+-- Índices
+CREATE INDEX idx_property_views_property_id ON property_views(property_id);
+CREATE INDEX idx_property_views_user_id ON property_views(user_id);
+CREATE INDEX idx_property_views_viewed_at ON property_views(viewed_at);
+```
+
+### Tabla: `property_inquiries` (Consultas sobre Propiedades)
+Almacena las consultas realizadas a través del formulario de contacto de una propiedad.
+
+```sql
+CREATE TABLE property_inquiries (
+    id VARCHAR(36) PRIMARY KEY,
+    property_id VARCHAR(36) NOT NULL,
+    property_owner_id VARCHAR(36) NOT NULL,                -- FK a users.id (dueño de la propiedad al momento de la consulta)
+    user_id VARCHAR(36) DEFAULT NULL,                      -- FK a users.id (si el que consulta está logueado)
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(50) DEFAULT NULL,
+    message TEXT NOT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN DEFAULT FALSE,                         -- Para que el dueño de la propiedad marque como leída
+
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+    FOREIGN KEY (property_owner_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Índices
+CREATE INDEX idx_property_inquiries_property_id ON property_inquiries(property_id);
+CREATE INDEX idx_property_inquiries_property_owner_id ON property_inquiries(property_owner_id);
+CREATE INDEX idx_property_inquiries_user_id ON property_inquiries(user_id);
+CREATE INDEX idx_property_inquiries_submitted_at ON property_inquiries(submitted_at);
+```
+
+---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
 
 
+```

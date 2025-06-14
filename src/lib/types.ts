@@ -63,6 +63,8 @@ export interface PropertyListing {
   slug: string;
   upvotes: number;
   commentsCount: number;
+  views_count?: number; // Añadido
+  inquiries_count?: number; // Añadido
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -368,6 +370,37 @@ export interface EditableText {
   created_at?: string;
   updated_at?: string;
 }
+
+// --- Lead Tracking Types ---
+export interface PropertyView {
+  id: string;
+  property_id: string;
+  user_id?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  viewed_at: string; // ISO string date
+}
+
+export interface PropertyInquiry {
+  id: string;
+  property_id: string;
+  property_owner_id: string; // ID del dueño de la propiedad
+  user_id?: string | null; // ID del usuario que consulta, si está logueado
+  name: string;
+  email: string;
+  phone?: string | null;
+  message: string;
+  submitted_at: string; // ISO string date
+  is_read: boolean;
+}
+
+export const propertyInquiryFormSchema = z.object({
+  name: z.string().min(2, "El nombre es requerido.").max(100),
+  email: z.string().email("Correo electrónico inválido."),
+  phone: z.string().max(20).optional().or(z.literal('')),
+  message: z.string().min(10, "El mensaje debe tener al menos 10 caracteres.").max(1000),
+});
+export type PropertyInquiryFormValues = z.infer<typeof propertyInquiryFormSchema>;
 
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
