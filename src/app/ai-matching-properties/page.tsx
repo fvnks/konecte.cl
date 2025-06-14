@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { findMatchingPropertiesForRequest, type FindMatchingPropertiesInput, type FindMatchingPropertiesOutput, type PropertyMatchResult } from '@/ai/flows/find-matching-properties-flow';
-import { useState, useEffect, useCallback, Suspense } from "react"; // Added Suspense
+import { useState, useEffect, useCallback, Suspense } from "react"; 
 import { useSearchParams } from 'next/navigation';
 import { Loader2, Sparkles, Percent, MessageSquareText, AlertTriangle, Building, FileSearch } from "lucide-react";
 
@@ -96,10 +96,10 @@ function AiMatchPropertiesPageContent() {
         <CardHeader>
           <CardTitle className="text-3xl font-headline text-center flex items-center justify-center">
             <Building className="h-8 w-8 mr-3 text-primary" />
-            Buscar Propiedades Coincidentes (IA)
+            Encontrar Propiedades para mi Solicitud (IA)
           </CardTitle>
           <CardDescription className="text-center text-lg">
-            Ingresa el ID de una solicitud de búsqueda y nuestra IA buscará las propiedades que mejor coincidan.
+            Ingresa el ID de una solicitud de búsqueda (previamente creada en konecte) y nuestra IA buscará las propiedades listadas en la plataforma que mejor coincidan.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -110,16 +110,16 @@ function AiMatchPropertiesPageContent() {
                 name="requestId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-lg">ID de la Solicitud</FormLabel>
+                    <FormLabel className="text-lg">ID de tu Solicitud</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Pega aquí el ID (UUID) de la solicitud a analizar..."
+                        placeholder="Pega aquí el ID (UUID) de tu solicitud..."
                         {...field}
                         disabled={isLoading}
                       />
                     </FormControl>
                     <FormDescription>
-                      Puedes obtener el ID de la solicitud desde el panel de administración o la URL de la solicitud.
+                      Puedes obtener el ID desde <Link href="/requests" className="text-primary hover:underline">tus solicitudes publicadas</Link> o el panel de administración.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -169,7 +169,7 @@ function AiMatchPropertiesPageContent() {
           <CardHeader>
             <CardTitle className="text-2xl font-headline flex items-center">
               <FileSearch className="h-7 w-7 mr-3 text-accent" />
-              Resultados para la Solicitud: <Link href={`/requests/${searchResult.requestSlug}`} className="text-primary hover:underline ml-2">{searchResult.requestName}</Link>
+              Propiedades Sugeridas para: <Link href={`/requests/${searchResult.requestSlug}`} className="text-primary hover:underline ml-2">{searchResult.requestName}</Link>
             </CardTitle>
              {searchResult.matches.length === 0 && (
                 <CardDescription className="text-base">
@@ -227,3 +227,4 @@ export default function AiMatchPropertiesPage() {
     </Suspense>
   );
 }
+

@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { findMatchingRequestsForProperty, type FindMatchingRequestsInput, type FindMatchingRequestsOutput, type MatchResult } from '@/ai/flows/find-matching-requests-flow';
-import { useState, useEffect, useCallback, Suspense } from "react"; // Added Suspense
+import { useState, useEffect, useCallback, Suspense } from "react"; 
 import { useSearchParams } from 'next/navigation';
 import { Loader2, Sparkles, Percent, MessageSquareText, AlertTriangle, SearchCheck, Building } from "lucide-react";
 
@@ -97,10 +97,10 @@ function AiMatchSearchPageContent() {
         <CardHeader>
           <CardTitle className="text-3xl font-headline text-center flex items-center justify-center">
             <SearchCheck className="h-8 w-8 mr-3 text-primary" />
-            Buscar Solicitudes Coincidentes (IA)
+            Encontrar Solicitudes para mi Propiedad (IA)
           </CardTitle>
           <CardDescription className="text-center text-lg">
-            Ingresa el ID de una propiedad y nuestra IA buscará las solicitudes de usuarios que mejor coincidan.
+            Ingresa el ID de una propiedad (previamente creada en konecte) y nuestra IA buscará las solicitudes de usuarios que mejor coincidan.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -111,16 +111,16 @@ function AiMatchSearchPageContent() {
                 name="propertyId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-lg">ID de la Propiedad</FormLabel>
+                    <FormLabel className="text-lg">ID de tu Propiedad</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Pega aquí el ID (UUID) de la propiedad a analizar..."
+                        placeholder="Pega aquí el ID (UUID) de tu propiedad..."
                         {...field}
                         disabled={isLoading}
                       />
                     </FormControl>
                     <FormDescription>
-                      Puedes obtener el ID de la propiedad desde el panel de administración o la URL (si está configurada).
+                       Puedes obtener el ID desde <Link href="/properties" className="text-primary hover:underline">tus propiedades publicadas</Link> o el panel de administración.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -170,7 +170,7 @@ function AiMatchSearchPageContent() {
           <CardHeader>
             <CardTitle className="text-2xl font-headline flex items-center">
               <Building className="h-7 w-7 mr-3 text-accent" />
-              Resultados para la Propiedad: <Link href={`/properties/${searchResult.propertySlug}`} className="text-primary hover:underline ml-2">{searchResult.propertyName}</Link>
+              Solicitudes Sugeridas para: <Link href={`/properties/${searchResult.propertySlug}`} className="text-primary hover:underline ml-2">{searchResult.propertyName}</Link>
             </CardTitle>
              {searchResult.matches.length === 0 && (
                 <CardDescription className="text-base">
@@ -228,3 +228,4 @@ export default function AiMatchSearchPage() {
     </Suspense>
   );
 }
+

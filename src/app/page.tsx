@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, DatabaseZap, ArrowRight } from "lucide-react";
+import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, DatabaseZap, ArrowRight, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
 import type { PropertyListing, SearchRequest, LandingSectionKey } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
@@ -10,7 +10,7 @@ import { getPropertiesAction } from "@/actions/propertyActions";
 import { getRequestsAction } from "@/actions/requestActions";
 import { getSiteSettingsAction } from "@/actions/siteSettingsActions";
 import { getEditableTextsByGroupAction } from '@/actions/editableTextActions'; // Importar la acción
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable"; 
 import FeaturedListingsClient from '@/components/landing/FeaturedListingsClient';
 import InteractiveAIMatching from '@/components/landing/InteractiveAIMatching';
@@ -36,14 +36,30 @@ function AIMatchingSection() {
       <CardHeader className="p-6 md:p-8">
         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
             <Brain className="h-8 w-8 mr-3 text-primary" />
-            Búsqueda Inteligente con IA
+            Prueba Nuestra IA de Emparejamiento
         </CardTitle>
          <CardDescription className="text-lg text-muted-foreground mt-1">
-              Ingresa los detalles de una propiedad y una solicitud de búsqueda para que nuestra IA evalúe su compatibilidad.
+              Pega la descripción de una propiedad y una solicitud de búsqueda para que nuestra IA evalúe su compatibilidad. Ideal para pruebas rápidas o comparaciones específicas.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 md:p-8 pt-0 md:pt-0">
           <InteractiveAIMatching />
+          <div className="mt-6 text-sm text-muted-foreground space-y-2 pt-4 border-t">
+            <p className="flex items-center gap-2">
+              <LinkIcon className="h-4 w-4 text-primary" />
+              <strong>¿Buscas propiedades para una solicitud ya publicada?</strong>
+              <Button variant="link" asChild className="p-0 h-auto">
+                <Link href="/ai-matching-properties">Usa nuestra herramienta de búsqueda de propiedades para solicitudes (IA)</Link>
+              </Button>
+            </p>
+            <p className="flex items-center gap-2">
+              <LinkIcon className="h-4 w-4 text-primary" />
+              <strong>¿Tienes una propiedad y buscas solicitudes compatibles?</strong>
+              <Button variant="link" asChild className="p-0 h-auto">
+                <Link href="/ai-matching">Prueba la búsqueda de solicitudes para propiedades (IA)</Link>
+              </Button>
+            </p>
+          </div>
       </CardContent>
     </Card>
   );
