@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'PropSpot - Encuentra Tu Próxima Propiedad',
+  title: 'konecte - Encuentra Tu Próxima Propiedad',
   description: 'Descubre, publica y comenta propiedades en arriendo o venta.',
   // Explicitly set icon types to empty arrays
   // to prevent Next.js from looking for default files in src/app/
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
   // Opcional: añadir Open Graph y Twitter card metadata para mejor sharing
   // openGraph: {
-  //   title: 'PropSpot',
+  //   title: 'konecte',
   //   description: 'Tu plataforma inmobiliaria moderna.',
   //   images: ['/og-image.png'], // Debes crear esta imagen
   // },

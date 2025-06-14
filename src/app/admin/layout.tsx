@@ -62,7 +62,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     router.push('/');
   };
 
-  const adminName = adminUser?.name || 'Admin PropSpot';
+  const adminName = adminUser?.name || 'Admin konecte';
   const adminAvatarUrl = adminUser?.avatarUrl || `https://placehold.co/40x40.png?text=${adminName.substring(0,1)}`;
   const adminAvatarFallback = adminName.substring(0,1).toUpperCase();
 
@@ -75,7 +75,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
                 <Home className="h-7 w-7 text-primary" />
             </div>
-            <span className="text-xl font-bold font-headline text-foreground group-hover:text-primary transition-colors">PropSpot Admin</span>
+            <span className="text-xl font-bold font-headline text-foreground group-hover:text-primary transition-colors">konecte Admin</span>
           </Link>
         </div>
         

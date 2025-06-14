@@ -64,7 +64,7 @@ const formSchema = z.object({
 
 type SiteSettingsFormValues = z.infer<typeof formSchema>;
 
-const DEFAULT_FALLBACK_TITLE = 'PropSpot - Encuentra Tu Próxima Propiedad';
+const DEFAULT_FALLBACK_TITLE = 'konecte - Encuentra Tu Próxima Propiedad';
 const DEFAULT_SECTIONS_ORDER: LandingSectionKeyType[] = ["featured_list_requests", "ai_matching", "google_sheet"];
 const DEFAULT_ANNOUNCEMENT_BG_COLOR = '#FFB74D';
 const DEFAULT_ANNOUNCEMENT_TEXT_COLOR = '#18181b';

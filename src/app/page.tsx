@@ -137,7 +137,7 @@ async function GoogleSheetDataSection() {
 
 // --- HomePage Component ---
 const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "ai_matching", "google_sheet"];
-const DEFAULT_HERO_TITLE = "Encuentra Tu Espacio Ideal en PropSpot";
+const DEFAULT_HERO_TITLE = "Encuentra Tu Espacio Ideal en konecte";
 const DEFAULT_HERO_SUBTITLE = "Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!";
 const DEFAULT_SEARCH_PLACEHOLDER = "Buscar por ubicación, tipo, características...";
 const DEFAULT_PUBLISH_PROPERTY_BUTTON = "Publicar Propiedad";

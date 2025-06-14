@@ -1,8 +1,8 @@
 
 
-# Esquema de la Base de Datos PropSpot (MySQL)
+# Esquema de la Base de Datos konecte (MySQL)
 
-Este documento describe la estructura propuesta para las tablas de la base de datos de PropSpot.
+Este documento describe la estructura propuesta para las tablas de la base de datos de konecte.
 A medida que la aplicación evolucione, este esquema se actualizará.
 
 **Convenciones:**
@@ -103,7 +103,7 @@ CREATE INDEX idx_users_phone_number ON users(phone_number);
 -- El hash es: $2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS
 -- Asegúrate de que el rol 'admin' exista en la tabla 'roles'.
 -- INSERT INTO users (id, name, email, password_hash, role_id) VALUES 
--- (UUID(), 'Admin PropSpot', 'admin@propspot.cl', '$2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS', 'admin');
+-- (UUID(), 'Admin konecte', 'admin@konecte.cl', '$2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS', 'admin');
 ```
 
 ---
@@ -261,7 +261,7 @@ Almacena configuraciones globales del sitio, como título, logo y visibilidad de
 ```sql
 CREATE TABLE site_settings (
     id INT PRIMARY KEY DEFAULT 1,
-    site_title VARCHAR(255) DEFAULT 'PropSpot - Encuentra Tu Próxima Propiedad',
+    site_title VARCHAR(255) DEFAULT 'konecte - Encuentra Tu Próxima Propiedad',
     logo_url VARCHAR(2048) DEFAULT NULL,
     show_featured_listings_section BOOLEAN DEFAULT TRUE,
     show_ai_matching_section BOOLEAN DEFAULT TRUE,
@@ -287,7 +287,7 @@ INSERT INTO site_settings (
 )
 VALUES (
     1, 
-    'PropSpot - Encuentra Tu Próxima Propiedad', 
+    'konecte - Encuentra Tu Próxima Propiedad', 
     NULL, 
     TRUE, 
     TRUE, 
@@ -323,18 +323,18 @@ WHERE id = 1 AND landing_sections_order IS NULL;
 ## Sección CRM
 
 ### Tabla: `contacts` (Contactos del CRM)
-Almacena la información de los contactos gestionados por los usuarios. Cada contacto pertenece a un `user` de PropSpot.
+Almacena la información de los contactos gestionados por los usuarios. Cada contacto pertenece a un `user` de konecte.
 
 ```sql
 CREATE TABLE contacts (
     id VARCHAR(36) PRIMARY KEY,                          -- UUID
-    user_id VARCHAR(36) NOT NULL,                        -- FK a users.id (El usuario de PropSpot dueño de este contacto)
+    user_id VARCHAR(36) NOT NULL,                        -- FK a users.id (El usuario de konecte dueño de este contacto)
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) DEFAULT NULL,
     phone VARCHAR(50) DEFAULT NULL,
     company_name VARCHAR(255) DEFAULT NULL,
     status ENUM('new', 'contacted', 'qualified', 'proposal_sent', 'negotiation', 'won', 'lost', 'on_hold', 'unqualified') DEFAULT 'new',
-    source VARCHAR(100) DEFAULT NULL,                    -- Origen del contacto (ej: 'Referido', 'Web PropSpot', 'Llamada entrante')
+    source VARCHAR(100) DEFAULT NULL,                    -- Origen del contacto (ej: 'Referido', 'Web konecte', 'Llamada entrante')
     notes TEXT DEFAULT NULL,
     last_contacted_at TIMESTAMP NULL DEFAULT NULL,       -- Se podría actualizar con un trigger o desde la app
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -453,7 +453,7 @@ CREATE INDEX idx_editable_texts_page_group ON editable_texts(page_group);
 -- Textos iniciales de ejemplo (se insertan a través del script setup-db.ts)
 -- Ejemplo:
 -- INSERT IGNORE INTO editable_texts (id, page_group, description, content_default, content_current) VALUES
---   ('home_hero_title', 'home', 'Título principal de la página de inicio', 'Encuentra Tu Espacio Ideal en PropSpot', 'Encuentra Tu Espacio Ideal en PropSpot'),
+--   ('home_hero_title', 'home', 'Título principal de la página de inicio', 'Encuentra Tu Espacio Ideal en konecte', 'Encuentra Tu Espacio Ideal en konecte'),
 --   ('plans_page_main_title', 'plans_page', 'Título principal de la página de planes', '¡Contratación 100% online!', '¡Contratación 100% online!');
 ```
 

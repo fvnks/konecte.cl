@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 
 const defaultTexts = {
   auth_signup_page_title: "Crear una Cuenta",
-  auth_signup_page_description: "Únete a PropSpot para listar, encontrar y discutir propiedades.",
+  auth_signup_page_description: "Únete a konecte para listar, encontrar y discutir propiedades.",
   auth_signup_name_label: "Nombre Completo *",
   auth_signup_email_label: "Correo Electrónico *",
   auth_signup_rut_label: "RUT (Empresa o Persona)",

@@ -117,7 +117,7 @@ export default function AdminDashboardPage() {
                     Panel de Administración
                 </CardTitle>
                 <CardDescription className="text-base lg:text-lg text-muted-foreground mt-1.5">
-                    Bienvenido al centro de control de PropSpot. Gestiona contenido y configuraciones.
+                    Bienvenido al centro de control de konecte. Gestiona contenido y configuraciones.
                 </CardDescription>
             </div>
           </div>
@@ -149,7 +149,7 @@ export default function AdminDashboardPage() {
                 <Home className="h-5 w-5 mr-2 text-primary" />
                 Volver al Sitio Principal
             </CardTitle>
-            <CardDescription>Navega de vuelta a la vista pública de PropSpot.</CardDescription>
+            <CardDescription>Navega de vuelta a la vista pública de konecte.</CardDescription>
         </CardHeader>
         <CardContent>
             <Button asChild variant="outline">

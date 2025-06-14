@@ -39,7 +39,7 @@ interface StoredUser {
   avatarUrl?: string;
 }
 
-const DEFAULT_NAVBAR_TITLE = "PropSpot";
+const DEFAULT_NAVBAR_TITLE = "konecte";
 
 export default function Navbar() {
   const router = useRouter();

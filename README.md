@@ -1,6 +1,6 @@
-# PropSpot - Tu Plataforma Inmobiliaria
+# konecte - Tu Plataforma Inmobiliaria
 
-Bienvenido a PropSpot, una aplicación moderna para descubrir, listar y discutir propiedades en arriendo o venta. Construida con Next.js, React, ShadCN UI, Tailwind CSS y Genkit para funcionalidades de IA.
+Bienvenido a konecte, una aplicación moderna para descubrir, listar y discutir propiedades en arriendo o venta. Construida con Next.js, React, ShadCN UI, Tailwind CSS y Genkit para funcionalidades de IA.
 
 ## Características Principales
 
@@ -86,8 +86,9 @@ Bienvenido a PropSpot, una aplicación moderna para descubrir, listar y discutir
    DB_PORT=your_mysql_port
    DB_USER=your_mysql_user
    DB_PASSWORD=your_mysql_password
-   DB_NAME=your_mysql_database_name
+   DB_NAME=your_mysql_database_name 
    ```
+   (Ejemplo para `DB_NAME`: `konecte_db`)
 4. Ejecuta el servidor de desarrollo: `npm run dev`
 5. Abre [http://localhost:9002](http://localhost:9002) en tu navegador.
 

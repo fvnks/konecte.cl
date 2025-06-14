@@ -24,7 +24,7 @@ const signInSchema = z.object({
 
 const defaultTexts = {
   auth_signin_page_title: "¡Bienvenido de Nuevo!",
-  auth_signin_page_description: "Inicia sesión para acceder a tu cuenta de PropSpot.",
+  auth_signin_page_description: "Inicia sesión para acceder a tu cuenta de konecte.",
   auth_signin_email_label: "Correo Electrónico",
   auth_signin_password_label: "Contraseña",
   auth_signin_forgot_password_link: "¿Olvidaste tu contraseña?",

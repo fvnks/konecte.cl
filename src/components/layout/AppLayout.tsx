@@ -1,3 +1,4 @@
+
 // src/components/layout/AppLayout.tsx
 'use client';
 
