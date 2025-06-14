@@ -14,9 +14,9 @@ import { z } from 'genkit';
 import { 
   propertyMatchingPrompt, 
   type PropertyMatchingInput,
-  FindListingsForFreeTextSearchInputSchema, // Import schema
-  FindListingsForFreeTextSearchOutputSchema, // Import schema
-  FoundMatchSchema // Import schema (if needed directly, or rely on output schema)
+  FindListingsForFreeTextSearchInputSchema,
+  FindListingsForFreeTextSearchOutputSchema,
+  FoundMatchSchema
 } from '@/ai/shared/property-prompts';
 import { getPropertiesAction } from '@/actions/propertyActions';
 import { getRequestsAction } from '@/actions/requestActions';
@@ -33,12 +33,17 @@ export async function findListingsForFreeTextSearch(input: FindListingsForFreeTe
   return findListingsForFreeTextSearchFlow(input);
 }
 
+// Helper to safely get string value or default
+const s = (value: any, def: string = ''): string => (value === null || value === undefined) ? def : String(value);
+const sj = (arr: string[] | undefined | null, def: string = 'ninguna'): string => (arr && arr.length > 0) ? arr.join(', ') : def;
+
+
 // The Genkit flow
 const findListingsForFreeTextSearchFlow = ai.defineFlow(
   {
     name: 'findListingsForFreeTextSearchFlow',
-    inputSchema: FindListingsForFreeTextSearchInputSchema, // Use imported schema
-    outputSchema: FindListingsForFreeTextSearchOutputSchema, // Use imported schema
+    inputSchema: FindListingsForFreeTextSearchInputSchema, 
+    outputSchema: FindListingsForFreeTextSearchOutputSchema,
   },
   async (input) => {
     const { userSearchDescription } = input;
@@ -50,17 +55,17 @@ const findListingsForFreeTextSearchFlow = ai.defineFlow(
 
     // Match against properties
     const propertyMatchPromises = activeProperties.map(async (property) => {
-      const propertyText = `${property.title}. ${property.description} Categoría: ${property.category}. Tipo: ${property.propertyType}. Precio: ${property.price} ${property.currency}. Ubicación: ${property.city}, ${property.address}. Dorms: ${property.bedrooms}, Baños: ${property.bathrooms}. Superficie: ${property.areaSqMeters}m². Características: ${property.features?.join(', ')}.`;
+      const propertyText = `Título: ${s(property.title)}. Descripción: ${s(property.description)}. Categoría: ${s(property.category)}. Tipo: ${s(property.propertyType)}. Precio: ${s(property.price)} ${s(property.currency)}. Ubicación: ${s(property.city)}, ${s(property.address)}. Dorms: ${s(property.bedrooms, 'N/A')}, Baños: ${s(property.bathrooms, 'N/A')}. Superficie: ${s(property.areaSqMeters, 'N/A')}m². Características: ${sj(property.features)}.`;
       const matchingInput: PropertyMatchingInput = {
         propertyDescription: propertyText,
         searchRequest: userSearchDescription,
       };
       try {
         const { output: matchOutput } = await propertyMatchingPrompt(matchingInput);
-        if (matchOutput && matchOutput.matchScore > 0.3) { // Threshold to reduce noise
+        if (matchOutput && matchOutput.matchScore > 0.3) { 
           allMatches.push({
             type: 'property',
-            item: property, // Pass the full property object
+            item: property, 
             matchScore: matchOutput.matchScore,
             reason: matchOutput.reason,
           });
@@ -72,19 +77,17 @@ const findListingsForFreeTextSearchFlow = ai.defineFlow(
 
     // Match against requests
     const requestMatchPromises = activeRequests.map(async (request) => {
-      // Here, we treat the user's free-text search as a "hypothetical property"
-      // and the existing request as the "search request" for the AI prompt.
-      const requestText = `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city}. Presupuesto: ${request.budgetMax}. Tipos: ${request.desiredCategories.join(', ')}. Para: ${request.desiredPropertyType.join(', ')}.`;
+      const requestText = `Título: ${s(request.title)}. Descripción: ${s(request.description)}. Busca en ${s(request.desiredLocation?.city, 'cualquier ciudad')}. Presupuesto: ${s(request.budgetMax, 'N/A')}. Tipos: ${sj(request.desiredCategories)}. Para: ${sj(request.desiredPropertyType)}.`;
       const matchingInput: PropertyMatchingInput = {
-        propertyDescription: userSearchDescription, // User's search is the "property"
-        searchRequest: requestText,              // Existing request is the "search"
+        propertyDescription: userSearchDescription, 
+        searchRequest: requestText,              
       };
       try {
         const { output: matchOutput } = await propertyMatchingPrompt(matchingInput);
-        if (matchOutput && matchOutput.matchScore > 0.3) { // Threshold
+        if (matchOutput && matchOutput.matchScore > 0.3) { 
           allMatches.push({
             type: 'request',
-            item: request, // Pass the full request object
+            item: request, 
             matchScore: matchOutput.matchScore,
             reason: matchOutput.reason,
           });
@@ -98,7 +101,7 @@ const findListingsForFreeTextSearchFlow = ai.defineFlow(
 
     allMatches.sort((a, b) => b.matchScore - a.matchScore);
 
-    return { matches: allMatches.slice(0, 10) }; // Return top 10 matches for now
+    return { matches: allMatches.slice(0, 10) }; 
   }
 );
 
