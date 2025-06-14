@@ -21,7 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { findListingsForFreeTextSearch, type FindListingsForFreeTextSearchInput, type FindListingsForFreeTextSearchOutput, type FoundMatch } from '@/ai/flows/find-listings-for-free-text-search-flow';
 import { useState } from "react";
-import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, FileSearch } from "lucide-react";
+import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, FileSearch, PlusCircle } from "lucide-react";
 import FeaturedPropertyCard from '@/components/property/FeaturedPropertyCard';
 import RequestCard from '@/components/request/RequestCard';
 
@@ -36,6 +36,7 @@ export default function InteractiveAIMatching() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<FindListingsForFreeTextSearchOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false); // Nuevo estado para saber si ya se buscó
 
   const form = useForm<AiMatchingFormValues>({
     resolver: zodResolver(formSchema),
@@ -48,6 +49,7 @@ export default function InteractiveAIMatching() {
     setIsLoading(true);
     setSearchResult(null);
     setError(null);
+    setHasSearched(true); // Marcar que se ha realizado una búsqueda
     try {
       const input: FindListingsForFreeTextSearchInput = {
         userSearchDescription: values.userSearchDescription,
@@ -62,7 +64,7 @@ export default function InteractiveAIMatching() {
       } else {
         toast({
           title: "Búsqueda IA Completada",
-          description: "No se encontraron coincidencias directas. Intenta ser más específico o más general.",
+          description: "No se encontraron coincidencias directas para tu descripción.",
           variant: "default",
         });
       }
@@ -88,7 +90,7 @@ export default function InteractiveAIMatching() {
             name="userSearchDescription"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-md font-medium">Descripción de lo que buscas</FormLabel>
+                <FormLabel className="text-md font-medium">Describe lo que buscas</FormLabel>
                 <FormControl>
                   <Textarea
                     placeholder="Ej: Busco un departamento para arriendo en la V Región, mínimo 2 dormitorios, que acepte mascotas y tenga buena conexión a internet. Presupuesto máximo $700.000..."
@@ -110,7 +112,7 @@ export default function InteractiveAIMatching() {
             ) : (
               <>
                 <Sparkles className="mr-2 h-5 w-5" />
-                Buscar Propiedades y Solicitudes con IA
+                Buscar con IA
               </>
             )}
           </Button>
@@ -138,7 +140,7 @@ export default function InteractiveAIMatching() {
         </Card>
       )}
 
-      {searchResult && !isLoading && !error && (
+      {hasSearched && searchResult && !isLoading && !error && (
         <Card className="shadow-md mt-6 animate-fade-in bg-transparent border-none">
           <CardHeader className="px-0 pt-2 pb-4">
             <CardTitle className="text-xl font-headline flex items-center">
@@ -180,10 +182,19 @@ export default function InteractiveAIMatching() {
               ))}
             </div>
           ) : (
-            <CardContent className="px-0">
-              <p className="text-muted-foreground text-center py-6">
-                No se encontraron propiedades o solicitudes que coincidan significativamente con tu descripción. Intenta ser más específico o general.
+            <CardContent className="px-0 pt-4 text-center border-t">
+              <p className="text-muted-foreground text-base mb-4">
+                No encontramos coincidencias directas para tu descripción.
               </p>
+              <p className="text-sm text-muted-foreground mb-3">
+                ¿Por qué no publicas tu búsqueda para que otros puedan encontrarla y ofrecerte propiedades?
+              </p>
+              <Button asChild variant="default" size="lg">
+                <Link href="/requests/submit">
+                  <PlusCircle className="mr-2 h-5 w-5" />
+                  Publicar Mi Búsqueda
+                </Link>
+              </Button>
             </CardContent>
           )}
            {searchResult.matches.length > 0 && (
