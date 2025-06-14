@@ -1,4 +1,3 @@
-
 // src/components/layout/Navbar.tsx
 'use client';
 
@@ -26,7 +25,7 @@ const navItems = [
   { href: '/properties', label: 'Propiedades', icon: <Briefcase /> },
   { href: '/requests', label: 'Solicitudes', icon: <Search /> },
   { href: '/plans', label: 'Planes', icon: <CreditCard /> },
-  { href: '/contact', label: 'Contacto', icon: <MailQuestion /> }, // Nuevo ítem de Contacto
+  { href: '/contact', label: 'Contacto', icon: <MailQuestion /> },
 ];
 
 interface StoredUser {

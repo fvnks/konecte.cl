@@ -1,4 +1,3 @@
-
 // src/app/admin/properties/page.tsx
 'use client';
 

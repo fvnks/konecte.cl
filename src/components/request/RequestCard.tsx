@@ -1,4 +1,3 @@
-
 // src/components/request/RequestCard.tsx
 import Link from 'next/link';
 import type { SearchRequest, PropertyType, ListingCategory } from '@/lib/types';
@@ -115,5 +114,3 @@ export default function RequestCard({ request }: RequestCardProps) {
     </Card>
   );
 }
-
-    

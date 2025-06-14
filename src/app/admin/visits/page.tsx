@@ -1,4 +1,3 @@
-
 // src/app/admin/visits/page.tsx
 'use client';
 
@@ -13,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { PropertyVisit, PropertyVisitStatus } from '@/lib/types';
 import { PropertyVisitStatusLabels, propertyVisitStatusValues } from '@/lib/types';
 import { getAllVisitsForAdminAction, type AdminVisitsOrderBy, getVisitCountsByStatusForAdmin } from '@/actions/visitActions';
-import { Loader2, CalendarClock, AlertTriangle, Eye, User, HomeIcon as PropertyIcon, RefreshCw, Filter as FilterIcon, ListFilter, BarChart3 } from 'lucide-react';
+import { Loader2, CalendarClock, AlertTriangle, Eye, User, HomeIcon as PropertyIcon, RefreshCw, Filter as FilterIcon, ListFilter, BarChart3, History, CheckCircle2, XCircle, CalendarDays, CheckSquare, UserX } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -234,4 +233,3 @@ export default function AdminVisitsPage() {
     </div>
   );
 }
-

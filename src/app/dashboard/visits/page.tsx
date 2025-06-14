@@ -1,4 +1,3 @@
-
 // src/app/dashboard/visits/page.tsx
 'use client';
 
@@ -65,6 +64,7 @@ export default function UserVisitsPage() {
     } else {
       setIsLoading(false); 
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRefreshVisits = () => {
@@ -207,4 +207,3 @@ export default function UserVisitsPage() {
     </div>
   );
 }
-

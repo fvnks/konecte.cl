@@ -1,4 +1,3 @@
-
 // src/components/property/FeaturedPropertyCard.tsx
 import Link from 'next/link';
 import Image from 'next/image';
@@ -104,5 +103,3 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
     </Card>
   );
 }
-
-    

@@ -1,4 +1,3 @@
-
 // src/components/chat/ConversationListItem.tsx
 'use client';
 
@@ -33,8 +32,9 @@ export default function ConversationListItem({ conversation }: ConversationListI
   };
 
   return (
-    <Link href={`/dashboard/messages/${conversation.id}`} legacyBehavior>
-      <a className={cn(
+    <Link 
+      href={`/dashboard/messages/${conversation.id}`}
+      className={cn(
         "block p-3 sm:p-4 rounded-lg border transition-all duration-200 ease-in-out group",
         "bg-card hover:bg-secondary/60 hover:shadow-md",
         hasUnread ? "border-primary/50 bg-primary/5 hover:bg-primary/10" : "border-border"
@@ -84,7 +84,6 @@ export default function ConversationListItem({ conversation }: ConversationListI
             </div>
           )}
         </div>
-      </a>
     </Link>
   );
 }
