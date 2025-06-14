@@ -9,13 +9,13 @@ import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/action
 import { getPropertiesAction } from "@/actions/propertyActions";
 import { getRequestsAction } from "@/actions/requestActions";
 import { getSiteSettingsAction } from "@/actions/siteSettingsActions";
-import { getEditableTextsByGroupAction } from '@/actions/editableTextActions'; // Importar la acción
+import { getEditableTextsByGroupAction } from '@/actions/editableTextActions'; 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable"; 
 import FeaturedListingsClient from '@/components/landing/FeaturedListingsClient';
 import InteractiveAIMatching from '@/components/landing/InteractiveAIMatching';
 
-export const dynamic = 'force-dynamic'; // Fuerza el renderizado dinámico para esta página
+export const dynamic = 'force-dynamic'; 
 
 // --- Section Data Fetching (remains on server) ---
 
@@ -36,10 +36,10 @@ function AIMatchingSection() {
       <CardHeader className="p-6 md:p-8">
         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
             <Brain className="h-8 w-8 mr-3 text-primary" />
-            Prueba Nuestra IA de Emparejamiento
+            IA: Describe tu Búsqueda Ideal
         </CardTitle>
          <CardDescription className="text-lg text-muted-foreground mt-1">
-              Pega la descripción de una propiedad y una solicitud de búsqueda para que nuestra IA evalúe su compatibilidad. Ideal para pruebas rápidas o comparaciones específicas.
+              Escribe lo que buscas (tipo de propiedad, características, ubicación, etc.) y nuestra IA buscará propiedades y solicitudes compatibles en la plataforma.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 md:p-8 pt-0 md:pt-0">
@@ -250,3 +250,4 @@ export default async function HomePage() {
   );
 }
     
+
