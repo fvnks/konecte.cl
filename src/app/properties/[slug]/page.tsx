@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, Eye } from "lucide-react";
+import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, Eye, CalendarPlus } from "lucide-react";
 import PropertyComments from "@/components/comments/PropertyComments"; 
 import Link from "next/link";
 import RecordView from '@/components/lead-tracking/RecordView';
 import PropertyInquiryForm from "@/components/property/PropertyInquiryForm";
+import RequestVisitButtonClient from "@/components/property/RequestVisitButtonClient"; // Importar el nuevo componente
 
 const translatePropertyType = (type: 'rent' | 'sale'): string => {
   if (type === 'rent') return 'En Arriendo';
@@ -148,7 +149,12 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
                     {property.author.created_at && <p className="text-sm text-muted-foreground flex items-center"><CalendarDays className="h-4 w-4 mr-1.5"/>Miembro desde {new Date(property.author.created_at).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })}</p>}
                     <p className="text-xs text-muted-foreground mt-0.5">Propiedad publicada el {new Date(property.createdAt).toLocaleDateString('es-CL')} </p>
                   </div>
-                  {/* El botón de contacto se reemplazará por el formulario de consulta */}
+                  {/* Botón de Solicitar Visita */}
+                  <RequestVisitButtonClient 
+                    propertyId={property.id}
+                    propertyOwnerId={property.user_id}
+                    propertyTitle={property.title}
+                  />
                 </div>
               </div>
             )}
@@ -167,3 +173,4 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
     </>
   );
 }
+
