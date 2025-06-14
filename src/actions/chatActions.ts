@@ -91,6 +91,7 @@ export async function getOrCreateConversationAction(
       INSERT INTO chat_conversations (id, user_a_id, user_b_id, property_id, request_id, last_message_at)
       VALUES (?, ?, ?, ?, ?, NOW())
     `;
+    // Defaults for user_a_unread_count and user_b_unread_count are 0 in DB schema
     await query(insertSql, [conversationId, user_a_id, user_b_id, property_id, request_id]);
 
     const newConversationResult = await query('SELECT * FROM chat_conversations WHERE id = ?', [conversationId]);
@@ -101,7 +102,7 @@ export async function getOrCreateConversationAction(
     return { success: true, conversation: mapDbRowToChatConversation(newConversationResult[0]) };
 
   } catch (error: any) {
-    console.error('[ChatAction] Error in getOrCreateConversationAction:', error);
+    console.error('[ChatAction DEBUG] Error in getOrCreateConversationAction:', error);
     return { success: false, message: `Error al obtener o crear conversación: ${error.message}` };
   }
 }
@@ -113,25 +114,32 @@ export async function sendMessageAction(
   receiverId: string,
   content: string
 ): Promise<{ success: boolean; message?: string; chatMessage?: ChatMessage }> {
+  console.log(`[ChatAction DEBUG] sendMessageAction called with: conversationId=${conversationId}, senderId=${senderId}, receiverId=${receiverId}`);
   if (!content.trim()) {
     return { success: false, message: 'El mensaje no puede estar vacío.' };
   }
 
   try {
-    // Verify sender is part of the conversation
-    const conversationCheckSql = 'SELECT id, user_a_id, user_b_id FROM chat_conversations WHERE id = ?';
+    const conversationCheckSql = 'SELECT id, user_a_id, user_b_id, user_a_unread_count, user_b_unread_count FROM chat_conversations WHERE id = ?';
     const conversationRows: any[] = await query(conversationCheckSql, [conversationId]);
     if (conversationRows.length === 0) {
+      console.error(`[ChatAction DEBUG] sendMessageAction: Conversation ${conversationId} not found.`);
       return { success: false, message: 'Conversación no encontrada.' };
     }
     const convo = conversationRows[0];
+    console.log(`[ChatAction DEBUG] sendMessageAction: Conversation found. user_a_id=${convo.user_a_id}, user_b_id=${convo.user_b_id}, user_a_unread=${convo.user_a_unread_count}, user_b_unread=${convo.user_b_unread_count}`);
+
+
     if (senderId !== convo.user_a_id && senderId !== convo.user_b_id) {
+      console.error(`[ChatAction DEBUG] sendMessageAction: Sender ${senderId} not part of conversation ${conversationId}.`);
       return { success: false, message: 'No tienes permiso para enviar mensajes en esta conversación.' };
     }
     if (receiverId !== convo.user_a_id && receiverId !== convo.user_b_id) {
+        console.error(`[ChatAction DEBUG] sendMessageAction: Receiver ${receiverId} not part of conversation ${conversationId}.`);
         return { success: false, message: 'El destinatario no es parte de esta conversación.' };
     }
     if (senderId === receiverId) {
+        console.error(`[ChatAction DEBUG] sendMessageAction: Sender and receiver are the same (${senderId}).`);
         return { success: false, message: 'El remitente y el destinatario no pueden ser el mismo.'};
     }
 
@@ -141,9 +149,17 @@ export async function sendMessageAction(
       VALUES (?, ?, ?, ?, ?, NOW())
     `;
     await query(insertMessageSql, [messageId, conversationId, senderId, receiverId, content]);
+    console.log(`[ChatAction DEBUG] sendMessageAction: Message ${messageId} inserted into chat_messages.`);
 
     // Update conversation: last_message_at and unread_count
-    const unreadCountFieldToIncrement = receiverId === convo.user_a_id ? 'user_a_unread_count' : 'user_b_unread_count';
+    let unreadCountFieldToIncrement: 'user_a_unread_count' | 'user_b_unread_count';
+    if (receiverId === convo.user_a_id) {
+      unreadCountFieldToIncrement = 'user_a_unread_count';
+    } else { // receiverId must be convo.user_b_id due to prior checks
+      unreadCountFieldToIncrement = 'user_b_unread_count';
+    }
+    console.log(`[ChatAction DEBUG] sendMessageAction: Determined unreadCountFieldToIncrement = ${unreadCountFieldToIncrement}`);
+    
     const updateConversationSql = `
       UPDATE chat_conversations 
       SET last_message_at = NOW(), 
@@ -151,7 +167,12 @@ export async function sendMessageAction(
           updated_at = NOW()
       WHERE id = ?
     `;
-    await query(updateConversationSql, [conversationId]);
+    const updateResult = await query(updateConversationSql, [conversationId]);
+    console.log(`[ChatAction DEBUG] sendMessageAction: Conversation update result for ${conversationId}:`, JSON.stringify(updateResult));
+    if (updateResult && (updateResult.affectedRows === 0 || updateResult.changedRows === 0)) {
+        console.warn(`[ChatAction DEBUG] sendMessageAction: Update to chat_conversations table for conversation ${conversationId} did not affect/change any rows. Unread count might not have been incremented.`);
+    }
+
 
     // Fetch the newly created message with sender details
     const newMessageResult = await query(
@@ -161,6 +182,7 @@ export async function sendMessageAction(
          WHERE cm.id = ?`, [messageId]
     );
     if (!Array.isArray(newMessageResult) || newMessageResult.length === 0) {
+        console.error(`[ChatAction DEBUG] sendMessageAction: Could not retrieve newly created message ${messageId}.`);
         return { success: false, message: "Error al enviar el mensaje, no se pudo recuperar." };
     }
     
@@ -170,7 +192,7 @@ export async function sendMessageAction(
     return { success: true, message: 'Mensaje enviado.', chatMessage: mapDbRowToChatMessage(newMessageResult[0]) };
 
   } catch (error: any) {
-    console.error('[ChatAction] Error in sendMessageAction:', error);
+    console.error('[ChatAction DEBUG] Error in sendMessageAction:', error);
     return { success: false, message: `Error al enviar mensaje: ${error.message}` };
   }
 }
@@ -215,7 +237,7 @@ export async function markConversationAsReadAction(conversationId: string, curre
 
     return { success: true, message: 'Conversación marcada como leída.' };
   } catch (error: any) {
-    console.error('[ChatAction] Error in markConversationAsReadAction:', error);
+    console.error('[ChatAction DEBUG] Error in markConversationAsReadAction:', error);
     return { success: false, message: `Error al marcar como leído: ${error.message}` };
   }
 }
@@ -239,7 +261,7 @@ export async function getConversationMessagesAction(conversationId: string, curr
     const rows: any[] = await query(sql, [conversationId]);
     return rows.map(mapDbRowToChatMessage);
   } catch (error: any) {
-    console.error(`[ChatAction] Error fetching messages for conversation ${conversationId}:`, error);
+    console.error(`[ChatAction DEBUG] Error fetching messages for conversation ${conversationId}:`, error);
     return [];
   }
 }
@@ -294,7 +316,7 @@ export async function getUserConversationsAction(userId: string): Promise<ChatCo
       context_type: row.property_id ? 'property' : (row.request_id ? 'request' : null),
     }));
   } catch (error: any) {
-    console.error(`[ChatAction] Error fetching conversations for user ${userId}:`, error);
+    console.error(`[ChatAction DEBUG] Error fetching conversations for user ${userId}:`, error);
     return [];
   }
 }
@@ -312,9 +334,12 @@ export async function getTotalUnreadMessagesCountAction(userId: string): Promise
       WHERE user_a_id = ? OR user_b_id = ?;
     `;
     const rows: any[] = await query(sql, [userId, userId, userId, userId]);
+    console.log(`[ChatAction DEBUG] getTotalUnreadMessagesCountAction for user ${userId} - Raw DB result for SUM:`, JSON.stringify(rows));
     return rows.length > 0 ? Number(rows[0].total_unread || 0) : 0;
   } catch (error: any) {
-    console.error(`[ChatAction] Error fetching total unread messages for user ${userId}:`, error);
+    console.error(`[ChatAction DEBUG] Error fetching total unread messages for user ${userId}:`, error);
     return 0;
   }
 }
+
+    
