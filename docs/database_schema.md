@@ -509,6 +509,52 @@ CREATE INDEX idx_property_inquiries_property_owner_id ON property_inquiries(prop
 CREATE INDEX idx_property_inquiries_user_id ON property_inquiries(user_id);
 CREATE INDEX idx_property_inquiries_submitted_at ON property_inquiries(submitted_at);
 ```
+---
+
+## Sección Agenda de Visitas
+
+### Tabla: `property_visits` (Agenda de Visitas a Propiedades)
+Almacena las solicitudes y programaciones de visitas a las propiedades.
+
+```sql
+CREATE TABLE property_visits (
+    id VARCHAR(36) PRIMARY KEY,
+    property_id VARCHAR(36) NOT NULL,
+    visitor_user_id VARCHAR(36) NOT NULL,
+    property_owner_user_id VARCHAR(36) NOT NULL,
+    
+    proposed_datetime DATETIME NOT NULL,
+    confirmed_datetime DATETIME DEFAULT NULL,
+    
+    status ENUM(
+        'pending_confirmation',
+        'confirmed',
+        'cancelled_by_visitor',
+        'cancelled_by_owner',
+        'rescheduled_by_owner',
+        'completed',
+        'visitor_no_show',
+        'owner_no_show'
+    ) NOT NULL DEFAULT 'pending_confirmation',
+    
+    visitor_notes TEXT DEFAULT NULL,
+    owner_notes TEXT DEFAULT NULL,
+    cancellation_reason TEXT DEFAULT NULL,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+    FOREIGN KEY (visitor_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (property_owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    INDEX idx_visits_property_id_status (property_id, status),
+    INDEX idx_visits_visitor_id_status (visitor_user_id, status),
+    INDEX idx_visits_owner_id_status (property_owner_user_id, status),
+    INDEX idx_visits_proposed_datetime (proposed_datetime),
+    INDEX idx_visits_confirmed_datetime (confirmed_datetime)
+);
+```
 
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.

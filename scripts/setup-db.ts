@@ -392,7 +392,40 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_property_inquiries_property_id ON property_inquiries(property_id);`,
   `CREATE INDEX IF NOT EXISTS idx_property_inquiries_property_owner_id ON property_inquiries(property_owner_id);`,
   `CREATE INDEX IF NOT EXISTS idx_property_inquiries_user_id ON property_inquiries(user_id);`,
-  `CREATE INDEX IF NOT EXISTS idx_property_inquiries_submitted_at ON property_inquiries(submitted_at);`
+  `CREATE INDEX IF NOT EXISTS idx_property_inquiries_submitted_at ON property_inquiries(submitted_at);`,
+
+  // --- Property Visits Table ---
+  `CREATE TABLE IF NOT EXISTS property_visits (
+    id VARCHAR(36) PRIMARY KEY,
+    property_id VARCHAR(36) NOT NULL,
+    visitor_user_id VARCHAR(36) NOT NULL,
+    property_owner_user_id VARCHAR(36) NOT NULL,
+    proposed_datetime DATETIME NOT NULL,
+    confirmed_datetime DATETIME DEFAULT NULL,
+    status ENUM(
+        'pending_confirmation',
+        'confirmed',
+        'cancelled_by_visitor',
+        'cancelled_by_owner',
+        'rescheduled_by_owner',
+        'completed',
+        'visitor_no_show',
+        'owner_no_show'
+    ) NOT NULL DEFAULT 'pending_confirmation',
+    visitor_notes TEXT DEFAULT NULL,
+    owner_notes TEXT DEFAULT NULL,
+    cancellation_reason TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+    FOREIGN KEY (visitor_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (property_owner_user_id) REFERENCES users(id) ON DELETE CASCADE
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_visits_property_id_status ON property_visits(property_id, status);`,
+  `CREATE INDEX IF NOT EXISTS idx_visits_visitor_id_status ON property_visits(visitor_user_id, status);`,
+  `CREATE INDEX IF NOT EXISTS idx_visits_owner_id_status ON property_visits(property_owner_user_id, status);`,
+  `CREATE INDEX IF NOT EXISTS idx_visits_proposed_datetime ON property_visits(proposed_datetime);`,
+  `CREATE INDEX IF NOT EXISTS idx_visits_confirmed_datetime ON property_visits(confirmed_datetime);`
 ];
 
 // --- Función principal del script ---
