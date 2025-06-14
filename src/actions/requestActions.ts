@@ -76,6 +76,7 @@ export async function submitRequestAction(
     const requestId = randomUUID();
     const slug = generateSlug(data.title);
 
+    // comments_count tiene DEFAULT 0 en la BD, así que no es necesario incluirlo en el INSERT
     const sql = `
       INSERT INTO property_requests (
         id, user_id, title, slug, description,
@@ -86,7 +87,7 @@ export async function submitRequestAction(
         min_bedrooms, min_bathrooms, budget_max,
         open_for_broker_collaboration,
         is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -108,7 +109,10 @@ export async function submitRequestAction(
       data.minBedrooms !== undefined && data.minBedrooms !== '' ? data.minBedrooms : null,
       data.minBathrooms !== undefined && data.minBathrooms !== '' ? data.minBathrooms : null,
       data.budgetMax !== undefined && data.budgetMax !== '' ? data.budgetMax : null,
-      data.open_for_broker_collaboration || false, // Guardar el nuevo campo
+      data.open_for_broker_collaboration || false,
+      true, // is_active
+      new Date(), // created_at
+      new Date()  // updated_at
     ];
     
     await query(sql, params);
@@ -297,7 +301,7 @@ export async function adminUpdateRequestAction(
         desired_location_city = ?, desired_location_neighborhood = ?,
         min_bedrooms = ?, min_bathrooms = ?, budget_max = ?,
         open_for_broker_collaboration = ?,
-        updated_at = NOW()
+        updated_at = NOW() 
       WHERE id = ?
     `;
 
@@ -317,8 +321,9 @@ export async function adminUpdateRequestAction(
       data.minBedrooms !== undefined && data.minBedrooms !== '' ? data.minBedrooms : null,
       data.minBathrooms !== undefined && data.minBathrooms !== '' ? data.minBathrooms : null,
       data.budgetMax !== undefined && data.budgetMax !== '' ? data.budgetMax : null,
-      data.open_for_broker_collaboration || false, // Guardar el nuevo campo
-      requestId
+      data.open_for_broker_collaboration || false,
+      // NOW() is handled by SQL for updated_at
+      requestId // For WHERE id = ?
     ];
     
     const result: any = await query(sql, params);
