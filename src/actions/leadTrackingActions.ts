@@ -98,3 +98,32 @@ export async function getTotalPropertyInquiriesAction(): Promise<number> {
     return 0;
   }
 }
+
+// --- User Specific Stats ---
+export async function getUserTotalPropertyViewsAction(userId: string): Promise<number> {
+  if (!userId) return 0;
+  try {
+    const result: any[] = await query(
+      'SELECT SUM(views_count) as totalViews FROM properties WHERE user_id = ?',
+      [userId]
+    );
+    return Number(result[0]?.totalViews) || 0;
+  } catch (error) {
+    console.error(`Error fetching total property views for user ${userId}:`, error);
+    return 0;
+  }
+}
+
+export async function getUserTotalPropertyInquiriesAction(userId: string): Promise<number> {
+  if (!userId) return 0;
+  try {
+    const result: any[] = await query(
+      'SELECT SUM(inquiries_count) as totalInquiries FROM properties WHERE user_id = ?',
+      [userId]
+    );
+    return Number(result[0]?.totalInquiries) || 0;
+  } catch (error) {
+    console.error(`Error fetching total property inquiries for user ${userId}:`, error);
+    return 0;
+  }
+}
