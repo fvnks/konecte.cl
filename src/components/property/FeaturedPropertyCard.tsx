@@ -1,4 +1,7 @@
+
 // src/components/property/FeaturedPropertyCard.tsx
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import type { PropertyListing, User as StoredUser, InteractionTypeEnum } from '@/lib/types';
@@ -34,7 +37,7 @@ const formatPriceCompact = (price: number, currency: string) => {
 
 export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardProps) {
   const {
-    id: propertyId, // Renombrar id a propertyId para claridad
+    id: propertyId,
     title,
     slug,
     images,
@@ -83,7 +86,7 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
         if (result.matchDetails?.matchFound && result.matchDetails.conversationId) {
             toast({
                 title: "¡Es un Match Mutuo!",
-                description: `Se ha iniciado una conversación con ${result.matchDetails.userBName} sobre "${result.matchDetails.likedListingTitle}" y "${result.matchDetails.reciprocalListingTitle}".`,
+                description: `${result.message} Revisa tus mensajes.`,
                 duration: 7000,
                 action: (
                     <Button variant="link" size="sm" asChild>
@@ -97,8 +100,8 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
         } else {
             toast({
                 title: "Preferencia Guardada",
-                description: `Tu preferencia (${interactionType === 'like' ? 'Me gusta' : 'No me gusta'}) ha sido registrada.`,
-                duration: 2000,
+                description: result.message || `Tu preferencia ha sido registrada.`,
+                duration: 3000,
             });
         }
       } else {
@@ -210,3 +213,4 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
     </Card>
   );
 }
+

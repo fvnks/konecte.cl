@@ -128,7 +128,7 @@ export default function InteractiveAIMatching() {
         if (result.matchDetails?.matchFound && result.matchDetails.conversationId) {
             toast({
                 title: "¡Es un Match Mutuo!",
-                description: `Se ha iniciado una conversación con ${result.matchDetails.userBName} sobre "${result.matchDetails.likedListingTitle}" y "${result.matchDetails.reciprocalListingTitle}".`,
+                description: `${result.message} Revisa tus mensajes.`,
                 duration: 7000,
                 action: (
                     <Button variant="link" size="sm" asChild>
@@ -138,13 +138,12 @@ export default function InteractiveAIMatching() {
                     </Button>
                 )
             });
-            // Notify Navbar to update unread counts
             window.dispatchEvent(new CustomEvent('messagesUpdated'));
         } else {
             toast({
                 title: "Preferencia Guardada",
-                description: `Tu preferencia (${interactionType === 'like' ? 'Me gusta' : 'No me gusta'}) ha sido registrada.`,
-                duration: 2000,
+                description: result.message || `Tu preferencia ha sido registrada.`,
+                duration: 3000,
             });
         }
       } else {
@@ -286,7 +285,7 @@ export default function InteractiveAIMatching() {
                     </p>
                 )}
             </Card>
-          ) : ( // Este bloque se ejecuta si propertiesToShow está vacío o si currentIndex >= propertiesToShow.length
+          ) : ( 
             <Card>
                 <CardContent className="px-0 pt-4 text-center">
                 <HeartHandshake className="mx-auto h-16 w-16 text-primary mb-4" />

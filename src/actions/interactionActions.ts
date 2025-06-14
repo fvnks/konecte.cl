@@ -7,7 +7,7 @@ import type { RecordInteractionValues, UserListingInteraction, ListingType, Reco
 import { recordInteractionSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
-import { getOrCreateConversationAction } from './chatActions'; // Import chat action
+import { getOrCreateConversationAction, sendMessageAction } from './chatActions'; // Import sendMessageAction
 
 async function getListingOwnerAndTitle(listingId: string, listingType: ListingType): Promise<{ ownerId: string; title: string; slug: string } | null> {
   let sql: string;
@@ -52,12 +52,25 @@ export async function recordUserListingInteractionAction(
     `;
     await query(upsertSql, [interactionId, likerUserId, likedListingId, likedListingType, interactionType]);
 
+    const savedInteraction: UserListingInteraction = { 
+        id: interactionId, 
+        user_id: likerUserId, 
+        listing_id: likedListingId, 
+        listing_type: likedListingType, 
+        interaction_type: interactionType, 
+        created_at: new Date().toISOString() 
+    };
+
     // If it's not a 'like', we don't need to check for mutual match
     if (interactionType !== 'like') {
+      let toastMessage = "Preferencia guardada.";
+      if (interactionType === 'dislike') toastMessage = "Preferencia 'No me gusta' guardada.";
+      if (interactionType === 'skip') toastMessage = "Preferencia 'Omitir' guardada.";
       return {
         success: true,
-        message: `Interacción (${interactionType}) registrada para el listado ${likedListingId}.`,
-        interaction: { id: interactionId, user_id: likerUserId, listing_id: likedListingId, listing_type: likedListingType, interaction_type: interactionType, created_at: new Date().toISOString() }
+        message: toastMessage,
+        interaction: savedInteraction,
+        matchDetails: { matchFound: false }
       };
     }
 
@@ -65,25 +78,35 @@ export async function recordUserListingInteractionAction(
     const likedListingDetails = await getListingOwnerAndTitle(likedListingId, likedListingType);
     if (!likedListingDetails) {
       console.warn(`[InteractionAction] Owner not found for liked listing ${likedListingId} (${likedListingType}). Cannot check for mutual match.`);
-      return { success: true, message: "Preferencia guardada. No se pudo verificar el match mutuo (dueño del listado no encontrado)." };
+      return { 
+        success: true, 
+        message: "Preferencia 'Me gusta' guardada. No se pudo verificar el match mutuo (dueño del listado no encontrado).",
+        interaction: savedInteraction,
+        matchDetails: { matchFound: false }
+      };
     }
     const likedListingOwnerId = likedListingDetails.ownerId;
     const likedListingTitle = likedListingDetails.title;
 
     if (likerUserId === likedListingOwnerId) {
-      return { success: true, message: "Preferencia guardada (auto-like)." }; // User liked their own listing
+      return { 
+        success: true, 
+        message: "Preferencia 'Me gusta' guardada (auto-like en tu propio listado).",
+        interaction: savedInteraction,
+        matchDetails: { matchFound: false }
+      }; 
     }
 
     let mutualLikeFound = false;
     let reciprocalListingId: string | undefined;
     let reciprocalListingTitle: string | undefined;
     let conversationContext: { propertyId?: string; requestId?: string } = {};
+    let likerOwnListingType: ListingType | undefined; // Type of the liker's own listing that completed the match
 
     const likerUserDetailsRows: any[] = await query('SELECT name FROM users WHERE id = ?', [likerUserId]);
     const likedListingOwnerDetailsRows: any[] = await query('SELECT name FROM users WHERE id = ?', [likedListingOwnerId]);
     const likerUserName = likerUserDetailsRows[0]?.name || 'Usuario';
     const likedListingOwnerName = likedListingOwnerDetailsRows[0]?.name || 'Anunciante';
-
 
     if (likedListingType === 'property') { // Liker (likerUserId) liked a Property (likedListingId, owner: likedListingOwnerId)
       // Check if likedListingOwnerId (property owner) liked any Request by likerUserId
@@ -101,9 +124,10 @@ export async function recordUserListingInteractionAction(
       const mutualRows: any[] = await query(mutualLikeQuery, [likedListingOwnerId, likerUserId]);
       if (mutualRows.length > 0) {
         mutualLikeFound = true;
-        reciprocalListingId = mutualRows[0].listing_id; // This is the ID of the request owned by likerUserId
-        reciprocalListingTitle = mutualRows[0].title;   // Title of the request owned by likerUserId
+        reciprocalListingId = mutualRows[0].listing_id; 
+        reciprocalListingTitle = mutualRows[0].title;   
         conversationContext = { propertyId: likedListingId, requestId: reciprocalListingId };
+        likerOwnListingType = 'request'; // Liker's own listing was a request
       }
     } else { // Liker (likerUserId) liked a Request (likedListingId, owner: likedListingOwnerId)
       // Check if likedListingOwnerId (request owner) liked any Property by likerUserId
@@ -121,13 +145,14 @@ export async function recordUserListingInteractionAction(
       const mutualRows: any[] = await query(mutualLikeQuery, [likedListingOwnerId, likerUserId]);
       if (mutualRows.length > 0) {
         mutualLikeFound = true;
-        reciprocalListingId = mutualRows[0].listing_id; // This is the ID of the property owned by likerUserId
-        reciprocalListingTitle = mutualRows[0].title;   // Title of the property owned by likerUserId
+        reciprocalListingId = mutualRows[0].listing_id; 
+        reciprocalListingTitle = mutualRows[0].title;  
         conversationContext = { propertyId: reciprocalListingId, requestId: likedListingId };
+        likerOwnListingType = 'property'; // Liker's own listing was a property
       }
     }
 
-    if (mutualLikeFound) {
+    if (mutualLikeFound && reciprocalListingTitle && likerOwnListingType) {
       const conversationResult = await getOrCreateConversationAction(
         likerUserId,
         likedListingOwnerId,
@@ -135,43 +160,46 @@ export async function recordUserListingInteractionAction(
       );
 
       if (conversationResult.success && conversationResult.conversation) {
-        // Dispatch event for Navbar to update message counts
-        // This needs to be done in a way that client-side can pick it up.
-        // For server actions, we can't directly call window.dispatchEvent.
-        // This is typically handled by revalidating paths or client-side polling/websockets.
-        // For now, we rely on the client that initiated the action to update its state,
-        // and other clients will see updates on next load or refresh.
-        // However, we can pass enough info back for the client to trigger it.
-        
-        // Since this is a server action, we cannot directly call window.dispatchEvent.
-        // The client side (InteractiveAIMatching.tsx) will handle dispatching 'messagesUpdated'
-        // based on the response. Here, we simply return the details for the client.
+        const likerListingTypeForMessage = likerOwnListingType === 'property' ? 'Propiedad' : 'Solicitud';
+        const likedListingTypeForMessage = likedListingType === 'property' ? 'Propiedad' : 'Solicitud';
 
+        const chatMessageContent = `¡Hola ${likedListingOwnerName}! Parece que tenemos un interés mutuo. Mi ${likerListingTypeForMessage}: "${reciprocalListingTitle}" podría interesarte, ya que parece coincidir con tu ${likedListingTypeForMessage}: "${likedListingTitle}".`;
+
+        await sendMessageAction(
+          conversationResult.conversation.id,
+          likerUserId, // Sender (the one who completed the match)
+          likedListingOwnerId, // Receiver
+          chatMessageContent
+        );
+        
         return {
           success: true,
-          message: "¡Es un Match Mutuo! Se ha creado o encontrado una conversación.",
+          interaction: savedInteraction,
+          message: `¡Es un Match Mutuo! Se envió un mensaje a ${likedListingOwnerName}.`,
           matchDetails: {
             matchFound: true,
             conversationId: conversationResult.conversation.id,
-            userAName: likerUserName, // The user who performed the "like"
-            userBName: likedListingOwnerName, // The owner of the listing that was "liked"
-            likedListingTitle: likedListingTitle, // Title of the item that received the "like"
-            reciprocalListingTitle: reciprocalListingTitle, // Title of the item that completed the mutual "like"
+            userAName: likerUserName, 
+            userBName: likedListingOwnerName,
+            likedListingTitle: likedListingTitle, 
+            reciprocalListingTitle: reciprocalListingTitle, 
           }
         };
       } else {
         console.error("[InteractionAction] Mutual match found, but failed to create/get conversation:", conversationResult.message);
         return {
-          success: true, // Interaction was saved, but chat creation failed
-          message: "Preferencia guardada. Hubo un problema al iniciar el chat para el match.",
-          matchDetails: { matchFound: true } // Indicate match was found, but no conversation ID
+          success: true, 
+          interaction: savedInteraction,
+          message: "Preferencia 'Me gusta' guardada. Hubo un problema al iniciar el chat para el match.",
+          matchDetails: { matchFound: true } 
         };
       }
     }
 
     return {
       success: true,
-      message: "Preferencia guardada.",
+      message: "Preferencia 'Me gusta' guardada.",
+      interaction: savedInteraction,
       matchDetails: { matchFound: false }
     };
 
