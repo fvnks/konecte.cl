@@ -471,7 +471,21 @@ const SQL_STATEMENTS: string[] = [
     replied_at TIMESTAMP DEFAULT NULL,
     INDEX idx_contact_submissions_submitted_at (submitted_at),
     INDEX idx_contact_submissions_is_read (is_read)
-  );`
+  );`,
+  
+  // --- User Listing Interactions Table (NEW) ---
+  `CREATE TABLE IF NOT EXISTS user_listing_interactions (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    listing_id VARCHAR(36) NOT NULL, 
+    listing_type ENUM('property', 'request') NOT NULL,
+    interaction_type ENUM('like', 'dislike', 'skip') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_user_listing_interaction (user_id, listing_id, listing_type)
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_user_listing_interactions_user_listing ON user_listing_interactions(user_id, listing_type, listing_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_user_listing_interactions_listing ON user_listing_interactions(listing_type, listing_id, interaction_type);`
 ];
 
 // --- Función principal del script ---
@@ -587,5 +601,7 @@ async function setupDatabase() {
 
 setupDatabase();
 
+
+    
 
     

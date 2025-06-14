@@ -246,7 +246,7 @@ export type InteractionType =
   | 'offer_made'
   | 'other';
 
-export const interactionTypeValues = [
+export const interactionTypeValues = [ // This is for CRM Interaction Types
   'note', 'email_sent', 'email_received', 'call_made', 'call_received',
   'meeting', 'message_sent', 'message_received', 'task_completed',
   'property_viewing', 'offer_made', 'other'
@@ -526,6 +526,30 @@ export const contactFormPublicSchema = z.object({
 });
 export type ContactFormPublicValues = z.infer<typeof contactFormPublicSchema>;
 
+// --- User Listing Interactions (NEW) ---
+export const listingTypeValues = ['property', 'request'] as const;
+export type ListingType = (typeof listingTypeValues)[number];
+
+// Renamed this to avoid conflict with CRM's InteractionType
+export const listingInteractionTypeValues = ['like', 'dislike', 'skip'] as const; 
+export type InteractionTypeEnum = (typeof listingInteractionTypeValues)[number];
+
+export interface UserListingInteraction {
+  id: string;
+  user_id: string;
+  listing_id: string;
+  listing_type: ListingType;
+  interaction_type: InteractionTypeEnum;
+  created_at: string; // ISO string date
+}
+
+export const recordInteractionSchema = z.object({
+  listingId: z.string().uuid("ID de listado inválido."),
+  listingType: z.enum(listingTypeValues, { required_error: "Tipo de listado requerido." }),
+  interactionType: z.enum(listingInteractionTypeValues, { required_error: "Tipo de interacción requerido." }), // Use renamed constant
+});
+export type RecordInteractionValues = z.infer<typeof recordInteractionSchema>;
+
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
 
@@ -537,6 +561,3 @@ export const placeholderUser: User = {
   role_id: 'user',
   role_name: 'Usuario'
 };
-
-
-    

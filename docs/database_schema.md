@@ -618,7 +618,36 @@ CREATE TABLE contact_form_submissions (
 );
 ```
 ---
+## Tabla: `user_listing_interactions` (Interacciones tipo "Like/Dislike" con Listados)
+Almacena las preferencias (me gusta/no me gusta) de los usuarios sobre propiedades o solicitudes.
+
+```sql
+CREATE TABLE user_listing_interactions (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    listing_id VARCHAR(36) NOT NULL, 
+    listing_type ENUM('property', 'request') NOT NULL,
+    interaction_type ENUM('like', 'dislike', 'skip') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    -- No se pueden añadir FK directas a properties.id y property_requests.id en una sola columna.
+    -- Se manejará la integridad a nivel de aplicación o con triggers si es necesario.
+    -- O considerar dos tablas separadas: user_property_interactions y user_request_interactions.
+    -- Por simplicidad inicial, se usa una sola tabla.
+
+    UNIQUE KEY uq_user_listing_interaction (user_id, listing_id, listing_type) 
+    -- Un usuario solo puede tener una interacción registrada (like, dislike, o skip) por listado.
+    -- Si se permite cambiar de opinión (ej. de dislike a like), la acción debe ser un UPDATE.
+);
+
+-- Índices
+CREATE INDEX idx_user_listing_interactions_user_listing ON user_listing_interactions(user_id, listing_type, listing_id);
+CREATE INDEX idx_user_listing_interactions_listing ON user_listing_interactions(listing_type, listing_id, interaction_type);
+```
+
+---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
 
 
-
+    

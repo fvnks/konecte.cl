@@ -20,11 +20,11 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { findListingsForFreeTextSearch, type FindListingsForFreeTextSearchInput, type FindListingsForFreeTextSearchOutput, type FoundMatch } from '@/ai/flows/find-listings-for-free-text-search-flow';
-import { useState } from "react";
-import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, PlusCircle } from "lucide-react"; // Removed FileSearch as we'll focus on properties
+import { recordUserListingInteractionAction } from '@/actions/interactionActions'; // Import the new action
+import type { User as StoredUser, InteractionTypeEnum } from '@/lib/types'; // Import StoredUser
+import { useState, useEffect } from "react";
+import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, PlusCircle, ThumbsUp, ThumbsDown, UserCircle as UserIconLucide } from "lucide-react";
 import FeaturedPropertyCard from '@/components/property/FeaturedPropertyCard';
-// RequestCard no se usará aquí si solo mostramos propiedades
-// import RequestCard from '@/components/request/RequestCard';
 
 const formSchema = z.object({
   userSearchDescription: z.string().min(10, "La descripción de tu búsqueda debe tener al menos 10 caracteres.").max(1000, "Máximo 1000 caracteres."),
@@ -35,10 +35,22 @@ type AiMatchingFormValues = z.infer<typeof formSchema>;
 export default function InteractiveAIMatching() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [searchResult, setSearchResult] = useState<FindListingsForFreeTextSearchOutput | null>(null);
   const [filteredProperties, setFilteredProperties] = useState<FoundMatch[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
+
+  useEffect(() => {
+    const userJson = localStorage.getItem('loggedInUser');
+    if (userJson) {
+      try {
+        setLoggedInUser(JSON.parse(userJson));
+      } catch (error) {
+        console.error("Error parsing user from localStorage for AI matching:", error);
+      }
+    }
+  }, []);
 
   const form = useForm<AiMatchingFormValues>({
     resolver: zodResolver(formSchema),
@@ -49,16 +61,15 @@ export default function InteractiveAIMatching() {
 
   async function onSubmit(values: AiMatchingFormValues) {
     setIsLoading(true);
-    setSearchResult(null);
     setFilteredProperties([]);
     setError(null);
     setHasSearched(true);
+    setCurrentIndex(0);
     try {
       const input: FindListingsForFreeTextSearchInput = {
         userSearchDescription: values.userSearchDescription,
       };
       const result = await findListingsForFreeTextSearch(input);
-      setSearchResult(result);
       
       const propertiesOnly = result.matches.filter(match => match.type === 'property');
       setFilteredProperties(propertiesOnly);
@@ -66,7 +77,7 @@ export default function InteractiveAIMatching() {
       if (propertiesOnly.length > 0) {
         toast({
           title: "Búsqueda IA Completada",
-          description: `Se encontraron ${propertiesOnly.length} propiedad(es) sugerida(s) para tu búsqueda.`,
+          description: `Se encontraron ${propertiesOnly.length} propiedad(es) sugerida(s). ¡Ahora puedes indicar cuáles te gustan!`,
         });
       } else {
         toast({
@@ -87,6 +98,42 @@ export default function InteractiveAIMatching() {
       setIsLoading(false);
     }
   }
+
+  const handleInteraction = async (listingId: string, interactionType: InteractionTypeEnum) => {
+    if (!loggedInUser) {
+      toast({
+        title: "Acción Requerida",
+        description: "Debes iniciar sesión para interactuar con las propiedades.",
+        variant: "default",
+        action: <Button variant="link" size="sm" asChild><Link href="/auth/signin">Iniciar Sesión</Link></Button>
+      });
+      return;
+    }
+
+    try {
+      await recordUserListingInteractionAction(loggedInUser.id, {
+        listingId,
+        listingType: 'property', // Since we are only showing properties here
+        interactionType,
+      });
+      toast({
+        title: "Preferencia Guardada",
+        description: `Tu preferencia (${interactionType === 'like' ? 'Me gusta' : 'No me gusta'}) ha sido registrada.`,
+        duration: 2000,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `No se pudo guardar tu preferencia: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+
+    // Avanzar a la siguiente tarjeta
+    setCurrentIndex(prevIndex => prevIndex + 1);
+  };
+
+  const currentPropertyMatch = filteredProperties[currentIndex];
 
   return (
     <div className="space-y-6">
@@ -148,57 +195,69 @@ export default function InteractiveAIMatching() {
       )}
 
       {hasSearched && !isLoading && !error && (
-        <Card className="shadow-md mt-6 animate-fade-in bg-transparent border-none">
-          {filteredProperties.length > 0 ? (
-            <>
-              <CardHeader className="px-0 pt-2 pb-4">
-                <CardTitle className="text-xl font-headline flex items-center">
-                  <Building className="h-6 w-6 mr-2 text-accent" />
-                  Propiedades Sugeridas por IA ({filteredProperties.length})
-                </CardTitle>
-              </CardHeader>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {filteredProperties.map((match: FoundMatch, index: number) => (
-                  <Card key={`${match.type}-${match.item.id}-${index}`} className="bg-card p-4 rounded-xl border flex flex-col shadow-lg">
-                    <div className="flex justify-between items-start mb-2">
-                      <Badge variant={'default'} className="capitalize text-xs">
-                        <Building className="mr-1.5 h-3.5 w-3.5"/>
-                        Propiedad
-                      </Badge>
-                      <div className="text-right">
-                        <span className="text-lg font-bold text-accent">
-                          {(match.matchScore * 100).toFixed(0)}%
-                        </span>
-                         <p className="text-xs text-muted-foreground -mt-1">Coincidencia</p>
-                      </div>
+        <div className="mt-6">
+          {currentPropertyMatch ? (
+            <Card className="bg-card p-4 rounded-xl border flex flex-col shadow-lg items-center max-w-md mx-auto">
+                <div className="w-full flex justify-between items-start mb-2">
+                    <Badge variant={'default'} className="capitalize text-xs">
+                    <Building className="mr-1.5 h-3.5 w-3.5"/>
+                    Propiedad Sugerida
+                    </Badge>
+                    <div className="text-right">
+                    <span className="text-lg font-bold text-accent">
+                        {(currentPropertyMatch.matchScore * 100).toFixed(0)}%
+                    </span>
+                    <p className="text-xs text-muted-foreground -mt-1">Coincidencia</p>
                     </div>
-                    <Progress value={match.matchScore * 100} className="w-full h-1.5 [&>div]:bg-accent mb-3" />
-                    
-                    {/* Siempre será 'property' debido al filtro */}
-                    <FeaturedPropertyCard property={match.item as any} />
-                    
-                    <div className="mt-3 pt-3 border-t border-dashed">
-                      <h4 className="text-xs font-semibold flex items-center mb-1 text-muted-foreground">
-                        <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
-                        IA Dice:
-                      </h4>
-                      <p className="text-xs text-muted-foreground/80 bg-secondary/30 p-2 rounded-md whitespace-pre-line italic">
-                        {match.reason}
-                      </p>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-              <CardFooter className="px-0 pt-6">
-                  <p className="text-xs text-muted-foreground italic">
-                  Nota: Estas son sugerencias generadas por IA. La relevancia puede variar.
-                  </p>
-              </CardFooter>
-            </>
-          ) : (
-            <CardContent className="px-0 pt-4 text-center border-t">
+                </div>
+                <Progress value={currentPropertyMatch.matchScore * 100} className="w-full h-1.5 [&>div]:bg-accent mb-3" />
+                
+                <FeaturedPropertyCard property={currentPropertyMatch.item as any} />
+                
+                <div className="mt-3 pt-3 border-t border-dashed w-full">
+                    <h4 className="text-xs font-semibold flex items-center mb-1 text-muted-foreground">
+                    <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
+                    IA Dice:
+                    </h4>
+                    <p className="text-xs text-muted-foreground/80 bg-secondary/30 p-2 rounded-md whitespace-pre-line italic max-h-20 overflow-y-auto">
+                    {currentPropertyMatch.reason}
+                    </p>
+                </div>
+                <div className="flex justify-around w-full mt-4 pt-4 border-t">
+                    <Button 
+                        variant="outline" 
+                        size="lg" 
+                        className="text-red-500 border-red-500 hover:bg-red-50 hover:text-red-600 h-12 w-28"
+                        onClick={() => handleInteraction(currentPropertyMatch.item.id, 'dislike')}
+                        disabled={!loggedInUser}
+                        title={!loggedInUser ? "Inicia sesión para interactuar" : "No me gusta"}
+                    >
+                        <ThumbsDown className="h-6 w-6" />
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="lg" 
+                        className="text-green-500 border-green-500 hover:bg-green-50 hover:text-green-600 h-12 w-28"
+                        onClick={() => handleInteraction(currentPropertyMatch.item.id, 'like')}
+                        disabled={!loggedInUser}
+                        title={!loggedInUser ? "Inicia sesión para interactuar" : "Me gusta"}
+                    >
+                        <ThumbsUp className="h-6 w-6" />
+                    </Button>
+                </div>
+                {!loggedInUser && (
+                    <p className="text-xs text-muted-foreground text-center mt-3">
+                        <UserIconLucide className="inline-block h-3 w-3 mr-1 align-text-bottom" />
+                        <Link href="/auth/signin" className="underline hover:text-primary">Inicia sesión</Link> para guardar tus preferencias.
+                    </p>
+                )}
+            </Card>
+          ) : ( // No hay más propiedades en la lista actual O la lista inicial estaba vacía
+            <CardContent className="px-0 pt-4 text-center">
               <p className="text-muted-foreground text-base mb-4">
-                No encontramos propiedades que coincidan directamente con tu descripción en este momento.
+                {filteredProperties.length > 0 && currentIndex >= filteredProperties.length 
+                  ? "Has revisado todas las sugerencias de IA para esta búsqueda." 
+                  : "No encontramos propiedades que coincidan con tu descripción en este momento."}
               </p>
               <p className="text-sm text-muted-foreground mb-3">
                 Puedes intentar reformular tu búsqueda o publicarla para que otros usuarios y corredores puedan encontrarla y ofrecerte propiedades.
@@ -211,9 +270,11 @@ export default function InteractiveAIMatching() {
               </Button>
             </CardContent>
           )}
-        </Card>
+        </div>
       )}
     </div>
   );
 }
 
+
+    
