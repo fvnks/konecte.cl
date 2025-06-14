@@ -1,7 +1,8 @@
+
 // src/actions/requestActions.ts
 'use server';
 
-import type { RequestFormValues } from "@/lib/types"; // Import RequestFormValues from types.ts
+import type { RequestFormValues } from "@/lib/types"; 
 import { query } from "@/lib/db";
 import type { SearchRequest, User, PropertyType, ListingCategory } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -11,10 +12,10 @@ import { revalidatePath } from "next/cache";
 const generateSlug = (title: string): string => {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/[^a-z0-9\s-]/g, '') 
     .trim()
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-'); // Replace multiple hyphens with a single one
+    .replace(/\s+/g, '-') 
+    .replace(/-+/g, '-'); 
 };
 
 function mapDbRowToSearchRequest(row: any): SearchRequest {
@@ -52,7 +53,7 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
     minBedrooms: row.min_bedrooms !== null ? Number(row.min_bedrooms) : undefined,
     minBathrooms: row.min_bathrooms !== null ? Number(row.min_bathrooms) : undefined,
     budgetMax: row.budget_max !== null ? Number(row.budget_max) : undefined,
-    open_for_broker_collaboration: Boolean(row.open_for_broker_collaboration), // Asegurar que sea boolean
+    open_for_broker_collaboration: Boolean(row.open_for_broker_collaboration),
     commentsCount: Number(row.comments_count),
     isActive: Boolean(row.is_active),
     createdAt: new Date(row.created_at).toISOString(),
@@ -62,7 +63,7 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
 }
 
 export async function submitRequestAction(
-  data: RequestFormValues, // This is dataToSubmit from the form component
+  data: RequestFormValues, 
   userId: string
 ): Promise<{ success: boolean; message?: string; requestId?: string, requestSlug?: string }> {
   console.log("[RequestAction] Request data received on server:", data, "UserID:", userId);
@@ -75,7 +76,15 @@ export async function submitRequestAction(
     const requestId = randomUUID();
     const slug = generateSlug(data.title);
 
-    // Let DB handle defaults for: comments_count, is_active, created_at, updated_at
+    const minBedroomsValue = (data.minBedrooms === undefined || data.minBedrooms === '' || data.minBedrooms === null)
+        ? null : Number(data.minBedrooms);
+    const minBathroomsValue = (data.minBathrooms === undefined || data.minBathrooms === '' || data.minBathrooms === null)
+        ? null : Number(data.minBathrooms);
+    const budgetMaxValue = (data.budgetMax === undefined || data.budgetMax === '' || data.budgetMax === null)
+        ? null : Number(data.budgetMax);
+
+    // Ser completamente explícito con TODAS las columnas de la tabla property_requests
+    // según el esquema de database_schema.md (23 columnas)
     const sql = `
       INSERT INTO property_requests (
         id, user_id, title, slug, description,
@@ -84,39 +93,46 @@ export async function submitRequestAction(
         desired_category_land, desired_category_commercial, desired_category_other,
         desired_location_city, desired_location_neighborhood,
         min_bedrooms, min_bathrooms, budget_max,
-        open_for_broker_collaboration
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `; // 19 columns, 19 placeholders
-
-    const minBedroomsValue = (data.minBedrooms === undefined || data.minBedrooms === '' || data.minBedrooms === null)
-        ? null : Number(data.minBedrooms);
-    const minBathroomsValue = (data.minBathrooms === undefined || data.minBathrooms === '' || data.minBathrooms === null)
-        ? null : Number(data.minBathrooms);
-    const budgetMaxValue = (data.budgetMax === undefined || data.budgetMax === '' || data.budgetMax === null)
-        ? null : Number(data.budgetMax);
-
+        open_for_broker_collaboration,
+        comments_count, is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `; // 23 columnas, 23 placeholders
 
     const params = [
-      requestId, // 1
-      userId,    // 2
-      data.title, // 3
-      slug,       // 4
-      data.description, // 5
-      data.desiredPropertyType.includes('rent'), // 6
-      data.desiredPropertyType.includes('sale'), // 7
-      data.desiredCategories.includes('apartment'), // 8
-      data.desiredCategories.includes('house'),     // 9
-      data.desiredCategories.includes('condo'),     // 10
-      data.desiredCategories.includes('land'),      // 11
-      data.desiredCategories.includes('commercial'),// 12
-      data.desiredCategories.includes('other'),     // 13
-      data.desiredLocationCity,                      // 14
-      data.desiredLocationNeighborhood || null,      // 15
-      minBedroomsValue, // 16
-      minBathroomsValue, // 17
-      budgetMaxValue,    // 18
-      data.open_for_broker_collaboration || false // 19
+      requestId, // 1. id
+      userId,    // 2. user_id
+      data.title, // 3. title
+      slug,       // 4. slug
+      data.description, // 5. description
+      data.desiredPropertyType.includes('rent'), // 6. desired_property_type_rent
+      data.desiredPropertyType.includes('sale'), // 7. desired_property_type_sale
+      data.desiredCategories.includes('apartment'), // 8. desired_category_apartment
+      data.desiredCategories.includes('house'),     // 9. desired_category_house
+      data.desiredCategories.includes('condo'),     // 10. desired_category_condo
+      data.desiredCategories.includes('land'),      // 11. desired_category_land
+      data.desiredCategories.includes('commercial'),// 12. desired_category_commercial
+      data.desiredCategories.includes('other'),     // 13. desired_category_other
+      data.desiredLocationCity,                      // 14. desired_location_city
+      data.desiredLocationNeighborhood || null,      // 15. desired_location_neighborhood
+      minBedroomsValue, // 16. min_bedrooms
+      minBathroomsValue, // 17. min_bathrooms
+      budgetMaxValue,    // 18. budget_max
+      data.open_for_broker_collaboration || false, // 19. open_for_broker_collaboration
+      0, // 20. comments_count (DEFAULT 0)
+      true, // 21. is_active (DEFAULT TRUE)
+      new Date(), // 22. created_at (DEFAULT CURRENT_TIMESTAMP)
+      new Date()  // 23. updated_at (DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
     ];
+    
+    console.log(`[RequestAction DEBUG] SQL columns explicit count: 23`);
+    console.log(`[RequestAction DEBUG] Params length: ${params.length}`);
+
+    if (params.length !== 23) {
+        const errorMessage = `[RequestAction FATAL] Mismatch detected before query: Expected 23 params for 23 columns, got ${params.length} params.`;
+        console.error(errorMessage);
+        // Retornar un error más detallado al cliente podría ser útil aquí, o al menos loguearlo bien.
+        return { success: false, message: "Error interno: Desajuste de parámetros en la acción del servidor." };
+    }
     
     await query(sql, params);
     console.log(`[RequestAction] Request submitted successfully. ID: ${requestId}, Slug: ${slug}`);
@@ -127,26 +143,23 @@ export async function submitRequestAction(
     revalidatePath('/dashboard');
     revalidatePath('/admin/requests');
 
-
     return { success: true, message: "Solicitud publicada exitosamente.", requestId, requestSlug: slug };
 
   } catch (error: any) {
     console.error("[RequestAction] Error submitting request:", error);
-    let message = "Ocurrió un error desconocido al publicar la solicitud.";
+    let message = `Error al publicar solicitud: ${error.message}`; // Incluir el mensaje de error original
      if (error.code === 'ER_DUP_ENTRY' && error.message.includes('property_requests.slug')) {
         message = "Ya existe una solicitud con un título muy similar (slug duplicado). Intenta con un título ligeramente diferente.";
-    } else if (error.message) {
-      message = error.message;
     }
+    // No ocultar el error.message original si es diferente de los casos específicos
     return { success: false, message };
   }
 }
 
 interface GetRequestsActionOptions {
   includeInactive?: boolean;
-  userId?: string; // Para filtrar por usuario
-  onlyOpenForCollaboration?: boolean; // Para filtrar por colaboración de corredores
-  // Add other filter/sort options here later if needed
+  userId?: string; 
+  onlyOpenForCollaboration?: boolean; 
 }
 
 export async function getRequestsAction(options: GetRequestsActionOptions = {}): Promise<SearchRequest[]> {
@@ -218,7 +231,7 @@ export async function getRequestBySlugAction(slug: string): Promise<SearchReques
 }
 
 export async function getUserRequestsAction(userId: string): Promise<SearchRequest[]> {
-  return getRequestsAction({ userId, includeInactive: true }); // Se usa getRequestsAction con el filtro de userId
+  return getRequestsAction({ userId, includeInactive: true });
 }
 
 export async function updateRequestStatusAction(requestId: string, isActive: boolean): Promise<{ success: boolean; message?: string }> {
@@ -243,7 +256,6 @@ export async function adminDeleteRequestAction(requestId: string): Promise<{ suc
   }
 
   try {
-    // Comentarios asociados se eliminan por ON DELETE CASCADE desde la tabla 'comments'
     const result: any = await query('DELETE FROM property_requests WHERE id = ?', [requestId]);
     if (result.affectedRows > 0) {
       revalidatePath('/admin/requests');
@@ -325,8 +337,7 @@ export async function adminUpdateRequestAction(
       data.minBathrooms !== undefined && data.minBathrooms !== '' ? Number(data.minBathrooms) : null,
       data.budgetMax !== undefined && data.budgetMax !== '' ? Number(data.budgetMax) : null,
       data.open_for_broker_collaboration || false,
-      // NOW() is handled by SQL for updated_at
-      requestId // For WHERE id = ?
+      requestId
     ];
     
     const result: any = await query(sql, params);
@@ -345,9 +356,9 @@ export async function adminUpdateRequestAction(
     if (currentSlug) {
       revalidatePath(`/requests/${currentSlug}`); 
     } else {
-       revalidatePath(`/requests/[slug]`, 'layout'); // Fallback
+       revalidatePath(`/requests/[slug]`, 'layout'); 
     }
-    revalidatePath('/'); // Revalidar página de inicio por si aparecen en "Recientes"
+    revalidatePath('/'); 
 
     return { success: true, message: "Solicitud actualizada exitosamente.", requestSlug: currentSlug };
 
@@ -370,4 +381,6 @@ export async function getRequestsCountAction(activeOnly: boolean = false): Promi
     return 0;
   }
 }
+    
+
     

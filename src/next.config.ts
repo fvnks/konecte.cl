@@ -35,9 +35,11 @@ const nextConfig: NextConfig = {
     'handlebars',
     'dotprompt',
     '@genkit-ai/core',
-    'genkit', // Ensure genkit main package is externalized
-    '@genkit-ai/googleai', // Ensure googleai plugin is externalized
+    'genkit', 
+    '@genkit-ai/googleai',
+    'mysql2', // Added mysql2
   ],
 };
 
 export default nextConfig;
+
