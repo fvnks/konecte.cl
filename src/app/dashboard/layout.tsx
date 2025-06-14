@@ -48,7 +48,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     setIsClient(true);
   }, []);
 
-  // Effect to set currentUser based on localStorage
+  // Effect to set currentUser based on localStorage and handle redirection
   useEffect(() => {
     if (isClient) {
       const userJson = localStorage.getItem('loggedInUser');
@@ -59,13 +59,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         } catch (e) {
           console.error("Error parsing user from localStorage for layout:", e);
           setCurrentUser(null);
-          if (!pathname.startsWith('/auth')) {
-            localStorage.removeItem('loggedInUser'); // Clean up
+          localStorage.removeItem('loggedInUser'); // Clean up corrupted data
+           if (!pathname.startsWith('/auth')) { // Only redirect if not on auth pages
+            router.push('/auth/signin');
           }
         }
       } else {
         setCurrentUser(null);
-        if (!pathname.startsWith('/auth')) {
+        if (!pathname.startsWith('/auth')) { // Only redirect if not on auth pages
           router.push('/auth/signin');
         }
       }
@@ -81,34 +82,43 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         setCurrentNavItems(baseNavItems);
       }
     } else {
-      // For non-logged-in users or while currentUser is loading.
-      // If on a dashboard page without a user, they should be redirected by the previous effect.
-      // If on an auth page, this layout might not be the active one.
-      setCurrentNavItems(baseNavItems); // Default to base, or consider empty if strictly for logged-in.
+      // If no user, default to baseNavItems or an empty array if dashboard is strictly for logged-in
+      setCurrentNavItems(baseNavItems); 
     }
   }, [currentUser]);
 
 
   const fetchUnreadCountCallback = useCallback(async () => {
     if (currentUser?.id) {
-      const count = await getTotalUnreadMessagesCountAction(currentUser.id);
-      setTotalUnreadCount(count);
+      try {
+        const count = await getTotalUnreadMessagesCountAction(currentUser.id);
+        setTotalUnreadCount(count);
+      } catch (error) {
+        console.error("Error fetching unread messages count:", error);
+        setTotalUnreadCount(0); // Reset on error
+      }
+    } else {
+      setTotalUnreadCount(0); // No user, no unread messages
     }
   }, [currentUser?.id]);
 
   useEffect(() => {
-    if (isClient) {
+    if (isClient && currentUser) { // Fetch only if client and user is determined
         fetchUnreadCountCallback();
         const handleMessagesUpdated = () => fetchUnreadCountCallback();
         window.addEventListener('messagesUpdated', handleMessagesUpdated);
         return () => {
             window.removeEventListener('messagesUpdated', handleMessagesUpdated);
         };
+    } else if (isClient && !currentUser) {
+        setTotalUnreadCount(0); // Ensure count is zero if no user
     }
-  }, [currentUser, isClient, pathname, fetchUnreadCountCallback]);
+  }, [currentUser, isClient, fetchUnreadCountCallback]);
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
+    setCurrentUser(null); // Clear user state immediately
+    setTotalUnreadCount(0); // Reset unread count
     toast({
       title: "Sesión Cerrada",
       description: "Has cerrado sesión de tu panel.",
@@ -121,13 +131,57 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const userAvatarUrl = currentUser?.avatarUrl || `https://placehold.co/40x40.png?text=${userName.substring(0,1)}`;
   const userAvatarFallback = userName.substring(0,1).toUpperCase();
 
+  // Show a generic loader if not client-side yet or if user data is still being processed
   if (!isClient || (!currentUser && !pathname.startsWith('/auth'))) {
-     return <div className="flex min-h-screen justify-center items-center"><p>Cargando...</p></div>;
+     return (
+        <div className="flex min-h-screen flex-col bg-muted/40">
+            <aside className="w-64 bg-background border-r p-5 space-y-6 hidden md:flex flex-col shadow-sm">
+                {/* Skeleton for sidebar header */}
+                <div className="flex items-center gap-3 px-2 py-1">
+                    <div className="p-2 bg-primary/10 rounded-lg"><Home className="h-6 w-6 text-primary" /></div>
+                    <span className="text-lg font-bold font-headline text-foreground">PropSpot</span>
+                </div>
+                <Separator/>
+                {/* Skeleton for nav items */}
+                <div className="flex-grow space-y-1">
+                    {[...Array(5)].map((_, i) => <div key={i} className="h-9 w-full bg-muted rounded-md animate-pulse"/>)}
+                </div>
+                <Separator/>
+                {/* Skeleton for user info & logout */}
+                <div className="mt-auto space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
+                        <div className="h-9 w-9 rounded-full bg-muted animate-pulse"/>
+                        <div className="space-y-1"><div className="h-3 w-20 bg-muted rounded animate-pulse"/><div className="h-3 w-16 bg-muted rounded animate-pulse"/></div>
+                    </div>
+                    <div className="h-9 w-full bg-muted rounded-md animate-pulse"/>
+                </div>
+            </aside>
+            <div className="flex-1 flex flex-col">
+                <header className="bg-background border-b p-4 shadow-sm md:hidden">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-primary"><LayoutDashboard className="h-5 w-5" /><span className="text-md font-bold font-headline">Mi Panel</span></div>
+                    </div>
+                </header>
+                <main className="flex-grow p-4 sm:p-6 md:p-8 bg-muted/30 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="ml-2">Cargando panel...</p>
+                </main>
+            </div>
+        </div>
+     );
+  }
+  
+  // If currentUser is null AND we are NOT on an auth page, it means redirection should have happened or is about to.
+  // This state might be briefly visible, or if redirection fails.
+  if (!currentUser && !pathname.startsWith('/auth')) {
+    return (
+       <div className="flex items-center justify-center min-h-screen">
+         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+         <p className="ml-2">Redirigiendo...</p>
+       </div>
+    );
   }
 
-  if (!currentUser && !pathname.startsWith('/auth')) {
-    return null;
-  }
 
   return (
     <div className="flex min-h-screen bg-muted/40">
@@ -152,7 +206,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               className="w-full justify-start text-sm py-2.5 h-auto rounded-md hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
             >
               <Link href={item.href} className="flex items-center gap-3 px-3">
-                {React.cloneElement(item.icon, { className: "h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" })}
+                {React.cloneElement(item.icon as React.ReactElement, { className: "h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" })}
                 <span className="font-medium flex-1">{item.label}</span>
                 {item.id === 'messagesLink' && totalUnreadCount > 0 && (
                   <Badge variant="destructive" className="h-5 px-1.5 text-xs">
