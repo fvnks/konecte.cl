@@ -292,3 +292,13 @@ export async function adminDeleteUserAction(userIdToDelete: string, currentAdmin
   }
 }
 
+export async function getUsersCountAction(): Promise<number> {
+  try {
+    const result: any[] = await query('SELECT COUNT(*) as count FROM users');
+    return Number(result[0].count) || 0;
+  } catch (error) {
+    console.error("Error al obtener el conteo de usuarios:", error);
+    return 0;
+  }
+}
+

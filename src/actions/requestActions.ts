@@ -351,4 +351,18 @@ export async function adminUpdateRequestAction(
     return { success: false, message: `Error al actualizar solicitud: ${error.message}` };
   }
 }
+
+export async function getRequestsCountAction(activeOnly: boolean = false): Promise<number> {
+  try {
+    let sql = 'SELECT COUNT(*) as count FROM property_requests';
+    if (activeOnly) {
+      sql += ' WHERE is_active = TRUE';
+    }
+    const result: any[] = await query(sql);
+    return Number(result[0].count) || 0;
+  } catch (error) {
+    console.error("Error al obtener el conteo de solicitudes:", error);
+    return 0;
+  }
+}
     

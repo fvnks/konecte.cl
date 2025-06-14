@@ -5,7 +5,7 @@
 import React, { type ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper } from 'lucide-react';
+import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -17,6 +17,7 @@ interface AdminLayoutProps {
 
 const adminNavItems = [
   { href: '/admin', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+  { href: '/admin/stats', label: 'Estadísticas', icon: <BarChart3 className="h-5 w-5" /> },
   { href: '/admin/appearance', label: 'Apariencia', icon: <Brush className="h-5 w-5" /> },
   { href: '/admin/content', label: 'Contenido del Sitio', icon: <Newspaper className="h-5 w-5" /> },
   { href: '/admin/settings', label: 'Google Sheets', icon: <Settings className="h-5 w-5" /> },

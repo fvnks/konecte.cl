@@ -50,6 +50,8 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     features: parseJsonString(row.features),
     upvotes: Number(row.upvotes),
     commentsCount: Number(row.comments_count),
+    views_count: Number(row.views_count),
+    inquiries_count: Number(row.inquiries_count),
     isActive: Boolean(row.is_active),
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
@@ -234,7 +236,7 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
         sql += ' ORDER BY p.price DESC, p.created_at DESC';
         break;
       case 'popularity_desc':
-        sql += ' ORDER BY p.upvotes DESC, p.comments_count DESC, p.created_at DESC';
+        sql += ' ORDER BY p.upvotes DESC, p.comments_count DESC, p.views_count DESC, p.inquiries_count DESC, p.created_at DESC';
         break;
       case 'createdAt_desc':
       default:
@@ -470,3 +472,16 @@ export async function adminUpdatePropertyAction(
   }
 }
 
+export async function getPropertiesCountAction(activeOnly: boolean = false): Promise<number> {
+  try {
+    let sql = 'SELECT COUNT(*) as count FROM properties';
+    if (activeOnly) {
+      sql += ' WHERE is_active = TRUE';
+    }
+    const result: any[] = await query(sql);
+    return Number(result[0].count) || 0;
+  } catch (error) {
+    console.error("Error al obtener el conteo de propiedades:", error);
+    return 0;
+  }
+}

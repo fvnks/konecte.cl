@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Settings, Users, LayoutDashboard, Brush, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3 } from "lucide-react";
+import { Settings, Users, LayoutDashboard, Brush, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper } from "lucide-react";
 import type { ReactNode } from 'react';
 
 interface AdminDashboardCardProps {
@@ -35,6 +35,14 @@ const AdminDashboardCard = ({ title, description, href, icon, cta, colorClass }:
 );
 
 const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
+   {
+    title: "Estadísticas",
+    description: "Visualiza métricas clave del rendimiento de la plataforma.",
+    href: "/admin/stats", 
+    icon: <BarChart3 className="h-8 w-8 text-primary" />,
+    cta: "Ver Estadísticas",
+    colorClass: "from-indigo-500/10 to-indigo-500/5 text-indigo-600 dark:text-indigo-400",
+  },
   {
     title: "Apariencia del Sitio",
     description: "Personaliza el título, logo y secciones de la landing page global.",
@@ -42,6 +50,14 @@ const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
     icon: <Palette className="h-8 w-8 text-primary" />,
     cta: "Configurar Apariencia",
     colorClass: "from-purple-500/10 to-purple-500/5 text-purple-600 dark:text-purple-400",
+  },
+  {
+    title: "Contenido del Sitio",
+    description: "Edita los textos clave utilizados en diversas partes del sitio web.",
+    href: "/admin/content",
+    icon: <Newspaper className="h-8 w-8 text-primary" />,
+    cta: "Gestionar Contenido",
+    colorClass: "from-pink-500/10 to-pink-500/5 text-pink-600 dark:text-pink-400",
   },
   {
     title: "Gestión de Usuarios",
@@ -90,15 +106,6 @@ const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
     icon: <DollarSign className="h-8 w-8 text-primary" />,
     cta: "Administrar Planes",
     colorClass: "from-teal-500/10 to-teal-500/5 text-teal-600 dark:text-teal-400",
-  },
-  //  Placeholder para futuras estadísticas
-   {
-    title: "Estadísticas (Próx.)",
-    description: "Visualiza métricas clave del rendimiento de la plataforma.",
-    href: "/admin", // Enlace a la misma página por ahora
-    icon: <BarChart3 className="h-8 w-8 text-primary" />,
-    cta: "Ver Estadísticas",
-    colorClass: "from-indigo-500/10 to-indigo-500/5 text-indigo-600 dark:text-indigo-400",
   },
 ];
 

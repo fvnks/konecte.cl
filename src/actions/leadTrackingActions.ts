@@ -79,8 +79,22 @@ export async function submitPropertyInquiryAction(
   }
 }
 
-// --- Get Property Views (Futuro - para el panel del propietario) ---
-// export async function getPropertyViewsAction(propertyId: string): Promise<PropertyView[]> { ... }
+export async function getTotalPropertyViewsAction(): Promise<number> {
+  try {
+    const result: any[] = await query('SELECT COUNT(*) as count FROM property_views');
+    return Number(result[0].count) || 0;
+  } catch (error) {
+    console.error("Error al obtener el conteo total de vistas de propiedades:", error);
+    return 0;
+  }
+}
 
-// --- Get Property Inquiries (Futuro - para el panel del propietario) ---
-// export async function getPropertyInquiriesAction(propertyId: string): Promise<PropertyInquiry[]> { ... }
+export async function getTotalPropertyInquiriesAction(): Promise<number> {
+  try {
+    const result: any[] = await query('SELECT COUNT(*) as count FROM property_inquiries');
+    return Number(result[0].count) || 0;
+  } catch (error) {
+    console.error("Error al obtener el conteo total de consultas de propiedades:", error);
+    return 0;
+  }
+}
