@@ -15,6 +15,8 @@ import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable";
 import FeaturedListingsClient from '@/components/landing/FeaturedListingsClient';
 import InteractiveAIMatching from '@/components/landing/InteractiveAIMatching';
 
+export const dynamic = 'force-dynamic'; // Fuerza el renderizado dinámico para esta página
+
 // --- Section Data Fetching (remains on server) ---
 
 async function getFeaturedListingsAndRequestsData() {
@@ -76,7 +78,7 @@ async function GoogleSheetDataSection() {
             <DatabaseZap className="h-8 w-8 mr-3 text-primary" />
             Datos Externos
           </CardTitle>
-           <CardDescription className="text-lg text-muted-foreground mt-1">No se pudieron cargar los datos de la hoja de cálculo. Verifica la configuración.</CardDescription>
+           <CardDescription className="text-lg text-muted-foreground mt-1">No se pudieron cargar los datos de la hoja de cálculo. Verifica la configuración y la consola del servidor para más detalles.</CardDescription>
         </CardHeader>
          <CardContent className="p-6 md:p-8">
            <p className="text-base text-muted-foreground">Asegúrate de que el ID de la hoja, el nombre de la pestaña y las columnas sean correctos, y que la hoja esté compartida públicamente.</p>
