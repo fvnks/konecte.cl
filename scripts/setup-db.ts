@@ -473,7 +473,7 @@ const SQL_STATEMENTS: string[] = [
     INDEX idx_contact_submissions_is_read (is_read)
   );`,
   
-  // --- User Listing Interactions Table (NEW) ---
+  // --- User Listing Interactions Table ---
   `CREATE TABLE IF NOT EXISTS user_listing_interactions (
     id VARCHAR(36) PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,
