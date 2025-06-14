@@ -1,4 +1,3 @@
-
 // src/components/chat/ChatHeader.tsx
 'use client';
 
@@ -9,7 +8,7 @@ import { ChevronLeft, UserCircle, Building, FileSearch } from 'lucide-react';
 import type { User, ChatConversationListItem } from '@/lib/types';
 
 interface ChatHeaderProps {
-  otherUser?: Pick<User, 'name' | 'avatarUrl'>;
+  otherUser?: Pick<User, 'name' | 'avatarUrl'> | null; // Allow null
   conversationContext?: Pick<ChatConversationListItem, 'context_title' | 'context_slug' | 'context_type'> | null;
 }
 
@@ -19,8 +18,9 @@ export default function ChatHeader({ otherUser, conversationContext }: ChatHeade
   const userInitials = userName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
   const getContextIcon = () => {
-    if (conversationContext?.context_type === 'property') return <Building className="h-4 w-4 text-muted-foreground" />;
-    if (conversationContext?.context_type === 'request') return <FileSearch className="h-4 w-4 text-muted-foreground" />;
+    if (!conversationContext) return null;
+    if (conversationContext.context_type === 'property') return <Building className="h-4 w-4 text-muted-foreground" />;
+    if (conversationContext.context_type === 'request') return <FileSearch className="h-4 w-4 text-muted-foreground" />;
     return null;
   };
 
@@ -42,7 +42,7 @@ export default function ChatHeader({ otherUser, conversationContext }: ChatHeade
         </Link>
       </Button>
       <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border">
-        <AvatarImage src={userAvatar} alt={userName} data-ai-hint="persona perfil" />
+        <AvatarImage src={userAvatar} alt={userName} data-ai-hint="persona perfil"/>
         <AvatarFallback className="text-sm bg-muted">
           {userInitials || <UserCircle className="h-5 w-5"/>}
         </AvatarFallback>

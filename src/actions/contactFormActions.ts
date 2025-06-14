@@ -1,12 +1,12 @@
-
 // src/actions/contactFormActions.ts
 'use server';
 
 import { query } from '@/lib/db';
-import type { ContactFormSubmission, ContactFormPublicValues } from '@/lib/types';
+import type { ContactFormSubmission, ContactFormPublicValues, User } from '@/lib/types';
 import { contactFormPublicSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
+import { getOrCreateConversationAction, sendMessageAction } from './chatActions'; // Import chat actions
 
 function mapDbRowToContactFormSubmission(row: any): ContactFormSubmission {
   return {
@@ -41,9 +41,7 @@ export async function submitContactFormAction(
     `;
     await query(sql, [submissionId, name, email, phone || null, subject || null, message]);
     
-    // No es necesario revalidar una ruta aquí ya que el usuario no ve los mensajes enviados
-    // La revalidación ocurrirá en el panel de admin cuando se listen.
-    // Considerar enviar una notificación al admin por email (funcionalidad futura).
+    revalidatePath('/admin/contact-submissions'); // Revalidate admin page to show new submission
 
     return { success: true, message: 'Tu mensaje ha sido enviado exitosamente. Nos pondremos en contacto contigo pronto.' };
   } catch (error: any) {
@@ -107,17 +105,63 @@ export async function getUnreadContactSubmissionsCountAction(): Promise<number> 
   }
 }
 
-// Futura acción para añadir notas de admin o marcar como respondido
-export async function addAdminNoteToSubmissionAction(messageId: string, adminNotes: string): Promise<{ success: boolean; message?: string }> {
-  if (!messageId || !adminNotes) {
-    return { success: false, message: "ID de mensaje o nota no proporcionados." };
+export async function adminRespondToSubmissionAction(
+  submissionId: string, 
+  adminUserId: string, 
+  responseText: string
+): Promise<{ success: boolean; message: string; chatSent?: boolean }> {
+  if (!submissionId || !adminUserId || !responseText.trim()) {
+    return { success: false, message: "Faltan datos para procesar la respuesta.", chatSent: false };
   }
+
   try {
-    await query('UPDATE contact_form_submissions SET admin_notes = ?, replied_at = NOW() WHERE id = ?', [adminNotes, messageId]);
+    const submissionRows: any[] = await query('SELECT email FROM contact_form_submissions WHERE id = ?', [submissionId]);
+    if (submissionRows.length === 0) {
+      return { success: false, message: "Mensaje de contacto original no encontrado.", chatSent: false };
+    }
+    const submitterEmail = submissionRows[0].email;
+
+    const userRows: any[] = await query('SELECT id FROM users WHERE email = ?', [submitterEmail]);
+    
+    let chatSent = false;
+    let message = "";
+
+    if (userRows.length > 0) {
+      const targetUserId = userRows[0].id;
+      // Crear o obtener conversación
+      const conversationResult = await getOrCreateConversationAction(adminUserId, targetUserId);
+      if (conversationResult.success && conversationResult.conversation) {
+        // Enviar mensaje de chat
+        const sendMessageResult = await sendMessageAction(
+          conversationResult.conversation.id,
+          adminUserId,
+          targetUserId,
+          responseText
+        );
+        if (sendMessageResult.success) {
+          chatSent = true;
+          message = "Respuesta enviada como mensaje de chat y nota guardada.";
+        } else {
+          message = `Respuesta guardada como nota. Error al enviar como chat: ${sendMessageResult.message}`;
+        }
+      } else {
+        message = `Respuesta guardada como nota. Error al crear/obtener chat: ${conversationResult.message}`;
+      }
+    } else {
+      message = "Respuesta guardada como nota. El email del remitente no corresponde a un usuario registrado, no se envió chat.";
+    }
+
+    // Actualizar el contact_form_submission
+    await query(
+      'UPDATE contact_form_submissions SET admin_notes = ?, replied_at = NOW(), is_read = TRUE WHERE id = ?',
+      [responseText, submissionId]
+    );
+
     revalidatePath('/admin/contact-submissions');
-    return { success: true, message: "Nota añadida y mensaje marcado como respondido." };
+    return { success: true, message, chatSent };
+
   } catch (error: any) {
-    console.error(`Error adding admin note to submission ${messageId}:`, error);
-    return { success: false, message: `Error: ${error.message}` };
+    console.error(`Error responding to submission ${submissionId}:`, error);
+    return { success: false, message: `Error al procesar respuesta: ${error.message}`, chatSent: false };
   }
 }

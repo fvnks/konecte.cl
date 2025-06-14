@@ -1,4 +1,3 @@
-
 // src/app/admin/contact-submissions/page.tsx
 'use client';
 
@@ -8,13 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { useToast } from "@/hooks/use-toast";
-import type { ContactFormSubmission } from '@/lib/types';
+import type { ContactFormSubmission, User as StoredUserType } from '@/lib/types';
 import { 
   getContactFormSubmissionsAction, 
   markSubmissionAsActionReadAction, 
-  deleteContactSubmissionAction 
+  deleteContactSubmissionAction,
+  adminRespondToSubmissionAction
 } from '@/actions/contactFormActions';
-import { Loader2, MailWarning, Trash2, Eye, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Loader2, MailWarning, Trash2, Eye, CheckCircle2, RotateCcw, Send, CornerDownLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -28,8 +28,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 export default function AdminContactSubmissionsPage() {
   const { toast } = useToast();
@@ -39,6 +40,20 @@ export default function AdminContactSubmissionsPage() {
   
   const [selectedSubmission, setSelectedSubmission] = useState<ContactFormSubmission | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [adminResponseText, setAdminResponseText] = useState('');
+  const [isResponding, setIsResponding] = useState(false);
+  const [adminUser, setAdminUser] = useState<StoredUserType | null>(null);
+
+  useEffect(() => {
+    const userJson = localStorage.getItem('loggedInUser');
+    if (userJson) {
+      try {
+        setAdminUser(JSON.parse(userJson));
+      } catch (error) {
+        console.error("Error parsing admin user from localStorage", error);
+      }
+    }
+  }, []);
 
   const fetchSubmissions = async () => {
     setIsLoading(true);
@@ -61,7 +76,7 @@ export default function AdminContactSubmissionsPage() {
       const result = await markSubmissionAsActionReadAction(submissionId, !currentStatus);
       if (result.success) {
         toast({ title: "Estado Actualizado", description: result.message });
-        fetchSubmissions(); // Re-fetch to update list
+        fetchSubmissions(); 
         if (selectedSubmission?.id === submissionId) {
           setSelectedSubmission(prev => prev ? { ...prev, is_read: !currentStatus } : null);
         }
@@ -76,8 +91,8 @@ export default function AdminContactSubmissionsPage() {
       const result = await deleteContactSubmissionAction(submissionId);
       if (result.success) {
         toast({ title: "Mensaje Eliminado", description: result.message });
-        fetchSubmissions(); // Re-fetch to update list
-        setIsViewModalOpen(false); // Close modal if the viewed item was deleted
+        fetchSubmissions(); 
+        setIsViewModalOpen(false); 
         setSelectedSubmission(null);
       } else {
         toast({ title: "Error al Eliminar", description: result.message, variant: "destructive" });
@@ -87,10 +102,36 @@ export default function AdminContactSubmissionsPage() {
 
   const openViewModal = (submission: ContactFormSubmission) => {
     setSelectedSubmission(submission);
+    setAdminResponseText(''); // Limpiar respuesta anterior
     setIsViewModalOpen(true);
-    // Marcar como leído al abrir, si no lo está ya
     if (!submission.is_read) {
       handleMarkAsReadUnread(submission.id, false);
+    }
+  };
+
+  const handleAdminRespond = async () => {
+    if (!selectedSubmission || !adminUser?.id || !adminResponseText.trim()) {
+        toast({ title: "Datos incompletos", description: "Por favor, escribe una respuesta.", variant: "destructive" });
+        return;
+    }
+    setIsResponding(true);
+    const result = await adminRespondToSubmissionAction(selectedSubmission.id, adminUser.id, adminResponseText);
+    setIsResponding(false);
+
+    toast({
+        title: result.success ? "Respuesta Procesada" : "Error al Responder",
+        description: result.message,
+        variant: result.success ? (result.chatSent ? "default" : "default") : "destructive",
+    });
+
+    if (result.success) {
+        setAdminResponseText('');
+        fetchSubmissions(); // Re-fetch para actualizar el estado 'replied_at' y 'is_read'
+        // Podríamos cerrar el modal o mantenerlo abierto
+        // setIsViewModalOpen(false); 
+        // setSelectedSubmission(null);
+        // Actualizar el selectedSubmission localmente para reflejar que ha sido respondido
+        setSelectedSubmission(prev => prev ? {...prev, admin_notes: adminResponseText, replied_at: new Date().toISOString(), is_read: true} : null);
     }
   };
   
@@ -130,12 +171,13 @@ export default function AdminContactSubmissionsPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Asunto</TableHead>
                     <TableHead>Fecha Envío</TableHead>
+                    <TableHead>Respondido</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {submissions.map((sub) => (
-                    <TableRow key={sub.id} className={!sub.is_read ? 'font-semibold bg-primary/5 hover:bg-primary/10' : 'hover:bg-muted/50'}>
+                    <TableRow key={sub.id} className={`${!sub.is_read ? 'font-semibold bg-primary/5 hover:bg-primary/10' : 'hover:bg-muted/50'} ${sub.replied_at ? 'opacity-70' : ''}`}>
                       <TableCell className="text-center">
                         {!sub.is_read && <Badge variant="destructive" className="h-2 w-2 p-0 rounded-full" title="No leído" />}
                       </TableCell>
@@ -145,8 +187,11 @@ export default function AdminContactSubmissionsPage() {
                       <TableCell className="text-xs text-muted-foreground">
                         {format(new Date(sub.submitted_at), "dd MMM yyyy, HH:mm", { locale: es })}
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {sub.replied_at ? format(new Date(sub.replied_at), "dd MMM yy", { locale: es }) : 'No'}
+                      </TableCell>
                       <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" onClick={() => openViewModal(sub)} title="Ver Mensaje">
+                        <Button variant="ghost" size="icon" onClick={() => openViewModal(sub)} title="Ver y Responder Mensaje">
                           <Eye className="h-4 w-4" />
                         </Button>
                         <AlertDialog>
@@ -190,6 +235,7 @@ export default function AdminContactSubmissionsPage() {
               <DialogTitle>Mensaje de: {selectedSubmission.name}</DialogTitle>
               <DialogDescription>
                 Enviado el {format(new Date(selectedSubmission.submitted_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}
+                {selectedSubmission.replied_at && ` | Respondido el ${format(new Date(selectedSubmission.replied_at), "dd MMM yy", { locale: es })}`}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto pr-3">
@@ -197,27 +243,50 @@ export default function AdminContactSubmissionsPage() {
               {selectedSubmission.phone && <p><strong className="font-medium">Teléfono:</strong> {selectedSubmission.phone}</p>}
               {selectedSubmission.subject && <p><strong className="font-medium">Asunto:</strong> {selectedSubmission.subject}</p>}
               <div>
-                <strong className="font-medium block mb-1">Mensaje:</strong>
-                <Textarea value={selectedSubmission.message} readOnly className="min-h-[150px] bg-muted/50" />
+                <strong className="font-medium block mb-1">Mensaje Original:</strong>
+                <Textarea value={selectedSubmission.message} readOnly className="min-h-[100px] bg-muted/50" />
               </div>
               {selectedSubmission.admin_notes && (
                 <div>
-                  <strong className="font-medium block mb-1">Notas del Admin:</strong>
+                  <strong className="font-medium block mb-1">Última Respuesta/Nota del Admin:</strong>
                   <Textarea value={selectedSubmission.admin_notes} readOnly className="min-h-[80px] bg-muted/30 italic" />
                 </div>
               )}
+              <div className="space-y-1.5 pt-3 border-t">
+                <Label htmlFor="admin-response" className="font-medium">Escribir Respuesta / Nota Interna:</Label>
+                <Textarea
+                    id="admin-response"
+                    placeholder="Escribe tu respuesta aquí. Si el email del remitente está registrado, se enviará como un mensaje de chat..."
+                    value={adminResponseText}
+                    onChange={(e) => setAdminResponseText(e.target.value)}
+                    className="min-h-[100px]"
+                    disabled={isResponding || !adminUser}
+                />
+                {!adminUser && <p className="text-xs text-destructive">Debes estar logueado como admin para responder.</p>}
+              </div>
             </div>
-            <DialogFooter className="sm:justify-between gap-2">
+            <DialogFooter className="sm:justify-between gap-2 flex-wrap">
               <Button 
                 variant={selectedSubmission.is_read ? "outline" : "default"} 
                 size="sm"
                 onClick={() => handleMarkAsReadUnread(selectedSubmission.id, selectedSubmission.is_read)} 
-                disabled={isProcessing}
+                disabled={isProcessing || isResponding}
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" />
-                {selectedSubmission.is_read ? "Marcar como No Leído" : "Marcar como Leído"}
+                {selectedSubmission.is_read ? "Marcar No Leído" : "Marcar Leído"}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setIsViewModalOpen(false)}>Cerrar</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsViewModalOpen(false)} disabled={isResponding}>Cerrar</Button>
+                <Button 
+                    size="sm" 
+                    onClick={handleAdminRespond} 
+                    disabled={isResponding || !adminResponseText.trim() || !adminUser}
+                    className="bg-primary hover:bg-primary/90"
+                >
+                    {isResponding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                    Enviar Respuesta / Guardar Nota
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
