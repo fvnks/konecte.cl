@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { CalendarPlus, UserCircle, LogIn } from 'lucide-react';
+import { CalendarPlus, UserCircle, LogIn, Loader2 } from 'lucide-react'; // Added Loader2
 import RequestVisitDialog from './RequestVisitDialog';
 import type { User as StoredUserType } from '@/lib/types';
 import Link from 'next/link';
@@ -100,4 +100,3 @@ export default function RequestVisitButtonClient({
     </>
   );
 }
-
