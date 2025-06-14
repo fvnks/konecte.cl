@@ -11,40 +11,20 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { propertyMatchingPrompt, type PropertyMatchingInput } from '@/ai/shared/property-prompts';
+import { 
+  propertyMatchingPrompt, 
+  type PropertyMatchingInput,
+  FindListingsForFreeTextSearchInputSchema, // Import schema
+  FindListingsForFreeTextSearchOutputSchema, // Import schema
+  FoundMatchSchema // Import schema (if needed directly, or rely on output schema)
+} from '@/ai/shared/property-prompts';
 import { getPropertiesAction } from '@/actions/propertyActions';
 import { getRequestsAction } from '@/actions/requestActions';
 import type { PropertyListing, SearchRequest } from '@/lib/types';
 
-// Schemas
-export const FindListingsForFreeTextSearchInputSchema = z.object({
-  userSearchDescription: z.string().min(10, "La descripción de búsqueda debe tener al menos 10 caracteres.").max(1000, "La descripción no puede exceder los 1000 caracteres."),
-});
+// Types are derived from imported schemas
 export type FindListingsForFreeTextSearchInput = z.infer<typeof FindListingsForFreeTextSearchInputSchema>;
-
-const BaseMatchSchema = z.object({
-  matchScore: z.number(),
-  reason: z.string(),
-});
-
-const MatchedPropertySchema = BaseMatchSchema.extend({
-  type: z.literal('property'),
-  item: z.custom<PropertyListing>((data) => typeof data === 'object' && data !== null && 'title' in data && 'propertyType' in data), // Basic check
-});
-export type MatchedProperty = z.infer<typeof MatchedPropertySchema>;
-
-const MatchedRequestSchema = BaseMatchSchema.extend({
-  type: z.literal('request'),
-  item: z.custom<SearchRequest>((data) => typeof data === 'object' && data !== null && 'title' in data && 'desiredPropertyType' in data), // Basic check
-});
-export type MatchedRequest = z.infer<typeof MatchedRequestSchema>;
-
-export const FoundMatchSchema = z.union([MatchedPropertySchema, MatchedRequestSchema]);
 export type FoundMatch = z.infer<typeof FoundMatchSchema>;
-
-export const FindListingsForFreeTextSearchOutputSchema = z.object({
-  matches: z.array(FoundMatchSchema),
-});
 export type FindListingsForFreeTextSearchOutput = z.infer<typeof FindListingsForFreeTextSearchOutputSchema>;
 
 
@@ -57,8 +37,8 @@ export async function findListingsForFreeTextSearch(input: FindListingsForFreeTe
 const findListingsForFreeTextSearchFlow = ai.defineFlow(
   {
     name: 'findListingsForFreeTextSearchFlow',
-    inputSchema: FindListingsForFreeTextSearchInputSchema,
-    outputSchema: FindListingsForFreeTextSearchOutputSchema,
+    inputSchema: FindListingsForFreeTextSearchInputSchema, // Use imported schema
+    outputSchema: FindListingsForFreeTextSearchOutputSchema, // Use imported schema
   },
   async (input) => {
     const { userSearchDescription } = input;
@@ -80,7 +60,7 @@ const findListingsForFreeTextSearchFlow = ai.defineFlow(
         if (matchOutput && matchOutput.matchScore > 0.3) { // Threshold to reduce noise
           allMatches.push({
             type: 'property',
-            item: property,
+            item: property, // Pass the full property object
             matchScore: matchOutput.matchScore,
             reason: matchOutput.reason,
           });
@@ -104,7 +84,7 @@ const findListingsForFreeTextSearchFlow = ai.defineFlow(
         if (matchOutput && matchOutput.matchScore > 0.3) { // Threshold
           allMatches.push({
             type: 'request',
-            item: request,
+            item: request, // Pass the full request object
             matchScore: matchOutput.matchScore,
             reason: matchOutput.reason,
           });
