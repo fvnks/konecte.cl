@@ -48,9 +48,17 @@ export default function AdminContactSubmissionsPage() {
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
-        setAdminUser(JSON.parse(userJson));
+        const parsedUser: StoredUserType = JSON.parse(userJson);
+        // Asegurarse de que el usuario tenga un ID válido
+        if (parsedUser && parsedUser.id) {
+          setAdminUser(parsedUser);
+        } else {
+          setAdminUser(null); // Considerar como no logueado si el ID falta
+          console.warn("Admin user data from localStorage is missing an ID.");
+        }
       } catch (error) {
         console.error("Error parsing admin user from localStorage", error);
+        setAdminUser(null);
       }
     }
   }, []);
@@ -111,7 +119,7 @@ export default function AdminContactSubmissionsPage() {
 
   const handleAdminRespond = async () => {
     if (!selectedSubmission || !adminUser?.id || !adminResponseText.trim()) {
-        toast({ title: "Datos incompletos", description: "Por favor, escribe una respuesta.", variant: "destructive" });
+        toast({ title: "Datos incompletos", description: "Por favor, escribe una respuesta o verifica tu sesión.", variant: "destructive" });
         return;
     }
     setIsResponding(true);
@@ -119,18 +127,14 @@ export default function AdminContactSubmissionsPage() {
     setIsResponding(false);
 
     toast({
-        title: result.success ? "Respuesta Procesada" : "Error al Responder",
+        title: result.success ? (result.chatSent ? "Respuesta Enviada" : "Nota Guardada") : "Error al Procesar",
         description: result.message,
-        variant: result.success ? (result.chatSent ? "default" : "default") : "destructive",
+        variant: result.success ? "default" : "destructive",
     });
 
     if (result.success) {
         setAdminResponseText('');
-        fetchSubmissions(); // Re-fetch para actualizar el estado 'replied_at' y 'is_read'
-        // Podríamos cerrar el modal o mantenerlo abierto
-        // setIsViewModalOpen(false); 
-        // setSelectedSubmission(null);
-        // Actualizar el selectedSubmission localmente para reflejar que ha sido respondido
+        fetchSubmissions(); 
         setSelectedSubmission(prev => prev ? {...prev, admin_notes: adminResponseText, replied_at: new Date().toISOString(), is_read: true} : null);
     }
   };
@@ -256,13 +260,13 @@ export default function AdminContactSubmissionsPage() {
                 <Label htmlFor="admin-response" className="font-medium">Escribir Respuesta / Nota Interna:</Label>
                 <Textarea
                     id="admin-response"
-                    placeholder="Escribe tu respuesta aquí. Si el email del remitente está registrado, se enviará como un mensaje de chat..."
+                    placeholder={!adminUser?.id ? "Inicia sesión como admin para responder." : "Escribe tu respuesta aquí. Si el email del remitente está registrado, se enviará como un mensaje de chat..."}
                     value={adminResponseText}
                     onChange={(e) => setAdminResponseText(e.target.value)}
                     className="min-h-[100px]"
-                    disabled={isResponding || !adminUser}
+                    disabled={isResponding || !adminUser?.id}
                 />
-                {!adminUser && <p className="text-xs text-destructive">Debes estar logueado como admin para responder.</p>}
+                {!adminUser?.id && <p className="text-xs text-destructive">Debes estar logueado como admin para responder o tu sesión es inválida.</p>}
               </div>
             </div>
             <DialogFooter className="sm:justify-between gap-2 flex-wrap">
@@ -280,7 +284,7 @@ export default function AdminContactSubmissionsPage() {
                 <Button 
                     size="sm" 
                     onClick={handleAdminRespond} 
-                    disabled={isResponding || !adminResponseText.trim() || !adminUser}
+                    disabled={isResponding || !adminResponseText.trim() || !adminUser?.id}
                     className="bg-primary hover:bg-primary/90"
                 >
                     {isResponding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
