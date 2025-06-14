@@ -4,9 +4,11 @@
 
 import type { PropertyFormValues } from "@/components/property/PropertyForm";
 import { query } from "@/lib/db";
-import type { PropertyListing, User, PropertyType, ListingCategory } from "@/lib/types";
+import type { PropertyListing, User, PropertyType, ListingCategory, SubmitPropertyResult } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
+import { findMatchingRequestsForNewProperty, type NewPropertyInput } from '@/ai/flows/find-matching-requests-for-new-property-flow';
+import { getOrCreateConversationAction, sendMessageAction } from './chatActions';
 
 // Helper function to generate a slug from a title
 const generateSlug = (title: string): string => {
@@ -68,17 +70,18 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
 export async function submitPropertyAction(
   data: PropertyFormValues,
   userId: string
-): Promise<{ success: boolean; message?: string; propertyId?: string, propertySlug?: string }> {
+): Promise<SubmitPropertyResult> {
   console.log("[PropertyAction] Property data received on server:", data, "UserID:", userId);
 
   if (!userId) {
     return { success: false, message: "Usuario no autenticado." };
   }
 
-  try {
-    const propertyId = randomUUID();
-    const slug = generateSlug(data.title);
+  const propertyId = randomUUID();
+  const slug = generateSlug(data.title);
+  let propertyPublisherDetails: User | null = null;
 
+  try {
     const imagesJson = data.images ? JSON.stringify(data.images.split(',').map(img => img.trim()).filter(img => img.length > 0)) : null;
     const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
 
@@ -113,14 +116,70 @@ export async function submitPropertyAction(
     await query(sql, params);
     console.log(`[PropertyAction] Property submitted successfully. ID: ${propertyId}, Slug: ${slug}`);
 
+    const userRows: any[] = await query('SELECT id, name FROM users WHERE id = ?', [userId]);
+    if (userRows.length > 0) {
+      propertyPublisherDetails = userRows[0];
+    }
+
+
     revalidatePath('/');
     revalidatePath('/properties');
     revalidatePath(`/properties/${slug}`);
     revalidatePath('/dashboard');
     revalidatePath('/admin/properties');
 
+    let successMessage = "Propiedad publicada exitosamente.";
+    let autoMatchesFoundCount = 0;
 
-    return { success: true, message: "Propiedad publicada exitosamente.", propertyId: propertyId, propertySlug: slug };
+    try {
+      const propertyForAIMatch: NewPropertyInput = {
+        id: propertyId,
+        title: data.title,
+        description: data.description,
+        propertyType: data.propertyType,
+        category: data.category,
+        price: data.price,
+        currency: data.currency,
+        address: data.address,
+        city: data.city,
+        country: data.country,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        areaSqMeters: data.areaSqMeters,
+        features: data.features ? data.features.split(',').map(f => f.trim()).filter(f => f) : [],
+      };
+      const autoMatches = await findMatchingRequestsForNewProperty(propertyForAIMatch);
+      
+      if (autoMatches && autoMatches.length > 0) {
+        for (const match of autoMatches) {
+          if (match.matchScore >= 0.65 && match.requestAuthorId && match.requestAuthorId !== userId) {
+            autoMatchesFoundCount++;
+            const conversationResult = await getOrCreateConversationAction(
+              userId, 
+              match.requestAuthorId, 
+              { propertyId: propertyId, requestId: match.requestId }
+            );
+            if (conversationResult.success && conversationResult.conversation) {
+              const chatMessage = `¡Hola ${match.requestAuthorName || 'Usuario'}! Mi propiedad "${propertyForAIMatch.title}" podría interesarte, ya que parece coincidir con tu solicitud "${match.requestTitle}".`;
+              await sendMessageAction(
+                conversationResult.conversation.id,
+                userId, // Property publisher (current user) sends the message
+                match.requestAuthorId,
+                chatMessage
+              );
+            }
+          }
+        }
+      }
+    } catch (aiError: any) {
+      console.error("[PropertyAction] Error during auto-match AI flow for new property:", aiError.message);
+    }
+    
+    if (autoMatchesFoundCount > 0) {
+        successMessage = `Propiedad publicada. ¡Encontramos ${autoMatchesFoundCount} solicitud(es) que podrían coincidir! Se han iniciado chats.`;
+    }
+    
+    return { success: true, message: successMessage, propertyId, propertySlug, autoMatchesCount: autoMatchesFoundCount };
 
   } catch (error: any) {
     console.error("[PropertyAction] Error submitting property:", error);
@@ -130,7 +189,7 @@ export async function submitPropertyAction(
     } else if (error.message) {
       message = error.message;
     }
-    return { success: false, message };
+    return { success: false, message, autoMatchesCount: 0 };
   }
 }
 
@@ -402,9 +461,6 @@ export async function adminUpdatePropertyAction(
     return { success: false, message: "ID de propiedad no proporcionado para la actualización." };
   }
 
-  // No se permite cambiar el user_id ni el slug (para evitar complicaciones)
-  // El slug original se mantiene. Si se necesita cambiar el slug, se debe hacer con cuidado (redirecciones, etc.)
-
   try {
     const imagesJson = data.images ? JSON.stringify(data.images.split(',').map(img => img.trim()).filter(img => img.length > 0)) : null;
     const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
@@ -443,26 +499,25 @@ export async function adminUpdatePropertyAction(
       return { success: false, message: "Propiedad no encontrada o los datos eran los mismos." };
     }
 
-    // Obtener el slug de la propiedad para la revalidación
     const propertyDetails = await getPropertyByIdForAdminAction(propertyId);
     const currentSlug = propertyDetails?.slug;
 
     console.log(`[PropertyAction Admin] Property updated successfully. ID: ${propertyId}, Slug: ${currentSlug}`);
 
     revalidatePath('/admin/properties');
-    revalidatePath('/properties'); // Revalidate the general listings page
+    revalidatePath('/properties'); 
     if (currentSlug) {
-      revalidatePath(`/properties/${currentSlug}`); // Revalidate the specific property page
+      revalidatePath(`/properties/${currentSlug}`); 
     } else {
-      revalidatePath(`/properties/[slug]`, 'layout'); // Fallback if slug isn't fetched quickly
+      revalidatePath(`/properties/[slug]`, 'layout'); 
     }
-    revalidatePath('/'); // Revalidate homepage if it shows featured properties
+    revalidatePath('/'); 
 
     return { success: true, message: "Propiedad actualizada exitosamente.", propertySlug: currentSlug };
 
   } catch (error: any) {
     console.error(`[PropertyAction Admin] Error updating property ${propertyId}:`, error);
-    let message = "Error al actualizar propiedad."; // Default message
+    let message = "Error al actualizar propiedad."; 
     if (error.code === 'ER_DUP_ENTRY' && error.message.includes('properties.slug')) {
         message = "Error: Ya existe una propiedad con un título muy similar (slug duplicado).";
     } else if (error.message) {

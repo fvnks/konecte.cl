@@ -526,11 +526,10 @@ export const contactFormPublicSchema = z.object({
 });
 export type ContactFormPublicValues = z.infer<typeof contactFormPublicSchema>;
 
-// --- User Listing Interactions (NEW) ---
+// --- User Listing Interactions (Likes/Dislikes) ---
 export const listingTypeValues = ['property', 'request'] as const;
 export type ListingType = (typeof listingTypeValues)[number];
 
-// Renamed this to avoid conflict with CRM's InteractionType
 export const listingInteractionTypeValues = ['like', 'dislike', 'skip'] as const;
 export type InteractionTypeEnum = (typeof listingInteractionTypeValues)[number];
 
@@ -550,7 +549,6 @@ export const recordInteractionSchema = z.object({
 });
 export type RecordInteractionValues = z.infer<typeof recordInteractionSchema>;
 
-// Type for the return value of recordUserListingInteractionAction
 export interface RecordInteractionResult {
   success: boolean;
   message?: string;
@@ -558,12 +556,30 @@ export interface RecordInteractionResult {
   matchDetails?: {
     matchFound: boolean;
     conversationId?: string;
-    userAName?: string; // Liker
-    userBName?: string; // Liked listing owner
-    likedListingTitle?: string; // Title of the property/request that received the like
-    reciprocalListingTitle?: string; // Title of the other listing that completed the match
+    userAName?: string; 
+    userBName?: string; 
+    likedListingTitle?: string; 
+    reciprocalListingTitle?: string; 
   }
 }
+
+// --- Server Action Results for Submit ---
+export interface SubmitPropertyResult {
+  success: boolean;
+  message?: string;
+  propertyId?: string;
+  propertySlug?: string;
+  autoMatchesCount?: number;
+}
+
+export interface SubmitRequestResult {
+  success: boolean;
+  message?: string;
+  requestId?: string;
+  requestSlug?: string;
+  autoMatchesCount?: number;
+}
+
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
 

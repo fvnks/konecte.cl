@@ -110,8 +110,9 @@ export default function PropertyForm() {
     const result = await submitPropertyAction(values, loggedInUser.id);
     if (result.success && result.propertyId) {
       toast({
-        title: "Propiedad Publicada",
-        description: "Tu propiedad ha sido enviada exitosamente.",
+        title: result.autoMatchesCount && result.autoMatchesCount > 0 ? "¡Propiedad Publicada y Matches Encontrados!" : "Propiedad Publicada",
+        description: result.message || "Tu propiedad ha sido enviada exitosamente.",
+        duration: result.autoMatchesCount && result.autoMatchesCount > 0 ? 7000 : 5000,
       });
       form.reset();
       if (result.propertySlug) {
@@ -376,4 +377,3 @@ export default function PropertyForm() {
     </Form>
   );
 }
-

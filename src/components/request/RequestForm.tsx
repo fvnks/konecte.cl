@@ -101,8 +101,9 @@ export default function RequestForm() {
     const result = await submitRequestAction(dataToSubmit, loggedInUser.id);
     if (result.success) {
       toast({
-        title: "Solicitud Publicada",
-        description: "Tu solicitud de propiedad ha sido enviada exitosamente.",
+        title: result.autoMatchesCount && result.autoMatchesCount > 0 ? "¡Solicitud Publicada y Matches Encontrados!" : "Solicitud Publicada",
+        description: result.message || "Tu solicitud de propiedad ha sido enviada exitosamente.",
+        duration: result.autoMatchesCount && result.autoMatchesCount > 0 ? 7000 : 5000,
       });
       form.reset();
       if (result.requestSlug) {
@@ -371,4 +372,3 @@ export default function RequestForm() {
     </Form>
   );
 }
-

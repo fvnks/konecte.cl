@@ -2,11 +2,13 @@
 // src/actions/requestActions.ts
 'use server';
 
-import type { RequestFormValues } from "@/lib/types"; 
+import type { RequestFormValues, SubmitRequestResult } from "@/lib/types"; 
 import { query } from "@/lib/db";
 import type { SearchRequest, User, PropertyType, ListingCategory } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
+import { findMatchingPropertiesForNewRequest, type NewRequestInput } from '@/ai/flows/find-matching-properties-for-new-request-flow';
+import { getOrCreateConversationAction, sendMessageAction } from './chatActions';
 
 // Helper function to generate a slug from a title
 const generateSlug = (title: string): string => {
@@ -65,111 +67,53 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
 export async function submitRequestAction(
   data: RequestFormValues, 
   userId: string
-): Promise<{ success: boolean; message?: string; requestId?: string, requestSlug?: string }> {
+): Promise<SubmitRequestResult> {
   console.log("[RequestAction] Request data received on server:", data, "UserID:", userId);
 
   if (!userId) {
     return { success: false, message: "Usuario no autenticado." };
   }
 
-  try {
-    const requestId = randomUUID();
-    const slug = generateSlug(data.title);
+  const requestId = randomUUID();
+  const slug = generateSlug(data.title);
+  let requestPublisherDetails: User | null = null;
 
+  try {
     const columns: string[] = [];
     const values: any[] = [];
     const placeholders: string[] = [];
 
     // Campos obligatorios o que siempre se establecen
-    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city');
-    values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity);
-    placeholders.push('?', '?', '?', '?', '?', '?');
+    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city', 'is_active', 'created_at', 'updated_at', 'comments_count');
+    values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity, true, new Date(), new Date(), 0);
+    placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
 
-    // Campos booleanos (solo incluir si son true, ya que el default en BD es false)
-    if (data.desiredPropertyType.includes('rent')) {
-      columns.push('desired_property_type_rent');
-      values.push(true);
-      placeholders.push('?');
-    }
-    if (data.desiredPropertyType.includes('sale')) {
-      columns.push('desired_property_type_sale');
-      values.push(true);
-      placeholders.push('?');
-    }
-    if (data.desiredCategories.includes('apartment')) {
-      columns.push('desired_category_apartment');
-      values.push(true);
-      placeholders.push('?');
-    }
-    if (data.desiredCategories.includes('house')) {
-      columns.push('desired_category_house');
-      values.push(true);
-      placeholders.push('?');
-    }
-    if (data.desiredCategories.includes('condo')) {
-      columns.push('desired_category_condo');
-      values.push(true);
-      placeholders.push('?');
-    }
-    if (data.desiredCategories.includes('land')) {
-      columns.push('desired_category_land');
-      values.push(true);
-      placeholders.push('?');
-    }
-    if (data.desiredCategories.includes('commercial')) {
-      columns.push('desired_category_commercial');
-      values.push(true);
-      placeholders.push('?');
-    }
-    if (data.desiredCategories.includes('other')) {
-      columns.push('desired_category_other');
-      values.push(true);
-      placeholders.push('?');
-    }
-     if (data.open_for_broker_collaboration) {
-      columns.push('open_for_broker_collaboration');
-      values.push(true);
-      placeholders.push('?');
-    }
-
-
-    // Campos opcionales (solo incluir si tienen valor)
-    if (data.desiredLocationNeighborhood && data.desiredLocationNeighborhood.trim() !== '') {
-      columns.push('desired_location_neighborhood');
-      values.push(data.desiredLocationNeighborhood.trim());
-      placeholders.push('?');
-    }
-
-    const minBedroomsValue = (data.minBedrooms !== undefined && data.minBedrooms !== '' && data.minBedrooms !== null)
-        ? Number(data.minBedrooms) : null;
-    if (minBedroomsValue !== null && !isNaN(minBedroomsValue)) {
-      columns.push('min_bedrooms');
-      values.push(minBedroomsValue);
-      placeholders.push('?');
-    }
-
-    const minBathroomsValue = (data.minBathrooms !== undefined && data.minBathrooms !== '' && data.minBathrooms !== null)
-        ? Number(data.minBathrooms) : null;
-    if (minBathroomsValue !== null && !isNaN(minBathroomsValue)) {
-      columns.push('min_bathrooms');
-      values.push(minBathroomsValue);
-      placeholders.push('?');
-    }
+    // Campos booleanos para tipos de transacción y categorías
+    // Para cada uno, si es true en `data`, se añade la columna y TRUE, sino se añade y FALSE
+    columns.push('desired_property_type_rent'); values.push(data.desiredPropertyType.includes('rent')); placeholders.push('?');
+    columns.push('desired_property_type_sale'); values.push(data.desiredPropertyType.includes('sale')); placeholders.push('?');
+    columns.push('desired_category_apartment'); values.push(data.desiredCategories.includes('apartment')); placeholders.push('?');
+    columns.push('desired_category_house'); values.push(data.desiredCategories.includes('house')); placeholders.push('?');
+    columns.push('desired_category_condo'); values.push(data.desiredCategories.includes('condo')); placeholders.push('?');
+    columns.push('desired_category_land'); values.push(data.desiredCategories.includes('land')); placeholders.push('?');
+    columns.push('desired_category_commercial'); values.push(data.desiredCategories.includes('commercial')); placeholders.push('?');
+    columns.push('desired_category_other'); values.push(data.desiredCategories.includes('other')); placeholders.push('?');
+    columns.push('open_for_broker_collaboration'); values.push(data.open_for_broker_collaboration || false); placeholders.push('?');
     
-    const budgetMaxValue = (data.budgetMax !== undefined && data.budgetMax !== '' && data.budgetMax !== null)
-        ? Number(data.budgetMax) : null;
-    if (budgetMaxValue !== null && !isNaN(budgetMaxValue)) {
-      columns.push('budget_max');
-      values.push(budgetMaxValue);
-      placeholders.push('?');
-    }
+    // Campos opcionales (siempre añadir, pero con valor o NULL)
+    columns.push('desired_location_neighborhood');
+    values.push(data.desiredLocationNeighborhood && data.desiredLocationNeighborhood.trim() !== '' ? data.desiredLocationNeighborhood.trim() : null);
+    placeholders.push('?');
 
-    // Las columnas con DEFAULT en la BD (comments_count, is_active, created_at, updated_at)
-    // se omitirán y la BD las llenará.
+    const minBedroomsValue = (data.minBedrooms !== undefined && data.minBedrooms !== '' && data.minBedrooms !== null) ? Number(data.minBedrooms) : null;
+    columns.push('min_bedrooms'); values.push(minBedroomsValue); placeholders.push('?');
+    
+    const minBathroomsValue = (data.minBathrooms !== undefined && data.minBathrooms !== '' && data.minBathrooms !== null) ? Number(data.minBathrooms) : null;
+    columns.push('min_bathrooms'); values.push(minBathroomsValue); placeholders.push('?');
+    
+    const budgetMaxValue = (data.budgetMax !== undefined && data.budgetMax !== '' && data.budgetMax !== null) ? Number(data.budgetMax) : null;
+    columns.push('budget_max'); values.push(budgetMaxValue); placeholders.push('?');
 
-    if (columns.length === 0) {
-      return { success: false, message: "No hay datos válidos para insertar." };
-    }
 
     const sql = `
       INSERT INTO property_requests (${columns.join(', ')})
@@ -178,13 +122,14 @@ export async function submitRequestAction(
     
     console.log(`[RequestAction DEBUG] SQL: ${sql}`);
     console.log(`[RequestAction DEBUG] Params:`, values);
-    console.log(`[RequestAction DEBUG] Number of columns in SQL: ${columns.length}`);
-    console.log(`[RequestAction DEBUG] Number of placeholders in SQL: ${placeholders.length}`);
-    console.log(`[RequestAction DEBUG] Number of values in params array: ${values.length}`);
-
 
     await query(sql, values);
     console.log(`[RequestAction] Request submitted successfully. ID: ${requestId}, Slug: ${slug}`);
+    
+    const userRows: any[] = await query('SELECT id, name FROM users WHERE id = ?', [userId]);
+    if (userRows.length > 0) {
+      requestPublisherDetails = userRows[0];
+    }
 
     revalidatePath('/');
     revalidatePath('/requests');
@@ -192,7 +137,54 @@ export async function submitRequestAction(
     revalidatePath('/dashboard');
     revalidatePath('/admin/requests');
 
-    return { success: true, message: "Solicitud publicada exitosamente.", requestId, requestSlug: slug };
+    let successMessage = "Solicitud publicada exitosamente.";
+    let autoMatchesFoundCount = 0;
+
+    try {
+      const requestForAIMatch: NewRequestInput = {
+        id: requestId,
+        title: data.title,
+        description: data.description,
+        desiredPropertyType: data.desiredPropertyType,
+        desiredCategories: data.desiredCategories,
+        desiredLocationCity: data.desiredLocationCity,
+        desiredLocationNeighborhood: data.desiredLocationNeighborhood || undefined,
+        minBedrooms: minBedroomsValue !== null ? minBedroomsValue : undefined,
+        minBathrooms: minBathroomsValue !== null ? minBathroomsValue : undefined,
+        budgetMax: budgetMaxValue !== null ? budgetMaxValue : undefined,
+      };
+      const autoMatches = await findMatchingPropertiesForNewRequest(requestForAIMatch);
+
+      if (autoMatches && autoMatches.length > 0) {
+        for (const match of autoMatches) {
+          if (match.matchScore >= 0.65 && match.propertyAuthorId && match.propertyAuthorId !== userId) {
+            autoMatchesFoundCount++;
+            const conversationResult = await getOrCreateConversationAction(
+              userId, 
+              match.propertyAuthorId, 
+              { propertyId: match.propertyId, requestId: requestId }
+            );
+            if (conversationResult.success && conversationResult.conversation) {
+              const chatMessage = `¡Hola ${match.propertyAuthorName || 'Usuario'}! Mi solicitud "${requestForAIMatch.title}" podría coincidir con tu propiedad "${match.propertyTitle}".`;
+              await sendMessageAction(
+                conversationResult.conversation.id,
+                userId, // Request publisher (current user) sends the message
+                match.propertyAuthorId,
+                chatMessage
+              );
+            }
+          }
+        }
+      }
+    } catch (aiError: any) {
+      console.error("[RequestAction] Error during auto-match AI flow for new request:", aiError.message);
+    }
+    
+    if (autoMatchesFoundCount > 0) {
+      successMessage = `Solicitud publicada. ¡Encontramos ${autoMatchesFoundCount} propiedad(es) que podrían coincidir! Se han iniciado chats.`;
+    }
+
+    return { success: true, message: successMessage, requestId, requestSlug, autoMatchesCount: autoMatchesFoundCount };
 
   } catch (error: any) {
     console.error("[RequestAction] Error submitting request:", error);
@@ -200,7 +192,7 @@ export async function submitRequestAction(
      if (error.code === 'ER_DUP_ENTRY' && error.message.includes('property_requests.slug')) {
         message = "Ya existe una solicitud con un título muy similar (slug duplicado). Intenta con un título ligeramente diferente.";
     }
-    return { success: false, message };
+    return { success: false, message, autoMatchesCount: 0 };
   }
 }
 
