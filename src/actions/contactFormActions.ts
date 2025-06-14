@@ -111,62 +111,80 @@ export async function adminRespondToSubmissionAction(
   adminUserId: string, 
   responseText: string
 ): Promise<{ success: boolean; message: string; chatSent?: boolean }> {
+  // ADDED LOGS FOR DEBUGGING
+  console.log(`[ContactFormAction DEBUG] adminRespondToSubmissionAction called with adminUserId: "${adminUserId}", submissionId: "${submissionId}"`);
+
   if (!submissionId || !adminUserId || !responseText.trim()) {
-    return { success: false, message: "Faltan datos para procesar la respuesta.", chatSent: false };
+    console.error('[ContactFormAction DEBUG] Missing data for adminRespondToSubmissionAction.', { submissionIdExists: !!submissionId, adminUserIdExists: !!adminUserId, responseTextPresent: !!responseText.trim() });
+    return { success: false, message: "Faltan datos para procesar la respuesta (submissionId, adminUserId o responseText).", chatSent: false };
   }
 
   try {
     // Verify admin user exists in DB before proceeding
-    const adminUserCheck: any[] = await query('SELECT id FROM users WHERE id = ?', [adminUserId]);
+    const adminUserCheck: any[] = await query('SELECT id, name, email FROM users WHERE id = ?', [adminUserId]);
+    console.log(`[ContactFormAction DEBUG] Admin user check for ID "${adminUserId}":`, JSON.stringify(adminUserCheck));
+
     if (adminUserCheck.length === 0) {
       console.error(`[ContactFormAction] Admin user with ID ${adminUserId} not found in database. Cannot create chat.`);
-      // Update submission with note, but indicate chat failed
-      await query(
-        'UPDATE contact_form_submissions SET admin_notes = ?, replied_at = NOW(), is_read = TRUE WHERE id = ?',
-        [responseText, submissionId]
-      );
-      revalidatePath('/admin/contact-submissions');
+      // Intenta guardar la nota incluso si el admin no se encuentra, para no perder la respuesta.
+      try {
+        await query(
+          'UPDATE contact_form_submissions SET admin_notes = ?, replied_at = NOW(), is_read = TRUE WHERE id = ?',
+          [responseText, submissionId]
+        );
+        revalidatePath('/admin/contact-submissions');
+      } catch (noteError: any) {
+         console.error(`[ContactFormAction DEBUG] Failed to save admin_notes for submission ${submissionId} when admin was not found:`, noteError.message);
+      }
       return { 
-        success: true, // The note was saved, but chat failed
+        success: true, // Se considera éxito parcial porque la nota pudo guardarse.
         message: "Respuesta guardada como nota. Error al crear chat: El usuario administrador actual no fue encontrado en la base de datos. Por favor, cierra sesión y vuelve a iniciar sesión.",
         chatSent: false 
       };
     }
+    console.log(`[ContactFormAction DEBUG] Admin user ${adminUserCheck[0].name} (ID: ${adminUserCheck[0].id}) found.`);
 
     const submissionRows: any[] = await query('SELECT email FROM contact_form_submissions WHERE id = ?', [submissionId]);
     if (submissionRows.length === 0) {
+      console.error(`[ContactFormAction DEBUG] Submission with ID ${submissionId} not found.`);
       return { success: false, message: "Mensaje de contacto original no encontrado.", chatSent: false };
     }
     const submitterEmail = submissionRows[0].email;
+    console.log(`[ContactFormAction DEBUG] Submitter email: ${submitterEmail}`);
 
-    const userRows: any[] = await query('SELECT id FROM users WHERE email = ?', [submitterEmail]);
+    const userRows: any[] = await query('SELECT id, name FROM users WHERE email = ?', [submitterEmail]);
+    console.log(`[ContactFormAction DEBUG] User check for submitter email "${submitterEmail}":`, JSON.stringify(userRows));
     
     let chatSent = false;
-    let message = "";
+    let messageForToast = "";
 
     if (userRows.length > 0) {
       const targetUserId = userRows[0].id;
-      // Crear o obtener conversación
+      console.log(`[ContactFormAction DEBUG] Target user (submitter) ID: ${targetUserId}, Name: ${userRows[0].name}`);
+      
       const conversationResult = await getOrCreateConversationAction(adminUserId, targetUserId);
+      console.log(`[ContactFormAction DEBUG] getOrCreateConversationAction result:`, JSON.stringify(conversationResult));
+
       if (conversationResult.success && conversationResult.conversation) {
-        // Enviar mensaje de chat
+        console.log(`[ContactFormAction DEBUG] Attempting to send message to conversation ${conversationResult.conversation.id}`);
         const sendMessageResult = await sendMessageAction(
           conversationResult.conversation.id,
-          adminUserId,
-          targetUserId,
+          adminUserId, // Sender
+          targetUserId,  // Receiver
           responseText
         );
+        console.log(`[ContactFormAction DEBUG] sendMessageAction result:`, JSON.stringify(sendMessageResult));
         if (sendMessageResult.success) {
           chatSent = true;
-          message = "Respuesta enviada como mensaje de chat y nota guardada.";
+          messageForToast = "Respuesta enviada como mensaje de chat y nota guardada.";
         } else {
-          message = `Respuesta guardada como nota. Error al enviar como chat: ${sendMessageResult.message}`;
+          messageForToast = `Respuesta guardada como nota. Error al enviar como chat: ${sendMessageResult.message}`;
         }
       } else {
-        message = `Respuesta guardada como nota. Error al crear/obtener chat: ${conversationResult.message}`;
+        messageForToast = `Respuesta guardada como nota. Error al crear/obtener chat: ${conversationResult.message}`;
       }
     } else {
-      message = "Respuesta guardada como nota. El email del remitente no corresponde a un usuario registrado, no se envió chat.";
+      messageForToast = "Respuesta guardada como nota. El email del remitente no corresponde a un usuario registrado, no se envió chat.";
     }
 
     // Actualizar el contact_form_submission
@@ -174,13 +192,25 @@ export async function adminRespondToSubmissionAction(
       'UPDATE contact_form_submissions SET admin_notes = ?, replied_at = NOW(), is_read = TRUE WHERE id = ?',
       [responseText, submissionId]
     );
+    console.log(`[ContactFormAction DEBUG] contact_form_submission ${submissionId} updated with notes and replied_at.`);
 
     revalidatePath('/admin/contact-submissions');
-    return { success: true, message, chatSent };
+    return { success: true, message: messageForToast, chatSent };
 
   } catch (error: any) {
-    console.error(`Error responding to submission ${submissionId}:`, error);
-    return { success: false, message: `Error al procesar respuesta: ${error.message}`, chatSent: false };
+    console.error(`[ContactFormAction DEBUG] Error in adminRespondToSubmissionAction for submission ${submissionId}:`, error);
+    // Guardar la nota como fallback si todo lo demás falla pero se pudo obtener el responseText
+    try {
+        await query(
+          'UPDATE contact_form_submissions SET admin_notes = COALESCE(admin_notes, "") + "\n[Error al enviar Chat] " + ?, replied_at = NOW(), is_read = TRUE WHERE id = ?',
+          [responseText, submissionId]
+        );
+        revalidatePath('/admin/contact-submissions');
+         console.log(`[ContactFormAction DEBUG] Fallback: admin_notes updated for submission ${submissionId} due to error.`);
+    } catch (fallbackError: any) {
+        console.error(`[ContactFormAction DEBUG] Fallback to save admin_notes also failed for submission ${submissionId}:`, fallbackError.message);
+    }
+    return { success: false, message: `Error al procesar respuesta: ${error.message}. Se intentó guardar la nota.`, chatSent: false };
   }
 }
 
