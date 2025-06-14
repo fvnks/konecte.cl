@@ -133,7 +133,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
-    setLoggedInUser(null);
+    setLoggedInUser(null); 
     setTotalUnreadMessages(0);
     toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
     router.push('/');
@@ -293,8 +293,8 @@ export default function Navbar() {
                         <AvatarFallback className="bg-muted text-muted-foreground text-base">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       {isClient && loggedInUser && totalUnreadMessages > 0 && (
-                          <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 text-[10px] rounded-full flex items-center justify-center leading-none z-10">
-                              {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                          <Badge variant="destructive" className="absolute top-1 right-1 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center leading-none z-20">
+                              {totalUnreadMessages > 9 ? '99+' : totalUnreadMessages}
                           </Badge>
                       )}
                     </Button>
