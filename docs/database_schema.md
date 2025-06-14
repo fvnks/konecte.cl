@@ -451,6 +451,10 @@ CREATE TABLE editable_texts (
 CREATE INDEX idx_editable_texts_page_group ON editable_texts(page_group);
 
 -- Textos iniciales de ejemplo (se insertan a través del script setup-db.ts)
+-- Ejemplo:
+-- INSERT IGNORE INTO editable_texts (id, page_group, description, content_default, content_current) VALUES
+--   ('home_hero_title', 'home', 'Título principal de la página de inicio', 'Encuentra Tu Espacio Ideal en PropSpot', 'Encuentra Tu Espacio Ideal en PropSpot'),
+--   ('plans_page_main_title', 'plans_page', 'Título principal de la página de planes', '¡Contratación 100% online!', '¡Contratación 100% online!');
 ```
 
 ---
@@ -510,4 +514,3 @@ CREATE INDEX idx_property_inquiries_submitted_at ON property_inquiries(submitted
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
 
 
-```
