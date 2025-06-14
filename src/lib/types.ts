@@ -358,6 +358,17 @@ export interface ChatConversationListItem {
   context_type?: 'property' | 'request' | null;
 }
 
+// --- Editable Texts Types ---
+export interface EditableText {
+  id: string;
+  page_group: string;
+  description: string;
+  content_default: string | null;
+  content_current: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
 
@@ -369,3 +380,4 @@ export const placeholderUser: User = {
   role_id: 'user',
   role_name: 'Usuario'
 };
+

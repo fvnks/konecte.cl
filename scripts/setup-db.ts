@@ -310,7 +310,29 @@ const SQL_STATEMENTS: string[] = [
   );`,
   `CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_created ON chat_messages(conversation_id, created_at DESC);`,
   `CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON chat_messages(sender_id);`,
-  `CREATE INDEX IF NOT EXISTS idx_chat_messages_receiver_read ON chat_messages(receiver_id, read_at);`
+  `CREATE INDEX IF NOT EXISTS idx_chat_messages_receiver_read ON chat_messages(receiver_id, read_at);`,
+
+  // editable_texts
+  `CREATE TABLE IF NOT EXISTS editable_texts (
+    id VARCHAR(255) PRIMARY KEY,
+    page_group VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    content_default TEXT,
+    content_current TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_editable_texts_page_group ON editable_texts(page_group);`,
+
+  // --- Default Editable Texts ---
+  `INSERT IGNORE INTO editable_texts (id, page_group, description, content_default, content_current) VALUES
+    ('home_hero_title', 'home', 'Título principal de la página de inicio', 'Encuentra Tu Próxima Propiedad en PropSpot', 'Encuentra Tu Próxima Propiedad en PropSpot'),
+    ('home_hero_subtitle', 'home', 'Subtítulo de la página de inicio', 'Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!', 'Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!'),
+    ('plans_page_main_title', 'plans_page', 'Título principal de la página de planes', '¡Contratación 100% online!', '¡Contratación 100% online!'),
+    ('auth_signin_page_title', 'auth_signin', 'Título de la página de inicio de sesión', '¡Bienvenido de Nuevo!', '¡Bienvenido de Nuevo!'),
+    ('auth_signin_page_description', 'auth_signin', 'Descripción de la página de inicio de sesión', 'Inicia sesión para acceder a tu cuenta de PropSpot.', 'Inicia sesión para acceder a tu cuenta de PropSpot.'),
+    ('auth_signup_page_title', 'auth_signup', 'Título de la página de registro', 'Crear una Cuenta', 'Crear una Cuenta'),
+    ('auth_signup_page_description', 'auth_signup', 'Descripción de la página de registro', 'Únete a PropSpot para listar, encontrar y discutir propiedades.', 'Únete a PropSpot para listar, encontrar y discutir propiedades.');`
 ];
 
 // --- Función principal del script ---

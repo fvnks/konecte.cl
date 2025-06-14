@@ -431,5 +431,24 @@ CREATE INDEX idx_chat_messages_sender ON chat_messages(sender_id);
 CREATE INDEX idx_chat_messages_receiver_read ON chat_messages(receiver_id, read_at);
 ```
 ---
+## Tabla: `editable_texts` (Textos Editables del Sitio)
+Almacena textos del sitio que pueden ser modificados desde el panel de administración.
+
+```sql
+CREATE TABLE editable_texts (
+    id VARCHAR(255) PRIMARY KEY,                             -- Identificador único para el texto (ej: 'home_hero_title', 'auth_signin_description')
+    page_group VARCHAR(100) NOT NULL,                        -- Grupo al que pertenece el texto (ej: 'home', 'auth', 'plans')
+    description TEXT NOT NULL,                               -- Descripción para el administrador sobre qué es este texto
+    content_default TEXT,                                    -- Valor original/por defecto del texto (puede ser útil para revertir)
+    content_current TEXT,                                    -- Contenido actual editable por el administrador
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Índices
+CREATE INDEX idx_editable_texts_page_group ON editable_texts(page_group);
+```
+
+---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
 
