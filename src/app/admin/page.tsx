@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Settings, Users, LayoutDashboard, Brush, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper } from "lucide-react";
+import { Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper, MailQuestion, CalendarClock } from "lucide-react"; // Added MailQuestion, CalendarClock
 import type { ReactNode } from 'react';
 
 interface AdminDashboardCardProps {
@@ -84,6 +84,22 @@ const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
     colorClass: "from-yellow-500/10 to-yellow-500/5 text-yellow-600 dark:text-yellow-400",
   },
   {
+    title: "Gestión de Visitas", // Nueva tarjeta
+    description: "Supervisa todas las solicitudes de visita y su estado en la plataforma.",
+    href: "/admin/visits",
+    icon: <CalendarClock className="h-8 w-8 text-primary" />,
+    cta: "Ver Visitas",
+    colorClass: "from-cyan-500/10 to-cyan-500/5 text-cyan-600 dark:text-cyan-400",
+  },
+  {
+    title: "Página de Contacto", // Nueva tarjeta
+    description: "Accede a la página pública de contacto. Considera cómo gestionarás las consultas.",
+    href: "/contact", // Enlace a la página pública
+    icon: <MailQuestion className="h-8 w-8 text-primary" />,
+    cta: "Ir a Contacto",
+    colorClass: "from-rose-500/10 to-rose-500/5 text-rose-600 dark:text-rose-400",
+  },
+  {
     title: "Integración Google Sheets",
     description: "Configura la integración con Google Sheets para mostrar datos en la página de inicio.",
     href: "/admin/settings",
@@ -129,11 +145,6 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </CardHeader>
-        {/* <CardContent className="p-6 sm:p-8 pt-0">
-            <p className="text-muted-foreground">
-                Utiliza el menú de navegación o los accesos directos a continuación para administrar.
-            </p>
-        </CardContent> */}
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -149,22 +160,6 @@ export default function AdminDashboardPage() {
           />
         ))}
       </div>
-      
-      {/* <Card className="mt-8 bg-secondary/20 border-dashed rounded-xl">
-        <CardHeader>
-            <CardTitle className="text-xl font-headline flex items-center">
-                <Home className="h-5 w-5 mr-2 text-primary" />
-                Volver al Sitio Principal
-            </CardTitle>
-            <CardDescription>Navega de vuelta a la vista pública de konecte.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <Button asChild variant="outline">
-                <Link href="/">Ir a la Página de Inicio</Link>
-            </Button>
-        </CardContent>
-      </Card> */}
-
     </div>
   );
 }

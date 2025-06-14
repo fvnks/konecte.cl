@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus } from 'lucide-react';
+import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus, MailQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -26,6 +26,7 @@ const navItems = [
   { href: '/properties', label: 'Propiedades', icon: <Briefcase /> },
   { href: '/requests', label: 'Solicitudes', icon: <Search /> },
   { href: '/plans', label: 'Planes', icon: <CreditCard /> },
+  { href: '/contact', label: 'Contacto', icon: <MailQuestion /> }, // Nuevo ítem de Contacto
 ];
 
 interface StoredUser {
@@ -107,8 +108,8 @@ export default function Navbar() {
     if (isClient) {
       updateLoginStateAndUnreadCount();
 
-      const handleStorageChange = (event: StorageEvent | Event | CustomEvent) => { // Adjusted type
-        const eventIsCustomForLogin = event.type === 'userSessionChanged'; // Using a more specific custom event
+      const handleStorageChange = (event: StorageEvent | Event | CustomEvent) => { 
+        const eventIsCustomForLogin = event.type === 'userSessionChanged'; 
         const eventIsStorageAPI = event instanceof StorageEvent && event.key === 'loggedInUser';
         const eventIsMessagesUpdated = event.type === 'messagesUpdated';
 
@@ -117,11 +118,8 @@ export default function Navbar() {
         }
       };
       
-      // Listen for native storage events (cross-tab)
       window.addEventListener('storage', handleStorageChange);
-      // Listen for custom event for same-tab session changes (more reliable than dispatching 'storage')
       window.addEventListener('userSessionChanged', handleStorageChange);
-      // Listen for messages updated
       window.addEventListener('messagesUpdated', handleStorageChange); 
 
 
@@ -140,7 +138,6 @@ export default function Navbar() {
     toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
     router.push('/');
     if (isMobileMenuOpen) setIsMobileMenuOpen(false);
-    // Dispatch a custom event for same-tab updates, more explicit
     window.dispatchEvent(new CustomEvent('userSessionChanged'));
   };
 
@@ -161,7 +158,7 @@ export default function Navbar() {
         >
           <Link href={item.href}>
             <span className="flex items-center gap-2.5">
-              {React.cloneElement(item.icon, { className: "h-5 w-5"})}
+              {React.cloneElement(item.icon as React.ReactElement, { className: "h-5 w-5"})}
               {item.label}
             </span>
           </Link>
