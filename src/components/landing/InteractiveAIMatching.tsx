@@ -25,6 +25,8 @@ import type { User as StoredUser, InteractionTypeEnum, PropertyListing, SearchRe
 import { useState, useEffect } from "react";
 import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, PlusCircle, ThumbsUp, ThumbsDown, UserCircle as UserIconLucide, MessagesSquare, HeartHandshake } from "lucide-react";
 import FeaturedPropertyCard from '@/components/property/FeaturedPropertyCard';
+import { Badge } from '@/components/ui/badge'; // Added missing import
+
 // RequestCard no se usará directamente aquí ya que solo mostraremos propiedades
 // import RequestCard from '@/components/request/RequestCard';
 
