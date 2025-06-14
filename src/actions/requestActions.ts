@@ -1,4 +1,3 @@
-
 // src/actions/requestActions.ts
 'use server';
 
@@ -63,7 +62,7 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
 }
 
 export async function submitRequestAction(
-  data: RequestFormValues,
+  data: RequestFormValues, // This is dataToSubmit from the form component
   userId: string
 ): Promise<{ success: boolean; message?: string; requestId?: string, requestSlug?: string }> {
   console.log("[RequestAction] Request data received on server:", data, "UserID:", userId);
@@ -76,7 +75,7 @@ export async function submitRequestAction(
     const requestId = randomUUID();
     const slug = generateSlug(data.title);
 
-    // comments_count tiene DEFAULT 0 en la BD, así que no es necesario incluirlo en el INSERT
+    // Let DB handle defaults for: comments_count, is_active, created_at, updated_at
     const sql = `
       INSERT INTO property_requests (
         id, user_id, title, slug, description,
@@ -85,34 +84,38 @@ export async function submitRequestAction(
         desired_category_land, desired_category_commercial, desired_category_other,
         desired_location_city, desired_location_neighborhood,
         min_bedrooms, min_bathrooms, budget_max,
-        open_for_broker_collaboration,
-        is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+        open_for_broker_collaboration
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `; // 19 columns, 19 placeholders
+
+    const minBedroomsValue = (data.minBedrooms === undefined || data.minBedrooms === '' || data.minBedrooms === null)
+        ? null : Number(data.minBedrooms);
+    const minBathroomsValue = (data.minBathrooms === undefined || data.minBathrooms === '' || data.minBathrooms === null)
+        ? null : Number(data.minBathrooms);
+    const budgetMaxValue = (data.budgetMax === undefined || data.budgetMax === '' || data.budgetMax === null)
+        ? null : Number(data.budgetMax);
+
 
     const params = [
-      requestId,
-      userId,
-      data.title,
-      slug,
-      data.description,
-      data.desiredPropertyType.includes('rent'),
-      data.desiredPropertyType.includes('sale'),
-      data.desiredCategories.includes('apartment'),
-      data.desiredCategories.includes('house'),
-      data.desiredCategories.includes('condo'),
-      data.desiredCategories.includes('land'),
-      data.desiredCategories.includes('commercial'),
-      data.desiredCategories.includes('other'),
-      data.desiredLocationCity,
-      data.desiredLocationNeighborhood || null,
-      data.minBedrooms !== undefined && data.minBedrooms !== '' ? data.minBedrooms : null,
-      data.minBathrooms !== undefined && data.minBathrooms !== '' ? data.minBathrooms : null,
-      data.budgetMax !== undefined && data.budgetMax !== '' ? data.budgetMax : null,
-      data.open_for_broker_collaboration || false,
-      true, // is_active
-      new Date(), // created_at
-      new Date()  // updated_at
+      requestId, // 1
+      userId,    // 2
+      data.title, // 3
+      slug,       // 4
+      data.description, // 5
+      data.desiredPropertyType.includes('rent'), // 6
+      data.desiredPropertyType.includes('sale'), // 7
+      data.desiredCategories.includes('apartment'), // 8
+      data.desiredCategories.includes('house'),     // 9
+      data.desiredCategories.includes('condo'),     // 10
+      data.desiredCategories.includes('land'),      // 11
+      data.desiredCategories.includes('commercial'),// 12
+      data.desiredCategories.includes('other'),     // 13
+      data.desiredLocationCity,                      // 14
+      data.desiredLocationNeighborhood || null,      // 15
+      minBedroomsValue, // 16
+      minBathroomsValue, // 17
+      budgetMaxValue,    // 18
+      data.open_for_broker_collaboration || false // 19
     ];
     
     await query(sql, params);
@@ -318,9 +321,9 @@ export async function adminUpdateRequestAction(
       data.desiredCategories.includes('other'),
       data.desiredLocationCity,
       data.desiredLocationNeighborhood || null,
-      data.minBedrooms !== undefined && data.minBedrooms !== '' ? data.minBedrooms : null,
-      data.minBathrooms !== undefined && data.minBathrooms !== '' ? data.minBathrooms : null,
-      data.budgetMax !== undefined && data.budgetMax !== '' ? data.budgetMax : null,
+      data.minBedrooms !== undefined && data.minBedrooms !== '' ? Number(data.minBedrooms) : null,
+      data.minBathrooms !== undefined && data.minBathrooms !== '' ? Number(data.minBathrooms) : null,
+      data.budgetMax !== undefined && data.budgetMax !== '' ? Number(data.budgetMax) : null,
       data.open_for_broker_collaboration || false,
       // NOW() is handled by SQL for updated_at
       requestId // For WHERE id = ?
