@@ -2,16 +2,18 @@
 // src/app/admin/layout.tsx
 'use client';
 
-import React, { type ReactNode, useState, useEffect } from 'react';
+import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper, BarChart3, CalendarClock, MailWarning } from 'lucide-react'; // Added MailWarning
+import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper, BarChart3, CalendarClock, MailWarning } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { Skeleton } from '@/components/ui/skeleton'; 
-import { Loader2 } from 'lucide-react'; 
+import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge'; // Import Badge
+import { getTotalUnreadContactSubmissionsCountAction } from '@/actions/contactFormActions'; // Import action
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -22,7 +24,7 @@ const adminNavItems = [
   { href: '/admin/stats', label: 'Estadísticas', icon: <BarChart3 className="h-5 w-5" /> },
   { href: '/admin/appearance', label: 'Apariencia', icon: <Brush className="h-5 w-5" /> },
   { href: '/admin/content', label: 'Contenido del Sitio', icon: <Newspaper className="h-5 w-5" /> },
-  { href: '/admin/contact-submissions', label: 'Mensajes de Contacto', icon: <MailWarning className="h-5 w-5" /> }, // Nuevo ítem
+  { href: '/admin/contact-submissions', label: 'Mensajes de Contacto', icon: <MailWarning className="h-5 w-5" />, id: 'contactSubmissionsLink' },
   { href: '/admin/settings', label: 'Google Sheets', icon: <Settings className="h-5 w-5" /> },
   { href: '/admin/users', label: 'Usuarios', icon: <Users className="h-5 w-5" /> },
   { href: '/admin/roles', label: 'Roles', icon: <ShieldAlert className="h-5 w-5" /> },
@@ -33,10 +35,10 @@ const adminNavItems = [
 ];
 
 interface StoredAdminUser {
-  id: string; 
+  id: string;
   name: string;
   avatarUrl?: string;
-  role_id: string; 
+  role_id: string;
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -45,14 +47,28 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [adminUser, setAdminUser] = useState<StoredAdminUser | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isClient, setIsClient] = useState(false);
+  const [unreadContactSubmissions, setUnreadContactSubmissions] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  const fetchUnreadCounts = useCallback(async () => {
+    if (isClient) {
+      try {
+        const count = await getTotalUnreadContactSubmissionsCountAction();
+        setUnreadContactSubmissions(count);
+      } catch (error) {
+        console.error("Failed to fetch unread contact submissions count", error);
+      }
+    }
+  }, [isClient]);
+
   useEffect(() => {
     if (isClient) {
       setIsLoadingSession(true);
+      fetchUnreadCounts(); // Fetch initial count
+
       const userJson = localStorage.getItem('loggedInUser');
       if (userJson) {
         try {
@@ -61,7 +77,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             setAdminUser(parsedUser);
           } else {
             toast({ title: "Acceso Denegado", description: "No tienes permisos de administrador.", variant: "destructive" });
-            router.push('/'); 
+            router.push('/');
             setAdminUser(null);
           }
         } catch (e) {
@@ -78,11 +94,24 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       }
       setIsLoadingSession(false);
     }
-  }, [isClient, router, toast]);
+  }, [isClient, router, toast, fetchUnreadCounts]);
+  
+  useEffect(() => {
+    if (isClient) {
+        const handleContactSubmissionsUpdate = () => {
+            fetchUnreadCounts();
+        };
+        window.addEventListener('contactSubmissionsUpdated', handleContactSubmissionsUpdate);
+        return () => {
+            window.removeEventListener('contactSubmissionsUpdated', handleContactSubmissionsUpdate);
+        };
+    }
+  }, [isClient, fetchUnreadCounts]);
+
 
   const handleAdminLogout = () => {
     localStorage.removeItem('loggedInUser');
-    setAdminUser(null); 
+    setAdminUser(null);
     toast({
       title: "Sesión Cerrada",
       description: "Has cerrado sesión del panel de administración.",
@@ -161,9 +190,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               asChild
               className="w-full justify-start text-base py-2.5 h-auto rounded-md hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
             >
-              <Link href={item.href} className="flex items-center gap-3 px-3">
-                {React.cloneElement(item.icon, { className: "h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" })}
-                <span className="font-medium">{item.label}</span>
+              <Link href={item.href} className="flex items-center justify-between gap-3 px-3">
+                <span className="flex items-center gap-3">
+                    {React.cloneElement(item.icon, { className: "h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" })}
+                    <span className="font-medium">{item.label}</span>
+                </span>
+                {item.id === 'contactSubmissionsLink' && unreadContactSubmissions > 0 && (
+                  <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                    {unreadContactSubmissions > 99 ? '99+' : unreadContactSubmissions}
+                  </Badge>
+                )}
               </Link>
             </Button>
           ))}
@@ -202,6 +238,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     <LayoutDashboard className="h-6 w-6" />
                     <span className="text-lg font-bold font-headline">Admin</span>
                 </Link>
+                {/* Aquí podríamos añadir un trigger para un menú móvil de admin si fuera necesario */}
             </div>
         </header>
         <main className="flex-grow p-6 sm:p-8 md:p-10 bg-muted/30">

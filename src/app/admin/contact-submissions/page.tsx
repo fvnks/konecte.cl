@@ -1,3 +1,4 @@
+
 // src/app/admin/contact-submissions/page.tsx
 'use client';
 
@@ -67,6 +68,8 @@ export default function AdminContactSubmissionsPage() {
     try {
       const fetchedSubmissions = await getContactFormSubmissionsAction();
       setSubmissions(fetchedSubmissions);
+      // Notify layout to update counts
+      window.dispatchEvent(new CustomEvent('contactSubmissionsUpdated'));
     } catch (error) {
       toast({ title: "Error", description: "No se pudieron cargar los mensajes de contacto.", variant: "destructive" });
     } finally {
@@ -76,6 +79,7 @@ export default function AdminContactSubmissionsPage() {
 
   useEffect(() => {
     fetchSubmissions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleMarkAsReadUnread = async (submissionId: string, currentStatus: boolean) => {
@@ -109,7 +113,7 @@ export default function AdminContactSubmissionsPage() {
 
   const openViewModal = (submission: ContactFormSubmission) => {
     setSelectedSubmission(submission);
-    setAdminResponseText(''); 
+    setAdminResponseText(submission.admin_notes || ''); // Pre-fill with existing notes if any
     setIsViewModalOpen(true);
     if (!submission.is_read) {
       handleMarkAsReadUnread(submission.id, false);
@@ -136,10 +140,9 @@ export default function AdminContactSubmissionsPage() {
     });
 
     if (result.success) {
-        setAdminResponseText('');
+        // Do not reset adminResponseText here if we want to keep it pre-filled from admin_notes
         fetchSubmissions(); 
-        // No necesitamos actualizar selectedSubmission aquí porque el modal se cerrará
-        setIsViewModalOpen(false); // Cerrar el modal automáticamente
+        setIsViewModalOpen(false);
     }
   };
   
@@ -254,7 +257,7 @@ export default function AdminContactSubmissionsPage() {
                 <strong className="font-medium block mb-1">Mensaje Original:</strong>
                 <Textarea value={selectedSubmission.message} readOnly className="min-h-[100px] bg-muted/50" />
               </div>
-              {selectedSubmission.admin_notes && (
+              {selectedSubmission.admin_notes && !adminResponseText && ( // Show admin_notes only if adminResponseText is empty initially
                 <div>
                   <strong className="font-medium block mb-1">Última Respuesta/Nota del Admin:</strong>
                   <Textarea value={selectedSubmission.admin_notes} readOnly className="min-h-[80px] bg-muted/30 italic" />
@@ -302,3 +305,5 @@ export default function AdminContactSubmissionsPage() {
     </div>
   );
 }
+
+    
