@@ -292,8 +292,8 @@ export default function Navbar() {
                         <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/44x44.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona avatar"/>
                         <AvatarFallback className="bg-muted text-muted-foreground text-base">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
                       </Avatar>
-                      {totalUnreadMessages > 0 && (
-                          <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 text-[10px] rounded-full flex items-center justify-center leading-none">
+                      {isClient && loggedInUser && totalUnreadMessages > 0 && (
+                          <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 text-[10px] rounded-full flex items-center justify-center leading-none z-10">
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
                       )}
