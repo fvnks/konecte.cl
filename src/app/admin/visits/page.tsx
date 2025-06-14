@@ -1,3 +1,4 @@
+
 // src/app/admin/visits/page.tsx
 'use client';
 
@@ -16,6 +17,7 @@ import { Loader2, CalendarClock, AlertTriangle, Eye, User, HomeIcon as PropertyI
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from "@/components/ui/label"; // Importación añadida
 
 const getStatusVariantForAdmin = (status: PropertyVisitStatus): { variant: "default" | "secondary" | "destructive" | "outline"; labelClass?: string } => {
   switch (status) {
