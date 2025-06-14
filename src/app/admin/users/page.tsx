@@ -271,7 +271,7 @@ export default function AdminUsersPage() {
                               <SelectContent>
                                   <SelectItem value="none" className="text-xs italic">Sin Plan</SelectItem>
                                   {activePlans.map(plan => (
-                                  <SelectItem key={plan.id} value={plan.id} className="text-xs">{plan.name} (${plan.price_monthly.toLocaleString('es-CL')})</SelectItem>
+                                    <SelectItem key={plan.id} value={plan.id} className="text-xs">{plan.name} (${plan.price_monthly.toLocaleString('es-CL')})</SelectItem>
                                   ))}
                               </SelectContent>
                               </Select>
@@ -281,10 +281,10 @@ export default function AdminUsersPage() {
                          </div>
                       </TableCell>
                       <TableCell className="text-center space-x-1">
-                        <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Editar Usuario (Nombre/Email)">
-                            <span onClick={() => toast({ title: "Pendiente", description: "Funcionalidad de editar datos básicos del usuario pendiente de implementación."})}>
+                        <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Editar Usuario">
+                            <Link href={`/admin/users/${user.id}/edit`}>
                                 <Edit className="h-4 w-4" />
-                            </span>
+                            </Link>
                         </Button>
                         <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Ver CRM del Usuario">
                           <Link href={`/admin/users/${user.id}/crm`}>

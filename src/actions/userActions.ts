@@ -3,8 +3,8 @@
 'use server';
 
 import { query } from '@/lib/db';
-import type { User, AdminCreateUserFormValues } from '@/lib/types';
-import { adminCreateUserFormSchema } from '@/lib/types';
+import type { User, AdminCreateUserFormValues, AdminEditUserFormValues } from '@/lib/types';
+import { adminCreateUserFormSchema, adminEditUserFormSchema } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
@@ -33,6 +33,39 @@ export async function getUsersAction(): Promise<User[]> {
     return [];
   }
 }
+
+export async function getUserByIdAction(userId: string): Promise<User | null> {
+  if (!userId) return null;
+  try {
+    const userRows: any[] = await query(
+      `SELECT 
+         u.id, u.name, u.email, u.avatar_url,
+         u.rut_tin, u.phone_number, 
+         u.role_id, r.name as role_name,
+         u.plan_id, p.name as plan_name, u.plan_expires_at,
+         u.created_at, u.updated_at
+       FROM users u
+       LEFT JOIN roles r ON u.role_id = r.id
+       LEFT JOIN plans p ON u.plan_id = p.id
+       WHERE u.id = ?`,
+      [userId]
+    );
+    if (userRows.length === 0) {
+      return null;
+    }
+    const user = userRows[0];
+    return {
+      ...user,
+      created_at: user.created_at ? new Date(user.created_at).toISOString() : undefined,
+      updated_at: user.updated_at ? new Date(user.updated_at).toISOString() : undefined,
+      plan_expires_at: user.plan_expires_at ? new Date(user.plan_expires_at).toISOString() : null,
+    } as User;
+  } catch (error) {
+    console.error(`Error al obtener usuario con ID ${userId}:`, error);
+    return null;
+  }
+}
+
 
 export async function updateUserRoleAction(userId: string, newRoleId: string): Promise<{ success: boolean; message?: string }> {
   if (!userId || !newRoleId) {
@@ -144,6 +177,91 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
   }
 }
 
+
+export async function adminUpdateUserAction(
+  userId: string,
+  values: AdminEditUserFormValues
+): Promise<{ success: boolean; message?: string; user?: Omit<User, 'password_hash'> }> {
+  const validation = adminEditUserFormSchema.safeParse(values);
+  if (!validation.success) {
+    return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
+  }
+
+  const { name, email, role_id, plan_id } = validation.data;
+
+  try {
+    // Verificar si el email cambió y si el nuevo email ya existe para OTRO usuario
+    const currentUserArr: any[] = await query('SELECT email FROM users WHERE id = ?', [userId]);
+    if (currentUserArr.length === 0) {
+      return { success: false, message: "Usuario no encontrado." };
+    }
+    const currentUserEmail = currentUserArr[0].email;
+
+    if (email !== currentUserEmail) {
+      const existingUserWithNewEmail: any[] = await query('SELECT id FROM users WHERE email = ? AND id != ?', [email, userId]);
+      if (existingUserWithNewEmail.length > 0) {
+        return { success: false, message: "El nuevo correo electrónico ya está en uso por otro usuario." };
+      }
+    }
+
+    // Verificar si el rol existe
+    const roleExistsRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [role_id]);
+    if (roleExistsRows.length === 0) {
+      return { success: false, message: "El rol seleccionado no es válido." };
+    }
+    
+    // Verificar si el plan existe (si se proporciona uno)
+    if (plan_id) {
+        const planExistsRows: any[] = await query('SELECT id FROM plans WHERE id = ?', [plan_id]);
+        if (planExistsRows.length === 0) {
+            return { success: false, message: "El plan seleccionado no es válido." };
+        }
+    }
+
+    // Actualizar usuario
+    await query(
+      'UPDATE users SET name = ?, email = ?, role_id = ?, plan_id = ?, updated_at = NOW() WHERE id = ?',
+      [name, email, role_id, plan_id || null, userId]
+    );
+    
+    const updatedUserRows: any[] = await query(
+        `SELECT u.id, u.name, u.email, u.avatar_url, 
+                u.role_id, r.name as role_name,
+                u.plan_id, p.name as plan_name, u.plan_expires_at,
+                u.created_at, u.updated_at
+         FROM users u
+         LEFT JOIN roles r ON u.role_id = r.id
+         LEFT JOIN plans p ON u.plan_id = p.id
+         WHERE u.id = ?`, [userId]
+    );
+
+    if (updatedUserRows.length === 0) {
+        // Esto no debería ocurrir si la actualización fue exitosa, pero es una verificación de seguridad
+        return { success: false, message: "Error al recuperar el usuario después de la actualización." };
+    }
+    
+    const updatedUser: User = {
+        ...updatedUserRows[0],
+        created_at: updatedUserRows[0].created_at ? new Date(updatedUserRows[0].created_at).toISOString() : undefined,
+        updated_at: updatedUserRows[0].updated_at ? new Date(updatedUserRows[0].updated_at).toISOString() : undefined,
+        plan_expires_at: updatedUserRows[0].plan_expires_at ? new Date(updatedUserRows[0].plan_expires_at).toISOString() : null,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password_hash, ...userToReturn } = updatedUser;
+
+    revalidatePath('/admin/users');
+    return { success: true, message: "Usuario actualizado exitosamente.", user: userToReturn };
+
+  } catch (error: any) {
+    console.error(`[UserAction Admin] Error in adminUpdateUserAction for user ${userId}:`, error);
+    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('users.email')) {
+        return { success: false, message: "El correo electrónico ya está en uso por otro usuario." };
+    }
+    return { success: false, message: `Error al actualizar usuario: ${error.message}` };
+  }
+}
+
+
 export async function adminDeleteUserAction(userIdToDelete: string, currentAdminUserId: string): Promise<{ success: boolean; message?: string }> {
   if (!userIdToDelete || !currentAdminUserId) {
     return { success: false, message: "Se requiere el ID del usuario a eliminar y del administrador." };
@@ -173,3 +291,4 @@ export async function adminDeleteUserAction(userIdToDelete: string, currentAdmin
     return { success: false, message: `Error al eliminar usuario: ${error.message}` };
   }
 }
+
