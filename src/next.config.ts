@@ -31,19 +31,13 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-  experimental: {
-    // This key is now removed/renamed
-  },
-  // Corrected key:
   serverExternalPackages: [
     'handlebars',
     'dotprompt',
     '@genkit-ai/core',
-    // 'genkit', // genkit main package might also be included if issues persist
-    // '@genkit-ai/googleai', // and googleai plugin
+    'genkit', // Ensure genkit main package is externalized
+    '@genkit-ai/googleai', // Ensure googleai plugin is externalized
   ],
 };
 
 export default nextConfig;
-
-

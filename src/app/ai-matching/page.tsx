@@ -14,9 +14,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription, // Added import
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription as PageCardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"; // Renamed CardDescription
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { findMatchingRequestsForProperty, type FindMatchingRequestsInput, type FindMatchingRequestsOutput, type MatchResult } from '@/ai/flows/find-matching-requests-flow';
@@ -99,9 +100,9 @@ function AiMatchSearchPageContent() {
             <SearchCheck className="h-8 w-8 mr-3 text-primary" />
             Encontrar Solicitudes para mi Propiedad (IA)
           </CardTitle>
-          <CardDescription className="text-center text-lg">
+          <PageCardDescription className="text-center text-lg">
             Ingresa el ID de una propiedad (previamente creada en konecte) y nuestra IA buscará las solicitudes de usuarios que mejor coincidan.
-          </CardDescription>
+          </PageCardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -173,9 +174,9 @@ function AiMatchSearchPageContent() {
               Solicitudes Sugeridas para: <Link href={`/properties/${searchResult.propertySlug}`} className="text-primary hover:underline ml-2">{searchResult.propertyName}</Link>
             </CardTitle>
              {searchResult.matches.length === 0 && (
-                <CardDescription className="text-base">
+                <PageCardDescription className="text-base">
                     No se encontraron solicitudes de búsqueda que coincidan significativamente con esta propiedad.
-                </CardDescription>
+                </PageCardDescription>
             )}
           </CardHeader>
           {searchResult.matches.length > 0 && (

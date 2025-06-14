@@ -14,9 +14,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription, // Added import
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription as PageCardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"; // Renamed CardDescription to avoid conflict
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { findMatchingPropertiesForRequest, type FindMatchingPropertiesInput, type FindMatchingPropertiesOutput, type PropertyMatchResult } from '@/ai/flows/find-matching-properties-flow';
@@ -98,9 +99,9 @@ function AiMatchPropertiesPageContent() {
             <Building className="h-8 w-8 mr-3 text-primary" />
             Encontrar Propiedades para mi Solicitud (IA)
           </CardTitle>
-          <CardDescription className="text-center text-lg">
+          <PageCardDescription className="text-center text-lg">
             Ingresa el ID de una solicitud de búsqueda (previamente creada en konecte) y nuestra IA buscará las propiedades listadas en la plataforma que mejor coincidan.
-          </CardDescription>
+          </PageCardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -172,9 +173,9 @@ function AiMatchPropertiesPageContent() {
               Propiedades Sugeridas para: <Link href={`/requests/${searchResult.requestSlug}`} className="text-primary hover:underline ml-2">{searchResult.requestName}</Link>
             </CardTitle>
              {searchResult.matches.length === 0 && (
-                <CardDescription className="text-base">
+                <PageCardDescription className="text-base">
                     No se encontraron propiedades que coincidan significativamente con esta solicitud.
-                </CardDescription>
+                </PageCardDescription>
             )}
           </CardHeader>
           {searchResult.matches.length > 0 && (
