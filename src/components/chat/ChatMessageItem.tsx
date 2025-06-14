@@ -5,7 +5,7 @@
 import type { ChatMessage } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { format }_from 'date-fns';
+import { format } from 'date-fns'; // Corregido: quitado el guion bajo
 import { es } from 'date-fns/locale';
 import { UserCircle } from 'lucide-react';
 
