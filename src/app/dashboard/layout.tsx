@@ -2,10 +2,10 @@
 // src/app/dashboard/layout.tsx
 'use client';
 
-import React, { type ReactNode, useState, useEffect } from 'react';
+import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, LogOut as LogOutIcon, CalendarCheck } from 'lucide-react';
+import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, LogOut as LogOutIcon, CalendarCheck, Handshake } from 'lucide-react'; // Added Handshake
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,14 +21,18 @@ interface StoredUser {
   id: string;
   name: string;
   avatarUrl?: string;
+  role_id: string; // Added role_id
 }
 
-const dashboardNavItems = [
+const baseNavItems = [
   { href: '/dashboard', label: 'Resumen', icon: <LayoutDashboard /> },
   { href: '/dashboard/messages', label: 'Mensajes', icon: <MessageSquare />, id: 'messagesLink' },
   { href: '/dashboard/crm', label: 'Mi CRM', icon: <Users /> },
-  { href: '/dashboard/visits', label: 'Mis Visitas', icon: <CalendarCheck /> }, // Nueva entrada
-  { href: '/profile', label: 'Mi Perfil', icon: <UserCircle /> },
+  { href: '/dashboard/visits', label: 'Mis Visitas', icon: <CalendarCheck /> },
+];
+
+const brokerNavItems = [
+  { href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> }
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -38,6 +42,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const [isClient, setIsClient] = useState(false);
+  const [currentNavItems, setCurrentNavItems] = useState(baseNavItems);
 
   useEffect(() => {
     setIsClient(true);
@@ -46,28 +51,42 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       try {
         const parsedUser: StoredUser = JSON.parse(userJson);
         setCurrentUser(parsedUser);
+        if (parsedUser.role_id === 'broker') {
+          setCurrentNavItems([...baseNavItems, ...brokerNavItems]);
+        } else {
+          setCurrentNavItems(baseNavItems);
+        }
       } catch (e) {
         console.error("Error parsing user from localStorage for layout:", e);
         setCurrentUser(null); 
+        setCurrentNavItems(baseNavItems);
       }
     } else {
       if (!pathname.startsWith('/auth')) { 
         router.push('/auth/signin');
       }
+      setCurrentNavItems(baseNavItems);
     }
   }, [router, pathname]);
 
+  const fetchUnreadCountCallback = useCallback(async () => {
+    if (currentUser?.id) {
+      const count = await getTotalUnreadMessagesCountAction(currentUser.id);
+      setTotalUnreadCount(count);
+    }
+  }, [currentUser?.id]);
+
   useEffect(() => {
-    async function fetchUnreadCount() {
-      if (currentUser?.id) {
-        const count = await getTotalUnreadMessagesCountAction(currentUser.id);
-        setTotalUnreadCount(count);
-      }
-    }
     if (isClient) {
-        fetchUnreadCount();
+        fetchUnreadCountCallback();
+        // Listen for custom event to refresh unread count
+        const handleMessagesUpdated = () => fetchUnreadCountCallback();
+        window.addEventListener('messagesUpdated', handleMessagesUpdated);
+        return () => {
+            window.removeEventListener('messagesUpdated', handleMessagesUpdated);
+        };
     }
-  }, [currentUser, isClient, pathname]); 
+  }, [currentUser, isClient, pathname, fetchUnreadCountCallback]); 
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
@@ -106,9 +125,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <Separator />
 
         <nav className="flex-grow space-y-1">
-          {dashboardNavItems.map((item) => (
+          {currentNavItems.map((item) => (
             <Button
-              key={item.label}
+              key={item.href} // Use href as key if label can change
               variant={pathname === item.href ? "secondary" : "ghost"}
               asChild
               className="w-full justify-start text-sm py-2.5 h-auto rounded-md hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
@@ -124,6 +143,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             </Button>
           ))}
+           <Separator className="my-2"/>
+             <Button
+              variant={pathname === "/profile" ? "secondary" : "ghost"}
+              asChild
+              className="w-full justify-start text-sm py-2.5 h-auto rounded-md hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
+            >
+              <Link href="/profile" className="flex items-center gap-3 px-3">
+                 <UserCircle className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                <span className="font-medium flex-1">Mi Perfil</span>
+              </Link>
+            </Button>
         </nav>
         
         <Separator />
