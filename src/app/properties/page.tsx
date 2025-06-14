@@ -1,3 +1,4 @@
+
 // src/app/properties/page.tsx
 'use client';
 
@@ -75,10 +76,18 @@ export default function PropertiesPage() {
   }, [searchTerm, filterPropertyType, filterCategory, filterCity, orderBy, toast]);
 
   useEffect(() => {
+    // Carga inicial
     fetchProperties();
-  }, [fetchProperties]); // Se ejecutará al montar y cuando cambien las dependencias de fetchProperties
+  }, []); // Solo se ejecuta al montar inicialmente
 
   const handleApplyFilters = () => {
+    // No es necesario un useTransition aquí si fetchProperties ya maneja setIsLoading
+    // startTransition(() => { // Comentado o eliminado si no es necesario
+    fetchProperties();
+    // });
+  };
+  
+  const handleFilterChange = () => {
     startTransition(() => {
       fetchProperties();
     });
@@ -90,9 +99,9 @@ export default function PropertiesPage() {
     setFilterCategory('all');
     setFilterCity('');
     setOrderBy('createdAt_desc');
-    // fetchProperties se llamará automáticamente por el useEffect debido al cambio en los estados de filtro/orden.
-    // Si fetchProperties no se llamara automáticamente, se necesitaría un startTransition aquí.
-     startTransition(() => {
+    // La llamada a fetchProperties se activará por el useEffect que depende de estas variables de estado
+    // o podemos llamarla explícitamente si queremos asegurar el re-fetch inmediato tras el reset.
+    startTransition(() => {
       fetchProperties(); // Re-ejecutar con los filtros reseteados
     });
   };
@@ -222,3 +231,4 @@ export default function PropertiesPage() {
     </div>
   );
 }
+
