@@ -3,8 +3,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper, MailQuestion, CalendarClock } from "lucide-react"; // Added MailQuestion, CalendarClock
+import { Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper, MailQuestion, CalendarClock, MailWarning } from "lucide-react"; // Added MailWarning
 import type { ReactNode } from 'react';
+import { getUnreadContactSubmissionsCountAction } from "@/actions/contactFormActions"; // Importar el contador
 
 interface AdminDashboardCardProps {
   title: string;
@@ -12,11 +13,17 @@ interface AdminDashboardCardProps {
   href: string;
   icon: ReactNode;
   cta: string;
-  colorClass?: string; // Para un toque de color en el icono
+  colorClass?: string; 
+  badgeContent?: string | number | null;
 }
 
-const AdminDashboardCard = ({ title, description, href, icon, cta, colorClass }: AdminDashboardCardProps) => (
-  <Card className="shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl border flex flex-col group h-full bg-background hover:border-primary/50">
+const AdminDashboardCard = ({ title, description, href, icon, cta, colorClass, badgeContent }: AdminDashboardCardProps) => (
+  <Card className="shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl border flex flex-col group h-full bg-background hover:border-primary/50 relative">
+    {badgeContent && (
+        <div className="absolute -top-2 -right-2 h-6 w-6 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md">
+            {badgeContent}
+        </div>
+    )}
     <CardHeader className="pb-4">
       <div className={`mb-4 p-3 rounded-lg inline-block bg-gradient-to-br ${colorClass || 'from-primary/10 to-primary/5'} transition-all duration-300 group-hover:scale-110`}>
         {icon}
@@ -34,7 +41,11 @@ const AdminDashboardCard = ({ title, description, href, icon, cta, colorClass }:
   </Card>
 );
 
-const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
+
+export default async function AdminDashboardPage() {
+  const unreadContactMessages = await getUnreadContactSubmissionsCountAction();
+
+  const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
    {
     title: "Estadísticas",
     description: "Visualiza métricas clave del rendimiento de la plataforma.",
@@ -58,6 +69,15 @@ const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
     icon: <Newspaper className="h-8 w-8 text-primary" />,
     cta: "Gestionar Contenido",
     colorClass: "from-pink-500/10 to-pink-500/5 text-pink-600 dark:text-pink-400",
+  },
+  {
+    title: "Mensajes de Contacto",
+    description: "Revisa y gestiona los mensajes enviados desde el formulario de contacto público.",
+    href: "/admin/contact-submissions",
+    icon: <MailWarning className="h-8 w-8 text-primary" />,
+    cta: "Ver Mensajes",
+    colorClass: "from-orange-500/10 to-orange-500/5 text-orange-600 dark:text-orange-400",
+    badgeContent: unreadContactMessages > 0 ? unreadContactMessages : null,
   },
   {
     title: "Gestión de Usuarios",
@@ -84,7 +104,7 @@ const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
     colorClass: "from-yellow-500/10 to-yellow-500/5 text-yellow-600 dark:text-yellow-400",
   },
   {
-    title: "Gestión de Visitas", // Nueva tarjeta
+    title: "Gestión de Visitas", 
     description: "Supervisa todas las solicitudes de visita y su estado en la plataforma.",
     href: "/admin/visits",
     icon: <CalendarClock className="h-8 w-8 text-primary" />,
@@ -92,9 +112,9 @@ const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
     colorClass: "from-cyan-500/10 to-cyan-500/5 text-cyan-600 dark:text-cyan-400",
   },
   {
-    title: "Página de Contacto", // Nueva tarjeta
-    description: "Accede a la página pública de contacto. Considera cómo gestionarás las consultas.",
-    href: "/contact", // Enlace a la página pública
+    title: "Página de Contacto (Pública)", 
+    description: "Accede a la página pública de contacto. Los mensajes llegan a 'Mensajes de Contacto'.",
+    href: "/contact", 
     icon: <MailQuestion className="h-8 w-8 text-primary" />,
     cta: "Ir a Contacto",
     colorClass: "from-rose-500/10 to-rose-500/5 text-rose-600 dark:text-rose-400",
@@ -125,8 +145,6 @@ const adminDashboardCardsConfig: AdminDashboardCardProps[] = [
   },
 ];
 
-
-export default function AdminDashboardPage() {
   return (
     <div className="space-y-8">
       <Card className="shadow-xl border-border bg-gradient-to-br from-card to-background rounded-xl">
@@ -157,6 +175,7 @@ export default function AdminDashboardPage() {
             icon={item.icon}
             cta={item.cta}
             colorClass={item.colorClass}
+            badgeContent={item.badgeContent}
           />
         ))}
       </div>

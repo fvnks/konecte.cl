@@ -1,0 +1,123 @@
+
+// src/actions/contactFormActions.ts
+'use server';
+
+import { query } from '@/lib/db';
+import type { ContactFormSubmission, ContactFormPublicValues } from '@/lib/types';
+import { contactFormPublicSchema } from '@/lib/types';
+import { randomUUID } from 'crypto';
+import { revalidatePath } from 'next/cache';
+
+function mapDbRowToContactFormSubmission(row: any): ContactFormSubmission {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    subject: row.subject,
+    message: row.message,
+    submitted_at: new Date(row.submitted_at).toISOString(),
+    is_read: Boolean(row.is_read),
+    admin_notes: row.admin_notes,
+    replied_at: row.replied_at ? new Date(row.replied_at).toISOString() : null,
+  };
+}
+
+export async function submitContactFormAction(
+  values: ContactFormPublicValues
+): Promise<{ success: boolean; message?: string }> {
+  const validation = contactFormPublicSchema.safeParse(values);
+  if (!validation.success) {
+    return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
+  }
+
+  const { name, email, phone, subject, message } = validation.data;
+  const submissionId = randomUUID();
+
+  try {
+    const sql = `
+      INSERT INTO contact_form_submissions (id, name, email, phone, subject, message, submitted_at)
+      VALUES (?, ?, ?, ?, ?, ?, NOW())
+    `;
+    await query(sql, [submissionId, name, email, phone || null, subject || null, message]);
+    
+    // No es necesario revalidar una ruta aquí ya que el usuario no ve los mensajes enviados
+    // La revalidación ocurrirá en el panel de admin cuando se listen.
+    // Considerar enviar una notificación al admin por email (funcionalidad futura).
+
+    return { success: true, message: 'Tu mensaje ha sido enviado exitosamente. Nos pondremos en contacto contigo pronto.' };
+  } catch (error: any) {
+    console.error("[ContactFormAction] Error submitting contact form:", error);
+    return { success: false, message: `Error al enviar mensaje: ${error.message}` };
+  }
+}
+
+export async function getContactFormSubmissionsAction(): Promise<ContactFormSubmission[]> {
+  try {
+    const rows = await query('SELECT * FROM contact_form_submissions ORDER BY submitted_at DESC');
+    if (!Array.isArray(rows)) return [];
+    return rows.map(mapDbRowToContactFormSubmission);
+  } catch (error: any) {
+    console.error("[ContactFormAction] Error fetching contact form submissions:", error);
+    return [];
+  }
+}
+
+export async function markSubmissionAsActionReadAction(messageId: string, isRead: boolean): Promise<{ success: boolean; message?: string }> {
+  if (!messageId) {
+    return { success: false, message: "ID de mensaje no proporcionado." };
+  }
+  try {
+    const result: any = await query('UPDATE contact_form_submissions SET is_read = ? WHERE id = ?', [isRead, messageId]);
+    if (result.affectedRows > 0) {
+      revalidatePath('/admin/contact-submissions');
+      return { success: true, message: `Mensaje marcado como ${isRead ? 'leído' : 'no leído'}.` };
+    }
+    return { success: false, message: "Mensaje no encontrado." };
+  } catch (error: any) {
+    console.error(`[ContactFormAction] Error marking submission ${messageId} as ${isRead ? 'read' : 'unread'}:`, error);
+    return { success: false, message: `Error al marcar mensaje: ${error.message}` };
+  }
+}
+
+export async function deleteContactSubmissionAction(messageId: string): Promise<{ success: boolean; message?: string }> {
+  if (!messageId) {
+    return { success: false, message: "ID de mensaje no proporcionado." };
+  }
+  try {
+    const result: any = await query('DELETE FROM contact_form_submissions WHERE id = ?', [messageId]);
+    if (result.affectedRows > 0) {
+      revalidatePath('/admin/contact-submissions');
+      return { success: true, message: "Mensaje eliminado exitosamente." };
+    }
+    return { success: false, message: "Mensaje no encontrado." };
+  } catch (error: any) {
+    console.error(`[ContactFormAction] Error deleting submission ${messageId}:`, error);
+    return { success: false, message: `Error al eliminar mensaje: ${error.message}` };
+  }
+}
+
+export async function getUnreadContactSubmissionsCountAction(): Promise<number> {
+  try {
+    const result: any[] = await query('SELECT COUNT(*) as count FROM contact_form_submissions WHERE is_read = FALSE');
+    return Number(result[0]?.count) || 0;
+  } catch (error) {
+    console.error("[ContactFormAction] Error fetching unread contact submissions count:", error);
+    return 0;
+  }
+}
+
+// Futura acción para añadir notas de admin o marcar como respondido
+export async function addAdminNoteToSubmissionAction(messageId: string, adminNotes: string): Promise<{ success: boolean; message?: string }> {
+  if (!messageId || !adminNotes) {
+    return { success: false, message: "ID de mensaje o nota no proporcionados." };
+  }
+  try {
+    await query('UPDATE contact_form_submissions SET admin_notes = ?, replied_at = NOW() WHERE id = ?', [adminNotes, messageId]);
+    revalidatePath('/admin/contact-submissions');
+    return { success: true, message: "Nota añadida y mensaje marcado como respondido." };
+  } catch (error: any) {
+    console.error(`Error adding admin note to submission ${messageId}:`, error);
+    return { success: false, message: `Error: ${error.message}` };
+  }
+}

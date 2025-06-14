@@ -1,13 +1,15 @@
+
 // src/app/contact/page.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin, MessageCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import ContactForm from "@/components/contact/ContactForm"; // Importar el nuevo formulario
 
 export default function ContactPage() {
   return (
-    <div className="max-w-3xl mx-auto py-10 md:py-12">
+    <div className="max-w-4xl mx-auto py-10 md:py-12">
       <Card className="shadow-xl rounded-xl border">
         <CardHeader className="text-center">
           <Mail className="mx-auto h-16 w-16 text-primary mb-4" />
@@ -15,18 +17,34 @@ export default function ContactPage() {
             Ponte en Contacto
           </CardTitle>
           <CardDescription className="text-lg text-muted-foreground mt-2">
-            ¿Tienes preguntas o necesitas ayuda? Estamos aquí para asistirte.
+            ¿Tienes preguntas o necesitas ayuda? Completa el formulario o usa nuestros otros canales.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-8 pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <CardContent className="space-y-10 pt-6 px-4 md:px-8">
+          
+          <section>
+            <h2 className="text-2xl font-semibold mb-4 text-center flex items-center justify-center">
+              <MessageCircle className="h-6 w-6 mr-2 text-primary" /> Envíanos un Mensaje
+            </h2>
+            <ContactForm />
+          </section>
+          
+          <Separator />
+
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-3">
               <h3 className="text-xl font-semibold flex items-center">
                 <Mail className="h-5 w-5 mr-2 text-primary" />
                 Correo Electrónico
               </h3>
               <p className="text-muted-foreground">
-                Envíanos un email a:
+                Para consultas generales:
+                <a href="mailto:info@konecte.cl" className="block text-primary hover:underline font-medium">
+                  info@konecte.cl
+                </a>
+              </p>
+              <p className="text-muted-foreground">
+                Para soporte técnico:
                 <a href="mailto:soporte@konecte.cl" className="block text-primary hover:underline font-medium">
                   soporte@konecte.cl
                 </a>
@@ -42,26 +60,25 @@ export default function ContactPage() {
                 <a href="tel:+56912345678" className="block text-primary hover:underline font-medium">
                   +56 9 1234 5678
                 </a>
-                <span className="block text-xs">(Lunes a Viernes, 9am - 6pm)</span>
+                <span className="block text-xs">(Lunes a Viernes, 9am - 6pm, Hora Chile Continental)</span>
               </p>
             </div>
-          </div>
+          </section>
           
           <Separator />
 
-          <div className="space-y-3">
-            <h3 className="text-xl font-semibold flex items-center">
+          <section className="space-y-3 text-center">
+            <h3 className="text-xl font-semibold flex items-center justify-center">
               <MapPin className="h-5 w-5 mr-2 text-primary" />
               Nuestra Oficina (Próximamente)
             </h3>
             <p className="text-muted-foreground">
-              Avenida Siempre Viva 742, <br />
-              Springfield, Chile.
+              Avenida Siempre Viva 742, Springfield, Chile.
             </p>
             <p className="text-xs text-muted-foreground">
               (Por favor, coordina una visita antes de venir)
             </p>
-          </div>
+          </section>
 
           <Separator />
           

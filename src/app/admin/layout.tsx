@@ -5,13 +5,13 @@
 import React, { type ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper, BarChart3, CalendarClock } from 'lucide-react';
+import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper, BarChart3, CalendarClock, MailWarning } from 'lucide-react'; // Added MailWarning
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
-import { Loader2 } from 'lucide-react'; // Import Loader2
+import { Skeleton } from '@/components/ui/skeleton'; 
+import { Loader2 } from 'lucide-react'; 
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -22,6 +22,7 @@ const adminNavItems = [
   { href: '/admin/stats', label: 'Estadísticas', icon: <BarChart3 className="h-5 w-5" /> },
   { href: '/admin/appearance', label: 'Apariencia', icon: <Brush className="h-5 w-5" /> },
   { href: '/admin/content', label: 'Contenido del Sitio', icon: <Newspaper className="h-5 w-5" /> },
+  { href: '/admin/contact-submissions', label: 'Mensajes de Contacto', icon: <MailWarning className="h-5 w-5" /> }, // Nuevo ítem
   { href: '/admin/settings', label: 'Google Sheets', icon: <Settings className="h-5 w-5" /> },
   { href: '/admin/users', label: 'Usuarios', icon: <Users className="h-5 w-5" /> },
   { href: '/admin/roles', label: 'Roles', icon: <ShieldAlert className="h-5 w-5" /> },
@@ -32,10 +33,10 @@ const adminNavItems = [
 ];
 
 interface StoredAdminUser {
-  id: string; // Added id for completeness, though not strictly used in this component yet
+  id: string; 
   name: string;
   avatarUrl?: string;
-  role_id: string; // To verify admin role
+  role_id: string; 
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -59,9 +60,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           if (parsedUser.role_id === 'admin') {
             setAdminUser(parsedUser);
           } else {
-            // Not an admin, redirect
             toast({ title: "Acceso Denegado", description: "No tienes permisos de administrador.", variant: "destructive" });
-            router.push('/'); // Or to login page
+            router.push('/'); 
             setAdminUser(null);
           }
         } catch (e) {
@@ -72,7 +72,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           setAdminUser(null);
         }
       } else {
-        // No user logged in
         toast({ title: "Acceso Requerido", description: "Debes iniciar sesión como administrador.", variant: "destructive" });
         router.push('/auth/signin');
         setAdminUser(null);
@@ -83,12 +82,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const handleAdminLogout = () => {
     localStorage.removeItem('loggedInUser');
-    setAdminUser(null); // Clear admin user state
+    setAdminUser(null); 
     toast({
       title: "Sesión Cerrada",
       description: "Has cerrado sesión del panel de administración.",
     });
-    // Dispatch a custom event to notify other components (like Navbar) about session change
     window.dispatchEvent(new CustomEvent('userSessionChanged'));
     router.push('/');
   };
@@ -100,7 +98,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   if (isLoadingSession && isClient) {
     return (
        <div className="flex min-h-screen flex-col bg-muted/40">
-            {/* Skeleton for Sidebar */}
             <aside className="w-72 bg-background border-r p-5 space-y-6 hidden md:flex flex-col shadow-md">
                 <div className="flex items-center gap-3 px-2 py-1">
                     <Skeleton className="h-8 w-8 rounded-lg" />
@@ -120,7 +117,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     <Skeleton className="h-10 w-full rounded-md"/>
                 </div>
             </aside>
-            {/* Skeleton for Main Content Area */}
             <div className="flex-1 flex flex-col">
                 <header className="bg-background border-b p-4 shadow-sm md:hidden">
                     <div className="flex items-center justify-between"> <Skeleton className="h-7 w-28 rounded-md" /></div>
@@ -134,8 +130,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     );
   }
 
-  // If after loading, there's no admin user, it means redirection should have happened or is about to.
-  // This state might be briefly visible or if redirection fails.
   if (!adminUser && isClient) {
       return (
        <div className="flex items-center justify-center min-h-screen">

@@ -455,7 +455,23 @@ const SQL_STATEMENTS: string[] = [
     `CREATE INDEX IF NOT EXISTS idx_broker_collaborations_requesting_broker ON broker_collaborations(requesting_broker_id, status);`,
     `CREATE INDEX IF NOT EXISTS idx_broker_collaborations_offering_broker ON broker_collaborations(offering_broker_id, status);`,
     `CREATE INDEX IF NOT EXISTS idx_broker_collaborations_request_id ON broker_collaborations(property_request_id);`,
-    `CREATE INDEX IF NOT EXISTS idx_broker_collaborations_property_id ON broker_collaborations(property_id);`
+    `CREATE INDEX IF NOT EXISTS idx_broker_collaborations_property_id ON broker_collaborations(property_id);`,
+
+  // --- Contact Form Submissions Table ---
+  `CREATE TABLE IF NOT EXISTS contact_form_submissions (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(50) DEFAULT NULL,
+    subject VARCHAR(255) DEFAULT NULL,
+    message TEXT NOT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN DEFAULT FALSE,
+    admin_notes TEXT DEFAULT NULL,
+    replied_at TIMESTAMP DEFAULT NULL,
+    INDEX idx_contact_submissions_submitted_at (submitted_at),
+    INDEX idx_contact_submissions_is_read (is_read)
+  );`
 ];
 
 // --- Función principal del script ---

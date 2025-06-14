@@ -1,0 +1,227 @@
+
+// src/app/admin/contact-submissions/page.tsx
+'use client';
+
+import React, { useState, useEffect, useTransition } from 'react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from '@/components/ui/badge';
+import { useToast } from "@/hooks/use-toast";
+import type { ContactFormSubmission } from '@/lib/types';
+import { 
+  getContactFormSubmissionsAction, 
+  markSubmissionAsActionReadAction, 
+  deleteContactSubmissionAction 
+} from '@/actions/contactFormActions';
+import { Loader2, MailWarning, Trash2, Eye, CheckCircle2, RotateCcw } from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+
+export default function AdminContactSubmissionsPage() {
+  const { toast } = useToast();
+  const [submissions, setSubmissions] = useState<ContactFormSubmission[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, startProcessingTransition] = useTransition();
+  
+  const [selectedSubmission, setSelectedSubmission] = useState<ContactFormSubmission | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
+  const fetchSubmissions = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedSubmissions = await getContactFormSubmissionsAction();
+      setSubmissions(fetchedSubmissions);
+    } catch (error) {
+      toast({ title: "Error", description: "No se pudieron cargar los mensajes de contacto.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSubmissions();
+  }, []);
+
+  const handleMarkAsReadUnread = async (submissionId: string, currentStatus: boolean) => {
+    startProcessingTransition(async () => {
+      const result = await markSubmissionAsActionReadAction(submissionId, !currentStatus);
+      if (result.success) {
+        toast({ title: "Estado Actualizado", description: result.message });
+        fetchSubmissions(); // Re-fetch to update list
+        if (selectedSubmission?.id === submissionId) {
+          setSelectedSubmission(prev => prev ? { ...prev, is_read: !currentStatus } : null);
+        }
+      } else {
+        toast({ title: "Error", description: result.message, variant: "destructive" });
+      }
+    });
+  };
+
+  const handleDeleteSubmission = async (submissionId: string) => {
+    startProcessingTransition(async () => {
+      const result = await deleteContactSubmissionAction(submissionId);
+      if (result.success) {
+        toast({ title: "Mensaje Eliminado", description: result.message });
+        fetchSubmissions(); // Re-fetch to update list
+        setIsViewModalOpen(false); // Close modal if the viewed item was deleted
+        setSelectedSubmission(null);
+      } else {
+        toast({ title: "Error al Eliminar", description: result.message, variant: "destructive" });
+      }
+    });
+  };
+
+  const openViewModal = (submission: ContactFormSubmission) => {
+    setSelectedSubmission(submission);
+    setIsViewModalOpen(true);
+    // Marcar como leído al abrir, si no lo está ya
+    if (!submission.is_read) {
+      handleMarkAsReadUnread(submission.id, false);
+    }
+  };
+  
+  if (isLoading && submissions.length === 0) { 
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Cargando mensajes...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-2xl font-headline flex items-center">
+              <MailWarning className="h-6 w-6 mr-2 text-primary" /> Mensajes del Formulario de Contacto
+            </CardTitle>
+            <CardDescription>Gestiona los mensajes recibidos a través del formulario de contacto público.</CardDescription>
+          </div>
+          <Button onClick={fetchSubmissions} variant="outline" size="sm" disabled={isLoading || isProcessing}>
+            <RotateCcw className={`h-4 w-4 mr-2 ${isLoading || isProcessing ? 'animate-spin' : ''}`} />
+            Refrescar
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading && submissions.length > 0 && <p className="text-sm text-muted-foreground mb-2">Actualizando lista de mensajes...</p>}
+          {submissions.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]">Estado</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Asunto</TableHead>
+                    <TableHead>Fecha Envío</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {submissions.map((sub) => (
+                    <TableRow key={sub.id} className={!sub.is_read ? 'font-semibold bg-primary/5 hover:bg-primary/10' : 'hover:bg-muted/50'}>
+                      <TableCell className="text-center">
+                        {!sub.is_read && <Badge variant="destructive" className="h-2 w-2 p-0 rounded-full" title="No leído" />}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate" title={sub.name}>{sub.name}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={sub.email}>{sub.email}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={sub.subject || ''}>{sub.subject || '-'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {format(new Date(sub.submitted_at), "dd MMM yyyy, HH:mm", { locale: es })}
+                      </TableCell>
+                      <TableCell className="text-right space-x-1">
+                        <Button variant="ghost" size="icon" onClick={() => openViewModal(sub)} title="Ver Mensaje">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90" disabled={isProcessing} title="Eliminar Mensaje">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Eliminarás permanentemente el mensaje de "{sub.name}".
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteSubmission(sub.id)} disabled={isProcessing} className="bg-destructive hover:bg-destructive/90">
+                                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Sí, eliminar mensaje
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            !isLoading && <p className="text-muted-foreground text-center py-4">No hay mensajes de contacto recibidos.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {selectedSubmission && (
+        <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Mensaje de: {selectedSubmission.name}</DialogTitle>
+              <DialogDescription>
+                Enviado el {format(new Date(selectedSubmission.submitted_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto pr-3">
+              <p><strong className="font-medium">Email:</strong> {selectedSubmission.email}</p>
+              {selectedSubmission.phone && <p><strong className="font-medium">Teléfono:</strong> {selectedSubmission.phone}</p>}
+              {selectedSubmission.subject && <p><strong className="font-medium">Asunto:</strong> {selectedSubmission.subject}</p>}
+              <div>
+                <strong className="font-medium block mb-1">Mensaje:</strong>
+                <Textarea value={selectedSubmission.message} readOnly className="min-h-[150px] bg-muted/50" />
+              </div>
+              {selectedSubmission.admin_notes && (
+                <div>
+                  <strong className="font-medium block mb-1">Notas del Admin:</strong>
+                  <Textarea value={selectedSubmission.admin_notes} readOnly className="min-h-[80px] bg-muted/30 italic" />
+                </div>
+              )}
+            </div>
+            <DialogFooter className="sm:justify-between gap-2">
+              <Button 
+                variant={selectedSubmission.is_read ? "outline" : "default"} 
+                size="sm"
+                onClick={() => handleMarkAsReadUnread(selectedSubmission.id, selectedSubmission.is_read)} 
+                disabled={isProcessing}
+              >
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                {selectedSubmission.is_read ? "Marcar como No Leído" : "Marcar como Leído"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setIsViewModalOpen(false)}>Cerrar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}

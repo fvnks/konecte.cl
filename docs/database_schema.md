@@ -183,7 +183,7 @@ CREATE TABLE property_requests (
     min_bathrooms INT DEFAULT NULL,
     budget_max DECIMAL(15,2) DEFAULT NULL,
     -- budget_currency VARCHAR(3) DEFAULT 'CLP', -- Considerar si el presupuesto puede ser en diferentes monedas
-    open_for_broker_collaboration BOOLEAN DEFAULT FALSE,   -- Nuevo campo para colaboración entre corredores
+    open_for_broker_collaboration BOOLEAN DEFAULT FALSE,
     comments_count INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -196,7 +196,7 @@ CREATE TABLE property_requests (
 CREATE INDEX idx_property_requests_slug ON property_requests(slug);
 CREATE INDEX idx_property_requests_user_id ON property_requests(user_id);
 CREATE INDEX idx_property_requests_city ON property_requests(desired_location_city);
-CREATE INDEX idx_property_requests_broker_collab ON property_requests(open_for_broker_collaboration); -- Nuevo índice
+CREATE INDEX idx_property_requests_broker_collab ON property_requests(open_for_broker_collaboration);
 ```
 
 ---
@@ -597,6 +597,28 @@ CREATE INDEX idx_broker_collaborations_request_id ON broker_collaborations(prope
 CREATE INDEX idx_broker_collaborations_property_id ON broker_collaborations(property_id);
 ```
 ---
+## Tabla: `contact_form_submissions` (Envíos del Formulario de Contacto Público)
+Almacena los mensajes enviados a través del formulario de contacto general del sitio.
+
+```sql
+CREATE TABLE contact_form_submissions (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(50) DEFAULT NULL,
+    subject VARCHAR(255) DEFAULT NULL,
+    message TEXT NOT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN DEFAULT FALSE,
+    admin_notes TEXT DEFAULT NULL, -- Notas internas del administrador
+    replied_at TIMESTAMP DEFAULT NULL, -- Fecha en que se marcó como respondido
+
+    INDEX idx_contact_submissions_submitted_at (submitted_at),
+    INDEX idx_contact_submissions_is_read (is_read)
+);
+```
+---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
+
 
 

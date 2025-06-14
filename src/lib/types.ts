@@ -88,7 +88,7 @@ export interface SearchRequest {
   minBedrooms?: number;
   minBathrooms?: number;
   budgetMax?: number;
-  open_for_broker_collaboration?: boolean; // Nuevo campo
+  open_for_broker_collaboration?: boolean;
   commentsCount: number;
   slug: string;
   isActive: boolean;
@@ -334,7 +334,7 @@ export const requestFormSchema = z.object({
   minBedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
   minBathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
   budgetMax: z.coerce.number().positive("El presupuesto máximo debe ser un número positivo.").optional().or(z.literal('')),
-  open_for_broker_collaboration: z.boolean().default(false).optional(), // Nuevo campo
+  open_for_broker_collaboration: z.boolean().default(false).optional(),
 });
 export type RequestFormValues = z.infer<typeof requestFormSchema>;
 
@@ -502,6 +502,29 @@ export type PropertyVisitAction =
   | 'mark_visitor_no_show' 
   | 'mark_owner_no_show'
   | 'cancel_by_visitor';
+
+// --- Contact Form Submissions ---
+export interface ContactFormSubmission {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  subject?: string | null;
+  message: string;
+  submitted_at: string; // ISO string date
+  is_read: boolean;
+  admin_notes?: string | null;
+  replied_at?: string | null; // ISO string date
+}
+
+export const contactFormPublicSchema = z.object({
+  name: z.string().min(2, "El nombre es requerido.").max(100),
+  email: z.string().email("Correo electrónico inválido."),
+  phone: z.string().max(20).optional().or(z.literal('')),
+  subject: z.string().min(3, "El asunto debe tener al menos 3 caracteres.").max(150).optional().or(z.literal('')),
+  message: z.string().min(10, "El mensaje debe tener al menos 10 caracteres.").max(2000),
+});
+export type ContactFormPublicValues = z.infer<typeof contactFormPublicSchema>;
 
 
 // --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
