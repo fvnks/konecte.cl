@@ -19,7 +19,13 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'bukmy.cl', // Añadido nuevo hostname
+        hostname: 'bukmy.cl',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http', // Added for www.bukmy.cl as per the error
+        hostname: 'www.bukmy.cl',
         port: '',
         pathname: '/**',
       }
