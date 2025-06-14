@@ -197,7 +197,7 @@ export async function updateVisitStatusAction(
         updateParams.push(new Date(confirmed_datetime));
       } else if (new_status === 'confirmed') {
          updateFields.push('confirmed_datetime = ?');
-         updateParams.push(new Date(visit.proposed_datetime));
+         updateParams.push(new Date(visit.proposed_datetime)); // Confirm with original proposed time if no new time provided
       }
     }
     
@@ -236,7 +236,7 @@ export async function updateVisitStatusAction(
 
 export async function getVisitByIdAction(
   visitId: string,
-  currentUserId: string
+  currentUserId: string // Used to check if user is participant, not for admin
 ): Promise<PropertyVisit | null> {
   if (!visitId || !currentUserId) return null;
 
@@ -263,7 +263,12 @@ export async function getVisitByIdAction(
     }
     const visit = mapDbRowToPropertyVisit(rows[0]);
 
+    // For non-admin access, ensure user is part of the visit
+    // This check is relevant for when a user tries to access a visit detail page directly
     if (visit.visitor_user_id !== currentUserId && visit.property_owner_user_id !== currentUserId) {
+      // If an admin needs to fetch a specific visit, a different action or parameter might be needed,
+      // or rely on getAllVisitsForAdminAction and filter client-side for a specific one.
+      // For now, this action is user-centric.
       console.warn(`[VisitAction] Unauthorized attempt to access visit ${visitId} by user ${currentUserId}`);
       return null; 
     }
@@ -275,9 +280,21 @@ export async function getVisitByIdAction(
   }
 }
 
-export async function getAllVisitsForAdminAction(): Promise<PropertyVisit[]> {
+export type AdminVisitsOrderBy = 
+  | 'proposed_datetime_desc' | 'proposed_datetime_asc' 
+  | 'created_at_desc' | 'created_at_asc' 
+  | 'status_asc' | 'status_desc';
+
+interface GetAllVisitsForAdminOptions {
+  filterStatus?: PropertyVisitStatus;
+  orderBy?: AdminVisitsOrderBy;
+}
+
+export async function getAllVisitsForAdminAction(options: GetAllVisitsForAdminOptions = {}): Promise<PropertyVisit[]> {
+  const { filterStatus, orderBy = 'created_at_desc' } = options;
+  
   try {
-    const sql = `
+    let sql = `
       SELECT 
         pv.*,
         p.title as property_title,
@@ -290,9 +307,31 @@ export async function getAllVisitsForAdminAction(): Promise<PropertyVisit[]> {
       JOIN properties p ON pv.property_id = p.id
       JOIN users visitor ON pv.visitor_user_id = visitor.id
       JOIN users owner ON pv.property_owner_user_id = owner.id
-      ORDER BY pv.created_at DESC
     `;
-    const rows = await query(sql);
+    
+    const queryParams: (string | number)[] = [];
+    const whereClauses: string[] = [];
+
+    if (filterStatus) {
+      whereClauses.push('pv.status = ?');
+      queryParams.push(filterStatus);
+    }
+
+    if (whereClauses.length > 0) {
+      sql += ' WHERE ' + whereClauses.join(' AND ');
+    }
+
+    switch (orderBy) {
+      case 'proposed_datetime_desc': sql += ' ORDER BY pv.proposed_datetime DESC'; break;
+      case 'proposed_datetime_asc': sql += ' ORDER BY pv.proposed_datetime ASC'; break;
+      case 'status_asc': sql += ' ORDER BY pv.status ASC, pv.created_at DESC'; break;
+      case 'status_desc': sql += ' ORDER BY pv.status DESC, pv.created_at DESC'; break;
+      case 'created_at_asc': sql += ' ORDER BY pv.created_at ASC'; break;
+      case 'created_at_desc':
+      default: sql += ' ORDER BY pv.created_at DESC'; break;
+    }
+
+    const rows = await query(sql, queryParams);
     if (!Array.isArray(rows)) {
         console.error("[VisitAction Admin] Expected array from getAllVisitsForAdminAction query, got:", typeof rows);
         return [];
@@ -301,5 +340,32 @@ export async function getAllVisitsForAdminAction(): Promise<PropertyVisit[]> {
   } catch (error: any) {
     console.error(`[VisitAction Admin] Error fetching all visits:`, error);
     return [];
+  }
+}
+
+// Helper for the admin page to get counts per status
+export async function getVisitCountsByStatusForAdmin(): Promise<Record<PropertyVisitStatus, number>> {
+  const counts: Record<PropertyVisitStatus, number> = {
+    pending_confirmation: 0,
+    confirmed: 0,
+    cancelled_by_visitor: 0,
+    cancelled_by_owner: 0,
+    rescheduled_by_owner: 0,
+    completed: 0,
+    visitor_no_show: 0,
+    owner_no_show: 0,
+  };
+  try {
+    const sql = `SELECT status, COUNT(*) as count FROM property_visits GROUP BY status`;
+    const rows: any[] = await query(sql);
+    rows.forEach(row => {
+      if (counts.hasOwnProperty(row.status)) {
+        counts[row.status as PropertyVisitStatus] = Number(row.count);
+      }
+    });
+    return counts;
+  } catch (error) {
+    console.error(`[VisitAction Admin] Error fetching visit counts by status:`, error);
+    return counts; // Return default counts on error
   }
 }
