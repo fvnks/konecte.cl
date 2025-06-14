@@ -132,6 +132,7 @@ const SQL_STATEMENTS: string[] = [
     min_bedrooms INT DEFAULT NULL,
     min_bathrooms INT DEFAULT NULL,
     budget_max DECIMAL(15,2) DEFAULT NULL,
+    open_for_broker_collaboration BOOLEAN DEFAULT FALSE,
     comments_count INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -141,6 +142,7 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_property_requests_slug ON property_requests(slug);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_user_id ON property_requests(user_id);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_city ON property_requests(desired_location_city);`,
+  `CREATE INDEX IF NOT EXISTS idx_property_requests_broker_collab ON property_requests(open_for_broker_collaboration);`,
 
   // comments
   `CREATE TABLE IF NOT EXISTS comments (
@@ -447,8 +449,13 @@ const SQL_STATEMENTS: string[] = [
         FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
         FOREIGN KEY (offering_broker_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (chat_conversation_id) REFERENCES chat_conversations(id) ON DELETE SET NULL,
-        UNIQUE KEY uq_collaboration_request_property (property_request_id, property_id)
-    );`
+        CONSTRAINT uq_collaboration_request_property UNIQUE (property_request_id, property_id),
+        CONSTRAINT chk_different_brokers CHECK (requesting_broker_id <> offering_broker_id)
+    );`,
+    `CREATE INDEX IF NOT EXISTS idx_broker_collaborations_requesting_broker ON broker_collaborations(requesting_broker_id, status);`,
+    `CREATE INDEX IF NOT EXISTS idx_broker_collaborations_offering_broker ON broker_collaborations(offering_broker_id, status);`,
+    `CREATE INDEX IF NOT EXISTS idx_broker_collaborations_request_id ON broker_collaborations(property_request_id);`,
+    `CREATE INDEX IF NOT EXISTS idx_broker_collaborations_property_id ON broker_collaborations(property_id);`
 ];
 
 // --- Función principal del script ---

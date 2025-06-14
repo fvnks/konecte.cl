@@ -4,7 +4,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,8 +19,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { adminUpdateRequestAction } from '@/actions/requestActions';
-import type { PropertyType, ListingCategory, SearchRequest } from "@/lib/types";
-import { Loader2, Save } from "lucide-react";
+import type { PropertyType, ListingCategory, SearchRequest, RequestFormValues } from "@/lib/types"; // Import RequestFormValues
+import { requestFormSchema } from "@/lib/types"; // Import requestFormSchema
+import { Loader2, Save, Handshake } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from 'react';
 
@@ -40,20 +40,6 @@ const categoryOptions: { value: ListingCategory; label: string }[] = [
   { value: "other", label: "Otro" },
 ];
 
-const formSchema = z.object({
-  title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
-  description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
-  desiredPropertyType: z.array(z.enum(["rent", "sale"])).min(1, "Debes seleccionar al menos un tipo de transacción (arriendo/venta)."),
-  desiredCategories: z.array(z.enum(["apartment", "house", "condo", "land", "commercial", "other"])).min(1, "Debes seleccionar al menos una categoría de propiedad."),
-  desiredLocationCity: z.string().min(2, "La ciudad/comuna deseada es requerida."),
-  desiredLocationNeighborhood: z.string().optional(),
-  minBedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
-  minBathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
-  budgetMax: z.coerce.number().positive("El presupuesto máximo debe ser un número positivo.").optional().or(z.literal('')),
-});
-
-export type RequestFormValues = z.infer<typeof formSchema>;
-
 interface AdminEditRequestFormProps {
   request: SearchRequest;
 }
@@ -63,7 +49,7 @@ export default function AdminEditRequestForm({ request }: AdminEditRequestFormPr
   const router = useRouter();
 
   const form = useForm<RequestFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(requestFormSchema),
     defaultValues: {
       title: request.title || "",
       description: request.description || "",
@@ -74,6 +60,7 @@ export default function AdminEditRequestForm({ request }: AdminEditRequestFormPr
       minBedrooms: request.minBedrooms !== undefined ? request.minBedrooms : '',
       minBathrooms: request.minBathrooms !== undefined ? request.minBathrooms : '',
       budgetMax: request.budgetMax !== undefined ? request.budgetMax : '',
+      open_for_broker_collaboration: request.open_for_broker_collaboration || false,
     },
   });
 
@@ -272,6 +259,30 @@ export default function AdminEditRequestForm({ request }: AdminEditRequestFormPr
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="open_for_broker_collaboration"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm bg-secondary/30">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel className="font-medium flex items-center">
+                  <Handshake className="h-5 w-5 mr-2 text-primary"/>
+                  Abierta a Colaboración de Corredores
+                </FormLabel>
+                <FormDescription>
+                  Permite que otros corredores vean esta solicitud y propongan propiedades.
+                </FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
         
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => router.back()} disabled={form.formState.isSubmitting}>

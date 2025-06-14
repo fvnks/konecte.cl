@@ -4,7 +4,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,11 +19,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { submitRequestAction } from "@/actions/requestActions";
-import type { PropertyType, ListingCategory, User as StoredUser } from "@/lib/types";
-import { Loader2, UserCircle } from "lucide-react";
+import type { PropertyType, ListingCategory, User as StoredUser, RequestFormValues } from "@/lib/types"; // Import RequestFormValues
+import { requestFormSchema } from "@/lib/types"; // Import requestFormSchema
+import { Loader2, UserCircle, Handshake } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // Import Link
+import Link from "next/link";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -40,31 +40,20 @@ const categoryOptions: { value: ListingCategory; label: string }[] = [
   { value: "other", label: "Otro" },
 ];
 
-const formSchema = z.object({
-  title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
-  description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
-  desiredPropertyType: z.array(z.enum(["rent", "sale"])).min(1, "Debes seleccionar al menos un tipo de transacción (arriendo/venta)."),
-  desiredCategories: z.array(z.enum(["apartment", "house", "condo", "land", "commercial", "other"])).min(1, "Debes seleccionar al menos una categoría de propiedad."),
-  desiredLocationCity: z.string().min(2, "La ciudad/comuna deseada es requerida."),
-  desiredLocationNeighborhood: z.string().optional(),
-  minBedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
-  minBathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
-  budgetMax: z.coerce.number().positive("El presupuesto máximo debe ser un número positivo.").optional().or(z.literal('')),
-});
-
-export type RequestFormValues = z.infer<typeof formSchema>;
-
 export default function RequestForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isBroker, setIsBroker] = useState(false);
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
-        setLoggedInUser(JSON.parse(userJson));
+        const user: StoredUser = JSON.parse(userJson);
+        setLoggedInUser(user);
+        setIsBroker(user.role_id === 'broker');
       } catch (error) {
         console.error("Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser'); 
@@ -75,7 +64,7 @@ export default function RequestForm() {
 
 
   const form = useForm<RequestFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(requestFormSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -86,6 +75,7 @@ export default function RequestForm() {
       minBedrooms: undefined,
       minBathrooms: undefined,
       budgetMax: undefined,
+      open_for_broker_collaboration: false,
     },
   });
 
@@ -105,6 +95,7 @@ export default function RequestForm() {
         minBedrooms: values.minBedrooms === '' ? undefined : values.minBedrooms,
         minBathrooms: values.minBathrooms === '' ? undefined : values.minBathrooms,
         budgetMax: values.budgetMax === '' ? undefined : values.budgetMax,
+        open_for_broker_collaboration: isBroker ? values.open_for_broker_collaboration : false, // Solo brokers pueden setear esto
     };
 
     const result = await submitRequestAction(dataToSubmit, loggedInUser.id);
@@ -339,6 +330,32 @@ export default function RequestForm() {
             )}
           />
         </div>
+
+        {isBroker && (
+          <FormField
+            control={form.control}
+            name="open_for_broker_collaboration"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm bg-secondary/30">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="font-medium flex items-center">
+                    <Handshake className="h-5 w-5 mr-2 text-primary"/>
+                    Abrir a Colaboración de Corredores
+                  </FormLabel>
+                  <FormDescription>
+                    Permite que otros corredores vean esta solicitud y te propongan propiedades de su cartera.
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+        )}
         
         <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth || !loggedInUser}>
           {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

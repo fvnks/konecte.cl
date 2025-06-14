@@ -2,7 +2,7 @@
 // src/actions/requestActions.ts
 'use server';
 
-import type { RequestFormValues } from "@/components/request/RequestForm";
+import type { RequestFormValues } from "@/lib/types"; // Import RequestFormValues from types.ts
 import { query } from "@/lib/db";
 import type { SearchRequest, User, PropertyType, ListingCategory } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -35,7 +35,7 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
     id: row.user_id,
     name: row.author_name,
     avatarUrl: row.author_avatar_url || undefined,
-    role_id: '', // No es crucial para mostrar la tarjeta de solicitud, se puede añadir si es necesario.
+    role_id: row.author_role_id || '', 
   } : undefined;
 
   return {
@@ -53,6 +53,7 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
     minBedrooms: row.min_bedrooms !== null ? Number(row.min_bedrooms) : undefined,
     minBathrooms: row.min_bathrooms !== null ? Number(row.min_bathrooms) : undefined,
     budgetMax: row.budget_max !== null ? Number(row.budget_max) : undefined,
+    open_for_broker_collaboration: Boolean(row.open_for_broker_collaboration), // Asegurar que sea boolean
     commentsCount: Number(row.comments_count),
     isActive: Boolean(row.is_active),
     createdAt: new Date(row.created_at).toISOString(),
@@ -83,6 +84,7 @@ export async function submitRequestAction(
         desired_category_land, desired_category_commercial, desired_category_other,
         desired_location_city, desired_location_neighborhood,
         min_bedrooms, min_bathrooms, budget_max,
+        open_for_broker_collaboration,
         is_active, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
     `;
@@ -106,6 +108,7 @@ export async function submitRequestAction(
       data.minBedrooms !== undefined && data.minBedrooms !== '' ? data.minBedrooms : null,
       data.minBathrooms !== undefined && data.minBathrooms !== '' ? data.minBathrooms : null,
       data.budgetMax !== undefined && data.budgetMax !== '' ? data.budgetMax : null,
+      data.open_for_broker_collaboration || false, // Guardar el nuevo campo
     ];
     
     await query(sql, params);
@@ -134,25 +137,40 @@ export async function submitRequestAction(
 
 interface GetRequestsActionOptions {
   includeInactive?: boolean;
+  userId?: string; // Para filtrar por usuario
+  onlyOpenForCollaboration?: boolean; // Para filtrar por colaboración de corredores
   // Add other filter/sort options here later if needed
 }
 
 export async function getRequestsAction(options: GetRequestsActionOptions = {}): Promise<SearchRequest[]> {
-  const { includeInactive = false } = options;
+  const { includeInactive = false, userId, onlyOpenForCollaboration = false } = options;
   try {
     let sql = `
       SELECT 
         pr.*, 
         u.name as author_name, 
-        u.avatar_url as author_avatar_url 
+        u.avatar_url as author_avatar_url,
+        u.role_id as author_role_id
       FROM property_requests pr
       LEFT JOIN users u ON pr.user_id = u.id
     `;
     
+    const whereClauses: string[] = [];
     const queryParams: any[] = [];
 
     if (!includeInactive) {
-      sql += ' WHERE pr.is_active = TRUE';
+      whereClauses.push('pr.is_active = TRUE');
+    }
+    if (userId) {
+        whereClauses.push('pr.user_id = ?');
+        queryParams.push(userId);
+    }
+    if (onlyOpenForCollaboration) {
+        whereClauses.push('pr.open_for_broker_collaboration = TRUE');
+    }
+    
+    if (whereClauses.length > 0) {
+        sql += ' WHERE ' + whereClauses.join(' AND ');
     }
     
     sql += ' ORDER BY pr.created_at DESC';
@@ -175,7 +193,8 @@ export async function getRequestBySlugAction(slug: string): Promise<SearchReques
       SELECT 
         pr.*, 
         u.name as author_name, 
-        u.avatar_url as author_avatar_url
+        u.avatar_url as author_avatar_url,
+        u.role_id as author_role_id
       FROM property_requests pr
       LEFT JOIN users u ON pr.user_id = u.id
       WHERE pr.slug = ? AND pr.is_active = TRUE
@@ -192,28 +211,7 @@ export async function getRequestBySlugAction(slug: string): Promise<SearchReques
 }
 
 export async function getUserRequestsAction(userId: string): Promise<SearchRequest[]> {
-  if (!userId) return [];
-  try {
-    const sql = `
-      SELECT 
-        pr.*,
-        u.name as author_name,
-        u.avatar_url as author_avatar_url
-      FROM property_requests pr
-      LEFT JOIN users u ON pr.user_id = u.id
-      WHERE pr.user_id = ?
-      ORDER BY pr.created_at DESC
-    `;
-    const rows = await query(sql, [userId]);
-     if (!Array.isArray(rows)) {
-        console.error("[RequestAction] Expected array from getUserRequestsAction, got:", typeof rows);
-        return [];
-    }
-    return rows.map(mapDbRowToSearchRequest);
-  } catch (error: any) {
-    console.error(`[RequestAction] Error fetching requests for user ${userId}:`, error);
-    return [];
-  }
+  return getRequestsAction({ userId, includeInactive: true }); // Se usa getRequestsAction con el filtro de userId
 }
 
 export async function updateRequestStatusAction(requestId: string, isActive: boolean): Promise<{ success: boolean; message?: string }> {
@@ -262,7 +260,8 @@ export async function getRequestByIdForAdminAction(requestId: string): Promise<S
       SELECT 
         pr.*, 
         u.name as author_name, 
-        u.avatar_url as author_avatar_url
+        u.avatar_url as author_avatar_url,
+        u.role_id as author_role_id
       FROM property_requests pr
       LEFT JOIN users u ON pr.user_id = u.id
       WHERE pr.id = ?
@@ -288,9 +287,6 @@ export async function adminUpdateRequestAction(
     return { success: false, message: "ID de solicitud no proporcionado para la actualización." };
   }
 
-  // El slug original se mantiene para esta acción de actualización.
-  // Si se necesita cambiar el slug, se debería hacer con una lógica más compleja (ej. verificar duplicados).
-
   try {
     const sql = `
       UPDATE property_requests SET
@@ -300,6 +296,7 @@ export async function adminUpdateRequestAction(
         desired_category_land = ?, desired_category_commercial = ?, desired_category_other = ?,
         desired_location_city = ?, desired_location_neighborhood = ?,
         min_bedrooms = ?, min_bathrooms = ?, budget_max = ?,
+        open_for_broker_collaboration = ?,
         updated_at = NOW()
       WHERE id = ?
     `;
@@ -320,6 +317,7 @@ export async function adminUpdateRequestAction(
       data.minBedrooms !== undefined && data.minBedrooms !== '' ? data.minBedrooms : null,
       data.minBathrooms !== undefined && data.minBathrooms !== '' ? data.minBathrooms : null,
       data.budgetMax !== undefined && data.budgetMax !== '' ? data.budgetMax : null,
+      data.open_for_broker_collaboration || false, // Guardar el nuevo campo
       requestId
     ];
     
@@ -347,7 +345,6 @@ export async function adminUpdateRequestAction(
 
   } catch (error: any) {
     console.error(`[RequestAction Admin] Error updating request ${requestId}:`, error);
-    // No verificamos ER_DUP_ENTRY para el slug aquí, ya que no lo estamos cambiando.
     return { success: false, message: `Error al actualizar solicitud: ${error.message}` };
   }
 }

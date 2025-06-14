@@ -88,6 +88,7 @@ export interface SearchRequest {
   minBedrooms?: number;
   minBathrooms?: number;
   budgetMax?: number;
+  open_for_broker_collaboration?: boolean; // Nuevo campo
   commentsCount: number;
   slug: string;
   isActive: boolean;
@@ -321,6 +322,22 @@ export const signUpSchema = z.object({
   path: ["confirmPassword"], // Path of error
 });
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
+
+// --- Request Form Schema ---
+export const requestFormSchema = z.object({
+  title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
+  description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
+  desiredPropertyType: z.array(z.enum(["rent", "sale"])).min(1, "Debes seleccionar al menos un tipo de transacción (arriendo/venta)."),
+  desiredCategories: z.array(z.enum(["apartment", "house", "condo", "land", "commercial", "other"])).min(1, "Debes seleccionar al menos una categoría de propiedad."),
+  desiredLocationCity: z.string().min(2, "La ciudad/comuna deseada es requerida."),
+  desiredLocationNeighborhood: z.string().optional(),
+  minBedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
+  minBathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
+  budgetMax: z.coerce.number().positive("El presupuesto máximo debe ser un número positivo.").optional().or(z.literal('')),
+  open_for_broker_collaboration: z.boolean().default(false).optional(), // Nuevo campo
+});
+export type RequestFormValues = z.infer<typeof requestFormSchema>;
+
 
 // --- Chat Types ---
 export interface ChatMessage {

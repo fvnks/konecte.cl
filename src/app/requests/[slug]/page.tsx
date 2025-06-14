@@ -3,7 +3,7 @@ import type { PropertyType, ListingCategory, SearchRequest } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, BedDouble, Bath, DollarSign, Tag, SearchCheck as SearchIcon, AlertTriangle, CalendarDays, Building } from "lucide-react";
+import { MapPin, BedDouble, Bath, DollarSign, Tag, SearchCheck as SearchIcon, AlertTriangle, CalendarDays, Building, Handshake } from "lucide-react";
 import { getRequestBySlugAction } from "@/actions/requestActions";
 import RequestComments from "@/components/comments/RequestComments"; 
 import { Button } from "@/components/ui/button";
@@ -54,18 +54,25 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
     <div className="max-w-4xl mx-auto space-y-8 lg:space-y-10">
       <Card className="shadow-xl rounded-xl">
         <CardHeader className="p-6 md:p-8">
-           <div className="flex items-center gap-4 mb-4">
-              <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
-                <AvatarImage src={authorAvatar || `https://placehold.co/80x80.png?text=${authorInitials}`} alt={authorName} data-ai-hint="persona solicitante" />
-                <AvatarFallback className="text-2xl">{authorInitials}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-xl sm:text-2xl font-semibold">{authorName}</p>
-                <p className="text-sm text-muted-foreground flex items-center mt-1">
-                    <CalendarDays className="h-4 w-4 mr-1.5"/>
-                    Publicado el {new Date(request.createdAt).toLocaleDateString('es-CL')}
-                </p>
-              </div>
+           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
+                    <AvatarImage src={authorAvatar || `https://placehold.co/80x80.png?text=${authorInitials}`} alt={authorName} data-ai-hint="persona solicitante"/>
+                    <AvatarFallback className="text-2xl">{authorInitials}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="text-xl sm:text-2xl font-semibold">{authorName}</p>
+                    <p className="text-sm text-muted-foreground flex items-center mt-1">
+                        <CalendarDays className="h-4 w-4 mr-1.5"/>
+                        Publicado el {new Date(request.createdAt).toLocaleDateString('es-CL')}
+                    </p>
+                </div>
+                </div>
+                {request.open_for_broker_collaboration && (
+                    <Badge variant="outline" className="text-sm py-1.5 px-3 border-purple-500 text-purple-600 self-start sm:self-center">
+                        <Handshake className="h-4 w-4 mr-2" /> Abierta a Colaboración
+                    </Badge>
+                )}
             </div>
           <CardTitle className="text-3xl lg:text-4xl font-headline font-bold flex items-start">
             <SearchIcon className="mr-3 h-8 w-8 text-primary flex-shrink-0 mt-1"/>
@@ -144,3 +151,4 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
     </div>
   );
 }
+

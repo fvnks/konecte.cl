@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, BedDouble, Bath, Eye } from 'lucide-react';
+import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, BedDouble, Bath, Eye, UserCircle as UserIcon, Handshake } from 'lucide-react';
 
 interface RequestListItemProps {
   request: SearchRequest;
@@ -44,6 +44,7 @@ export default function RequestListItem({ request }: RequestListItemProps) {
     description,
     minBedrooms,
     minBathrooms,
+    open_for_broker_collaboration, // Nuevo campo
   } = request;
 
   const locationCity = desiredLocation?.city || 'N/A';
@@ -57,18 +58,25 @@ export default function RequestListItem({ request }: RequestListItemProps) {
       <div className="flex flex-1 flex-col p-4 sm:p-5 justify-between">
         <div>
           <CardHeader className="p-0 mb-2 sm:mb-3">
-            <div className="flex items-center gap-2.5 mb-2.5">
-              <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border">
-                <AvatarImage src={authorAvatar || `https://placehold.co/40x40.png?text=${authorInitials}`} alt={authorName} data-ai-hint="usuario buscando"/>
-                <AvatarFallback className="text-sm bg-muted">{authorInitials}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium line-clamp-1" title={authorName}>{authorName}</p>
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <CalendarDays className="h-3 w-3 mr-1" />
-                  Publicado el {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short', year:'numeric'})}
-                </p>
-              </div>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 mb-2.5">
+                <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border">
+                    <AvatarImage src={authorAvatar || `https://placehold.co/40x40.png?text=${authorInitials}`} alt={authorName} data-ai-hint="usuario buscando"/>
+                    <AvatarFallback className="text-sm bg-muted">{authorInitials}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="text-sm font-medium line-clamp-1" title={authorName}>{authorName}</p>
+                    <p className="text-xs text-muted-foreground flex items-center">
+                    <CalendarDays className="h-3 w-3 mr-1" />
+                    Publicado el {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short', year:'numeric'})}
+                    </p>
+                </div>
+                </div>
+                {open_for_broker_collaboration && (
+                    <Badge variant="outline" className="text-xs py-1 px-2 border-purple-500 text-purple-600 h-fit">
+                        <Handshake className="h-3.5 w-3.5 mr-1" /> Colaboración
+                    </Badge>
+                )}
             </div>
             <Link href={`/requests/${slug}`} className="block">
               <CardTitle className="text-lg sm:text-xl font-headline leading-tight hover:text-primary transition-colors line-clamp-2">

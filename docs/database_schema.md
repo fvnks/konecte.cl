@@ -183,6 +183,7 @@ CREATE TABLE property_requests (
     min_bathrooms INT DEFAULT NULL,
     budget_max DECIMAL(15,2) DEFAULT NULL,
     -- budget_currency VARCHAR(3) DEFAULT 'CLP', -- Considerar si el presupuesto puede ser en diferentes monedas
+    open_for_broker_collaboration BOOLEAN DEFAULT FALSE,   -- Nuevo campo para colaboración entre corredores
     comments_count INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -195,6 +196,7 @@ CREATE TABLE property_requests (
 CREATE INDEX idx_property_requests_slug ON property_requests(slug);
 CREATE INDEX idx_property_requests_user_id ON property_requests(user_id);
 CREATE INDEX idx_property_requests_city ON property_requests(desired_location_city);
+CREATE INDEX idx_property_requests_broker_collab ON property_requests(open_for_broker_collaboration); -- Nuevo índice
 ```
 
 ---
@@ -596,4 +598,5 @@ CREATE INDEX idx_broker_collaborations_property_id ON broker_collaborations(prop
 ```
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
+
 
