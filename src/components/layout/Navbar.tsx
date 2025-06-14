@@ -1,3 +1,4 @@
+
 // src/components/layout/Navbar.tsx
 'use client';
 
@@ -292,7 +293,7 @@ export default function Navbar() {
                         <AvatarFallback className="bg-muted text-muted-foreground text-base">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       {totalUnreadMessages > 0 && (
-                          <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center">
+                          <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 text-[10px] rounded-full flex items-center justify-center leading-none">
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
                       )}
@@ -392,7 +393,7 @@ export default function Navbar() {
                     <Menu className="h-5 w-5 text-primary" />
                     <span className="sr-only">Alternar menú</span>
                     {isClient && loggedInUser && totalUnreadMessages > 0 && (
-                          <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 text-[10px] rounded-full flex items-center justify-center">
+                          <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 text-[10px] rounded-full flex items-center justify-center leading-none">
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
                       )}
