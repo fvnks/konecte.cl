@@ -76,65 +76,114 @@ export async function submitRequestAction(
     const requestId = randomUUID();
     const slug = generateSlug(data.title);
 
-    const minBedroomsValue = (data.minBedrooms === undefined || data.minBedrooms === '' || data.minBedrooms === null)
-        ? null : Number(data.minBedrooms);
-    const minBathroomsValue = (data.minBathrooms === undefined || data.minBathrooms === '' || data.minBathrooms === null)
-        ? null : Number(data.minBathrooms);
-    const budgetMaxValue = (data.budgetMax === undefined || data.budgetMax === '' || data.budgetMax === null)
-        ? null : Number(data.budgetMax);
+    const columns: string[] = [];
+    const values: any[] = [];
+    const placeholders: string[] = [];
 
-    // Ser completamente explícito con TODAS las columnas de la tabla property_requests
-    // según el esquema de database_schema.md (23 columnas)
-    const sql = `
-      INSERT INTO property_requests (
-        id, user_id, title, slug, description,
-        desired_property_type_rent, desired_property_type_sale,
-        desired_category_apartment, desired_category_house, desired_category_condo,
-        desired_category_land, desired_category_commercial, desired_category_other,
-        desired_location_city, desired_location_neighborhood,
-        min_bedrooms, min_bathrooms, budget_max,
-        open_for_broker_collaboration,
-        comments_count, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `; // 23 columnas, 23 placeholders
+    // Campos obligatorios o que siempre se establecen
+    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city');
+    values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity);
+    placeholders.push('?', '?', '?', '?', '?', '?');
 
-    const params = [
-      requestId, // 1. id
-      userId,    // 2. user_id
-      data.title, // 3. title
-      slug,       // 4. slug
-      data.description, // 5. description
-      data.desiredPropertyType.includes('rent'), // 6. desired_property_type_rent
-      data.desiredPropertyType.includes('sale'), // 7. desired_property_type_sale
-      data.desiredCategories.includes('apartment'), // 8. desired_category_apartment
-      data.desiredCategories.includes('house'),     // 9. desired_category_house
-      data.desiredCategories.includes('condo'),     // 10. desired_category_condo
-      data.desiredCategories.includes('land'),      // 11. desired_category_land
-      data.desiredCategories.includes('commercial'),// 12. desired_category_commercial
-      data.desiredCategories.includes('other'),     // 13. desired_category_other
-      data.desiredLocationCity,                      // 14. desired_location_city
-      data.desiredLocationNeighborhood || null,      // 15. desired_location_neighborhood
-      minBedroomsValue, // 16. min_bedrooms
-      minBathroomsValue, // 17. min_bathrooms
-      budgetMaxValue,    // 18. budget_max
-      data.open_for_broker_collaboration || false, // 19. open_for_broker_collaboration
-      0, // 20. comments_count (DEFAULT 0)
-      true, // 21. is_active (DEFAULT TRUE)
-      new Date(), // 22. created_at (DEFAULT CURRENT_TIMESTAMP)
-      new Date()  // 23. updated_at (DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
-    ];
-    
-    console.log(`[RequestAction DEBUG] SQL columns explicit count: 23`);
-    console.log(`[RequestAction DEBUG] Params length: ${params.length}`);
+    // Campos booleanos (solo incluir si son true, ya que el default en BD es false)
+    if (data.desiredPropertyType.includes('rent')) {
+      columns.push('desired_property_type_rent');
+      values.push(true);
+      placeholders.push('?');
+    }
+    if (data.desiredPropertyType.includes('sale')) {
+      columns.push('desired_property_type_sale');
+      values.push(true);
+      placeholders.push('?');
+    }
+    if (data.desiredCategories.includes('apartment')) {
+      columns.push('desired_category_apartment');
+      values.push(true);
+      placeholders.push('?');
+    }
+    if (data.desiredCategories.includes('house')) {
+      columns.push('desired_category_house');
+      values.push(true);
+      placeholders.push('?');
+    }
+    if (data.desiredCategories.includes('condo')) {
+      columns.push('desired_category_condo');
+      values.push(true);
+      placeholders.push('?');
+    }
+    if (data.desiredCategories.includes('land')) {
+      columns.push('desired_category_land');
+      values.push(true);
+      placeholders.push('?');
+    }
+    if (data.desiredCategories.includes('commercial')) {
+      columns.push('desired_category_commercial');
+      values.push(true);
+      placeholders.push('?');
+    }
+    if (data.desiredCategories.includes('other')) {
+      columns.push('desired_category_other');
+      values.push(true);
+      placeholders.push('?');
+    }
+     if (data.open_for_broker_collaboration) {
+      columns.push('open_for_broker_collaboration');
+      values.push(true);
+      placeholders.push('?');
+    }
 
-    if (params.length !== 23) {
-        const errorMessage = `[RequestAction FATAL] Mismatch detected before query: Expected 23 params for 23 columns, got ${params.length} params.`;
-        console.error(errorMessage);
-        // Retornar un error más detallado al cliente podría ser útil aquí, o al menos loguearlo bien.
-        return { success: false, message: "Error interno: Desajuste de parámetros en la acción del servidor." };
+
+    // Campos opcionales (solo incluir si tienen valor)
+    if (data.desiredLocationNeighborhood && data.desiredLocationNeighborhood.trim() !== '') {
+      columns.push('desired_location_neighborhood');
+      values.push(data.desiredLocationNeighborhood.trim());
+      placeholders.push('?');
+    }
+
+    const minBedroomsValue = (data.minBedrooms !== undefined && data.minBedrooms !== '' && data.minBedrooms !== null)
+        ? Number(data.minBedrooms) : null;
+    if (minBedroomsValue !== null && !isNaN(minBedroomsValue)) {
+      columns.push('min_bedrooms');
+      values.push(minBedroomsValue);
+      placeholders.push('?');
+    }
+
+    const minBathroomsValue = (data.minBathrooms !== undefined && data.minBathrooms !== '' && data.minBathrooms !== null)
+        ? Number(data.minBathrooms) : null;
+    if (minBathroomsValue !== null && !isNaN(minBathroomsValue)) {
+      columns.push('min_bathrooms');
+      values.push(minBathroomsValue);
+      placeholders.push('?');
     }
     
-    await query(sql, params);
+    const budgetMaxValue = (data.budgetMax !== undefined && data.budgetMax !== '' && data.budgetMax !== null)
+        ? Number(data.budgetMax) : null;
+    if (budgetMaxValue !== null && !isNaN(budgetMaxValue)) {
+      columns.push('budget_max');
+      values.push(budgetMaxValue);
+      placeholders.push('?');
+    }
+
+    // Las columnas con DEFAULT en la BD (comments_count, is_active, created_at, updated_at)
+    // se omitirán y la BD las llenará.
+
+    if (columns.length === 0) {
+      return { success: false, message: "No hay datos válidos para insertar." };
+    }
+
+    const sql = `
+      INSERT INTO property_requests (${columns.join(', ')})
+      VALUES (${placeholders.join(', ')})
+    `;
+    
+    console.log(`[RequestAction DEBUG] SQL: ${sql}`);
+    console.log(`[RequestAction DEBUG] Params:`, values);
+    console.log(`[RequestAction DEBUG] Number of columns in SQL: ${columns.length}`);
+    console.log(`[RequestAction DEBUG] Number of placeholders in SQL: ${placeholders.length}`);
+    console.log(`[RequestAction DEBUG] Number of values in params array: ${values.length}`);
+
+
+    await query(sql, values);
     console.log(`[RequestAction] Request submitted successfully. ID: ${requestId}, Slug: ${slug}`);
 
     revalidatePath('/');
@@ -147,11 +196,10 @@ export async function submitRequestAction(
 
   } catch (error: any) {
     console.error("[RequestAction] Error submitting request:", error);
-    let message = `Error al publicar solicitud: ${error.message}`; // Incluir el mensaje de error original
+    let message = `Error al publicar solicitud: ${error.message}`; 
      if (error.code === 'ER_DUP_ENTRY' && error.message.includes('property_requests.slug')) {
         message = "Ya existe una solicitud con un título muy similar (slug duplicado). Intenta con un título ligeramente diferente.";
     }
-    // No ocultar el error.message original si es diferente de los casos específicos
     return { success: false, message };
   }
 }
@@ -307,40 +355,55 @@ export async function adminUpdateRequestAction(
   }
 
   try {
+    // Similar dynamic query construction as in submitRequestAction
+    const columnsToUpdate: string[] = [];
+    const valuesToUpdate: any[] = [];
+
+    // Campos que siempre se actualizan si se proporcionan en 'data'
+    if (data.title) { columnsToUpdate.push('title = ?'); valuesToUpdate.push(data.title); }
+    if (data.description) { columnsToUpdate.push('description = ?'); valuesToUpdate.push(data.description); }
+    if (data.desiredLocationCity) { columnsToUpdate.push('desired_location_city = ?'); valuesToUpdate.push(data.desiredLocationCity); }
+    
+    columnsToUpdate.push('desired_location_neighborhood = ?');
+    valuesToUpdate.push(data.desiredLocationNeighborhood && data.desiredLocationNeighborhood.trim() !== '' ? data.desiredLocationNeighborhood.trim() : null);
+
+    // Booleanos para tipos y categorías
+    columnsToUpdate.push('desired_property_type_rent = ?'); valuesToUpdate.push(data.desiredPropertyType.includes('rent'));
+    columnsToUpdate.push('desired_property_type_sale = ?'); valuesToUpdate.push(data.desiredPropertyType.includes('sale'));
+    columnsToUpdate.push('desired_category_apartment = ?'); valuesToUpdate.push(data.desiredCategories.includes('apartment'));
+    columnsToUpdate.push('desired_category_house = ?'); valuesToUpdate.push(data.desiredCategories.includes('house'));
+    columnsToUpdate.push('desired_category_condo = ?'); valuesToUpdate.push(data.desiredCategories.includes('condo'));
+    columnsToUpdate.push('desired_category_land = ?'); valuesToUpdate.push(data.desiredCategories.includes('land'));
+    columnsToUpdate.push('desired_category_commercial = ?'); valuesToUpdate.push(data.desiredCategories.includes('commercial'));
+    columnsToUpdate.push('desired_category_other = ?'); valuesToUpdate.push(data.desiredCategories.includes('other'));
+    
+    columnsToUpdate.push('open_for_broker_collaboration = ?');
+    valuesToUpdate.push(data.open_for_broker_collaboration || false);
+
+
+    const minBedroomsValue = (data.minBedrooms !== undefined && data.minBedrooms !== '' && data.minBedrooms !== null) ? Number(data.minBedrooms) : null;
+    columnsToUpdate.push('min_bedrooms = ?'); valuesToUpdate.push(minBedroomsValue);
+    
+    const minBathroomsValue = (data.minBathrooms !== undefined && data.minBathrooms !== '' && data.minBathrooms !== null) ? Number(data.minBathrooms) : null;
+    columnsToUpdate.push('min_bathrooms = ?'); valuesToUpdate.push(minBathroomsValue);
+
+    const budgetMaxValue = (data.budgetMax !== undefined && data.budgetMax !== '' && data.budgetMax !== null) ? Number(data.budgetMax) : null;
+    columnsToUpdate.push('budget_max = ?'); valuesToUpdate.push(budgetMaxValue);
+
+    if (columnsToUpdate.length === 0) {
+      return { success: true, message: "No se proporcionaron datos para actualizar." };
+    }
+    
+    columnsToUpdate.push('updated_at = NOW()'); // Siempre actualizar timestamp
+
     const sql = `
       UPDATE property_requests SET
-        title = ?, description = ?,
-        desired_property_type_rent = ?, desired_property_type_sale = ?,
-        desired_category_apartment = ?, desired_category_house = ?, desired_category_condo = ?,
-        desired_category_land = ?, desired_category_commercial = ?, desired_category_other = ?,
-        desired_location_city = ?, desired_location_neighborhood = ?,
-        min_bedrooms = ?, min_bathrooms = ?, budget_max = ?,
-        open_for_broker_collaboration = ?,
-        updated_at = NOW() 
+        ${columnsToUpdate.join(', ')}
       WHERE id = ?
     `;
-
-    const params = [
-      data.title,
-      data.description,
-      data.desiredPropertyType.includes('rent'),
-      data.desiredPropertyType.includes('sale'),
-      data.desiredCategories.includes('apartment'),
-      data.desiredCategories.includes('house'),
-      data.desiredCategories.includes('condo'),
-      data.desiredCategories.includes('land'),
-      data.desiredCategories.includes('commercial'),
-      data.desiredCategories.includes('other'),
-      data.desiredLocationCity,
-      data.desiredLocationNeighborhood || null,
-      data.minBedrooms !== undefined && data.minBedrooms !== '' ? Number(data.minBedrooms) : null,
-      data.minBathrooms !== undefined && data.minBathrooms !== '' ? Number(data.minBathrooms) : null,
-      data.budgetMax !== undefined && data.budgetMax !== '' ? Number(data.budgetMax) : null,
-      data.open_for_broker_collaboration || false,
-      requestId
-    ];
+    valuesToUpdate.push(requestId); // Añadir el ID para la cláusula WHERE
     
-    const result: any = await query(sql, params);
+    const result: any = await query(sql, valuesToUpdate);
 
     if (result.affectedRows === 0) {
       return { success: false, message: "Solicitud no encontrada o los datos eran los mismos." };
@@ -376,11 +439,9 @@ export async function getRequestsCountAction(activeOnly: boolean = false): Promi
     }
     const result: any[] = await query(sql);
     return Number(result[0].count) || 0;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error al obtener el conteo de solicitudes:", error);
     return 0;
   }
 }
-    
-
     
