@@ -10,7 +10,7 @@ import PlanDisplayCard from '@/components/plan/PlanDisplayCard';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 
-const whyPropSpotBenefits = [
+const whyKonecteBenefits = [
   "Tu propiedad en los principales portales.",
   "Expertos inmobiliarios a tu disposición.",
   "Asesoría legal y financiera.",
@@ -19,7 +19,7 @@ const whyPropSpotBenefits = [
 ];
 
 const withEveryPlanBenefits = [
-  "Publicación en PropSpot.cl",
+  "Publicación en konecte", // Cambiado aquí
   "Estadísticas de rendimiento",
   "Soporte técnico especializado",
   "Acceso a base de datos de clientes",
@@ -46,11 +46,11 @@ export default async function PlansPage() {
         <div className="md:col-span-3">
           <Card className="shadow-xl rounded-xl border bg-card">
             <CardHeader className="p-6">
-              <CardTitle className="text-xl sm:text-2xl font-semibold text-foreground">¿Por qué contratar en PropSpot?</CardTitle>
+              <CardTitle className="text-xl sm:text-2xl font-semibold text-foreground">¿Por qué contratar en konecte?</CardTitle> {/* Cambiado aquí */}
             </CardHeader>
             <CardContent className="p-6 pt-0">
               <ul className="space-y-3 text-muted-foreground">
-                {whyPropSpotBenefits.map((benefit, index) => (
+                {whyKonecteBenefits.map((benefit, index) => (
                   <li key={`why-${index}`} className="flex items-start">
                     <Check className="h-5 w-5 mr-2.5 text-red-500 flex-shrink-0 mt-0.5" />
                     <span>{benefit}</span>
