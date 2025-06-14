@@ -34,7 +34,8 @@ const SQL_STATEMENTS: string[] = [
   );`,
   `INSERT IGNORE INTO roles (id, name, description) VALUES 
     ('admin', 'Administrador', 'Acceso total a todas las funcionalidades y configuraciones del sistema.'),
-    ('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.');`,
+    ('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.'),
+    ('broker', 'Corredor', 'Usuario corredor de propiedades con acceso a funcionalidades de colaboración.');`,
 
   // plans
   `CREATE TABLE IF NOT EXISTS plans (
@@ -425,7 +426,29 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_visits_visitor_id_status ON property_visits(visitor_user_id, status);`,
   `CREATE INDEX IF NOT EXISTS idx_visits_owner_id_status ON property_visits(property_owner_user_id, status);`,
   `CREATE INDEX IF NOT EXISTS idx_visits_proposed_datetime ON property_visits(proposed_datetime);`,
-  `CREATE INDEX IF NOT EXISTS idx_visits_confirmed_datetime ON property_visits(confirmed_datetime);`
+  `CREATE INDEX IF NOT EXISTS idx_visits_confirmed_datetime ON property_visits(confirmed_datetime);`,
+
+  // --- Broker Collaboration Table ---
+  `CREATE TABLE IF NOT EXISTS broker_collaborations (
+        id VARCHAR(36) PRIMARY KEY,
+        property_request_id VARCHAR(36) NOT NULL,
+        requesting_broker_id VARCHAR(36) NOT NULL,
+        property_id VARCHAR(36) NOT NULL,
+        offering_broker_id VARCHAR(36) NOT NULL,
+        status ENUM('pending', 'accepted', 'rejected', 'deal_in_progress', 'deal_closed_success', 'deal_failed') DEFAULT 'pending',
+        commission_terms TEXT DEFAULT NULL,
+        chat_conversation_id VARCHAR(36) DEFAULT NULL,
+        proposed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        accepted_at TIMESTAMP DEFAULT NULL,
+        closed_at TIMESTAMP DEFAULT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (property_request_id) REFERENCES property_requests(id) ON DELETE CASCADE,
+        FOREIGN KEY (requesting_broker_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+        FOREIGN KEY (offering_broker_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (chat_conversation_id) REFERENCES chat_conversations(id) ON DELETE SET NULL,
+        UNIQUE KEY uq_collaboration_request_property (property_request_id, property_id)
+    );`
 ];
 
 // --- Función principal del script ---

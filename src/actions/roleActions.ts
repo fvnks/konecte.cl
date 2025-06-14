@@ -1,3 +1,4 @@
+
 // src/actions/roleActions.ts
 'use server';
 
@@ -56,12 +57,10 @@ export async function deleteRoleAction(roleId: string): Promise<{ success: boole
     return { success: false, message: "ID de rol no proporcionado." };
   }
 
-  // Prevenir la eliminación de roles 'admin' o 'user' si son críticos y existen
-  if (roleId === 'admin' || roleId === 'user') {
-    // Primero, verificar si realmente existen estos roles.
+  // Prevenir la eliminación de roles críticos si están en uso
+  if (roleId === 'admin' || roleId === 'user' || roleId === 'broker') {
     const existingRole = await query('SELECT id FROM roles WHERE id = ?', [roleId]);
     if (existingRole && existingRole.length > 0) {
-        // Verificar si hay usuarios usando este rol
         const usersWithRole = await query('SELECT COUNT(*) as count FROM users WHERE role_id = ?', [roleId]);
         if (usersWithRole && usersWithRole[0].count > 0) {
             return { success: false, message: `No se puede eliminar el rol "${roleId}" porque está asignado a ${usersWithRole[0].count} usuario(s).` };
@@ -81,9 +80,10 @@ export async function deleteRoleAction(roleId: string): Promise<{ success: boole
     }
   } catch (error: any) {
     console.error("Error al eliminar rol:", error);
-     if (error.code === 'ER_ROW_IS_REFERENCED_2') { // Código de error común para FK constraint
+     if (error.code === 'ER_ROW_IS_REFERENCED_2') { 
         return { success: false, message: "No se puede eliminar el rol porque está asignado a uno o más usuarios." };
     }
     return { success: false, message: `Error al eliminar rol: ${error.message}` };
   }
 }
+

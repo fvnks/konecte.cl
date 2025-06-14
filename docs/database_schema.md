@@ -30,7 +30,8 @@ CREATE TABLE roles (
 -- Insertar roles iniciales
 INSERT INTO roles (id, name, description) VALUES 
 ('admin', 'Administrador', 'Acceso total a todas las funcionalidades y configuraciones del sistema.'),
-('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.');
+('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.'),
+('broker', 'Corredor', 'Usuario corredor de propiedades con acceso a funcionalidades de colaboración.');
 ```
 
 ---
@@ -555,8 +556,44 @@ CREATE TABLE property_visits (
     INDEX idx_visits_confirmed_datetime (confirmed_datetime)
 );
 ```
+---
 
+## Sección Colaboración entre Corredores
+
+### Tabla: `broker_collaborations` (Colaboraciones entre Corredores)
+Almacena las propuestas y acuerdos de colaboración entre corredores para propiedades y solicitudes de clientes.
+
+```sql
+CREATE TABLE broker_collaborations (
+    id VARCHAR(36) PRIMARY KEY,
+    property_request_id VARCHAR(36) NOT NULL,    -- ID de la solicitud del cliente buscador (publicada por Corredor A)
+    requesting_broker_id VARCHAR(36) NOT NULL,   -- ID del Corredor A (quien tiene el cliente buscador)
+    property_id VARCHAR(36) NOT NULL,            -- ID de la propiedad ofrecida (de la cartera del Corredor B)
+    offering_broker_id VARCHAR(36) NOT NULL,     -- ID del Corredor B (quien ofrece la propiedad)
+    status ENUM('pending', 'accepted', 'rejected', 'deal_in_progress', 'deal_closed_success', 'deal_failed') DEFAULT 'pending',
+    commission_terms TEXT DEFAULT NULL,          -- JSON o texto describiendo el acuerdo de comisión (ej: {"split_type": "percentage", "offering_broker_share": 50, "requesting_broker_share": 50, "notes": "..."})
+    chat_conversation_id VARCHAR(36) DEFAULT NULL, -- FK a chat_conversations (opcional, si se crea un chat dedicado)
+    proposed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    accepted_at TIMESTAMP DEFAULT NULL,
+    closed_at TIMESTAMP DEFAULT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (property_request_id) REFERENCES property_requests(id) ON DELETE CASCADE,
+    FOREIGN KEY (requesting_broker_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+    FOREIGN KEY (offering_broker_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (chat_conversation_id) REFERENCES chat_conversations(id) ON DELETE SET NULL,
+    
+    CONSTRAINT uq_collaboration_request_property UNIQUE (property_request_id, property_id),
+    CONSTRAINT chk_different_brokers CHECK (requesting_broker_id <> offering_broker_id) -- Asegura que los dos corredores sean diferentes
+);
+
+-- Índices para broker_collaborations
+CREATE INDEX idx_broker_collaborations_requesting_broker ON broker_collaborations(requesting_broker_id, status);
+CREATE INDEX idx_broker_collaborations_offering_broker ON broker_collaborations(offering_broker_id, status);
+CREATE INDEX idx_broker_collaborations_request_id ON broker_collaborations(property_request_id);
+CREATE INDEX idx_broker_collaborations_property_id ON broker_collaborations(property_id);
+```
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
-
 
