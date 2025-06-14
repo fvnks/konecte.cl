@@ -236,11 +236,11 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
         sql += ' ORDER BY p.price DESC, p.created_at DESC';
         break;
       case 'popularity_desc':
-        sql += ' ORDER BY p.upvotes DESC, p.comments_count DESC, p.views_count DESC, p.inquiries_count DESC, p.created_at DESC';
+        sql += ' ORDER BY p.upvotes DESC, p.comments_count DESC, p.views_count DESC, p.inquiries_count DESC, RAND(DATE_FORMAT(NOW(), \'%Y%m%d\')), p.created_at DESC';
         break;
       case 'createdAt_desc':
       default:
-        sql += ' ORDER BY p.created_at DESC';
+        sql += ' ORDER BY p.created_at DESC, RAND(DATE_FORMAT(NOW(), \'%Y%m%d\'))';
         break;
     }
 
