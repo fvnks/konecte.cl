@@ -46,7 +46,6 @@ export default function SignInPage() {
         setTexts(prev => ({ ...prev, ...fetchedTexts }));
       } catch (error) {
         console.error("Error fetching editable texts for signin page:", error);
-        // Mantener los textos por defecto si hay error
       } finally {
         setIsLoadingTexts(false);
       }
@@ -79,7 +78,8 @@ export default function SignInPage() {
         planName: result.user.plan_name,
         avatarUrl: result.user.avatarUrl
       }));
-      window.dispatchEvent(new Event('storage')); 
+      // Use a specific custom event for same-tab updates
+      window.dispatchEvent(new CustomEvent('userSessionChanged'));
       
       if (result.user.role_id === 'admin') {
         router.push('/admin');

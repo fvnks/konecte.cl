@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { Loader2 } from 'lucide-react'; // Import Loader2
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -43,87 +45,89 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const [isClient, setIsClient] = useState(false);
   const [currentNavItems, setCurrentNavItems] = useState(baseNavItems);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Effect to set currentUser based on localStorage and handle redirection
-  useEffect(() => {
-    if (isClient) {
-      const userJson = localStorage.getItem('loggedInUser');
-      if (userJson) {
-        try {
-          const parsedUser: StoredUser = JSON.parse(userJson);
-          setCurrentUser(parsedUser);
-        } catch (e) {
-          console.error("Error parsing user from localStorage for layout:", e);
-          setCurrentUser(null);
-          localStorage.removeItem('loggedInUser'); // Clean up corrupted data
-           if (!pathname.startsWith('/auth')) { // Only redirect if not on auth pages
-            router.push('/auth/signin');
-          }
+  const updateSessionState = useCallback(async () => {
+    if (!isClient) return; // Ensure this runs only client-side
+
+    setIsLoadingSession(true); // Start loading session state
+    const userJson = localStorage.getItem('loggedInUser');
+    if (userJson) {
+      try {
+        const parsedUser: StoredUser = JSON.parse(userJson);
+        setCurrentUser(parsedUser);
+        if (parsedUser.role_id === 'broker') {
+          setCurrentNavItems([...baseNavItems, ...brokerNavItems]);
+        } else {
+          setCurrentNavItems(baseNavItems);
         }
-      } else {
+        if (parsedUser.id) {
+          const count = await getTotalUnreadMessagesCountAction(parsedUser.id);
+          setTotalUnreadCount(count);
+        } else {
+           setTotalUnreadCount(0);
+        }
+      } catch (e) {
+        console.error("Error processing user session:", e);
+        localStorage.removeItem('loggedInUser');
         setCurrentUser(null);
-        if (!pathname.startsWith('/auth')) { // Only redirect if not on auth pages
-          router.push('/auth/signin');
-        }
+        setCurrentNavItems(baseNavItems);
+        setTotalUnreadCount(0);
+        if (!pathname.startsWith('/auth')) router.push('/auth/signin');
       }
+    } else {
+      setCurrentUser(null);
+      setCurrentNavItems(baseNavItems);
+      setTotalUnreadCount(0);
+      if (!pathname.startsWith('/auth')) router.push('/auth/signin');
     }
+    setIsLoadingSession(false); // End loading session state
   }, [isClient, pathname, router]);
 
-  // Effect to set currentNavItems based on currentUser
-  useEffect(() => {
-    if (currentUser) {
-      if (currentUser.role_id === 'broker') {
-        setCurrentNavItems([...baseNavItems, ...brokerNavItems]);
-      } else {
-        setCurrentNavItems(baseNavItems);
-      }
-    } else {
-      // If no user, default to baseNavItems or an empty array if dashboard is strictly for logged-in
-      setCurrentNavItems(baseNavItems); 
-    }
-  }, [currentUser]);
-
-
-  const fetchUnreadCountCallback = useCallback(async () => {
-    if (currentUser?.id) {
-      try {
-        const count = await getTotalUnreadMessagesCountAction(currentUser.id);
-        setTotalUnreadCount(count);
-      } catch (error) {
-        console.error("Error fetching unread messages count:", error);
-        setTotalUnreadCount(0); // Reset on error
-      }
-    } else {
-      setTotalUnreadCount(0); // No user, no unread messages
-    }
-  }, [currentUser?.id]);
 
   useEffect(() => {
-    if (isClient && currentUser) { // Fetch only if client and user is determined
-        fetchUnreadCountCallback();
-        const handleMessagesUpdated = () => fetchUnreadCountCallback();
-        window.addEventListener('messagesUpdated', handleMessagesUpdated);
-        return () => {
-            window.removeEventListener('messagesUpdated', handleMessagesUpdated);
-        };
-    } else if (isClient && !currentUser) {
-        setTotalUnreadCount(0); // Ensure count is zero if no user
-    }
-  }, [currentUser, isClient, fetchUnreadCountCallback]);
+    updateSessionState(); // Initial session check
+
+    // Listen for custom event to re-check session and unread count
+    const handleSessionOrMessagesUpdate = () => {
+      updateSessionState();
+    };
+
+    window.addEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
+    window.addEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
+    
+    // Also listen for the native storage event for cross-tab updates
+    const handleNativeStorageEvent = (event: StorageEvent) => {
+        if (event.key === 'loggedInUser') {
+            updateSessionState();
+        }
+    };
+    window.addEventListener('storage', handleNativeStorageEvent);
+
+
+    return () => {
+      window.removeEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
+      window.removeEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
+      window.removeEventListener('storage', handleNativeStorageEvent);
+    };
+  }, [updateSessionState]); // updateSessionState is memoized with isClient, pathname, router
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
-    setCurrentUser(null); // Clear user state immediately
-    setTotalUnreadCount(0); // Reset unread count
+    setCurrentUser(null); 
+    setTotalUnreadCount(0);
+    setCurrentNavItems(baseNavItems); // Reset nav items on logout
     toast({
       title: "Sesión Cerrada",
       description: "Has cerrado sesión de tu panel.",
     });
-    window.dispatchEvent(new Event('storage'));
+    // Dispatch custom event for same-tab updates
+    window.dispatchEvent(new CustomEvent('userSessionChanged'));
     router.push('/');
   };
 
@@ -131,35 +135,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const userAvatarUrl = currentUser?.avatarUrl || `https://placehold.co/40x40.png?text=${userName.substring(0,1)}`;
   const userAvatarFallback = userName.substring(0,1).toUpperCase();
 
-  // Show a generic loader if not client-side yet or if user data is still being processed
-  if (!isClient || (!currentUser && !pathname.startsWith('/auth'))) {
+  if (isLoadingSession && isClient) {
      return (
         <div className="flex min-h-screen flex-col bg-muted/40">
+            {/* Skeleton for Sidebar */}
             <aside className="w-64 bg-background border-r p-5 space-y-6 hidden md:flex flex-col shadow-sm">
-                {/* Skeleton for sidebar header */}
                 <div className="flex items-center gap-3 px-2 py-1">
-                    <div className="p-2 bg-primary/10 rounded-lg"><Home className="h-6 w-6 text-primary" /></div>
-                    <span className="text-lg font-bold font-headline text-foreground">PropSpot</span>
+                    <Skeleton className="h-8 w-8 rounded-lg" />
+                    <Skeleton className="h-7 w-32 rounded-md" />
                 </div>
                 <Separator/>
-                {/* Skeleton for nav items */}
-                <div className="flex-grow space-y-1">
-                    {[...Array(5)].map((_, i) => <div key={i} className="h-9 w-full bg-muted rounded-md animate-pulse"/>)}
+                <div className="flex-grow space-y-1.5">
+                    {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-md"/>)}
                 </div>
                 <Separator/>
-                {/* Skeleton for user info & logout */}
                 <div className="mt-auto space-y-3">
                     <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
-                        <div className="h-9 w-9 rounded-full bg-muted animate-pulse"/>
-                        <div className="space-y-1"><div className="h-3 w-20 bg-muted rounded animate-pulse"/><div className="h-3 w-16 bg-muted rounded animate-pulse"/></div>
+                        <Skeleton className="h-9 w-9 rounded-full"/>
+                        <div className="space-y-1.5"><Skeleton className="h-3 w-20 rounded"/><Skeleton className="h-3 w-16 rounded"/></div>
                     </div>
-                    <div className="h-9 w-full bg-muted rounded-md animate-pulse"/>
+                    <Skeleton className="h-9 w-full rounded-md"/>
                 </div>
             </aside>
+            {/* Skeleton for Main Content Area */}
             <div className="flex-1 flex flex-col">
                 <header className="bg-background border-b p-4 shadow-sm md:hidden">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-primary"><LayoutDashboard className="h-5 w-5" /><span className="text-md font-bold font-headline">Mi Panel</span></div>
+                        <Skeleton className="h-7 w-24 rounded-md" />
                     </div>
                 </header>
                 <main className="flex-grow p-4 sm:p-6 md:p-8 bg-muted/30 flex items-center justify-center">
@@ -171,13 +173,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
      );
   }
   
-  // If currentUser is null AND we are NOT on an auth page, it means redirection should have happened or is about to.
-  // This state might be briefly visible, or if redirection fails.
-  if (!currentUser && !pathname.startsWith('/auth')) {
+  if (!currentUser && isClient && !pathname.startsWith('/auth')) {
+    // This case implies redirection should have happened or user is not authenticated
+    // Showing a loader can be a good fallback if redirection is pending
     return (
        <div className="flex items-center justify-center min-h-screen">
          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-         <p className="ml-2">Redirigiendo...</p>
+         <p className="ml-2">Verificando sesión...</p>
        </div>
     );
   }
@@ -266,3 +268,4 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </div>
   );
 }
+

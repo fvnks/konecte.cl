@@ -63,7 +63,6 @@ export default function Navbar() {
       setSiteSettings(settings);
     } catch (error) {
       console.error("Error fetching site settings for Navbar:", error);
-      // En caso de error, siteSettings permanecerá null, y se usará el título por defecto.
       setSiteSettings(null); 
     } finally {
       setIsLoadingSettings(false);
@@ -74,7 +73,6 @@ export default function Navbar() {
     if (isClient) {
         fetchSiteSettings();
         const handleSettingsUpdate = () => fetchSiteSettings();
-        // Asumiendo que `saveSiteSettingsAction` o una acción similar podría disparar este evento
         window.addEventListener('siteSettingsUpdated', handleSettingsUpdate); 
         return () => window.removeEventListener('siteSettingsUpdated', handleSettingsUpdate);
     }
@@ -109,8 +107,8 @@ export default function Navbar() {
     if (isClient) {
       updateLoginStateAndUnreadCount();
 
-      const handleStorageChange = (event: StorageEvent | Event) => {
-        const eventIsCustomForLogin = event.type === 'storage' && (event instanceof CustomEvent) && event.detail?.key === 'loggedInUser';
+      const handleStorageChange = (event: StorageEvent | Event | CustomEvent) => { // Adjusted type
+        const eventIsCustomForLogin = event.type === 'userSessionChanged'; // Using a more specific custom event
         const eventIsStorageAPI = event instanceof StorageEvent && event.key === 'loggedInUser';
         const eventIsMessagesUpdated = event.type === 'messagesUpdated';
 
@@ -119,15 +117,18 @@ export default function Navbar() {
         }
       };
       
-      window.addEventListener('storage', handleStorageChange); 
+      // Listen for native storage events (cross-tab)
+      window.addEventListener('storage', handleStorageChange);
+      // Listen for custom event for same-tab session changes (more reliable than dispatching 'storage')
+      window.addEventListener('userSessionChanged', handleStorageChange);
+      // Listen for messages updated
       window.addEventListener('messagesUpdated', handleStorageChange); 
-      window.addEventListener('storage', handleStorageChange  as EventListener);
 
 
       return () => {
         window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('userSessionChanged', handleStorageChange);
         window.removeEventListener('messagesUpdated', handleStorageChange);
-        window.removeEventListener('storage', handleStorageChange as EventListener);
       };
     }
   }, [updateLoginStateAndUnreadCount, isClient]);
@@ -139,7 +140,8 @@ export default function Navbar() {
     toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
     router.push('/');
     if (isMobileMenuOpen) setIsMobileMenuOpen(false);
-    window.dispatchEvent(new CustomEvent('storage', { detail: { key: 'loggedInUser' } }));
+    // Dispatch a custom event for same-tab updates, more explicit
+    window.dispatchEvent(new CustomEvent('userSessionChanged'));
   };
 
   const isUserAdmin = loggedInUser?.role_id === 'admin';
@@ -190,16 +192,15 @@ export default function Navbar() {
           priority 
           data-ai-hint="logo empresa"
           onError={(e) => {
-            // Fallback a título si el logo no carga
             const target = e.target as HTMLImageElement;
             const parent = target.parentElement;
             if (parent) {
               const textNode = document.createTextNode(siteTitleForDisplay);
               const span = document.createElement('span');
-              span.className = "text-2xl font-bold font-headline text-primary"; // Aplicar estilo de título
-              const homeIcon = document.createElement('span'); // Para el icono Home si es necesario
-              homeIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-7 w-7 text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
-              parent.insertBefore(homeIcon, target);
+              span.className = "text-2xl font-bold font-headline text-primary"; 
+              const homeIconContainer = document.createElement('span');
+              homeIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-7 w-7 text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
+              parent.insertBefore(homeIconContainer.firstChild || homeIconContainer, target);
               parent.insertBefore(span, target);
               span.appendChild(textNode);
             }

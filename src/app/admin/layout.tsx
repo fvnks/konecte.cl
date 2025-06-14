@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { Loader2 } from 'lucide-react'; // Import Loader2
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -26,48 +28,122 @@ const adminNavItems = [
   { href: '/admin/plans', label: 'Planes', icon: <CreditCard className="h-5 w-5" /> },
   { href: '/admin/properties', label: 'Propiedades', icon: <ListOrdered className="h-5 w-5" /> },
   { href: '/admin/requests', label: 'Solicitudes', icon: <FileSearch className="h-5 w-5" /> },
-  { href: '/admin/visits', label: 'Gestión de Visitas', icon: <CalendarClock className="h-5 w-5" /> }, // Nueva entrada
+  { href: '/admin/visits', label: 'Gestión de Visitas', icon: <CalendarClock className="h-5 w-5" /> },
 ];
 
 interface StoredAdminUser {
+  id: string; // Added id for completeness, though not strictly used in this component yet
   name: string;
   avatarUrl?: string;
+  role_id: string; // To verify admin role
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [adminUser, setAdminUser] = useState<StoredAdminUser | null>(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    const userJson = localStorage.getItem('loggedInUser');
-    if (userJson) {
-      try {
-        const parsedUser: StoredAdminUser = JSON.parse(userJson);
-        setAdminUser(parsedUser);
-      } catch (e) {
-        console.error("Error parsing admin user from localStorage for layout:", e);
-        setAdminUser({ name: 'Admin' }); 
-      }
-    } else {
-      setAdminUser({ name: 'Admin' }); 
-    }
+    setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      setIsLoadingSession(true);
+      const userJson = localStorage.getItem('loggedInUser');
+      if (userJson) {
+        try {
+          const parsedUser: StoredAdminUser = JSON.parse(userJson);
+          if (parsedUser.role_id === 'admin') {
+            setAdminUser(parsedUser);
+          } else {
+            // Not an admin, redirect
+            toast({ title: "Acceso Denegado", description: "No tienes permisos de administrador.", variant: "destructive" });
+            router.push('/'); // Or to login page
+            setAdminUser(null);
+          }
+        } catch (e) {
+          console.error("Error parsing admin user from localStorage for layout:", e);
+          toast({ title: "Error de Sesión", description: "Por favor, inicia sesión de nuevo.", variant: "destructive" });
+          localStorage.removeItem('loggedInUser');
+          router.push('/auth/signin');
+          setAdminUser(null);
+        }
+      } else {
+        // No user logged in
+        toast({ title: "Acceso Requerido", description: "Debes iniciar sesión como administrador.", variant: "destructive" });
+        router.push('/auth/signin');
+        setAdminUser(null);
+      }
+      setIsLoadingSession(false);
+    }
+  }, [isClient, router, toast]);
 
   const handleAdminLogout = () => {
     localStorage.removeItem('loggedInUser');
+    setAdminUser(null); // Clear admin user state
     toast({
       title: "Sesión Cerrada",
       description: "Has cerrado sesión del panel de administración.",
     });
-    window.dispatchEvent(new Event('storage')); 
+    // Dispatch a custom event to notify other components (like Navbar) about session change
+    window.dispatchEvent(new CustomEvent('userSessionChanged'));
     router.push('/');
   };
 
-  const adminName = adminUser?.name || 'Admin konecte';
+  const adminName = adminUser?.name || 'Admin';
   const adminAvatarUrl = adminUser?.avatarUrl || `https://placehold.co/40x40.png?text=${adminName.substring(0,1)}`;
   const adminAvatarFallback = adminName.substring(0,1).toUpperCase();
 
+  if (isLoadingSession && isClient) {
+    return (
+       <div className="flex min-h-screen flex-col bg-muted/40">
+            {/* Skeleton for Sidebar */}
+            <aside className="w-72 bg-background border-r p-5 space-y-6 hidden md:flex flex-col shadow-md">
+                <div className="flex items-center gap-3 px-2 py-1">
+                    <Skeleton className="h-8 w-8 rounded-lg" />
+                    <Skeleton className="h-7 w-40 rounded-md" />
+                </div>
+                <Separator/>
+                <div className="flex-grow space-y-1.5">
+                    {adminNavItems.map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-md"/>)}
+                </div>
+                <Separator/>
+                <div className="mt-auto space-y-4">
+                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
+                        <Skeleton className="h-10 w-10 rounded-full"/>
+                        <div className="space-y-1.5"><Skeleton className="h-4 w-24 rounded"/><Skeleton className="h-3 w-20 rounded"/></div>
+                    </div>
+                    <Skeleton className="h-10 w-full rounded-md"/>
+                    <Skeleton className="h-10 w-full rounded-md"/>
+                </div>
+            </aside>
+            {/* Skeleton for Main Content Area */}
+            <div className="flex-1 flex flex-col">
+                <header className="bg-background border-b p-4 shadow-sm md:hidden">
+                    <div className="flex items-center justify-between"> <Skeleton className="h-7 w-28 rounded-md" /></div>
+                </header>
+                <main className="flex-grow p-6 sm:p-8 md:p-10 bg-muted/30 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="ml-2">Cargando panel de administración...</p>
+                </main>
+            </div>
+        </div>
+    );
+  }
+
+  // If after loading, there's no admin user, it means redirection should have happened or is about to.
+  // This state might be briefly visible or if redirection fails.
+  if (!adminUser && isClient) {
+      return (
+       <div className="flex items-center justify-center min-h-screen">
+         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+         <p className="ml-2">Verificando permisos de administrador...</p>
+       </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-muted/40">
@@ -102,16 +178,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <Separator />
         
         <div className="mt-auto space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
-                <Avatar className="h-10 w-10">
-                <AvatarImage src={adminAvatarUrl} alt={adminName} data-ai-hint="admin avatar"/>
-                <AvatarFallback className="bg-primary text-primary-foreground">{adminAvatarFallback}</AvatarFallback>
-                </Avatar>
-                <div>
-                <p className="text-sm font-semibold text-foreground">{adminName}</p>
-                <p className="text-xs text-muted-foreground">Administrador</p>
+            {adminUser && (
+                <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
+                    <Avatar className="h-10 w-10">
+                    <AvatarImage src={adminAvatarUrl} alt={adminName} data-ai-hint="admin avatar"/>
+                    <AvatarFallback className="bg-primary text-primary-foreground">{adminAvatarFallback}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                    <p className="text-sm font-semibold text-foreground">{adminName}</p>
+                    <p className="text-xs text-muted-foreground">Administrador</p>
+                    </div>
                 </div>
-            </div>
+            )}
           <Button variant="outline" onClick={handleAdminLogout} className="w-full text-base py-2.5 h-auto rounded-md border-destructive/50 text-destructive hover:bg-destructive/5 hover:text-destructive">
             <LogOutIcon className="mr-2 h-4 w-4" /> Cerrar Sesión
           </Button>
