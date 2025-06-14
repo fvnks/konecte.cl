@@ -235,7 +235,7 @@ export default function Navbar() {
   if (isClient) {
     console.log('[Navbar DEBUG] State before render:', {
       isClient,
-      loggedInUser: loggedInUser ? { id: loggedInUser.id, name: loggedInUser.name } : null,
+      loggedInUserId: loggedInUser?.id,
       totalUnreadMessages,
       showBadgeCondition: loggedInUser && totalUnreadMessages > 0,
     });
@@ -303,8 +303,7 @@ export default function Navbar() {
                       {isClient && loggedInUser && totalUnreadMessages > 0 && (
                           <Badge
                             variant="destructive"
-                            className="absolute top-0 right-0 h-5 w-5 text-[10px] rounded-full flex items-center justify-center leading-none z-50 transform translate-x-1/4 -translate-y-1/4"
-                            style={{ /*backgroundColor: 'cyan', color: 'black', border: '1px solid red'*/ }} // Temporary obvious styling removed for now, will use default destructive
+                            className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center leading-none z-50"
                           >
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
@@ -477,3 +476,4 @@ export default function Navbar() {
     </>
   );
 }
+

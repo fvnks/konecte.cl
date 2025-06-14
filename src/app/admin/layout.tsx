@@ -12,8 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge'; // Import Badge
-import { getTotalUnreadContactSubmissionsCountAction } from '@/actions/contactFormActions'; // Import action
+import { Badge } from '@/components/ui/badge';
+import { getUnreadContactSubmissionsCountAction } from '@/actions/contactFormActions'; // Corrected import
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -56,7 +56,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const fetchUnreadCounts = useCallback(async () => {
     if (isClient) {
       try {
-        const count = await getTotalUnreadContactSubmissionsCountAction();
+        const count = await getUnreadContactSubmissionsCountAction(); // Using corrected function name
         setUnreadContactSubmissions(count);
       } catch (error) {
         console.error("Failed to fetch unread contact submissions count", error);
@@ -67,7 +67,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   useEffect(() => {
     if (isClient) {
       setIsLoadingSession(true);
-      fetchUnreadCounts(); // Fetch initial count
+      fetchUnreadCounts(); 
 
       const userJson = localStorage.getItem('loggedInUser');
       if (userJson) {
@@ -238,7 +238,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     <LayoutDashboard className="h-6 w-6" />
                     <span className="text-lg font-bold font-headline">Admin</span>
                 </Link>
-                {/* Aquí podríamos añadir un trigger para un menú móvil de admin si fuera necesario */}
             </div>
         </header>
         <main className="flex-grow p-6 sm:p-8 md:p-10 bg-muted/30">
