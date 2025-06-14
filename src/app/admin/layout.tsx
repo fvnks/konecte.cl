@@ -5,7 +5,7 @@
 import React, { type ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper, BarChart3 } from 'lucide-react';
+import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper, BarChart3, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -26,6 +26,7 @@ const adminNavItems = [
   { href: '/admin/plans', label: 'Planes', icon: <CreditCard className="h-5 w-5" /> },
   { href: '/admin/properties', label: 'Propiedades', icon: <ListOrdered className="h-5 w-5" /> },
   { href: '/admin/requests', label: 'Solicitudes', icon: <FileSearch className="h-5 w-5" /> },
+  { href: '/admin/visits', label: 'Gestión de Visitas', icon: <CalendarClock className="h-5 w-5" /> }, // Nueva entrada
 ];
 
 interface StoredAdminUser {
@@ -46,10 +47,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         setAdminUser(parsedUser);
       } catch (e) {
         console.error("Error parsing admin user from localStorage for layout:", e);
-        setAdminUser({ name: 'Admin' }); // Fallback
+        setAdminUser({ name: 'Admin' }); 
       }
     } else {
-      setAdminUser({ name: 'Admin' }); // Fallback if no user in storage
+      setAdminUser({ name: 'Admin' }); 
     }
   }, []);
 
@@ -59,7 +60,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       title: "Sesión Cerrada",
       description: "Has cerrado sesión del panel de administración.",
     });
-    window.dispatchEvent(new Event('storage')); // Notificar a otros componentes (como Navbar)
+    window.dispatchEvent(new Event('storage')); 
     router.push('/');
   };
 
@@ -129,7 +130,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     <LayoutDashboard className="h-6 w-6" />
                     <span className="text-lg font-bold font-headline">Admin</span>
                 </Link>
-                {/* Aquí podría ir un SheetTrigger para el menú móvil */}
             </div>
         </header>
         <main className="flex-grow p-6 sm:p-8 md:p-10 bg-muted/30">
