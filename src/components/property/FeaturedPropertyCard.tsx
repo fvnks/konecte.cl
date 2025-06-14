@@ -1,12 +1,15 @@
 // src/components/property/FeaturedPropertyCard.tsx
 import Link from 'next/link';
 import Image from 'next/image';
-import type { PropertyListing } from '@/lib/types';
+import type { PropertyListing, User as StoredUser, InteractionTypeEnum } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Eye, DollarSign, CalendarDays, UserCircle as UserIcon } from 'lucide-react';
+import { MapPin, Eye, DollarSign, CalendarDays, UserCircle as UserIcon, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { recordUserListingInteractionAction } from '@/actions/interactionActions';
+import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
 
 interface FeaturedPropertyCardProps {
   property: PropertyListing;
@@ -31,6 +34,7 @@ const formatPriceCompact = (price: number, currency: string) => {
 
 export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardProps) {
   const {
+    id: propertyId, // Renombrar id a propertyId para claridad
     title,
     slug,
     images,
@@ -41,6 +45,80 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
     author,
     createdAt,
   } = property;
+
+  const { toast } = useToast();
+  const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  useEffect(() => {
+    const userJson = localStorage.getItem('loggedInUser');
+    if (userJson) {
+      try {
+        setLoggedInUser(JSON.parse(userJson));
+      } catch (error) {
+        console.error("Error parsing user from localStorage for FeaturedPropertyCard:", error);
+      }
+    }
+  }, []);
+
+  const handleInteraction = async (interactionType: InteractionTypeEnum) => {
+    if (!loggedInUser) {
+      toast({
+        title: "Acción Requerida",
+        description: "Debes iniciar sesión para interactuar.",
+        variant: "default",
+        action: <Button variant="link" size="sm" asChild><Link href="/auth/signin">Iniciar Sesión</Link></Button>
+      });
+      return;
+    }
+    setIsInteracting(true);
+    try {
+      const result = await recordUserListingInteractionAction(loggedInUser.id, {
+        listingId: propertyId,
+        listingType: 'property',
+        interactionType,
+      });
+
+      if (result.success) {
+        if (result.matchDetails?.matchFound && result.matchDetails.conversationId) {
+            toast({
+                title: "¡Es un Match Mutuo!",
+                description: `Se ha iniciado una conversación con ${result.matchDetails.userBName} sobre "${result.matchDetails.likedListingTitle}" y "${result.matchDetails.reciprocalListingTitle}".`,
+                duration: 7000,
+                action: (
+                    <Button variant="link" size="sm" asChild>
+                        <Link href={`/dashboard/messages/${result.matchDetails.conversationId}`}>
+                            Ver Chat
+                        </Link>
+                    </Button>
+                )
+            });
+            window.dispatchEvent(new CustomEvent('messagesUpdated'));
+        } else {
+            toast({
+                title: "Preferencia Guardada",
+                description: `Tu preferencia (${interactionType === 'like' ? 'Me gusta' : 'No me gusta'}) ha sido registrada.`,
+                duration: 2000,
+            });
+        }
+      } else {
+         toast({
+            title: "Error",
+            description: result.message || `No se pudo guardar tu preferencia.`,
+            variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error Inesperado",
+        description: `No se pudo guardar tu preferencia: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+       setIsInteracting(false);
+    }
+  };
+
 
   const mainImage = images && images.length > 0 ? images[0] : 'https://placehold.co/300x200.png?text=Propiedad';
   const authorName = author?.name || "Anunciante";
@@ -81,7 +159,7 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
           {formatPriceCompact(price, currency)}
           {propertyType === 'rent' && <span className="text-xs font-normal text-muted-foreground ml-1">/mes</span>}
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2.5">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
             <Avatar className="h-6 w-6">
               <AvatarImage src={authorAvatar || `https://placehold.co/24x24.png?text=${authorInitials}`} alt={authorName} data-ai-hint="agente inmobiliario"/>
               <AvatarFallback className="text-[10px] bg-muted">{authorInitials || <UserIcon className="h-3 w-3"/>}</AvatarFallback>
@@ -92,6 +170,35 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
                 {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}
             </span>
         </div>
+
+        {/* Botones de Like/Dislike */}
+        <div className="flex justify-center gap-2 mb-3">
+            <Button
+                variant="outline"
+                size="sm"
+                className="text-red-500 border-red-400 hover:bg-red-50 hover:text-red-600 h-8 w-16 flex-1"
+                onClick={() => handleInteraction('dislike')}
+                disabled={!loggedInUser || isInteracting}
+                title={!loggedInUser ? "Inicia sesión para interactuar" : "No me gusta"}
+            >
+                {isInteracting ? <Loader2 className="h-4 w-4 animate-spin"/> : <ThumbsDown className="h-4 w-4" />}
+            </Button>
+            <Button
+                variant="outline"
+                size="sm"
+                className="text-green-500 border-green-400 hover:bg-green-50 hover:text-green-600 h-8 w-16 flex-1"
+                onClick={() => handleInteraction('like')}
+                disabled={!loggedInUser || isInteracting}
+                title={!loggedInUser ? "Inicia sesión para interactuar" : "Me gusta"}
+            >
+                {isInteracting ? <Loader2 className="h-4 w-4 animate-spin"/> : <ThumbsUp className="h-4 w-4" />}
+            </Button>
+        </div>
+         {!loggedInUser && (
+            <p className="text-[10px] text-muted-foreground text-center -mt-2 mb-2">
+                <Link href="/auth/signin" className="underline hover:text-primary">Inicia sesión</Link> para interactuar.
+            </p>
+        )}
       </CardContent>
       <CardFooter className="p-3 sm:p-4 pt-0 mt-auto">
         <Button size="sm" asChild className="w-full text-xs sm:text-sm rounded-md shadow-sm hover:shadow-md transition-shadow">
