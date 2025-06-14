@@ -49,11 +49,10 @@ export default function AdminContactSubmissionsPage() {
     if (userJson) {
       try {
         const parsedUser: StoredUserType = JSON.parse(userJson);
-        // Asegurarse de que el usuario tenga un ID válido
         if (parsedUser && parsedUser.id) {
           setAdminUser(parsedUser);
         } else {
-          setAdminUser(null); // Considerar como no logueado si el ID falta
+          setAdminUser(null);
           console.warn("Admin user data from localStorage is missing an ID.");
         }
       } catch (error) {
@@ -110,7 +109,7 @@ export default function AdminContactSubmissionsPage() {
 
   const openViewModal = (submission: ContactFormSubmission) => {
     setSelectedSubmission(submission);
-    setAdminResponseText(''); // Limpiar respuesta anterior
+    setAdminResponseText(''); 
     setIsViewModalOpen(true);
     if (!submission.is_read) {
       handleMarkAsReadUnread(submission.id, false);
@@ -126,8 +125,12 @@ export default function AdminContactSubmissionsPage() {
     const result = await adminRespondToSubmissionAction(selectedSubmission.id, adminUser.id, adminResponseText);
     setIsResponding(false);
 
+    const toastTitle = result.success 
+        ? (result.chatSent ? "Respuesta Enviada" : "Nota Guardada") 
+        : "Error al Procesar";
+
     toast({
-        title: result.success ? (result.chatSent ? "Respuesta Enviada" : "Nota Guardada") : "Error al Procesar",
+        title: toastTitle,
         description: result.message,
         variant: result.success ? "default" : "destructive",
     });
@@ -135,7 +138,8 @@ export default function AdminContactSubmissionsPage() {
     if (result.success) {
         setAdminResponseText('');
         fetchSubmissions(); 
-        setSelectedSubmission(prev => prev ? {...prev, admin_notes: adminResponseText, replied_at: new Date().toISOString(), is_read: true} : null);
+        // No necesitamos actualizar selectedSubmission aquí porque el modal se cerrará
+        setIsViewModalOpen(false); // Cerrar el modal automáticamente
     }
   };
   
