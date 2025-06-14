@@ -21,9 +21,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { submitRequestAction } from "@/actions/requestActions";
 import type { PropertyType, ListingCategory, User as StoredUser } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // Import Link
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -94,7 +95,7 @@ export default function RequestForm() {
         title: "Acción Requerida",
         description: "Debes iniciar sesión para publicar una solicitud.",
         variant: "destructive",
-        action: <Button onClick={() => router.push('/auth/signin')}>Iniciar Sesión</Button>
+        action: <Button variant="outline" size="sm" onClick={() => router.push('/auth/signin')}>Iniciar Sesión</Button>
       });
       return;
     }
@@ -113,8 +114,11 @@ export default function RequestForm() {
         description: "Tu solicitud de propiedad ha sido enviada exitosamente.",
       });
       form.reset();
-      // Opcional: Redirigir a la página de la solicitud recién creada
-      // if (result.requestSlug) router.push(`/requests/${result.requestSlug}`);
+      if (result.requestSlug) {
+        router.push(`/requests/${result.requestSlug}`);
+      } else {
+        router.push('/requests');
+      }
     } else {
       toast({
         title: "Error al Publicar Solicitud",
@@ -128,7 +132,7 @@ export default function RequestForm() {
     return (
       <div className="flex justify-center items-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2">Verificando autenticación...</p>
+        <p className="ml-2 text-muted-foreground">Verificando autenticación...</p>
       </div>
     );
   }
@@ -336,10 +340,16 @@ export default function RequestForm() {
           />
         </div>
         
-        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth}>
+        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth || !loggedInUser}>
           {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Publicar Solicitud
         </Button>
+        {!isCheckingAuth && !loggedInUser && (
+           <p className="text-sm text-destructive text-center mt-2">
+            <UserCircle className="inline-block h-4 w-4 mr-1 align-text-bottom" />
+            Debes <Link href="/auth/signin" className="underline hover:text-destructive/80">iniciar sesión</Link> o <Link href="/auth/signup" className="underline hover:text-destructive/80">registrarte</Link> para publicar.
+          </p>
+        )}
       </form>
     </Form>
   );

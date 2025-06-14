@@ -21,9 +21,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser } from "@/lib/types"; // Renamed User to StoredUser to avoid conflict
-import { Loader2 } from "lucide-react";
+import { Loader2, UserCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // Import Link
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -101,7 +102,7 @@ export default function PropertyForm() {
         title: "Acción Requerida",
         description: "Debes iniciar sesión para publicar una propiedad.",
         variant: "destructive",
-        action: <Button onClick={() => router.push('/auth/signin')}>Iniciar Sesión</Button>
+        action: <Button variant="outline" size="sm" onClick={() => router.push('/auth/signin')}>Iniciar Sesión</Button>
       });
       return;
     }
@@ -113,8 +114,11 @@ export default function PropertyForm() {
         description: "Tu propiedad ha sido enviada exitosamente.",
       });
       form.reset();
-      // Opcional: redirigir a la página de la propiedad recién creada
-      // router.push(`/properties/${result.propertySlug}`); // Asumiendo que el slug se devuelve o se puede construir
+      if (result.propertySlug) {
+        router.push(`/properties/${result.propertySlug}`);
+      } else {
+        router.push('/properties');
+      }
     } else {
       toast({
         title: "Error al Publicar",
@@ -128,7 +132,7 @@ export default function PropertyForm() {
     return (
       <div className="flex justify-center items-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2">Verificando autenticación...</p>
+        <p className="ml-2 text-muted-foreground">Verificando autenticación...</p>
       </div>
     );
   }
@@ -358,11 +362,18 @@ export default function PropertyForm() {
           )}
         />
         
-        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth}>
+        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth || !loggedInUser}>
           {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Publicar Propiedad
         </Button>
+        {!isCheckingAuth && !loggedInUser && (
+          <p className="text-sm text-destructive text-center mt-2">
+            <UserCircle className="inline-block h-4 w-4 mr-1 align-text-bottom" />
+            Debes <Link href="/auth/signin" className="underline hover:text-destructive/80">iniciar sesión</Link> o <Link href="/auth/signup" className="underline hover:text-destructive/80">registrarte</Link> para publicar.
+          </p>
+        )}
       </form>
     </Form>
   );
 }
+
