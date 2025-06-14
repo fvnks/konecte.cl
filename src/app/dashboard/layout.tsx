@@ -5,7 +5,7 @@
 import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, LogOut as LogOutIcon, CalendarCheck, Handshake } from 'lucide-react'; // Added Handshake
+import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, LogOut as LogOutIcon, CalendarCheck, Handshake } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,7 +21,7 @@ interface StoredUser {
   id: string;
   name: string;
   avatarUrl?: string;
-  role_id: string; // Added role_id
+  role_id: string;
 }
 
 const baseNavItems = [
@@ -46,28 +46,48 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   useEffect(() => {
     setIsClient(true);
-    const userJson = localStorage.getItem('loggedInUser');
-    if (userJson) {
-      try {
-        const parsedUser: StoredUser = JSON.parse(userJson);
-        setCurrentUser(parsedUser);
-        if (parsedUser.role_id === 'broker') {
-          setCurrentNavItems([...baseNavItems, ...brokerNavItems]);
-        } else {
-          setCurrentNavItems(baseNavItems);
+  }, []);
+
+  // Effect to set currentUser based on localStorage
+  useEffect(() => {
+    if (isClient) {
+      const userJson = localStorage.getItem('loggedInUser');
+      if (userJson) {
+        try {
+          const parsedUser: StoredUser = JSON.parse(userJson);
+          setCurrentUser(parsedUser);
+        } catch (e) {
+          console.error("Error parsing user from localStorage for layout:", e);
+          setCurrentUser(null);
+          if (!pathname.startsWith('/auth')) {
+            localStorage.removeItem('loggedInUser'); // Clean up
+          }
         }
-      } catch (e) {
-        console.error("Error parsing user from localStorage for layout:", e);
-        setCurrentUser(null); 
+      } else {
+        setCurrentUser(null);
+        if (!pathname.startsWith('/auth')) {
+          router.push('/auth/signin');
+        }
+      }
+    }
+  }, [isClient, pathname, router]);
+
+  // Effect to set currentNavItems based on currentUser
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.role_id === 'broker') {
+        setCurrentNavItems([...baseNavItems, ...brokerNavItems]);
+      } else {
         setCurrentNavItems(baseNavItems);
       }
     } else {
-      if (!pathname.startsWith('/auth')) { 
-        router.push('/auth/signin');
-      }
-      setCurrentNavItems(baseNavItems);
+      // For non-logged-in users or while currentUser is loading.
+      // If on a dashboard page without a user, they should be redirected by the previous effect.
+      // If on an auth page, this layout might not be the active one.
+      setCurrentNavItems(baseNavItems); // Default to base, or consider empty if strictly for logged-in.
     }
-  }, [router, pathname]);
+  }, [currentUser]);
+
 
   const fetchUnreadCountCallback = useCallback(async () => {
     if (currentUser?.id) {
@@ -79,14 +99,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     if (isClient) {
         fetchUnreadCountCallback();
-        // Listen for custom event to refresh unread count
         const handleMessagesUpdated = () => fetchUnreadCountCallback();
         window.addEventListener('messagesUpdated', handleMessagesUpdated);
         return () => {
             window.removeEventListener('messagesUpdated', handleMessagesUpdated);
         };
     }
-  }, [currentUser, isClient, pathname, fetchUnreadCountCallback]); 
+  }, [currentUser, isClient, pathname, fetchUnreadCountCallback]);
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
@@ -94,7 +113,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       title: "Sesión Cerrada",
       description: "Has cerrado sesión de tu panel.",
     });
-    window.dispatchEvent(new Event('storage')); 
+    window.dispatchEvent(new Event('storage'));
     router.push('/');
   };
 
@@ -105,9 +124,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   if (!isClient || (!currentUser && !pathname.startsWith('/auth'))) {
      return <div className="flex min-h-screen justify-center items-center"><p>Cargando...</p></div>;
   }
-  
+
   if (!currentUser && !pathname.startsWith('/auth')) {
-    return null; 
+    return null;
   }
 
   return (
@@ -127,7 +146,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <nav className="flex-grow space-y-1">
           {currentNavItems.map((item) => (
             <Button
-              key={item.href} // Use href as key if label can change
+              key={item.href}
               variant={pathname === item.href ? "secondary" : "ghost"}
               asChild
               className="w-full justify-start text-sm py-2.5 h-auto rounded-md hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
