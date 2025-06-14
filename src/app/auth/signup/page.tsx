@@ -14,12 +14,52 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { signUpAction, type SignUpFormValues } from "@/actions/authActions";
 import { signUpSchema } from '@/lib/types';
+import { getEditableTextsByGroupAction } from '@/actions/editableTextActions';
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+
+const defaultTexts = {
+  auth_signup_page_title: "Crear una Cuenta",
+  auth_signup_page_description: "Únete a PropSpot para listar, encontrar y discutir propiedades.",
+  auth_signup_name_label: "Nombre Completo *",
+  auth_signup_email_label: "Correo Electrónico *",
+  auth_signup_rut_label: "RUT (Empresa o Persona)",
+  auth_signup_phone_label: "Teléfono de Contacto",
+  auth_signup_password_label: "Contraseña *",
+  auth_signup_confirm_password_label: "Confirmar Contraseña *",
+  auth_signup_terms_label_part1: "Declaro conocer y aceptar los",
+  auth_signup_terms_link_terms: "Términos y Condiciones",
+  auth_signup_terms_label_part2: "y la",
+  auth_signup_terms_link_privacy: "Política de Privacidad",
+  auth_signup_terms_label_part3: ". *",
+  auth_signup_button_text: "Registrarse",
+  auth_signup_signin_prompt: "¿Ya tienes una cuenta?",
+  auth_signup_signin_link_text: "Inicia sesión",
+};
+
 
 export default function SignUpPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [texts, setTexts] = useState(defaultTexts);
+  const [isLoadingTexts, setIsLoadingTexts] = useState(true);
+
+  useEffect(() => {
+    async function fetchTexts() {
+      try {
+        const fetchedTexts = await getEditableTextsByGroupAction('auth_signup');
+        setTexts(prev => ({ ...prev, ...fetchedTexts }));
+      } catch (error) {
+        console.error("Error fetching editable texts for signup page:", error);
+      } finally {
+        setIsLoadingTexts(false);
+      }
+    }
+    fetchTexts();
+  }, []);
+
+
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -50,8 +90,15 @@ export default function SignUpPage() {
     }
   }
 
+  if (isLoadingTexts) {
+    return (
+        <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 h-full bg-card lg:bg-background">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    )
+  }
+
   return (
-    // Ajuste aquí: min-h-[calc(100vh-5rem)] para la altura debajo del Navbar (asumiendo que el Navbar es h-20 = 5rem)
     <div className="min-h-[calc(100vh-5rem)] w-full lg:grid lg:grid-cols-2">
       <div className="hidden lg:flex relative h-full bg-primary/10">
         <Image
@@ -67,8 +114,8 @@ export default function SignUpPage() {
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 h-full bg-card lg:bg-background">
         <Card className="w-full max-w-md lg:shadow-xl lg:border lg:rounded-xl lg:p-4 shadow-none border-0">
           <CardHeader className="text-center px-0 sm:px-2">
-            <CardTitle className="text-2xl sm:text-3xl font-headline">Crear una Cuenta</CardTitle>
-            <CardDescription className="text-sm sm:text-base">Únete a PropSpot para listar, encontrar y discutir propiedades.</CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl font-headline">{texts.auth_signup_page_title}</CardTitle>
+            <CardDescription className="text-sm sm:text-base">{texts.auth_signup_page_description}</CardDescription>
           </CardHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -78,7 +125,7 @@ export default function SignUpPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nombre Completo *</FormLabel>
+                      <FormLabel>{texts.auth_signup_name_label}</FormLabel>
                       <FormControl>
                         <Input type="text" placeholder="Juan Pérez" {...field} />
                       </FormControl>
@@ -91,7 +138,7 @@ export default function SignUpPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Correo Electrónico *</FormLabel>
+                      <FormLabel>{texts.auth_signup_email_label}</FormLabel>
                       <FormControl>
                         <Input type="email" placeholder="tu@ejemplo.com" {...field} />
                       </FormControl>
@@ -105,7 +152,7 @@ export default function SignUpPage() {
                     name="rut"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>RUT (Empresa o Persona)</FormLabel>
+                        <FormLabel>{texts.auth_signup_rut_label}</FormLabel>
                         <FormControl>
                           <Input type="text" placeholder="Ej: 12.345.678-9" {...field} />
                         </FormControl>
@@ -118,7 +165,7 @@ export default function SignUpPage() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Teléfono de Contacto</FormLabel>
+                        <FormLabel>{texts.auth_signup_phone_label}</FormLabel>
                         <FormControl>
                           <Input type="tel" placeholder="Ej: +56 9 1234 5678" {...field} />
                         </FormControl>
@@ -132,7 +179,7 @@ export default function SignUpPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contraseña *</FormLabel>
+                      <FormLabel>{texts.auth_signup_password_label}</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="••••••••" {...field} />
                       </FormControl>
@@ -145,7 +192,7 @@ export default function SignUpPage() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirmar Contraseña *</FormLabel>
+                      <FormLabel>{texts.auth_signup_confirm_password_label}</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="••••••••" {...field} />
                       </FormControl>
@@ -170,15 +217,15 @@ export default function SignUpPage() {
                           htmlFor="acceptTerms"
                           className="text-xs sm:text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                          Declaro conocer y aceptar los{" "}
+                          {texts.auth_signup_terms_label_part1}{" "}
                           <Link href="/legal/terms" className="text-primary hover:underline">
-                            Términos y Condiciones
+                            {texts.auth_signup_terms_link_terms}
                           </Link>{" "}
-                          y la{" "}
+                          {texts.auth_signup_terms_label_part2}{" "}
                           <Link href="/legal/privacy" className="text-primary hover:underline">
-                            Política de Privacidad
+                            {texts.auth_signup_terms_link_privacy}
                           </Link>
-                          . *
+                          {texts.auth_signup_terms_label_part3}
                         </label>
                         <FormMessage />
                       </div>
@@ -191,16 +238,16 @@ export default function SignUpPage() {
                   ) : (
                       <UserPlus className="h-4 w-4" />
                   )}
-                  Registrarse
+                  {texts.auth_signup_button_text}
                 </Button>
               </CardContent>
             </form>
           </Form>
           <CardFooter className="flex flex-col gap-3 text-center pt-4 px-0 sm:px-2">
             <p className="mt-2 text-sm text-muted-foreground">
-              ¿Ya tienes una cuenta?{" "}
+              {texts.auth_signup_signin_prompt}{" "}
               <Link href="/auth/signin" className="font-medium text-primary hover:underline">
-                Inicia sesión
+                {texts.auth_signup_signin_link_text}
               </Link>
             </p>
           </CardFooter>

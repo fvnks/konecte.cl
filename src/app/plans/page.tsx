@@ -1,6 +1,7 @@
 
 // src/app/plans/page.tsx
 import { getPlansAction } from '@/actions/planActions';
+import { getEditableTextAction } from '@/actions/editableTextActions'; // Importar la acción
 import type { Plan } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,15 +26,18 @@ const withEveryPlanBenefits = [
   "Integración con CRM Inmobiliario.",
 ];
 
+const DEFAULT_PLANS_TITLE = "¡Contratación 100% online!";
+
 export default async function PlansPage() {
   const allPlans = await getPlansAction();
   const activePlans = allPlans.filter(plan => plan.is_active);
+  const pageTitle = await getEditableTextAction('plans_page_main_title') || DEFAULT_PLANS_TITLE;
 
   return (
     <div className="container mx-auto px-4 py-10 sm:px-6 lg:px-8">
       <section className="text-center mb-12 md:mb-16">
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-headline font-bold tracking-tight text-purple-600">
-          ¡Contratación 100% online!
+          {pageTitle}
         </h1>
       </section>
 

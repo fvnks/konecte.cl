@@ -301,10 +301,10 @@ ON DUPLICATE KEY UPDATE
     show_featured_listings_section = VALUES(show_featured_listings_section),
     show_ai_matching_section = VALUES(show_ai_matching_section),
     show_google_sheet_section = VALUES(show_google_sheet_section),
-    landing_sections_order = COALESCE(landing_sections_order, VALUES(landing_sections_order)),
-    announcement_bar_text = COALESCE(announcement_bar_text, VALUES(announcement_bar_text)),
-    announcement_bar_link_url = COALESCE(announcement_bar_link_url, VALUES(announcement_bar_link_url)),
-    announcement_bar_link_text = COALESCE(announcement_bar_link_text, VALUES(announcement_bar_link_text)),
+    landing_sections_order = COALESCE(site_settings.landing_sections_order, VALUES(landing_sections_order)),
+    announcement_bar_text = COALESCE(site_settings.announcement_bar_text, VALUES(announcement_bar_text)),
+    announcement_bar_link_url = COALESCE(site_settings.announcement_bar_link_url, VALUES(announcement_bar_link_url)),
+    announcement_bar_link_text = COALESCE(site_settings.announcement_bar_link_text, VALUES(announcement_bar_link_text)),
     announcement_bar_is_active = VALUES(announcement_bar_is_active),
     announcement_bar_bg_color = VALUES(announcement_bar_bg_color),
     announcement_bar_text_color = VALUES(announcement_bar_text_color),
@@ -448,17 +448,10 @@ CREATE TABLE editable_texts (
 -- Índices
 CREATE INDEX idx_editable_texts_page_group ON editable_texts(page_group);
 
--- Textos iniciales de ejemplo
-INSERT INTO editable_texts (id, page_group, description, content_default, content_current) VALUES
-('home_hero_title', 'home', 'Título principal de la página de inicio', 'Encuentra Tu Próxima Propiedad en PropSpot', 'Encuentra Tu Próxima Propiedad en PropSpot'),
-('home_hero_subtitle', 'home', 'Subtítulo de la página de inicio', 'Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!', 'Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!'),
-('plans_page_main_title', 'plans_page', 'Título principal de la página de planes', '¡Contratación 100% online!', '¡Contratación 100% online!'),
-('auth_signin_page_title', 'auth_signin', 'Título de la página de inicio de sesión', '¡Bienvenido de Nuevo!', '¡Bienvenido de Nuevo!'),
-('auth_signin_page_description', 'auth_signin', 'Descripción de la página de inicio de sesión', 'Inicia sesión para acceder a tu cuenta de PropSpot.', 'Inicia sesión para acceder a tu cuenta de PropSpot.'),
-('auth_signup_page_title', 'auth_signup', 'Título de la página de registro', 'Crear una Cuenta', 'Crear una Cuenta'),
-('auth_signup_page_description', 'auth_signup', 'Descripción de la página de registro', 'Únete a PropSpot para listar, encontrar y discutir propiedades.', 'Únete a PropSpot para listar, encontrar y discutir propiedades.');
+-- Textos iniciales de ejemplo (se insertan a través del script setup-db.ts)
 ```
 
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
+
 

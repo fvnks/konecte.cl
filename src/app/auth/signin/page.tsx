@@ -12,17 +12,48 @@ import { LogIn, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { signInAction, type SignInFormValues } from "@/actions/authActions";
+import { getEditableTextsByGroupAction } from '@/actions/editableTextActions';
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 const signInSchema = z.object({
   email: z.string().email("Correo electrónico inválido."),
   password: z.string().min(1, "La contraseña es requerida."),
 });
 
+const defaultTexts = {
+  auth_signin_page_title: "¡Bienvenido de Nuevo!",
+  auth_signin_page_description: "Inicia sesión para acceder a tu cuenta de PropSpot.",
+  auth_signin_email_label: "Correo Electrónico",
+  auth_signin_password_label: "Contraseña",
+  auth_signin_forgot_password_link: "¿Olvidaste tu contraseña?",
+  auth_signin_button_text: "Iniciar Sesión",
+  auth_signin_signup_prompt: "¿No tienes una cuenta?",
+  auth_signin_signup_link_text: "Regístrate",
+};
+
 export default function SignInPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [texts, setTexts] = useState(defaultTexts);
+  const [isLoadingTexts, setIsLoadingTexts] = useState(true);
+
+  useEffect(() => {
+    async function fetchTexts() {
+      try {
+        const fetchedTexts = await getEditableTextsByGroupAction('auth_signin');
+        setTexts(prev => ({ ...prev, ...fetchedTexts }));
+      } catch (error) {
+        console.error("Error fetching editable texts for signin page:", error);
+        // Mantener los textos por defecto si hay error
+      } finally {
+        setIsLoadingTexts(false);
+      }
+    }
+    fetchTexts();
+  }, []);
+
   const form = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
@@ -64,9 +95,16 @@ export default function SignInPage() {
     }
   }
 
+  if (isLoadingTexts) {
+    return (
+        <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 h-full bg-card lg:bg-background">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    )
+  }
+
   return (
     <div className="min-h-[calc(100vh-5rem)] w-full lg:grid lg:grid-cols-2">
-      {/* Columna Izquierda: Imagen */}
       <div className="hidden lg:flex relative h-full bg-primary/10">
         <Image
           src="https://bukmy.cl/img/login.jpg"
@@ -77,13 +115,11 @@ export default function SignInPage() {
           data-ai-hint="acceso seguridad login"
         />
       </div>
-
-      {/* Columna Derecha: Formulario */}
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 h-full bg-card lg:bg-background">
         <Card className="w-full max-w-md lg:shadow-xl lg:border lg:rounded-xl lg:p-4 shadow-none border-0 lg:bg-card">
           <CardHeader className="text-center px-0 sm:px-2">
-            <CardTitle className="text-2xl sm:text-3xl font-headline">¡Bienvenido de Nuevo!</CardTitle>
-            <CardDescription className="text-sm sm:text-base">Inicia sesión para acceder a tu cuenta de PropSpot.</CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl font-headline">{texts.auth_signin_page_title}</CardTitle>
+            <CardDescription className="text-sm sm:text-base">{texts.auth_signin_page_description}</CardDescription>
           </CardHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -93,7 +129,7 @@ export default function SignInPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Correo Electrónico</FormLabel>
+                      <FormLabel>{texts.auth_signin_email_label}</FormLabel>
                       <FormControl>
                         <Input type="email" placeholder="tu@ejemplo.com" {...field} />
                       </FormControl>
@@ -107,9 +143,9 @@ export default function SignInPage() {
                   render={({ field }) => (
                     <FormItem>
                       <div className="flex items-center justify-between">
-                          <FormLabel>Contraseña</FormLabel>
+                          <FormLabel>{texts.auth_signin_password_label}</FormLabel>
                           <Link href="#" className="text-xs text-primary hover:underline">
-                              ¿Olvidaste tu contraseña?
+                              {texts.auth_signin_forgot_password_link}
                           </Link>
                       </div>
                       <FormControl>
@@ -125,16 +161,16 @@ export default function SignInPage() {
                   ) : (
                     <LogIn className="h-4 w-4" />
                   )}
-                  Iniciar Sesión
+                  {texts.auth_signin_button_text}
                 </Button>
               </CardContent>
             </form>
           </Form>
           <CardFooter className="flex flex-col gap-3 text-center pt-4 px-0 sm:px-2">
             <p className="mt-4 text-sm text-muted-foreground">
-              ¿No tienes una cuenta?{" "}
+              {texts.auth_signin_signup_prompt}{" "}
               <Link href="/auth/signup" className="font-medium text-primary hover:underline">
-                Regístrate
+                {texts.auth_signin_signup_link_text}
               </Link>
             </p>
           </CardFooter>
