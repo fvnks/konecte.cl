@@ -1,3 +1,4 @@
+
 // src/actions/contactFormActions.ts
 'use server';
 
@@ -115,6 +116,23 @@ export async function adminRespondToSubmissionAction(
   }
 
   try {
+    // Verify admin user exists in DB before proceeding
+    const adminUserCheck: any[] = await query('SELECT id FROM users WHERE id = ?', [adminUserId]);
+    if (adminUserCheck.length === 0) {
+      console.error(`[ContactFormAction] Admin user with ID ${adminUserId} not found in database. Cannot create chat.`);
+      // Update submission with note, but indicate chat failed
+      await query(
+        'UPDATE contact_form_submissions SET admin_notes = ?, replied_at = NOW(), is_read = TRUE WHERE id = ?',
+        [responseText, submissionId]
+      );
+      revalidatePath('/admin/contact-submissions');
+      return { 
+        success: true, // The note was saved, but chat failed
+        message: "Respuesta guardada como nota. Error al crear chat: El usuario administrador actual no fue encontrado en la base de datos. Por favor, cierra sesión y vuelve a iniciar sesión.",
+        chatSent: false 
+      };
+    }
+
     const submissionRows: any[] = await query('SELECT email FROM contact_form_submissions WHERE id = ?', [submissionId]);
     if (submissionRows.length === 0) {
       return { success: false, message: "Mensaje de contacto original no encontrado.", chatSent: false };
@@ -165,3 +183,4 @@ export async function adminRespondToSubmissionAction(
     return { success: false, message: `Error al procesar respuesta: ${error.message}`, chatSent: false };
   }
 }
+
