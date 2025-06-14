@@ -68,9 +68,9 @@ export default function SignInPage() {
         title: "Inicio de Sesión Exitoso",
         description: `¡Bienvenido de nuevo, ${result.user.name}!`,
       });
-      localStorage.setItem('loggedInUser', JSON.stringify({ 
-        id: result.user.id, 
-        name: result.user.name, 
+      localStorage.setItem('loggedInUser', JSON.stringify({
+        id: result.user.id,
+        name: result.user.name,
         email: result.user.email,
         role_id: result.user.role_id,
         roleName: result.user.role_name,
@@ -80,7 +80,7 @@ export default function SignInPage() {
       }));
       // Use a specific custom event for same-tab updates
       window.dispatchEvent(new CustomEvent('userSessionChanged'));
-      
+
       if (result.user.role_id === 'admin') {
         router.push('/admin');
       } else {
@@ -109,8 +109,9 @@ export default function SignInPage() {
         <Image
           src="https://bukmy.cl/img/login.jpg"
           alt="Ilustración de inicio de sesión"
-          layout="fill"
-          objectFit="cover"
+          fill
+          style={{objectFit: "cover"}}
+          sizes="50vw"
           priority
           data-ai-hint="acceso seguridad login"
         />
