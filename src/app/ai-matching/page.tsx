@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { findMatchingRequestsForProperty, type FindMatchingRequestsInput, type FindMatchingRequestsOutput, type MatchResult } from '@/ai/flows/find-matching-requests-flow';
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react"; // Added Suspense
 import { useSearchParams } from 'next/navigation';
 import { Loader2, Sparkles, Percent, MessageSquareText, AlertTriangle, SearchCheck, Building } from "lucide-react";
 
@@ -30,7 +30,7 @@ const formSchema = z.object({
 
 type AiMatchSearchFormValues = z.infer<typeof formSchema>;
 
-export default function AiMatchSearchPage() {
+function AiMatchSearchPageContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -218,5 +218,13 @@ export default function AiMatchSearchPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function AiMatchSearchPage() {
+  return (
+    <Suspense fallback={<Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mt-20" />}>
+      <AiMatchSearchPageContent />
+    </Suspense>
   );
 }
