@@ -31,6 +31,17 @@ const nextConfig: NextConfig = {
       }
     ],
   },
+  experimental: {
+    // Attempt to fix "require.extensions is not supported by webpack" for handlebars
+    serverComponentsExternalPackages: [
+      'handlebars',
+      'dotprompt',
+      '@genkit-ai/core',
+      // 'genkit', // genkit main package might also be included if issues persist
+      // '@genkit-ai/googleai', // and googleai plugin
+    ],
+  },
 };
 
 export default nextConfig;
+

@@ -64,7 +64,7 @@ export default function Navbar() {
       setSiteSettings(settings);
     } catch (error) {
       console.error("Error fetching site settings for Navbar:", error);
-      setSiteSettings(null); 
+      setSiteSettings(null);
     } finally {
       setIsLoadingSettings(false);
     }
@@ -74,7 +74,7 @@ export default function Navbar() {
     if (isClient) {
         fetchSiteSettings();
         const handleSettingsUpdate = () => fetchSiteSettings();
-        window.addEventListener('siteSettingsUpdated', handleSettingsUpdate); 
+        window.addEventListener('siteSettingsUpdated', handleSettingsUpdate);
         return () => window.removeEventListener('siteSettingsUpdated', handleSettingsUpdate);
     }
   }, [isClient, fetchSiteSettings]);
@@ -86,7 +86,7 @@ export default function Navbar() {
       try {
         const user: StoredUser = JSON.parse(userJson);
         setLoggedInUser(user);
-        if (user?.id) { 
+        if (user?.id) {
           const unreadCount = await getTotalUnreadMessagesCountAction(user.id);
           setTotalUnreadMessages(unreadCount);
         } else {
@@ -108,8 +108,8 @@ export default function Navbar() {
     if (isClient) {
       updateLoginStateAndUnreadCount();
 
-      const handleStorageChange = (event: StorageEvent | Event | CustomEvent) => { 
-        const eventIsCustomForLogin = event.type === 'userSessionChanged'; 
+      const handleStorageChange = (event: StorageEvent | Event | CustomEvent) => {
+        const eventIsCustomForLogin = event.type === 'userSessionChanged';
         const eventIsStorageAPI = event instanceof StorageEvent && event.key === 'loggedInUser';
         const eventIsMessagesUpdated = event.type === 'messagesUpdated';
 
@@ -117,10 +117,10 @@ export default function Navbar() {
            updateLoginStateAndUnreadCount();
         }
       };
-      
+
       window.addEventListener('storage', handleStorageChange);
       window.addEventListener('userSessionChanged', handleStorageChange);
-      window.addEventListener('messagesUpdated', handleStorageChange); 
+      window.addEventListener('messagesUpdated', handleStorageChange);
 
 
       return () => {
@@ -133,7 +133,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
-    setLoggedInUser(null); 
+    setLoggedInUser(null);
     setTotalUnreadMessages(0);
     toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
     router.push('/');
@@ -166,9 +166,9 @@ export default function Navbar() {
       ))}
     </>
   );
-  
+
   const siteTitleForDisplay = siteSettings?.siteTitle || DEFAULT_NAVBAR_TITLE;
-  
+
   const logoDisplayContent = () => {
     if (isLoadingSettings) {
       return (
@@ -180,13 +180,13 @@ export default function Navbar() {
     }
     if (siteSettings?.logoUrl) {
       return (
-        <Image 
-          src={siteSettings.logoUrl} 
-          alt={siteTitleForDisplay} 
-          width={140} 
-          height={36} 
-          style={{ objectFit: 'contain', maxHeight: '36px', maxWidth: '140px' }} 
-          priority 
+        <Image
+          src={siteSettings.logoUrl}
+          alt={siteTitleForDisplay}
+          width={140}
+          height={36}
+          style={{ objectFit: 'contain', maxHeight: '36px', maxWidth: '140px' }}
+          priority
           data-ai-hint="logo empresa"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
@@ -194,7 +194,7 @@ export default function Navbar() {
             if (parent) {
               const textNode = document.createTextNode(siteTitleForDisplay);
               const span = document.createElement('span');
-              span.className = "text-2xl font-bold font-headline text-primary"; 
+              span.className = "text-2xl font-bold font-headline text-primary";
               const homeIconContainer = document.createElement('span');
               homeIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-7 w-7 text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
               parent.insertBefore(homeIconContainer.firstChild || homeIconContainer, target);
@@ -232,6 +232,14 @@ export default function Navbar() {
     </Button>
   );
 
+  if (isClient) {
+    console.log('[Navbar DEBUG] State before render:', {
+      isClient,
+      loggedInUser: loggedInUser ? { id: loggedInUser.id, name: loggedInUser.name } : null,
+      totalUnreadMessages,
+      showBadgeCondition: loggedInUser && totalUnreadMessages > 0,
+    });
+  }
 
   return (
     <>
@@ -239,7 +247,7 @@ export default function Navbar() {
         <AnnouncementBar settings={siteSettings} />
       )}
       {isClient && isLoadingSettings && (
-         <Skeleton className="h-10 w-full" /> 
+         <Skeleton className="h-10 w-full" />
       )}
 
       <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
@@ -293,8 +301,12 @@ export default function Navbar() {
                         <AvatarFallback className="bg-muted text-muted-foreground text-base">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       {isClient && loggedInUser && totalUnreadMessages > 0 && (
-                          <Badge variant="destructive" className="absolute top-1 right-1 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center leading-none z-20">
-                              {totalUnreadMessages > 9 ? '99+' : totalUnreadMessages}
+                          <Badge
+                            variant="destructive"
+                            className="absolute top-0 right-0 h-5 w-5 text-[10px] rounded-full flex items-center justify-center leading-none z-50 transform translate-x-1/4 -translate-y-1/4"
+                            style={{ /*backgroundColor: 'cyan', color: 'black', border: '1px solid red'*/ }} // Temporary obvious styling removed for now, will use default destructive
+                          >
+                              {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
                       )}
                     </Button>
