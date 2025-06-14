@@ -80,41 +80,43 @@ export default function Navbar() {
   }, [isClient, fetchSiteSettings]);
 
 
-  const updateLoginStateAndUnreadCount = useCallback(async () => {
-    const userJson = localStorage.getItem('loggedInUser');
-    if (userJson) {
-      try {
-        const user: StoredUser = JSON.parse(userJson);
-        setLoggedInUser(user);
-        if (user?.id) {
-          const unreadCount = await getTotalUnreadMessagesCountAction(user.id);
-          setTotalUnreadMessages(unreadCount);
-        } else {
-          setTotalUnreadMessages(0);
-        }
-      } catch (error) {
-        console.error("Error parsing loggedInUser from localStorage or fetching unread count", error);
-        localStorage.removeItem('loggedInUser');
-        setLoggedInUser(null);
-        setTotalUnreadMessages(0);
-      }
-    } else {
-      setLoggedInUser(null);
-      setTotalUnreadMessages(0);
-    }
-  }, []);
-
   useEffect(() => {
     if (isClient) {
-      updateLoginStateAndUnreadCount();
+      const updateState = async () => {
+        const userJson = localStorage.getItem('loggedInUser');
+        if (userJson) {
+          try {
+            const user: StoredUser = JSON.parse(userJson);
+            setLoggedInUser(user);
+            if (user?.id) {
+              const unreadCount = await getTotalUnreadMessagesCountAction(user.id);
+              console.log(`[Navbar DEBUG] Fetched unread count for user ${user.id}:`, unreadCount);
+              setTotalUnreadMessages(unreadCount);
+            } else {
+              setTotalUnreadMessages(0);
+            }
+          } catch (error) {
+            console.error("Error parsing user or fetching unread count:", error);
+            localStorage.removeItem('loggedInUser');
+            setLoggedInUser(null);
+            setTotalUnreadMessages(0);
+          }
+        } else {
+          setLoggedInUser(null);
+          setTotalUnreadMessages(0);
+        }
+      };
 
-      const handleStorageChange = (event: StorageEvent | Event | CustomEvent) => {
-        const eventIsCustomForLogin = event.type === 'userSessionChanged';
-        const eventIsStorageAPI = event instanceof StorageEvent && event.key === 'loggedInUser';
-        const eventIsMessagesUpdated = event.type === 'messagesUpdated';
+      updateState(); // Initial call
 
-        if (eventIsCustomForLogin || eventIsStorageAPI || eventIsMessagesUpdated) {
-           updateLoginStateAndUnreadCount();
+      const handleStorageChange = (event: StorageEvent | CustomEvent) => {
+        const isRelevantStorageEvent = event instanceof StorageEvent && event.key === 'loggedInUser';
+        const isCustomSessionEvent = event.type === 'userSessionChanged';
+        const isCustomMessagesEvent = event.type === 'messagesUpdated';
+
+        if (isRelevantStorageEvent || isCustomSessionEvent || isCustomMessagesEvent) {
+          console.log(`[Navbar DEBUG] Event '${event.type}' triggered state update.`);
+          updateState();
         }
       };
 
@@ -122,14 +124,14 @@ export default function Navbar() {
       window.addEventListener('userSessionChanged', handleStorageChange);
       window.addEventListener('messagesUpdated', handleStorageChange);
 
-
       return () => {
         window.removeEventListener('storage', handleStorageChange);
         window.removeEventListener('userSessionChanged', handleStorageChange);
         window.removeEventListener('messagesUpdated', handleStorageChange);
       };
     }
-  }, [updateLoginStateAndUnreadCount, isClient]);
+  }, [isClient]);
+
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
@@ -232,12 +234,13 @@ export default function Navbar() {
     </Button>
   );
 
-  if (isClient) {
+  const showBadgeCondition = isClient && loggedInUser && totalUnreadMessages > 0;
+  if (isClient) { // Solo loguear en el cliente
     console.log('[Navbar DEBUG] State before render:', {
       isClient,
       loggedInUserId: loggedInUser?.id,
       totalUnreadMessages,
-      showBadgeCondition: loggedInUser && totalUnreadMessages > 0,
+      showBadgeCondition,
     });
   }
 
@@ -247,7 +250,7 @@ export default function Navbar() {
         <AnnouncementBar settings={siteSettings} />
       )}
       {isClient && isLoadingSettings && (
-         <Skeleton className="h-10 w-full" />
+         <Skeleton className="h-10 w-full" /> // Skeleton for announcement bar if settings are loading
       )}
 
       <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
@@ -300,10 +303,10 @@ export default function Navbar() {
                         <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/44x44.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona avatar"/>
                         <AvatarFallback className="bg-muted text-muted-foreground text-base">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
                       </Avatar>
-                      {isClient && loggedInUser && totalUnreadMessages > 0 && (
+                      {showBadgeCondition && (
                           <Badge
-                            variant="destructive"
-                            className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center leading-none z-50"
+                            variant="destructive" // Use a prominent color
+                            className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center leading-none z-50" // Ensure z-index
                           >
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
@@ -351,7 +354,7 @@ export default function Navbar() {
                               <span className="flex items-center gap-2.5">
                                   <LayoutDashboard className="h-4 w-4 text-primary"/>Panel Usuario
                               </span>
-                              {totalUnreadMessages > 0 && (
+                              {totalUnreadMessages > 0 && ( // Ensure this also uses showBadgeCondition or totalUnreadMessages
                                   <Badge variant="destructive" className="h-5 px-1.5 text-xs">
                                       {totalUnreadMessages > 99 ? '99+' : totalUnreadMessages}
                                   </Badge>
@@ -403,7 +406,7 @@ export default function Navbar() {
                   <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-primary/10 relative">
                     <Menu className="h-5 w-5 text-primary" />
                     <span className="sr-only">Alternar menú</span>
-                    {isClient && loggedInUser && totalUnreadMessages > 0 && (
+                    {showBadgeCondition && ( // Use the derived condition here too
                           <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 text-[10px] rounded-full flex items-center justify-center leading-none">
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
@@ -476,4 +479,3 @@ export default function Navbar() {
     </>
   );
 }
-

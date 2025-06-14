@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { getUnreadContactSubmissionsCountAction } from '@/actions/contactFormActions'; // Corrected import
+import { getUnreadContactSubmissionsCountAction } from '@/actions/contactFormActions'; // Corrected import name
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -56,7 +56,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const fetchUnreadCounts = useCallback(async () => {
     if (isClient) {
       try {
-        const count = await getUnreadContactSubmissionsCountAction(); // Using corrected function name
+        const count = await getUnreadContactSubmissionsCountAction(); 
         setUnreadContactSubmissions(count);
       } catch (error) {
         console.error("Failed to fetch unread contact submissions count", error);
@@ -247,4 +247,3 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     </div>
   );
 }
-    
