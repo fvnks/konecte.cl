@@ -14,10 +14,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { getPlanByIdAction } from '@/actions/planActions';
 import ChatMessageItem from '@/components/chat/ChatMessageItem';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { BOT_SENDER_ID } from '@/lib/whatsappBotStore'; // Import BOT_SENDER_ID
+import { BOT_SENDER_ID } from '@/lib/whatsappBotStore';
 
 const BOT_DISPLAY_NAME = "Asistente Konecte";
-const BOT_AVATAR_URL = "/logo-konecte-ai-bot.png"; // Asumiendo que tienes este logo en public
+const BOT_AVATAR_URL = "https://placehold.co/40x40/64B5F6/FFFFFF.png?text=BOT"; // Placeholder
 
 export default function WhatsAppChatPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
@@ -35,7 +35,10 @@ export default function WhatsAppChatPage() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    console.log('[WhatsAppChatPage DEBUG Client Mount] NEXT_PUBLIC_WHATSAPP_BOT_NUMBER:', process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER);
+    // Log all NEXT_PUBLIC_ variables available to the client
+    const publicEnvVars = Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_'));
+    console.log('[WhatsAppChatPage DEBUG Client Mount] Available NEXT_PUBLIC_ vars:', publicEnvVars.map(key => `${key}=${process.env[key]}`).join(', '));
+    console.log('[WhatsAppChatPage DEBUG Client Mount] NEXT_PUBLIC_WHATSAPP_BOT_NUMBER raw value:', process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER);
     
     setIsCheckingPermission(true);
     setIsLoadingInitial(true);
@@ -123,7 +126,7 @@ export default function WhatsAppChatPage() {
         senderName = currentUserDetails?.name || "Tú";
         senderAvatar = currentUserDetails?.avatarUrl;
         finalSenderId = currentUserId;
-    } else { // Mensaje del bot
+    } else { 
         senderName = BOT_DISPLAY_NAME;
         senderAvatar = BOT_AVATAR_URL;
         finalSenderId = BOT_SENDER_ID;
@@ -198,13 +201,29 @@ export default function WhatsAppChatPage() {
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    const localWhatsAppBotNumber = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER;
+    const WHATSAPP_BOT_NUMBER_FROM_ENV = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER;
+    const WHATSAPP_BOT_NUMBER_FALLBACK = "+56946725640"; // Fallback temporal
+    let localWhatsAppBotNumber = WHATSAPP_BOT_NUMBER_FROM_ENV;
+
+    console.log(`[WhatsAppChatPage DEBUG] handleSendMessage Intentando enviar mensaje. NEXT_PUBLIC_WHATSAPP_BOT_NUMBER (env): ${WHATSAPP_BOT_NUMBER_FROM_ENV}`);
+
+    if (!WHATSAPP_BOT_NUMBER_FROM_ENV) {
+        console.warn(`[WhatsAppChatPage WARN] NEXT_PUBLIC_WHATSAPP_BOT_NUMBER is undefined or empty. Using fallback: ${WHATSAPP_BOT_NUMBER_FALLBACK}`);
+        toast({
+            title: "Advertencia de Configuración",
+            description: `La variable de entorno para el número del bot no está definida. Usando valor de respaldo temporal: ${WHATSAPP_BOT_NUMBER_FALLBACK}. Por favor, configura NEXT_PUBLIC_WHATSAPP_BOT_NUMBER.`,
+            variant: "default",
+            duration: 10000,
+        });
+        localWhatsAppBotNumber = WHATSAPP_BOT_NUMBER_FALLBACK;
+    }
     
-    console.log('[WhatsAppChatPage DEBUG] handleSendMessage Intentando enviar mensaje. Condiciones:');
+    // Re-evaluar todas las condiciones con el localWhatsAppBotNumber (que ahora tiene un valor)
+    console.log(`[WhatsAppChatPage DEBUG] handleSendMessage Validations:`);
     console.log(`  - loggedInUser ID: ${loggedInUser?.id}`);
     console.log(`  - loggedInUser.phone_number: ${loggedInUser?.phone_number}`);
     console.log(`  - hasPermission: ${hasPermission}`);
-    console.log(`  - localWhatsAppBotNumber (env): ${localWhatsAppBotNumber}`);
+    console.log(`  - localWhatsAppBotNumber (final): ${localWhatsAppBotNumber}`);
     console.log(`  - newMessage: "${newMessage.trim()}"`);
 
     if (!loggedInUser?.id) {
@@ -215,9 +234,9 @@ export default function WhatsAppChatPage() {
         toast({ title: "Falta Teléfono", description: "No tienes un número de teléfono registrado en tu perfil para usar esta función.", variant: "destructive", action: <Button asChild variant="link"><Link href="/profile">Ir al Perfil</Link></Button> });
         return;
     }
-    if (!localWhatsAppBotNumber) {
-        toast({ title: "Error de Configuración", description: "El número del bot de WhatsApp no está configurado correctamente. Contacta a soporte.", variant: "destructive" });
-        console.error("[WhatsAppChatPage CRITICAL] NEXT_PUBLIC_WHATSAPP_BOT_NUMBER es undefined o vacío en handleSendMessage.");
+    if (!localWhatsAppBotNumber) { // Esta condición ahora es menos probable que falle debido al fallback
+        toast({ title: "Error de Configuración Crítico", description: "El número del bot de WhatsApp no se pudo determinar. Contacta a soporte.", variant: "destructive" });
+        console.error("[WhatsAppChatPage CRITICAL] localWhatsAppBotNumber is still undefined or empty even after fallback logic. This should not happen.");
         return;
     }
     if (!hasPermission) {
@@ -247,7 +266,7 @@ export default function WhatsAppChatPage() {
     
     try {
       const payloadForApi = {
-        telefonoReceptorBot: localWhatsAppBotNumber,
+        telefonoReceptorBot: localWhatsAppBotNumber, // Usar el número de bot determinado
         text: userMessageContent,
         telefonoRemitenteUsuarioWeb: loggedInUser.phone_number,
         userId: loggedInUser.id,
@@ -320,6 +339,8 @@ export default function WhatsAppChatPage() {
     );
   }
   
+  const botNumberForDisplay = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER || "+56946725640 (Fallback)";
+
   return (
     <Card className="flex flex-col h-full max-h-[calc(100vh-var(--header-height,6rem)-var(--dashboard-padding-y,3rem)-2rem)] shadow-xl rounded-xl border overflow-hidden">
       <CardHeader className="p-3 sm:p-4 border-b bg-card sticky top-0 z-10 shadow-sm">
@@ -332,7 +353,7 @@ export default function WhatsAppChatPage() {
           </div>
           <div>
             <CardTitle className="text-base sm:text-lg">{BOT_DISPLAY_NAME}</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Interactuando con el bot en {process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER || "WhatsApp"}</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Interactuando con el bot en {botNumberForDisplay}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -368,9 +389,8 @@ export default function WhatsAppChatPage() {
             autoComplete="off"
           />
           <Button type="submit" size="icon" className="h-10 w-10 sm:h-11 sm:w-11 rounded-lg" 
-            disabled={isSending || !newMessage.trim() || !loggedInUser?.phone_number || !hasPermission || !process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER}
+            disabled={isSending || !newMessage.trim() || !loggedInUser?.phone_number || !hasPermission}
             title={
-              !process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER ? "Número del bot no configurado" :
               !loggedInUser?.phone_number ? "Añade un teléfono a tu perfil" :
               !hasPermission ? "Tu plan no incluye esta función" :
               "Enviar mensaje"
