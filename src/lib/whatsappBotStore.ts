@@ -1,115 +1,114 @@
 
 // src/lib/whatsappBotStore.ts
-import type { WhatsAppMessage, PendingMessageForBot } from './types';
+import type { WhatsAppMessage, PendingMessageForExternalBot } from './types';
 import { randomUUID } from 'crypto';
 
 const chatHistories: Record<string, WhatsAppMessage[]> = {};
-let pendingOutboundMessages: WhatsAppMessage[] = [];
+let pendingOutboundMessages: WhatsAppMessage[] = []; // Esta cola es para mensajes que el bot externo debe recoger
 
 console.log('[WhatsAppStore] Store inicializado/reiniciado.');
 
-export const BOT_SENDER_ID = 'KONECTE_EXTERNAL_WHATSAPP_BOT'; // ID para el bot cuando envía respuestas a la UI
+export const BOT_SENDER_ID = 'KONECTE_WHATSAPP_BOT_ASSISTANT'; // ID para el bot cuando responde en la UI
 
-export function getConversation(telefono: string): WhatsAppMessage[] {
-  console.log(`[WhatsAppStore DEBUG] getConversation llamado para telefono: ${telefono}`);
-  const conversation = chatHistories[telefono] || [];
-  console.log(`[WhatsAppStore DEBUG] getConversation para ${telefono} devuelve ${conversation.length} mensajes. Contenido:`, JSON.stringify(conversation.slice(-3)));
+// Obtiene la conversación para un número de teléfono específico (usado por la UI del usuario web)
+export function getConversation(userPhoneNumber: string): WhatsAppMessage[] {
+  console.log(`[WhatsAppStore DEBUG] getConversation llamado para userPhoneNumber: ${userPhoneNumber}`);
+  const conversation = chatHistories[userPhoneNumber] || [];
+  console.log(`[WhatsAppStore DEBUG] getConversation para ${userPhoneNumber} devuelve ${conversation.length} mensajes.`);
   return JSON.parse(JSON.stringify(conversation));
 }
 
+// Añade un mensaje al historial de chat de un usuario específico (usado por la UI y cuando el bot responde)
 export function addMessageToConversation(
-  telefono: string, 
-  messageData: Omit<WhatsAppMessage, 'id' | 'telefono' | 'timestamp' | 'sender_id_override'> & { original_sender_id_if_user?: string }
+  userPhoneNumber: string, 
+  messageData: Omit<WhatsAppMessage, 'id' | 'telefono' | 'timestamp'> & { original_sender_id_if_user?: string }
 ): WhatsAppMessage {
-  console.log(`[WhatsAppStore DEBUG] addMessageToConversation llamado para telefono: ${telefono}, sender: ${messageData.sender}, text: "${messageData.text.substring(0, 50)}..."`);
-  if (!chatHistories[telefono]) {
-    chatHistories[telefono] = [];
+  console.log(`[WhatsAppStore DEBUG] addMessageToConversation llamado para userPhoneNumber: ${userPhoneNumber}, sender: ${messageData.sender}, text: "${messageData.text.substring(0, 50)}..."`);
+  if (!chatHistories[userPhoneNumber]) {
+    chatHistories[userPhoneNumber] = [];
   }
   
   const newMessage: WhatsAppMessage = {
     id: randomUUID(),
-    telefono,
+    telefono: userPhoneNumber, // Siempre es el teléfono del usuario web aquí
     text: messageData.text,
     sender: messageData.sender,
     timestamp: Date.now(),
     status: messageData.status,
+    sender_id_override: messageData.sender === 'user' 
+                        ? messageData.original_sender_id_if_user // El ID del usuario web real
+                        : BOT_SENDER_ID, // El ID del bot para respuestas
   };
 
-  if (messageData.sender === 'bot') {
-    newMessage.sender_id_override = BOT_SENDER_ID;
-  } else if (messageData.sender === 'user' && messageData.original_sender_id_if_user) {
-    newMessage.sender_id_override = messageData.original_sender_id_if_user;
-  }
-
-  chatHistories[telefono].push(newMessage);
-  console.log(`[WhatsAppStore DEBUG] Mensaje añadido a chatHistories[${telefono}]. Nuevo total: ${chatHistories[telefono].length}. Mensaje ID: ${newMessage.id}, Sender: ${newMessage.sender}, Sender ID Override: ${newMessage.sender_id_override}`);
+  chatHistories[userPhoneNumber].push(newMessage);
+  console.log(`[WhatsAppStore DEBUG] Mensaje añadido a chatHistories[${userPhoneNumber}]. Nuevo total: ${chatHistories[userPhoneNumber].length}. Msg ID: ${newMessage.id}, Sender: ${newMessage.sender}, sender_id_override: ${newMessage.sender_id_override}`);
   return JSON.parse(JSON.stringify(newMessage));
 }
 
-export function addMessageToPendingOutbound(telefono: string, text: string, userId: string): WhatsAppMessage {
-  console.log(`[WhatsAppStore DEBUG] addMessageToPendingOutbound llamado para telefono: ${telefono}, texto: "${text.substring(0,50)}...", userId: ${userId}`);
+// Añade un mensaje a la cola que el bot externo (Ubuntu) debe recoger
+export function addMessageToPendingOutbound(
+  botPhoneNumber: string, // El número del bot de WhatsApp al que el bot externo debe enviar
+  text: string, 
+  webUserId: string, // El ID del usuario web que originó este mensaje
+  webUserPhoneNumber: string // El número del usuario web, para que el bot externo sepa a quién responder en Konecte
+): WhatsAppMessage {
+  console.log(`[WhatsAppStore DEBUG] addMessageToPendingOutbound llamado. Destino bot: ${botPhoneNumber}, Texto: "${text.substring(0,50)}...", Originador UserID: ${webUserId}, Teléfono Remitente Konecte: ${webUserPhoneNumber}`);
   const message: WhatsAppMessage = {
     id: randomUUID(),
-    telefono,
+    telefono: botPhoneNumber, // El 'telefono' aquí es el destino para el bot de Ubuntu
     text,
-    sender: 'user', // Este mensaje es del usuario web, destinado al bot externo
-    status: 'pending_to_whatsapp', // Indica que el bot externo debe recogerlo
+    sender: 'user', // Desde la perspectiva del bot externo, este es un mensaje 'de usuario' (de la plataforma)
+    status: 'pending_to_whatsapp',
     timestamp: Date.now(),
-    sender_id_override: userId, // El ID del usuario web que envió el mensaje
+    sender_id_override: webUserId, // Quién lo originó en Konecte
+    telefono_remitente_konecte: webUserPhoneNumber, // Crucial para que el bot de Ubuntu sepa a quién responder en la UI de Konecte
   };
   pendingOutboundMessages.push(message);
-  
-  // También reflejar en el historial del chat inmediatamente para UI optimista
-  addMessageToConversation(telefono, { 
-    text, 
-    sender: 'user', 
-    status: 'pending_to_whatsapp',
-    original_sender_id_if_user: userId // Pasar el ID del usuario real
-  });
-  
   console.log(`[WhatsAppStore DEBUG] Mensaje añadido a pendingOutboundMessages. Total pendientes: ${pendingOutboundMessages.length}.`);
-  console.log(`[WhatsAppStore DEBUG] Contenido ACTUAL de pendingOutboundMessages:`, JSON.stringify(pendingOutboundMessages.map(m => ({id: m.id, text: m.text.substring(0,30), status: m.status, telefono: m.telefono, sender_id_override: m.sender_id_override }))));
   return JSON.parse(JSON.stringify(message));
 }
 
-export function getPendingMessagesForBot(): PendingMessageForBot[] {
-  console.log(`[WhatsAppStore DEBUG] getPendingMessagesForBot llamado. ${pendingOutboundMessages.length} mensajes en cola total ANTES de filtrar.`);
-  console.log(`[WhatsAppStore DEBUG] Contenido COMPLETO de pendingOutboundMessages ANTES de filtrar:`, JSON.stringify(pendingOutboundMessages));
-
-  const messagesToDeliver: PendingMessageForBot[] = [];
+// Obtiene los mensajes que el bot externo (Ubuntu) debe procesar y enviar a WhatsApp
+export function getPendingMessagesForBot(): PendingMessageForExternalBot[] {
+  console.log(`[WhatsAppStore DEBUG] getPendingMessagesForBot llamado. ${pendingOutboundMessages.length} mensajes en cola ANTES de filtrar.`);
   
-  // Filtrar solo los que están realmente pendientes para el bot (status 'pending_to_whatsapp')
-  const stillPendingForBot = pendingOutboundMessages.filter(msg => msg.status === 'pending_to_whatsapp');
-  console.log(`[WhatsAppStore DEBUG] ${stillPendingForBot.length} mensajes con status 'pending_to_whatsapp'.`);
+  const messagesToDeliver: PendingMessageForExternalBot[] = [];
+  const remainingPendingMessages: WhatsAppMessage[] = [];
 
-  for (const msg of stillPendingForBot) {
-    messagesToDeliver.push({
-      id: msg.id,
-      telefono: msg.telefono, // Este es el userPhoneNumber del usuario web, para que el bot sepa a quién responder.
-      text: msg.text,
-      // userId: msg.sender_id_override, // Opcional: enviar el ID del usuario web al bot
-    });
+  for (const msg of pendingOutboundMessages) {
+    if (msg.status === 'pending_to_whatsapp' && msg.telefono_remitente_konecte) {
+      messagesToDeliver.push({
+        id: msg.id,
+        telefonoReceptorEnWhatsapp: msg.telefono, // Este es el número del bot de WhatsApp
+        textoOriginal: msg.text,
+        telefonoRemitenteParaRespuestaKonecte: msg.telefono_remitente_konecte, // Número del usuario web original
+        userId: msg.sender_id_override!, // ID del usuario web original
+      });
+    } else {
+      remainingPendingMessages.push(msg); // Conservar otros mensajes que no son para el bot
+    }
   }
+  
+  pendingOutboundMessages = remainingPendingMessages;
 
   if (messagesToDeliver.length > 0) {
-    console.log(`[WhatsAppStore DEBUG] Entregando ${messagesToDeliver.length} mensajes al bot. Contenido:`, JSON.stringify(messagesToDeliver.map(m => ({id: m.id, text: m.text.substring(0,30), telefono: m.telefono}))));
-    const deliveredMessageIds = new Set(messagesToDeliver.map(m => m.id));
-    pendingOutboundMessages = pendingOutboundMessages.filter(msg => !deliveredMessageIds.has(msg.id));
-    console.log(`[WhatsAppStore DEBUG] ${pendingOutboundMessages.length} mensajes restantes en pendingOutboundMessages DESPUÉS de la entrega.`);
+    console.log(`[WhatsAppStore DEBUG] Entregando ${messagesToDeliver.length} mensajes al bot externo. IDs: ${messagesToDeliver.map(m=>m.id).join(', ')}`);
   } else {
-    console.log(`[WhatsAppStore DEBUG] No hay mensajes 'pending_to_whatsapp' para entregar al bot esta vez.`);
+    console.log(`[WhatsAppStore DEBUG] No hay mensajes 'pending_to_whatsapp' para el bot externo esta vez.`);
   }
-  console.log(`[WhatsAppStore DEBUG] Contenido FINAL de pendingOutboundMessages DESPUÉS de la entrega:`, JSON.stringify(pendingOutboundMessages.map(m => ({id: m.id, text: m.text.substring(0,30), status: m.status}))));
   return JSON.parse(JSON.stringify(messagesToDeliver));
 }
+
 
 // --- Funciones para el Visor de Admin ---
 export function getAllConversationsForAdmin(): Record<string, WhatsAppMessage[]> {
     console.log(`[WhatsAppStore ADMIN_DEBUG] getAllConversationsForAdmin llamado.`);
+    // Devuelve el historial de chats de los usuarios web, indexado por el número del usuario web.
     return JSON.parse(JSON.stringify(chatHistories));
 }
 
 export function getUniquePhoneNumbersWithConversations(): string[] {
+    // Estos son los números de los usuarios web que tienen un historial de chat.
     const phoneNumbers = Object.keys(chatHistories);
     console.log(`[WhatsAppStore ADMIN_DEBUG] getUniquePhoneNumbersWithConversations llamado. Total números con historial: ${phoneNumbers.length}. Números: ${phoneNumbers.join(', ')}`);
     return phoneNumbers;

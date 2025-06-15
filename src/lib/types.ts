@@ -334,7 +334,7 @@ export type RequestFormValues = z.infer<typeof requestFormSchema>;
 export interface ChatMessage {
   id: string;
   conversation_id: string;
-  sender_id: string; // Puede ser el ID del usuario o una constante para el bot
+  sender_id: string; 
   receiver_id: string;
   content: string;
   created_at: string; // ISO String date
@@ -572,30 +572,34 @@ export type WhatsAppMessageSender = 'user' | 'bot';
 
 export interface WhatsAppMessage {
   id: string;
-  telefono: string; 
+  telefono: string; // Para el store: este es el userPhoneNumber. Para pendingOutbound: es el botPhoneNumber.
   text: string;
   sender: WhatsAppMessageSender; 
   timestamp: number; // Unix timestamp
   status?: 'pending_to_whatsapp' | 'sent_to_whatsapp' | 'delivered_to_user' | 'failed'; 
-  sender_id_override?: string; // ID real del usuario o ID constante del bot
+  sender_id_override?: string; // ID real del usuario (si sender es 'user') o BOT_SENDER_ID (si sender es 'bot')
+  // Campo específico para mensajes salientes hacia el bot externo:
+  telefono_remitente_konecte?: string; // Número de teléfono del usuario web que envía el mensaje
 }
 
-export interface SendMessagePayload {
-  telefono: string; // El número de teléfono del usuario web, para identificar la conversación
+export interface SendMessageToBotPayload {
+  telefonoReceptorBot: string; // Número del bot de WhatsApp externo.
   text: string;
-  userId: string; // El ID del usuario web que envía el mensaje
+  telefonoRemitenteUsuarioWeb: string; // Número del usuario web que origina el mensaje (para asociar la conversación)
+  userId: string; // El ID del usuario web que envía el mensaje (para sender_id_override)
 }
 
-export interface ReceiveReplyPayload {
-  telefono: string; // El número de teléfono del usuario web al que el bot está respondiendo
+export interface ReceiveReplyFromBotPayload {
+  telefonoUsuarioWeb: string; // El número de teléfono del usuario web al que el bot está respondiendo
   text: string; // Mensaje del bot externo (recibido de WhatsApp y enviado aquí)
 }
 
-export interface PendingMessageForBot {
+export interface PendingMessageForExternalBot {
   id: string;
-  telefono: string; // El número del usuario web (para que el bot sepa a quién responder si es necesario)
-  text: string;
-  // userId?: string; // Opcional: el ID del usuario web que originó el mensaje
+  telefonoReceptorEnWhatsapp: string; // El número al que el bot externo debe enviar el mensaje (el propio número del bot)
+  textoOriginal: string; // El texto que el usuario web envió
+  telefonoRemitenteParaRespuestaKonecte: string; // El número del usuario web (para que la API sepa dónde guardar la respuesta del bot)
+  userId: string; // El ID del usuario web (para sender_id_override si es necesario)
 }
 // End of WhatsApp Bot Integration Types
 
