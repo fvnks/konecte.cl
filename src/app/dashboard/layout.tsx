@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
-import { getPlanByIdAction } from '@/actions/planActions'; // Importar la acción del plan
+import { getPlanByIdAction } from '@/actions/planActions'; 
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const [isClient, setIsClient] = useState(false);
-  const [navItems, setNavItems] = useState<any[]>(baseNavItems); // Estado para los items de navegación
+  const [navItems, setNavItems] = useState<any[]>(baseNavItems); 
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     setIsLoadingSession(true);
     const userJson = localStorage.getItem('loggedInUser');
-    let tempNavItems = [...baseNavItems]; // Copia de los items base
+    let tempNavItems = [...baseNavItems]; 
 
     if (userJson) {
       try {
@@ -64,15 +64,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         setCurrentUser(parsedUser);
 
         if (parsedUser.role_id === 'broker') {
-          tempNavItems.push({ href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> });
+          // Add broker-specific link if not already present
+          if (!tempNavItems.find(item => item.href === '/dashboard/broker/open-requests')) {
+            tempNavItems.push({ href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> });
+          }
         }
 
-        // Comprobar acceso al bot de WhatsApp
         if (parsedUser.plan_id) {
           try {
             const planDetails = await getPlanByIdAction(parsedUser.plan_id);
             if (planDetails?.whatsapp_bot_enabled) {
-              tempNavItems.push({ href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> });
+              // Add WhatsApp chat link if not already present
+              if (!tempNavItems.find(item => item.href === '/dashboard/whatsapp-chat')) {
+                tempNavItems.push({ href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> });
+              }
             }
           } catch (planError) {
             console.error("Error fetching plan details for WhatsApp Bot link:", planError);
@@ -90,16 +95,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         localStorage.removeItem('loggedInUser');
         setCurrentUser(null);
         setTotalUnreadCount(0);
-        tempNavItems = [...baseNavItems]; // Reset a items base en caso de error
+        tempNavItems = [...baseNavItems]; 
         if (!pathname.startsWith('/auth')) router.push('/auth/signin');
       }
     } else {
       setCurrentUser(null);
       setTotalUnreadCount(0);
-      tempNavItems = [...baseNavItems]; // Reset a items base
+      tempNavItems = [...baseNavItems]; 
       if (!pathname.startsWith('/auth')) router.push('/auth/signin');
     }
-    setNavItems(tempNavItems); // Actualizar los items de navegación
+    setNavItems(tempNavItems); 
     setIsLoadingSession(false);
   }, [isClient, pathname, router]);
 
@@ -132,7 +137,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     localStorage.removeItem('loggedInUser');
     setCurrentUser(null); 
     setTotalUnreadCount(0);
-    setNavItems(baseNavItems); // Reset nav items on logout
+    setNavItems(baseNavItems); 
     toast({
       title: "Sesión Cerrada",
       description: "Has cerrado sesión de tu panel.",
@@ -182,10 +187,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
   
   if (!currentUser && isClient && !pathname.startsWith('/auth')) {
-    // This state means user is definitely not logged in (after checks)
-    // and we're not on an auth page, so they should be redirected.
-    // The redirect itself happens in updateSessionAndNav if userJson is null.
-    // Here, we just show a loader while that redirect is pending or if something went wrong.
     return (
        <div className="flex items-center justify-center min-h-screen">
          <Loader2 className="h-8 w-8 animate-spin text-primary" />
