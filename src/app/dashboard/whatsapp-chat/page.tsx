@@ -5,7 +5,7 @@
 import React, { useEffect, useState, useRef, FormEvent, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Send, UserCircle, AlertTriangle, Bot, MessageSquare as MessageSquareIconLucide } from 'lucide-react'; // Renamed MessageSquare
+import { Loader2, Send, UserCircle, AlertTriangle, Bot, MessageSquare as MessageSquareIconLucide } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import type { User as StoredUser, Plan, ChatMessage, WhatsAppMessage } from '@/lib/types';
@@ -14,10 +14,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { getPlanByIdAction } from '@/actions/planActions';
 import ChatMessageItem from '@/components/chat/ChatMessageItem';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { BOT_SENDER_ID } from '@/lib/whatsappBotStore';
+import { BOT_SENDER_ID } from '@/lib/whatsappBotStore'; // Import BOT_SENDER_ID
 
 const BOT_DISPLAY_NAME = "Asistente Konecte";
-const BOT_AVATAR_URL = "/logo-konecte-ai-bot.png";
+const BOT_AVATAR_URL = "/logo-konecte-ai-bot.png"; // Asumiendo que tienes este logo en public
 
 export default function WhatsAppChatPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
@@ -35,7 +35,6 @@ export default function WhatsAppChatPage() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Este log se ejecutará en el cliente cuando el componente se monte
     console.log('[WhatsAppChatPage DEBUG Client Mount] NEXT_PUBLIC_WHATSAPP_BOT_NUMBER:', process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER);
     
     setIsCheckingPermission(true);
@@ -45,7 +44,7 @@ export default function WhatsAppChatPage() {
       try {
         const user: StoredUser = JSON.parse(userJson);
         setLoggedInUser(user);
-        console.log('[WhatsAppChatPage DEBUG] Logged in user:', user);
+        console.log('[WhatsAppChatPage DEBUG] Logged in user from storage:', {id: user.id, name: user.name, phone: user.phone_number, plan_id: user.plan_id});
 
         if (!user.phone_number) {
             console.warn('[WhatsAppChatPage DEBUG] User does not have a phone_number in localStorage.');
@@ -55,7 +54,7 @@ export default function WhatsAppChatPage() {
             setIsLoadingInitial(false);
             return;
         }
-        console.log('[WhatsAppChatPage DEBUG] User phone number set:', user.phone_number);
+        console.log('[WhatsAppChatPage DEBUG] User phone number from storage:', user.phone_number);
 
         if (user.plan_id) {
           console.log('[WhatsAppChatPage DEBUG] User has plan_id:', user.plan_id, ". Fetching plan...");
@@ -66,7 +65,7 @@ export default function WhatsAppChatPage() {
               console.log('[WhatsAppChatPage DEBUG] Permission GRANTED based on plan.');
             } else {
               setHasPermission(false);
-              console.log('[WhatsAppChatPage DEBUG] Permission DENIED. Plan missing or whatsapp_bot_enabled is not true. Plan enabled:', plan?.whatsapp_bot_enabled);
+              console.log('[WhatsAppChatPage DEBUG] Permission DENIED. Plan missing or whatsapp_bot_enabled is not true. Plan enabled field:', plan?.whatsapp_bot_enabled);
               toast({ title: "Función no Habilitada", description: "El chat con el bot no está incluido en tu plan actual.", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
             }
             setIsCheckingPermission(false);
@@ -124,7 +123,7 @@ export default function WhatsAppChatPage() {
         senderName = currentUserDetails?.name || "Tú";
         senderAvatar = currentUserDetails?.avatarUrl;
         finalSenderId = currentUserId;
-    } else { 
+    } else { // Mensaje del bot
         senderName = BOT_DISPLAY_NAME;
         senderAvatar = BOT_AVATAR_URL;
         finalSenderId = BOT_SENDER_ID;
@@ -132,11 +131,11 @@ export default function WhatsAppChatPage() {
     
     return {
       id: msg.id,
-      conversation_id: msg.telefono, // `telefono` aquí es la clave de la conversación (el userPhoneNumber)
+      conversation_id: msg.telefono, 
       sender_id: finalSenderId,
       receiver_id: isFromCurrentUser ? BOT_SENDER_ID : currentUserId,
-      content: msg.text, // Mapeado de msg.text
-      created_at: new Date(msg.timestamp).toISOString(), // Mapeado de msg.timestamp
+      content: msg.text,
+      created_at: new Date(msg.timestamp).toISOString(),
       sender: {
         id: finalSenderId,
         name: senderName,
@@ -233,8 +232,6 @@ export default function WhatsAppChatPage() {
     setIsSending(true);
     const userMessageContent = newMessage;
     setNewMessage('');
-
-    console.log(`[WhatsAppChatPage DEBUG] Optimistic UI update for message: "${userMessageContent}" from user ${loggedInUser.id} (phone: ${loggedInUser.phone_number}) to bot ${localWhatsAppBotNumber}`);
     
     const optimisticMessageForUI: ChatMessage = transformWhatsAppMessageToUIChatMessage({
         id: `temp-user-${Date.now()}`,
@@ -371,11 +368,11 @@ export default function WhatsAppChatPage() {
             autoComplete="off"
           />
           <Button type="submit" size="icon" className="h-10 w-10 sm:h-11 sm:w-11 rounded-lg" 
-            disabled={isSending || !newMessage.trim() || !loggedInUser?.phone_number || !hasPermission}
+            disabled={isSending || !newMessage.trim() || !loggedInUser?.phone_number || !hasPermission || !process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER}
             title={
+              !process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER ? "Número del bot no configurado" :
               !loggedInUser?.phone_number ? "Añade un teléfono a tu perfil" :
               !hasPermission ? "Tu plan no incluye esta función" :
-              !process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER ? "Número del bot no configurado" :
               "Enviar mensaje"
             }
             >
