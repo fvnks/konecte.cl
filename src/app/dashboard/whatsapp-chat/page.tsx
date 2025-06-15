@@ -5,7 +5,7 @@
 import React, { useEffect, useState, useRef, FormEvent, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Send, UserCircle, AlertTriangle, Bot, MessageSquare } from 'lucide-react';
+import { Loader2, Send, UserCircle, AlertTriangle, Bot, MessageSquare as MessageSquareIconLucide } from 'lucide-react'; // Renamed MessageSquare
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import type { User as StoredUser, Plan, ChatMessage, WhatsAppMessage } from '@/lib/types';
@@ -34,22 +34,10 @@ export default function WhatsAppChatPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const scrollToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    } else if (scrollAreaRef.current) {
-      const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-      if (scrollViewport) {
-        scrollViewport.scrollTop = scrollViewport.scrollHeight;
-      }
-    }
-  }, []);
-
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
-  useEffect(() => {
+    // Este log se ejecutará en el cliente cuando el componente se monte
+    console.log('[WhatsAppChatPage DEBUG Client Mount] NEXT_PUBLIC_WHATSAPP_BOT_NUMBER:', process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER);
+    
     setIsCheckingPermission(true);
     setIsLoadingInitial(true);
     const userJson = localStorage.getItem('loggedInUser');
@@ -82,7 +70,6 @@ export default function WhatsAppChatPage() {
               toast({ title: "Función no Habilitada", description: "El chat con el bot no está incluido en tu plan actual.", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
             }
             setIsCheckingPermission(false);
-            // Consider moving setIsLoadingInitial(false) here if fetchConversation depends on hasPermission being set first
           }).catch(err => {
             console.error("[WhatsAppChatPage DEBUG] Error checking plan permission:", err);
             toast({ title: "Error de Plan", description: "No se pudo verificar el permiso de tu plan.", variant: "destructive" });
@@ -110,11 +97,27 @@ export default function WhatsAppChatPage() {
     }
   }, [toast]);
 
+
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    } else if (scrollAreaRef.current) {
+      const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+      if (scrollViewport) {
+        scrollViewport.scrollTop = scrollViewport.scrollHeight;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
   const transformWhatsAppMessageToUIChatMessage = useCallback((msg: WhatsAppMessage, currentUserId: string, currentUserDetails: StoredUser | null): ChatMessage => {
     const isFromCurrentUser = msg.sender_id_override === currentUserId;
     
     let senderName: string;
-    let senderAvatar: string | undefined | null = undefined;
+    let senderAvatar: string | undefined | null = null;
     let finalSenderId: string;
 
     if (isFromCurrentUser) {
@@ -129,11 +132,11 @@ export default function WhatsAppChatPage() {
     
     return {
       id: msg.id,
-      conversation_id: msg.telefono,
+      conversation_id: msg.telefono, // `telefono` aquí es la clave de la conversación (el userPhoneNumber)
       sender_id: finalSenderId,
       receiver_id: isFromCurrentUser ? BOT_SENDER_ID : currentUserId,
-      content: msg.text,
-      created_at: new Date(msg.timestamp).toISOString(),
+      content: msg.text, // Mapeado de msg.text
+      created_at: new Date(msg.timestamp).toISOString(), // Mapeado de msg.timestamp
       sender: {
         id: finalSenderId,
         name: senderName,
@@ -174,12 +177,12 @@ export default function WhatsAppChatPage() {
   useEffect(() => {
     if (!isCheckingPermission && hasPermission && loggedInUser?.phone_number && loggedInUser?.id) {
       console.log(`[WhatsAppChatPage DEBUG] Permissions checked, hasPermission and userPhoneNumber are TRUE. Initial fetchConversation for ${loggedInUser.phone_number}.`);
-      fetchConversation(); // Initial fetch
-      if (intervalRef.current) clearInterval(intervalRef.current); // Clear existing interval if any
+      fetchConversation(); 
+      if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
         console.log(`[WhatsAppChatPage DEBUG] Interval: Calling fetchConversation for ${loggedInUser.phone_number}.`);
         fetchConversation();
-      }, 7000); // Poll every 7 seconds
+      }, 7000);
     } else {
        console.log(`[WhatsAppChatPage DEBUG] Not setting up interval. isCheckingPermission: ${isCheckingPermission}, hasPermission: ${hasPermission}, userPhoneNumber: ${loggedInUser?.phone_number}`);
        if (isLoadingInitial && !isCheckingPermission) setIsLoadingInitial(false);
@@ -198,27 +201,27 @@ export default function WhatsAppChatPage() {
     e.preventDefault();
     const localWhatsAppBotNumber = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER;
     
-    console.log('[WhatsAppChatPage DEBUG] handleSendMessage called. Conditions:');
-    console.log(`  - newMessage.trim(): "${newMessage.trim()}" (empty: ${!newMessage.trim()})`);
-    console.log(`  - loggedInUser?.id: ${loggedInUser?.id}`);
+    console.log('[WhatsAppChatPage DEBUG] handleSendMessage Intentando enviar mensaje. Condiciones:');
+    console.log(`  - loggedInUser ID: ${loggedInUser?.id}`);
     console.log(`  - loggedInUser.phone_number: ${loggedInUser?.phone_number}`);
-    console.log(`  - localWhatsAppBotNumber (env): ${localWhatsAppBotNumber}`);
     console.log(`  - hasPermission: ${hasPermission}`);
+    console.log(`  - localWhatsAppBotNumber (env): ${localWhatsAppBotNumber}`);
+    console.log(`  - newMessage: "${newMessage.trim()}"`);
 
     if (!loggedInUser?.id) {
         toast({ title: "Error de Sesión", description: "No se pudo identificar tu sesión. Por favor, intenta iniciar sesión de nuevo.", variant: "destructive" });
         return;
     }
     if (!loggedInUser.phone_number) {
-        toast({ title: "Falta Teléfono", description: "No tienes un número de teléfono registrado en tu perfil.", variant: "destructive", action: <Button asChild variant="link"><Link href="/profile">Ir al Perfil</Link></Button> });
+        toast({ title: "Falta Teléfono", description: "No tienes un número de teléfono registrado en tu perfil para usar esta función.", variant: "destructive", action: <Button asChild variant="link"><Link href="/profile">Ir al Perfil</Link></Button> });
         return;
     }
     if (!localWhatsAppBotNumber) {
         toast({ title: "Error de Configuración", description: "El número del bot de WhatsApp no está configurado correctamente. Contacta a soporte.", variant: "destructive" });
-        console.error("[WhatsAppChatPage CRITICAL] NEXT_PUBLIC_WHATSAPP_BOT_NUMBER is undefined or empty in handleSendMessage.");
+        console.error("[WhatsAppChatPage CRITICAL] NEXT_PUBLIC_WHATSAPP_BOT_NUMBER es undefined o vacío en handleSendMessage.");
         return;
     }
-    if (!hasPermission) { // This check now includes the phone number requirement implicitly from the useEffect logic
+    if (!hasPermission) {
         toast({ title: "Permiso Denegado", description: "Tu plan no permite usar esta función o falta tu número de teléfono en el perfil.", variant: "destructive", action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
         return;
     }
@@ -231,10 +234,11 @@ export default function WhatsAppChatPage() {
     const userMessageContent = newMessage;
     setNewMessage('');
 
-    console.log(`[WhatsAppChatPage DEBUG] Optimistic UI update for message: "${userMessageContent}" to be sent via bot ${localWhatsAppBotNumber}, associated with user phone ${loggedInUser.phone_number}`);
+    console.log(`[WhatsAppChatPage DEBUG] Optimistic UI update for message: "${userMessageContent}" from user ${loggedInUser.id} (phone: ${loggedInUser.phone_number}) to bot ${localWhatsAppBotNumber}`);
+    
     const optimisticMessageForUI: ChatMessage = transformWhatsAppMessageToUIChatMessage({
         id: `temp-user-${Date.now()}`,
-        telefono: loggedInUser.phone_number, // Key for UI conversation is user's phone
+        telefono: loggedInUser.phone_number, 
         text: userMessageContent,
         sender: 'user',
         timestamp: Date.now(),
@@ -251,7 +255,7 @@ export default function WhatsAppChatPage() {
         telefonoRemitenteUsuarioWeb: loggedInUser.phone_number,
         userId: loggedInUser.id,
       };
-      console.log('[WhatsAppChatPage DEBUG] Sending to /api/whatsapp-bot/send-message with payload:', payloadForApi);
+      console.log('[WhatsAppChatPage DEBUG] Sending to /api/whatsapp-bot/send-message with payload:', JSON.stringify(payloadForApi));
       const response = await fetch('/api/whatsapp-bot/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -259,7 +263,7 @@ export default function WhatsAppChatPage() {
       });
       
       const result = await response.json();
-      console.log('[WhatsAppChatPage DEBUG] API /send-message response:', result);
+      console.log('[WhatsAppChatPage DEBUG] API /send-message response:', JSON.stringify(result));
       if (!result.success) {
         throw new Error(result.message || 'El sistema no pudo procesar el mensaje para el bot.');
       }
@@ -267,8 +271,8 @@ export default function WhatsAppChatPage() {
     } catch (error: any) {
       console.error("[WhatsAppChatPage DEBUG] Error sending message via API:", error.message);
       toast({ title: 'Error de Envío', description: error.message || 'No se pudo enviar tu mensaje al bot.', variant: 'destructive' });
-      setMessages(prev => prev.filter(msg => msg.id !== optimisticMessageForUI.id)); // Revertir UI optimista
-      setNewMessage(userMessageContent); // Restaurar texto
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticMessageForUI.id));
+      setNewMessage(userMessageContent); 
     } finally {
       setIsSending(false);
     }
@@ -300,7 +304,7 @@ export default function WhatsAppChatPage() {
     );
   }
   
-  if (!hasPermission) { // This implicitly covers missing phone_number now
+  if (!hasPermission) { 
      return (
       <Card className="shadow-lg">
         <CardHeader className="text-center">
@@ -345,7 +349,7 @@ export default function WhatsAppChatPage() {
           )}
           {messages.length === 0 && !isLoadingConversation && !isLoadingInitial && (
               <div className="text-center py-10 text-muted-foreground">
-                <MessageSquare className="h-12 w-12 mx-auto mb-3 text-gray-400"/>
+                <MessageSquareIconLucide className="h-12 w-12 mx-auto mb-3 text-gray-400"/>
                 <p>Hola {loggedInUser.name.split(' ')[0]}, envía un mensaje para iniciar la conversación con el bot.</p>
               </div>
           )}
@@ -371,6 +375,7 @@ export default function WhatsAppChatPage() {
             title={
               !loggedInUser?.phone_number ? "Añade un teléfono a tu perfil" :
               !hasPermission ? "Tu plan no incluye esta función" :
+              !process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER ? "Número del bot no configurado" :
               "Enviar mensaje"
             }
             >
