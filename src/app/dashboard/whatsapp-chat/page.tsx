@@ -2,9 +2,9 @@
 // src/app/dashboard/whatsapp-chat/page.tsx
 'use client';
 
-import React, { useEffect, useState, useRef, FormEvent } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import React, { useEffect, useState, useRef, FormEvent, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Loader2, Send, MessageCircle, UserCircle, AlertTriangle, Bot } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -17,102 +17,135 @@ export default function WhatsAppChatPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Manages loading of initial conversation
   const [isSending, setIsSending] = useState(false);
   const [userPhoneNumber, setUserPhoneNumber] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState(false);
   const [isCheckingPermission, setIsCheckingPermission] = useState(true);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null); // Declare messagesEndRef
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    // Alternative for ScrollArea component if direct scrollIntoView doesn't work as expected:
-    // if (scrollAreaRef.current) {
-    //   const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-    //   if (scrollViewport) {
-    //     scrollViewport.scrollTop = scrollViewport.scrollHeight;
-    //   }
-    // }
   };
 
+  // Effect for checking user, phone, and plan permission
   useEffect(() => {
+    console.log('[WhatsAppChatPage DEBUG] Permission check useEffect triggered.');
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
         const user: StoredUser = JSON.parse(userJson);
         setLoggedInUser(user);
+        console.log('[WhatsAppChatPage DEBUG] Logged in user:', user);
         if (!user.phone_number) {
           toast({ title: "Número Requerido", description: "Debes añadir un número de teléfono a tu perfil para usar el chat de WhatsApp.", variant: "warning", duration: 7000 });
+          setUserPhoneNumber(null); // Ensure it's null
           setIsCheckingPermission(false);
-          setIsLoading(false);
+          setIsLoading(false); // Stop loading if no phone number
+          console.log('[WhatsAppChatPage DEBUG] User has no phone number.');
           return;
         }
         setUserPhoneNumber(user.phone_number);
+        console.log(`[WhatsAppChatPage DEBUG] User phone number set: ${user.phone_number}`);
 
         if (user.plan_id) {
+          console.log(`[WhatsAppChatPage DEBUG] User has plan_id: ${user.plan_id}. Fetching plan...`);
           getPlanByIdAction(user.plan_id).then(plan => {
-            if (plan?.whatsapp_bot_enabled) {
+            console.log('[WhatsAppChatPage DEBUG] Fetched plan details:', plan);
+            if (plan?.whatsapp_bot_enabled === true) { // Strict check for true
               setHasPermission(true);
+              console.log('[WhatsAppChatPage DEBUG] Permission GRANTED based on plan.');
             } else {
+              setHasPermission(false);
               toast({ title: "Función no Habilitada", description: "El chat con el bot de WhatsApp no está incluido en tu plan actual.", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
+              console.log('[WhatsAppChatPage DEBUG] Permission DENIED. Plan whatsapp_bot_enabled is not true.');
             }
             setIsCheckingPermission(false);
           }).catch(err => {
-            console.error("Error checking plan permission:", err);
+            console.error("[WhatsAppChatPage DEBUG] Error checking plan permission:", err);
             toast({ title: "Error", description: "No se pudo verificar el permiso de tu plan.", variant: "destructive" });
+            setHasPermission(false);
             setIsCheckingPermission(false);
           });
         } else { 
-          toast({ title: "Función no Habilitada", description: "El chat con el bot de WhatsApp no está incluido en tu plan actual.", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
+          setHasPermission(false);
+          toast({ title: "Función no Habilitada", description: "El chat con el bot de WhatsApp no está incluido en tu plan actual (sin plan).", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
           setIsCheckingPermission(false);
+          console.log('[WhatsAppChatPage DEBUG] User has no plan_id. Permission DENIED.');
         }
 
       } catch (error) {
-        console.error("Error parsing user from localStorage", error);
+        console.error("[WhatsAppChatPage DEBUG] Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
+        setLoggedInUser(null);
+        setUserPhoneNumber(null);
+        setHasPermission(false);
         setIsCheckingPermission(false);
-        setIsLoading(false);
+        setIsLoading(false); // Stop loading on parse error
       }
     } else {
+      setLoggedInUser(null);
+      setUserPhoneNumber(null);
+      setHasPermission(false);
       setIsCheckingPermission(false);
-      setIsLoading(false);
+      setIsLoading(false); // Stop loading if no user
+      console.log('[WhatsAppChatPage DEBUG] No loggedInUser in localStorage.');
     }
   }, [toast]);
   
-  useEffect(() => {
-    if (userPhoneNumber && hasPermission && !isCheckingPermission) {
-      const fetchConversation = async () => {
-        if (!isLoading) setIsLoading(true);
-        try {
-          const response = await fetch(`/api/whatsapp-bot/conversation/${userPhoneNumber}`);
-          if (!response.ok) {
-            throw new Error('Failed to fetch conversation');
-          }
-          const data: WhatsAppMessage[] = await response.json();
-          setMessages(data.sort((a, b) => a.timestamp - b.timestamp));
-        } catch (error) {
-          console.error("Error fetching conversation:", error);
-          toast({
-            title: 'Error al Cargar Chat',
-            description: 'No se pudo cargar la conversación inicial.',
-            variant: 'destructive',
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchConversation();
-
-      const intervalId = setInterval(fetchConversation, 7000); 
-      return () => clearInterval(intervalId);
-    } else if (!isCheckingPermission && !hasPermission) {
-        setIsLoading(false);
+  // Effect for fetching and polling conversation
+  const fetchConversation = useCallback(async (phone: string) => {
+    console.log(`[WhatsAppChatPage DEBUG] fetchConversation called for phone: ${phone}`);
+    // setIsLoading(true); // No, setIsLoading should be for initial load or when explicitly refreshing
+    try {
+      const response = await fetch(`/api/whatsapp-bot/conversation/${phone}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch conversation. Status: ' + response.status);
+      }
+      const data: WhatsAppMessage[] = await response.json();
+      setMessages(data.sort((a, b) => a.timestamp - b.timestamp));
+      console.log(`[WhatsAppChatPage DEBUG] Conversation fetched. Messages count: ${data.length}`);
+    } catch (error: any) {
+      console.error("[WhatsAppChatPage DEBUG] Error fetching conversation:", error.message);
+      toast({
+        title: 'Error al Actualizar Chat',
+        description: 'No se pudo actualizar la conversación. Verifica tu conexión.',
+        variant: 'destructive',
+      });
+    } finally {
+      // Only set isLoading to false here if it was the *initial* load.
+      // For polling, we don't want to flash the loader.
+      // This is now handled by the initial permission check.
     }
-  }, [userPhoneNumber, hasPermission, isCheckingPermission, toast, isLoading]); // Added isLoading to dependencies
+  }, [toast]);
 
-  useEffect(() => { // Auto-scroll effect
+  useEffect(() => {
+    // This effect sets up the initial load and polling
+    if (!isCheckingPermission && hasPermission && userPhoneNumber) {
+      console.log(`[WhatsAppChatPage DEBUG] Permissions checked, hasPermission and userPhoneNumber are TRUE. Initial fetchConversation for ${userPhoneNumber}.`);
+      setIsLoading(true); // Set loading true for the very first fetch
+      fetchConversation(userPhoneNumber).finally(() => setIsLoading(false)); // Unset after first fetch
+
+      console.log(`[WhatsAppChatPage DEBUG] Setting up interval for ${userPhoneNumber}.`);
+      const intervalId = setInterval(() => {
+        console.log(`[WhatsAppChatPage DEBUG] Interval: Calling fetchConversation for ${userPhoneNumber}.`);
+        fetchConversation(userPhoneNumber);
+      }, 7000);
+      return () => {
+        console.log(`[WhatsAppChatPage DEBUG] Clearing interval for ${userPhoneNumber}.`);
+        clearInterval(intervalId);
+      };
+    } else {
+      console.log(`[WhatsAppChatPage DEBUG] Not setting up interval. isCheckingPermission: ${isCheckingPermission}, hasPermission: ${hasPermission}, userPhoneNumber: ${userPhoneNumber}`);
+      if (!isCheckingPermission) { // If checks are done but conditions not met
+        setIsLoading(false); // Ensure loader stops if conditions are not met after checks
+      }
+    }
+  }, [isCheckingPermission, hasPermission, userPhoneNumber, fetchConversation]);
+
+  useEffect(() => { 
     scrollToBottom();
   }, [messages]);
 
@@ -160,15 +193,15 @@ export default function WhatsAppChatPage() {
       setNewMessage(messageToSend);
     } finally {
       setIsSending(false);
-      // scrollToBottom(); // Already handled by useEffect on messages change
     }
   };
 
-  if (isCheckingPermission || (isLoading && (!userPhoneNumber || !hasPermission))) {
+  // UI Rendering Logic
+  if (isCheckingPermission) {
     return (
       <div className="flex flex-col h-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="mt-3 text-muted-foreground">Verificando acceso y cargando chat...</p>
+        <p className="mt-3 text-muted-foreground">Verificando permisos...</p>
       </div>
     );
   }
@@ -183,7 +216,7 @@ export default function WhatsAppChatPage() {
         <CardContent className="text-center">
           <p className="mb-4">Debes iniciar sesión para usar el chat con nuestro asistente.</p>
           <Button asChild>
-            <Link href="/auth/signin?redirect=/dashboard/whatsapp-chat">Iniciar Sesión</Link>
+            <Link href={`/auth/signin?redirect=${encodeURIComponent('/dashboard/whatsapp-chat')}`}>Iniciar Sesión</Link>
           </Button>
         </CardContent>
       </Card>
@@ -238,17 +271,18 @@ export default function WhatsAppChatPage() {
           </div>
           <div>
             <CardTitle className="text-base sm:text-lg">{botName}</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Conectado vía WhatsApp</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Conectado vía WhatsApp a {userPhoneNumber}</CardDescription>
           </div>
         </div>
       </CardHeader>
       <ScrollArea className="flex-1 p-3 sm:p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
-          {isLoading && messages.length === 0 ? (
+          {isLoading ? ( // Show loader only during initial data load
              <div className="flex justify-center items-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-2 text-muted-foreground">Cargando historial...</p>
              </div>
-          ) : messages.length === 0 && !isLoading ? (
+          ) : messages.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground">
                 <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-400"/>
                 <p>No hay mensajes aún. ¡Envía el primero!</p>
@@ -305,3 +339,4 @@ export default function WhatsAppChatPage() {
     </Card>
   );
 }
+
