@@ -1,3 +1,4 @@
+
 // src/components/admin/plans/EditPlanDialog.tsx
 'use client';
 
@@ -39,7 +40,7 @@ interface EditPlanDialogProps {
 type PlanFormValues = {
   name: string;
   description: string | null;
-  price_monthly: string; // Stored as string for input, converted to number on submit
+  price_monthly: string;
   price_currency: string;
   max_properties_allowed: string | null;
   max_requests_allowed: string | null;
@@ -47,6 +48,7 @@ type PlanFormValues = {
   can_feature_properties: boolean;
   property_listing_duration_days: string | null;
   is_active: boolean;
+  is_publicly_visible: boolean; // Nuevo campo
 };
 
 export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated }: EditPlanDialogProps) {
@@ -65,6 +67,7 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
       can_feature_properties: false,
       property_listing_duration_days: '',
       is_active: true,
+      is_publicly_visible: true, // Por defecto
     },
   });
 
@@ -81,9 +84,10 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
         can_feature_properties: plan.can_feature_properties,
         property_listing_duration_days: plan.property_listing_duration_days?.toString() || '',
         is_active: plan.is_active,
+        is_publicly_visible: plan.is_publicly_visible === undefined ? true : plan.is_publicly_visible, // Manejar undefined
       });
     } else if (!open) {
-      form.reset(); // Reset form when dialog is closed
+      form.reset(); 
     }
   }, [plan, open, form]);
 
@@ -104,6 +108,7 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
     if (values.can_feature_properties) formData.append('can_feature_properties', 'on');
     if (values.property_listing_duration_days) formData.append('property_listing_duration_days', values.property_listing_duration_days);
     if (values.is_active) formData.append('is_active', 'on');
+    if (values.is_publicly_visible) formData.append('is_publicly_visible', 'on'); // Añadir nuevo campo
     
     startTransition(async () => {
       const result = await updatePlanAction(plan.id, formData);
@@ -207,7 +212,7 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
                 )}
                 />
             </div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
+            <div className="flex flex-col space-y-3 pt-2">
                 <FormField
                     control={form.control}
                     name="can_feature_properties"
@@ -224,7 +229,17 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
                     render={({ field }) => (
                         <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                             <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                            <Label htmlFor={field.name} className="font-normal">Plan Activo</Label>
+                            <Label htmlFor={field.name} className="font-normal">Plan Activo (puede ser asignado)</Label>
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="is_publicly_visible"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                            <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            <Label htmlFor={field.name} className="font-normal">Visible Públicamente (en página de planes)</Label>
                         </FormItem>
                     )}
                 />

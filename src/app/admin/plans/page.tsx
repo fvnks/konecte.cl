@@ -11,8 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import type { Plan } from '@/lib/types';
-import { addPlanAction, deletePlanAction, getPlansAction, togglePlanStatusAction, getPlanByIdAction } from '@/actions/planActions';
-import { Loader2, PlusCircle, CreditCard, Trash2, ToggleLeft, ToggleRight, Edit, Brain } from 'lucide-react';
+import { addPlanAction, deletePlanAction, getPlansAction, togglePlanStatusAction, getPlanByIdAction, togglePlanVisibilityAction } from '@/actions/planActions';
+import { Loader2, PlusCircle, CreditCard, Trash2, ToggleLeft, ToggleRight, Edit, Brain, Eye, EyeOff } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,7 +44,8 @@ export default function AdminPlansPage() {
   const fetchPlans = async () => {
     setIsLoading(true);
     try {
-      const fetchedPlans = await getPlansAction();
+      // showAllAdmin: true para ver todos los planes, activos, inactivos, visibles y ocultos
+      const fetchedPlans = await getPlansAction({ showAllAdmin: true }); 
       setPlans(fetchedPlans);
     } catch (error) {
       toast({ title: "Error", description: "No se pudieron cargar los planes.", variant: "destructive" });
@@ -104,6 +105,20 @@ export default function AdminPlansPage() {
     });
   };
 
+  const handleToggleVisibility = async (planId: string, currentVisibility: boolean) => {
+    startTransition(async () => {
+      const result = await togglePlanVisibilityAction(planId, !currentVisibility);
+      if (result.success) {
+        toast({ title: "Visibilidad Actualizada", description: result.message });
+        setPlans(prevPlans =>
+          prevPlans.map(p => p.id === planId ? { ...p, is_publicly_visible: !currentVisibility } : p)
+        );
+      } else {
+        toast({ title: "Error al Actualizar Visibilidad", description: result.message, variant: "destructive" });
+      }
+    });
+  };
+
   const handleEditPlanRequest = async (planId: string) => {
     startTransition(async () => {
       const planToEdit = await getPlanByIdAction(planId);
@@ -119,7 +134,7 @@ export default function AdminPlansPage() {
   const handlePlanUpdated = async () => {
     setIsEditModalOpen(false);
     setEditingPlan(null);
-    await fetchPlans(); // Recargar la lista de planes
+    await fetchPlans(); 
   };
   
   if (isLoading && plans.length === 0) { 
@@ -188,6 +203,10 @@ export default function AdminPlansPage() {
                     <Checkbox id="is_active" name="is_active" defaultChecked={true} />
                     <Label htmlFor="is_active">Plan Activo al crear</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="is_publicly_visible" name="is_publicly_visible" defaultChecked={true} />
+                    <Label htmlFor="is_publicly_visible">Visible Públicamente</Label>
+                </div>
             </div>
             <Input type="hidden" name="price_currency" value="CLP" />
 
@@ -206,13 +225,10 @@ export default function AdminPlansPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nombre</TableHead>
-                    <TableHead className="min-w-[100px]">Precio</TableHead>
-                    <TableHead title="Propiedades">Prop.</TableHead>
-                    <TableHead title="Solicitudes">Sol.</TableHead>
+                    <TableHead>Precio</TableHead>
                     <TableHead title="Búsquedas IA">B.IA</TableHead>
-                    <TableHead title="Destacar">Dest.</TableHead>
-                    <TableHead className="min-w-[100px]" title="Duración Publicación">Durac.</TableHead>
                     <TableHead>Estado</TableHead>
+                    <TableHead>Visibilidad</TableHead>
                     <TableHead className="text-right min-w-[200px]">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -221,11 +237,7 @@ export default function AdminPlansPage() {
                     <TableRow key={plan.id}>
                       <TableCell className="font-medium">{plan.name}</TableCell>
                       <TableCell>${plan.price_monthly.toLocaleString('es-CL')} {plan.price_currency}</TableCell>
-                      <TableCell className="text-center">{plan.max_properties_allowed ?? '∞'}</TableCell>
-                      <TableCell className="text-center">{plan.max_requests_allowed ?? '∞'}</TableCell>
                       <TableCell className="text-center">{plan.max_ai_searches_monthly ?? '∞'}</TableCell>
-                      <TableCell className="text-center">{plan.can_feature_properties ? 'Sí' : 'No'}</TableCell>
-                      <TableCell className="text-center">{plan.property_listing_duration_days ?? 'Indef.'} {plan.property_listing_duration_days ? 'días' : ''}</TableCell>
                       <TableCell>
                         <Button 
                           variant="ghost" 
@@ -234,8 +246,20 @@ export default function AdminPlansPage() {
                           disabled={isPending}
                           className={`h-auto px-2 py-1 text-xs ${plan.is_active ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}`}
                         >
-                          {isPending && editingPlan?.id === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (plan.is_active ? <ToggleRight className="mr-1 h-4 w-4" /> : <ToggleLeft className="mr-1 h-4 w-4" />)}
+                          {isPending && editingPlan?.id === plan.id && !editingPlan?.is_publicly_visible ? <Loader2 className="h-4 w-4 animate-spin" /> : (plan.is_active ? <ToggleRight className="mr-1 h-4 w-4" /> : <ToggleLeft className="mr-1 h-4 w-4" />)}
                           {plan.is_active ? 'Activo' : 'Inactivo'}
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleVisibility(plan.id, plan.is_publicly_visible)}
+                            disabled={isPending}
+                            className={`h-auto px-2 py-1 text-xs ${plan.is_publicly_visible ? 'text-green-600 hover:text-green-700' : 'text-slate-500 hover:text-slate-600'}`}
+                        >
+                            {isPending && editingPlan?.id === plan.id && editingPlan?.is_publicly_visible ? <Loader2 className="h-4 w-4 animate-spin" /> : (plan.is_publicly_visible ? <Eye className="mr-1 h-4 w-4" /> : <EyeOff className="mr-1 h-4 w-4" />)}
+                            {plan.is_publicly_visible ? 'Visible' : 'Oculto'}
                         </Button>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
@@ -284,6 +308,7 @@ export default function AdminPlansPage() {
         <CardContent className="text-sm text-muted-foreground space-y-2">
             <p><strong>Campos con asterisco (*) son requeridos.</strong></p>
             <p>Los límites (Propiedades, Solicitudes, Búsquedas IA) y la duración de publicación pueden ser dejados en blanco para indicar "ilimitado" o "indefinido".</p>
+            <p>Un plan "Activo" puede ser asignado a usuarios. Un plan "Visible Públicamente" aparecerá en la página de `/plans` para los visitantes.</p>
             <p>Si un plan se elimina, los usuarios asignados perderán esa asignación.</p>
         </CardContent>
       </Card>

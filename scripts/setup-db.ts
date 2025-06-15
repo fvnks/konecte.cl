@@ -46,15 +46,16 @@ const SQL_STATEMENTS: string[] = [
     price_currency VARCHAR(3) DEFAULT 'CLP',
     max_properties_allowed INT DEFAULT NULL,
     max_requests_allowed INT DEFAULT NULL,
-    max_ai_searches_monthly INT DEFAULT NULL, -- Nueva columna
+    max_ai_searches_monthly INT DEFAULT NULL,
     can_feature_properties BOOLEAN DEFAULT FALSE,
     property_listing_duration_days INT DEFAULT NULL,
     is_active BOOLEAN DEFAULT TRUE,
+    is_publicly_visible BOOLEAN DEFAULT TRUE, -- Nueva columna
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   );`,
-  `INSERT IGNORE INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly) VALUES
-    ('${randomUUID()}', 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30, 5);`,
+  `INSERT IGNORE INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly, is_publicly_visible) VALUES
+    ('${randomUUID()}', 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30, 5, TRUE);`, // Añadido is_publicly_visible
 
   // users
   `CREATE TABLE IF NOT EXISTS users (
@@ -488,16 +489,16 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_user_listing_interactions_user_listing ON user_listing_interactions(user_id, listing_type, listing_id);`,
   `CREATE INDEX IF NOT EXISTS idx_user_listing_interactions_listing ON user_listing_interactions(listing_type, listing_id, interaction_type);`,
 
-  // --- User AI Search Usage Table (NUEVA TABLA) ---
+  // --- User AI Search Usage Table ---
   `CREATE TABLE IF NOT EXISTS user_ai_search_usage (
     id VARCHAR(36) PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,
-    plan_id_at_search VARCHAR(36) DEFAULT NULL, -- El plan que tenía el usuario al momento de la búsqueda
-    flow_name VARCHAR(255) NOT NULL,            -- Nombre del flujo Genkit invocado (ej: 'findListingsForFreeTextSearchFlow')
+    plan_id_at_search VARCHAR(36) DEFAULT NULL,
+    flow_name VARCHAR(255) NOT NULL,
     search_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (plan_id_at_search) REFERENCES plans(id) ON DELETE SET NULL, -- Si se elimina el plan, el registro de uso permanece
-    INDEX idx_user_ai_usage_user_month (user_id, search_timestamp) -- Para contar búsquedas por mes fácilmente
+    FOREIGN KEY (plan_id_at_search) REFERENCES plans(id) ON DELETE SET NULL,
+    INDEX idx_user_ai_usage_user_month (user_id, search_timestamp)
   );`
 ];
 

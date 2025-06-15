@@ -16,9 +16,11 @@ export interface Plan {
   price_currency: string;
   max_properties_allowed: number | null; // null para ilimitado
   max_requests_allowed: number | null;   // null para ilimitado
+  max_ai_searches_monthly: number | null; // Nueva propiedad
   can_feature_properties: boolean;
   property_listing_duration_days: number | null; // null para indefinido
   is_active: boolean;
+  is_publicly_visible: boolean; // Nueva propiedad
   created_at?: string;
   updated_at?: string;
 }

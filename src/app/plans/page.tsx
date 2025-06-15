@@ -1,7 +1,7 @@
 
 // src/app/plans/page.tsx
 import { getPlansAction } from '@/actions/planActions';
-import { getEditableTextAction } from '@/actions/editableTextActions'; // Importar la acción
+import { getEditableTextAction } from '@/actions/editableTextActions'; 
 import type { Plan } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ const whyKonecteBenefits = [
 ];
 
 const withEveryPlanBenefits = [
-  "Publicación en konecte", // Cambiado aquí
+  "Publicación en konecte", 
   "Estadísticas de rendimiento",
   "Soporte técnico especializado",
   "Acceso a base de datos de clientes",
@@ -29,8 +29,8 @@ const withEveryPlanBenefits = [
 const DEFAULT_PLANS_TITLE = "¡Contratación 100% online!";
 
 export default async function PlansPage() {
-  const allPlans = await getPlansAction();
-  const activePlans = allPlans.filter(plan => plan.is_active);
+  // getPlansAction ahora devuelve solo planes activos Y públicamente visibles por defecto.
+  const publiclyVisibleActivePlans = await getPlansAction(); 
   const pageTitle = await getEditableTextAction('plans_page_main_title') || DEFAULT_PLANS_TITLE;
 
   return (
@@ -46,7 +46,7 @@ export default async function PlansPage() {
         <div className="md:col-span-3">
           <Card className="shadow-xl rounded-xl border bg-card">
             <CardHeader className="p-6">
-              <CardTitle className="text-xl sm:text-2xl font-semibold text-foreground">¿Por qué contratar en konecte?</CardTitle> {/* Cambiado aquí */}
+              <CardTitle className="text-xl sm:text-2xl font-semibold text-foreground">¿Por qué contratar en konecte?</CardTitle> 
             </CardHeader>
             <CardContent className="p-6 pt-0">
               <ul className="space-y-3 text-muted-foreground">
@@ -99,8 +99,8 @@ export default async function PlansPage() {
 
         {/* Columna Derecha - Planes */}
         <div className="md:col-span-2 space-y-6">
-          {activePlans.length > 0 ? (
-            activePlans.map((plan) => (
+          {publiclyVisibleActivePlans.length > 0 ? (
+            publiclyVisibleActivePlans.map((plan) => (
               <PlanDisplayCard key={plan.id} plan={plan} />
             ))
           ) : (

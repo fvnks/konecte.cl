@@ -52,13 +52,14 @@ CREATE TABLE plans (
     can_feature_properties BOOLEAN DEFAULT FALSE,
     property_listing_duration_days INT DEFAULT NULL, -- NULL para indefinido
     is_active BOOLEAN DEFAULT TRUE,
+    is_publicly_visible BOOLEAN DEFAULT TRUE,        -- NUEVO: Controla si el plan aparece en la página pública de planes
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Insertar plan gratuito por defecto (opcional, puede ser gestionado desde la app)
-INSERT INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly) VALUES
-(UUID(), 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30, 5); -- Ejemplo: 5 búsquedas IA para el plan gratuito
+INSERT INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly, is_publicly_visible) VALUES
+(UUID(), 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30, 5, TRUE); -- Ejemplo: 5 búsquedas IA para el plan gratuito, visible públicamente
 ```
 
 ---
