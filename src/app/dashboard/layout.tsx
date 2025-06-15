@@ -56,7 +56,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     setIsLoadingSession(true);
     const userJson = localStorage.getItem('loggedInUser');
-    let tempNavItems = [...baseNavItems]; 
+    let newNavItemsList = [...baseNavItems]; // Siempre empezamos con la base
 
     if (userJson) {
       try {
@@ -64,9 +64,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         setCurrentUser(parsedUser);
 
         if (parsedUser.role_id === 'broker') {
-          // Add broker-specific link if not already present
-          if (!tempNavItems.find(item => item.href === '/dashboard/broker/open-requests')) {
-            tempNavItems.push({ href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> });
+          if (!newNavItemsList.find(item => item.href === '/dashboard/broker/open-requests')) {
+            newNavItemsList.push({ href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> });
           }
         }
 
@@ -74,13 +73,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           try {
             const planDetails = await getPlanByIdAction(parsedUser.plan_id);
             if (planDetails?.whatsapp_bot_enabled) {
-              // Add WhatsApp chat link if not already present
-              if (!tempNavItems.find(item => item.href === '/dashboard/whatsapp-chat')) {
-                tempNavItems.push({ href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> });
+              if (!newNavItemsList.find(item => item.href === '/dashboard/whatsapp-chat')) {
+                newNavItemsList.push({ href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> });
               }
             }
           } catch (planError) {
-            console.error("Error fetching plan details for WhatsApp Bot link:", planError);
+            console.error("[DashboardLayout] Error fetching plan details for WhatsApp Bot link:", planError);
           }
         }
 
@@ -95,43 +93,47 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         localStorage.removeItem('loggedInUser');
         setCurrentUser(null);
         setTotalUnreadCount(0);
-        tempNavItems = [...baseNavItems]; 
+        newNavItemsList = [...baseNavItems]; // Revertir a la base en caso de error
         if (!pathname.startsWith('/auth')) router.push('/auth/signin');
       }
     } else {
       setCurrentUser(null);
       setTotalUnreadCount(0);
-      tempNavItems = [...baseNavItems]; 
+      newNavItemsList = [...baseNavItems]; // Revertir a la base si no hay usuario
       if (!pathname.startsWith('/auth')) router.push('/auth/signin');
     }
-    setNavItems(tempNavItems); 
+
+    setNavItems(newNavItemsList);
     setIsLoadingSession(false);
   }, [isClient, pathname, router]);
 
 
   useEffect(() => {
-    updateSessionAndNav();
-
-    const handleSessionOrMessagesUpdate = () => {
+    // Asegurar que la primera llamada a updateSessionAndNav solo ocurra cuando isClient es true
+    if (isClient) {
       updateSessionAndNav();
-    };
 
-    window.addEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
-    window.addEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
-    
-    const handleNativeStorageEvent = (event: StorageEvent) => {
-        if (event.key === 'loggedInUser') {
-            updateSessionAndNav();
-        }
-    };
-    window.addEventListener('storage', handleNativeStorageEvent);
+      const handleSessionOrMessagesUpdate = () => {
+        updateSessionAndNav();
+      };
 
-    return () => {
-      window.removeEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
-      window.removeEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
-      window.removeEventListener('storage', handleNativeStorageEvent);
-    };
-  }, [updateSessionAndNav]);
+      window.addEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
+      window.addEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
+      
+      const handleNativeStorageEvent = (event: StorageEvent) => {
+          if (event.key === 'loggedInUser') {
+              updateSessionAndNav();
+          }
+      };
+      window.addEventListener('storage', handleNativeStorageEvent);
+
+      return () => {
+        window.removeEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
+        window.removeEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
+        window.removeEventListener('storage', handleNativeStorageEvent);
+      };
+    }
+  }, [isClient, updateSessionAndNav]); // Depender de isClient aquí
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
@@ -160,7 +162,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
                 <Separator/>
                 <div className="flex-grow space-y-1.5">
-                    {[...Array(navItems.length || 5)].map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-md"/>)}
+                    {[...Array(baseNavItems.length + 2)].map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-md"/>)}
                 </div>
                 <Separator/>
                 <div className="mt-auto space-y-3">
@@ -278,3 +280,4 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </div>
   );
 }
+
