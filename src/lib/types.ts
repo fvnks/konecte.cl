@@ -334,12 +334,16 @@ export type RequestFormValues = z.infer<typeof requestFormSchema>;
 export interface ChatMessage {
   id: string;
   conversation_id: string;
-  sender_id: string;
+  sender_id: string; // Puede ser el ID del usuario o una constante para el bot
   receiver_id: string;
   content: string;
-  created_at: string;
+  created_at: string; // ISO String date
   read_at?: string | null;
-  sender?: Pick<User, 'id' | 'name' | 'avatarUrl'>;
+  sender?: {
+    id: string;
+    name: string;
+    avatarUrl?: string | null;
+  };
 }
 
 export interface ChatConversation {
@@ -568,27 +572,30 @@ export type WhatsAppMessageSender = 'user' | 'bot';
 
 export interface WhatsAppMessage {
   id: string;
-  telefono: string; // User's phone number, serves as conversation ID
+  telefono: string; 
   text: string;
-  sender: WhatsAppMessageSender;
+  sender: WhatsAppMessageSender; 
   timestamp: number; // Unix timestamp
-  status?: 'pending_to_whatsapp' | 'sent_to_whatsapp' | 'delivered_to_user' | 'failed'; // Optional status for messages sent by user
+  status?: 'pending_to_whatsapp' | 'sent_to_whatsapp' | 'delivered_to_user' | 'failed'; 
+  sender_id_override?: string; // ID real del usuario o ID constante del bot
 }
 
 export interface SendMessagePayload {
-  telefono: string;
+  telefono: string; // El número de teléfono del usuario web, para identificar la conversación
   text: string;
+  userId: string; // El ID del usuario web que envía el mensaje
 }
 
 export interface ReceiveReplyPayload {
-  telefono: string;
-  text: string; // Message from bot (received from WhatsApp)
+  telefono: string; // El número de teléfono del usuario web al que el bot está respondiendo
+  text: string; // Mensaje del bot externo (recibido de WhatsApp y enviado aquí)
 }
 
 export interface PendingMessageForBot {
   id: string;
-  telefono: string;
+  telefono: string; // El número del usuario web (para que el bot sepa a quién responder si es necesario)
   text: string;
+  // userId?: string; // Opcional: el ID del usuario web que originó el mensaje
 }
 // End of WhatsApp Bot Integration Types
 
