@@ -12,24 +12,42 @@ import type { WhatsAppMessage, User as StoredUser, Plan } from '@/lib/types';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getPlanByIdAction } from '@/actions/planActions';
+import ChatMessageItem from '@/components/chat/ChatMessageItem';
+import ChatHeader from '@/components/chat/ChatHeader'; // Assuming ChatHeader is used
+import { getConversationMessagesAction, sendMessageAction } from '@/actions/chatActions';
+
 
 export default function WhatsAppChatPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isLoadingInitial, setIsLoadingInitial] = useState(true); // For initial page load and permission check
-  const [isLoadingConversation, setIsLoadingConversation] = useState(false); // For fetching conversation specifically
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [userPhoneNumber, setUserPhoneNumber] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState(false);
   const [isCheckingPermission, setIsCheckingPermission] = useState(true);
   const { toast } = useToast();
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    } else if (scrollAreaRef.current) {
+      // Fallback for initial load if messagesEndRef isn't ready
+      const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+      if (scrollViewport) {
+        scrollViewport.scrollTop = scrollViewport.scrollHeight;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
 
   useEffect(() => {
     console.log('[WhatsAppChatPage DEBUG] Permission check useEffect triggered.');
@@ -99,7 +117,9 @@ export default function WhatsAppChatPage() {
     try {
       const response = await fetch(`/api/whatsapp-bot/conversation/${phone}`);
       if (!response.ok) {
-        throw new Error(`Failed to fetch conversation. Status: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`[WhatsAppChatPage DEBUG] API conversation fetch failed. Status: ${response.status}, Response: ${errorText}`);
+        throw new Error(`Error del servidor: ${response.status}`);
       }
       const data: WhatsAppMessage[] = await response.json();
       setMessages(data.sort((a, b) => a.timestamp - b.timestamp));
@@ -116,25 +136,22 @@ export default function WhatsAppChatPage() {
     console.log(`[WhatsAppChatPage DEBUG] Conversation Polling useEffect. isCheckingPermission: ${isCheckingPermission}, hasPermission: ${hasPermission}, userPhoneNumber: ${userPhoneNumber}`);
     if (!isCheckingPermission && hasPermission && userPhoneNumber) {
       console.log(`[WhatsAppChatPage DEBUG] Conditions met. Initial fetchConversation for ${userPhoneNumber}.`);
-      fetchConversation(userPhoneNumber); // Initial fetch
+      fetchConversation(userPhoneNumber);
 
       const intervalId = setInterval(() => {
         console.log(`[WhatsAppChatPage DEBUG] Interval: Calling fetchConversation for ${userPhoneNumber}.`);
         fetchConversation(userPhoneNumber);
-      }, 7000); // Poll every 7 seconds
+      }, 7000);
 
       return () => {
         console.log(`[WhatsAppChatPage DEBUG] Clearing interval for ${userPhoneNumber}.`);
         clearInterval(intervalId);
       };
     } else {
-      console.log(`[WhatsAppChatPage DEBUG] Not setting up interval or initial fetch due to conditions not met.`);
+      console.log(`[WhatsAppChatPage DEBUG] Not setting up interval or initial fetch. isCheckingPermission: ${isCheckingPermission}, hasPermission: ${hasPermission}, userPhoneNumber: ${userPhoneNumber}`);
     }
   }, [isCheckingPermission, hasPermission, userPhoneNumber, fetchConversation]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
@@ -278,31 +295,7 @@ export default function WhatsAppChatPage() {
               </div>
           ) : (
             messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex items-end gap-2 max-w-[85%] sm:max-w-[75%] ${
-                  msg.sender === 'user' ? "self-end flex-row-reverse ml-auto" : "self-start mr-auto"
-                }`}
-              >
-                <div
-                  className={`p-2.5 sm:p-3 rounded-xl shadow-md text-sm ${
-                    msg.sender === 'user'
-                      ? "bg-primary text-primary-foreground rounded-br-none"
-                      : "bg-secondary text-secondary-foreground rounded-bl-none"
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                  <p
-                    className={`text-xs mt-1 ${
-                      msg.sender === 'user' ? "text-primary-foreground/70 text-right" : "text-muted-foreground text-left"
-                    }`}
-                    title={new Date(msg.timestamp).toLocaleString()}
-                  >
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    {msg.sender === 'user' && msg.status === 'pending_to_whatsapp' && <Loader2 className="inline-block ml-1 h-3 w-3 animate-spin" />}
-                  </p>
-                </div>
-              </div>
+              <ChatMessageItem key={msg.id} message={msg} currentUserId={loggedInUser!.id} />
             ))
           )}
           <div ref={messagesEndRef} />
@@ -328,4 +321,3 @@ export default function WhatsAppChatPage() {
     </Card>
   );
 }
-    
