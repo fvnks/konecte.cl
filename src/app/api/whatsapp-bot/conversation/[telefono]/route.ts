@@ -8,21 +8,19 @@ interface Params {
 }
 
 export async function GET(request: Request, context: { params: Params }) {
-  // TODO: Considerar autenticación para este endpoint si no es público.
-  // Actualmente, se asume que el usuario logueado solo puede pedir su propia conversación.
-  // Si es llamado por el frontend, el frontend debe asegurar que el usuario
-  // solo pide su propio número de teléfono.
+  const telefono = context.params.telefono;
+  console.log(`[API GetConversation] Recibida solicitud GET para telefono: ${telefono}`);
   try {
-    const telefono = context.params.telefono;
-
     if (!telefono) {
+      console.error('[API GetConversation] Error: Número de teléfono no proporcionado en la ruta.');
       return NextResponse.json({ success: false, message: 'Número de teléfono no proporcionado.' }, { status: 400 });
     }
 
     const conversationMessages = getConversation(telefono);
-    return NextResponse.json(conversationMessages); // Devuelve directamente el array de mensajes
+    console.log(`[API GetConversation] Devolviendo ${conversationMessages.length} mensajes para ${telefono}.`);
+    return NextResponse.json(conversationMessages);
   } catch (error: any) {
-    console.error('[API GetConversation] Error:', error);
+    console.error(`[API GetConversation] Error procesando la solicitud para ${telefono}:`, error.message);
     return NextResponse.json({ success: false, message: error.message || 'Error interno del servidor al obtener conversación.' }, { status: 500 });
   }
 }
