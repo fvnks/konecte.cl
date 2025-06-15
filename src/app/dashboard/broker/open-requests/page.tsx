@@ -11,8 +11,8 @@ import type { SearchRequest, User as StoredUserType, PropertyListing } from '@/l
 import { getRequestsAction } from '@/actions/requestActions';
 import { getUserPropertiesAction } from '@/actions/propertyActions'; // To fetch broker's own properties
 import { useToast } from '@/hooks/use-toast';
-import RequestListItem from '@/components/request/RequestListItem';
-import ProposePropertyDialog from '@/components/broker/ProposePropertyDialog'; // New Dialog
+// RequestListItem no longer used here, directly rendering card details for open requests
+import ProposePropertyDialog from '@/components/broker/ProposePropertyDialog';
 
 export default function OpenCollaborationRequestsPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUserType | null>(null);
@@ -24,7 +24,7 @@ export default function OpenCollaborationRequestsPage() {
   const router = useRouter();
 
   const [selectedRequestForProposal, setSelectedRequestForProposal] = useState<SearchRequest | null>(null);
-  const [isProposeDialogOpen, setIsProposeDialogOpen] = useState(false); // Línea corregida
+  const [isProposeDialogOpen, setIsProposeDialogOpen] = useState(false);
 
   const fetchBrokerData = useCallback(async (userId: string) => {
     setIsLoading(true);
@@ -104,12 +104,10 @@ export default function OpenCollaborationRequestsPage() {
   };
 
   const handleProposalSubmitted = () => {
-    // Optionally refresh the list of open requests or show a success message
-    // For now, just close the dialog
     setIsProposeDialogOpen(false);
     setSelectedRequestForProposal(null);
     if (loggedInUser?.id) {
-      fetchBrokerData(loggedInUser.id); // Re-fetch to update any UI elements if necessary
+      fetchBrokerData(loggedInUser.id); 
     }
   };
 
@@ -123,7 +121,6 @@ export default function OpenCollaborationRequestsPage() {
   }
 
   if (!loggedInUser || loggedInUser.role_id !== 'broker') {
-    // This case should be handled by the useEffect redirect, but as a fallback
     return (
         <Card className="shadow-lg">
             <CardHeader className="text-center">
@@ -171,7 +168,7 @@ export default function OpenCollaborationRequestsPage() {
                             size="sm" 
                             variant="outline" 
                             onClick={() => handleProposeProperty(request)} 
-                            disabled={isLoadingUserProperties || (loggedInUser?.id === request.user_id)} // Disable if it's user's own request
+                            disabled={isLoadingUserProperties || (loggedInUser?.id === request.user_id)}
                             className="whitespace-nowrap"
                         >
                             {isLoadingUserProperties && selectedRequestForProposal?.id === request.id ? <Loader2 className="h-4 w-4 animate-spin mr-1.5"/> : <Building className="h-4 w-4 mr-1.5"/>}
