@@ -5,12 +5,13 @@
 import React, { useEffect, useState, useRef, FormEvent } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, MessageCircle, UserCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, Send, MessageCircle, UserCircle, AlertTriangle, Bot } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import type { WhatsAppMessage, User as StoredUser } from '@/lib/types';
+import type { WhatsAppMessage, User as StoredUser, Plan } from '@/lib/types';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { getPlanByIdAction } from '@/actions/planActions'; // Para verificar permiso del plan
 
 export default function WhatsAppChatPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
@@ -19,8 +20,9 @@ export default function WhatsAppChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [userPhoneNumber, setUserPhoneNumber] = useState<string | null>(null);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [isCheckingPermission, setIsCheckingPermission] = useState(true);
   const { toast } = useToast();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -38,26 +40,49 @@ export default function WhatsAppChatPage() {
       try {
         const user: StoredUser = JSON.parse(userJson);
         setLoggedInUser(user);
-        if (user.phone_number) {
-          setUserPhoneNumber(user.phone_number);
-        } else {
+        if (!user.phone_number) {
+          toast({ title: "Número Requerido", description: "Debes añadir un número de teléfono a tu perfil para usar el chat de WhatsApp.", variant: "warning", duration: 7000 });
+          setIsCheckingPermission(false);
           setIsLoading(false);
-          // El usuario no tiene número de teléfono, se manejará en el render.
+          return;
         }
+        setUserPhoneNumber(user.phone_number);
+
+        // Verificar permiso del plan
+        if (user.plan_id) {
+          getPlanByIdAction(user.plan_id).then(plan => {
+            if (plan?.whatsapp_bot_enabled) {
+              setHasPermission(true);
+            } else {
+              toast({ title: "Función no Habilitada", description: "El chat con el bot de WhatsApp no está incluido en tu plan actual.", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
+            }
+            setIsCheckingPermission(false);
+          }).catch(err => {
+            console.error("Error checking plan permission:", err);
+            toast({ title: "Error", description: "No se pudo verificar el permiso de tu plan.", variant: "destructive" });
+            setIsCheckingPermission(false);
+          });
+        } else { // No plan_id means default (likely free) plan, assume no permission
+          toast({ title: "Función no Habilitada", description: "El chat con el bot de WhatsApp no está incluido en tu plan actual.", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
+          setIsCheckingPermission(false);
+        }
+
       } catch (error) {
         console.error("Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
+        setIsCheckingPermission(false);
         setIsLoading(false);
       }
     } else {
+      setIsCheckingPermission(false);
       setIsLoading(false); // No user logged in
     }
-  }, []);
+  }, [toast]);
   
-  // Fetch initial conversation and set up polling
   useEffect(() => {
-    if (userPhoneNumber) {
+    if (userPhoneNumber && hasPermission && !isCheckingPermission) {
       const fetchConversation = async () => {
+        if (!isLoading) setIsLoading(true); // Solo activar loader si no está ya cargando por otra razón
         try {
           const response = await fetch(`/api/whatsapp-bot/conversation/${userPhoneNumber}`);
           if (!response.ok) {
@@ -78,10 +103,12 @@ export default function WhatsAppChatPage() {
       };
       fetchConversation();
 
-      const intervalId = setInterval(fetchConversation, 5000); // Poll every 5 seconds
+      const intervalId = setInterval(fetchConversation, 7000); // Poll every 7 seconds
       return () => clearInterval(intervalId);
+    } else if (!isCheckingPermission && !hasPermission) {
+        setIsLoading(false); // Si no hay permiso, no hay nada que cargar
     }
-  }, [userPhoneNumber, toast]);
+  }, [userPhoneNumber, hasPermission, isCheckingPermission, toast, isLoading]);
 
   useEffect(() => {
     scrollToBottom();
@@ -89,7 +116,7 @@ export default function WhatsAppChatPage() {
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !userPhoneNumber) return;
+    if (!newMessage.trim() || !userPhoneNumber || !hasPermission) return;
 
     setIsSending(true);
     const tempMessageId = `temp-${Date.now()}`;
@@ -135,18 +162,18 @@ export default function WhatsAppChatPage() {
     }
   };
 
-  if (isLoading) {
+  if (isCheckingPermission || (isLoading && (!userPhoneNumber || !hasPermission))) {
     return (
       <div className="flex flex-col h-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="mt-3 text-muted-foreground">Cargando chat...</p>
+        <p className="mt-3 text-muted-foreground">Verificando acceso y cargando chat...</p>
       </div>
     );
   }
 
   if (!loggedInUser) {
     return (
-      <Card>
+      <Card className="shadow-lg">
         <CardHeader className="text-center">
           <UserCircle className="mx-auto h-12 w-12 text-muted-foreground" />
           <CardTitle>Acceso Requerido</CardTitle>
@@ -163,7 +190,7 @@ export default function WhatsAppChatPage() {
 
   if (!userPhoneNumber) {
     return (
-      <Card>
+      <Card className="shadow-lg">
         <CardHeader className="text-center">
           <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
           <CardTitle>Número de Teléfono Requerido</CardTitle>
@@ -181,16 +208,31 @@ export default function WhatsAppChatPage() {
     );
   }
   
-  // Placeholder for bot's avatar/name if needed
+  if (!hasPermission) {
+     return (
+      <Card className="shadow-lg">
+        <CardHeader className="text-center">
+          <AlertTriangle className="mx-auto h-12 w-12 text-amber-500" />
+          <CardTitle>Función No Habilitada</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center">
+          <p className="mb-4">El chat con el bot de WhatsApp no está incluido en tu plan actual.</p>
+          <Button asChild>
+            <Link href="/plans">Ver Planes</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   const botName = "Asistente Konecte";
-  const botAvatarFallback = "AK";
 
   return (
     <Card className="flex flex-col h-full max-h-[calc(100vh-var(--header-height,6rem)-var(--dashboard-padding-y,3rem)-2rem)] shadow-xl rounded-xl border overflow-hidden">
       <CardHeader className="p-3 sm:p-4 border-b bg-card sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="relative">
-             <UserCircle className="h-10 w-10 text-primary" /> {/* Icono simple para el bot */}
+             <Bot className="h-10 w-10 text-primary p-1.5 bg-primary/10 rounded-full border border-primary/20" />
           </div>
           <div>
             <CardTitle className="text-base sm:text-lg">{botName}</CardTitle>
@@ -200,33 +242,44 @@ export default function WhatsAppChatPage() {
       </CardHeader>
       <ScrollArea className="flex-1 p-3 sm:p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex items-end gap-2 max-w-[85%] sm:max-w-[75%] ${
-                msg.sender === 'user' ? "self-end flex-row-reverse ml-auto" : "self-start mr-auto"
-              }`}
-            >
+          {isLoading && messages.length === 0 ? (
+             <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             </div>
+          ) : messages.length === 0 && !isLoading ? (
+              <div className="text-center py-10 text-muted-foreground">
+                <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-400"/>
+                <p>No hay mensajes aún. ¡Envía el primero!</p>
+              </div>
+          ) : (
+            messages.map((msg) => (
               <div
-                className={`p-2.5 sm:p-3 rounded-xl shadow-md text-sm ${
-                  msg.sender === 'user'
-                    ? "bg-primary text-primary-foreground rounded-br-none"
-                    : "bg-secondary text-secondary-foreground rounded-bl-none"
+                key={msg.id}
+                className={`flex items-end gap-2 max-w-[85%] sm:max-w-[75%] ${
+                  msg.sender === 'user' ? "self-end flex-row-reverse ml-auto" : "self-start mr-auto"
                 }`}
               >
-                <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                <p
-                  className={`text-xs mt-1 ${
-                    msg.sender === 'user' ? "text-primary-foreground/70 text-right" : "text-muted-foreground text-left"
+                <div
+                  className={`p-2.5 sm:p-3 rounded-xl shadow-md text-sm ${
+                    msg.sender === 'user'
+                      ? "bg-primary text-primary-foreground rounded-br-none"
+                      : "bg-secondary text-secondary-foreground rounded-bl-none"
                   }`}
-                  title={new Date(msg.timestamp).toLocaleString()}
                 >
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  {msg.sender === 'user' && msg.status === 'pending_to_whatsapp' && <Loader2 className="inline-block ml-1 h-3 w-3 animate-spin" />}
-                </p>
+                  <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                  <p
+                    className={`text-xs mt-1 ${
+                      msg.sender === 'user' ? "text-primary-foreground/70 text-right" : "text-muted-foreground text-left"
+                    }`}
+                    title={new Date(msg.timestamp).toLocaleString()}
+                  >
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {msg.sender === 'user' && msg.status === 'pending_to_whatsapp' && <Loader2 className="inline-block ml-1 h-3 w-3 animate-spin" />}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
@@ -237,11 +290,11 @@ export default function WhatsAppChatPage() {
             placeholder="Escribe un mensaje..."
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            disabled={isSending}
+            disabled={isSending || isLoading}
             className="flex-1 h-10 sm:h-11 text-sm sm:text-base"
             autoComplete="off"
           />
-          <Button type="submit" size="icon" className="h-10 w-10 sm:h-11 sm:w-11 rounded-lg" disabled={isSending || !newMessage.trim()}>
+          <Button type="submit" size="icon" className="h-10 w-10 sm:h-11 sm:w-11 rounded-lg" disabled={isSending || isLoading || !newMessage.trim()}>
             {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             <span className="sr-only">Enviar Mensaje</span>
           </Button>
@@ -250,3 +303,4 @@ export default function WhatsAppChatPage() {
     </Card>
   );
 }
+

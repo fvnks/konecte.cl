@@ -5,12 +5,13 @@
 import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, LogOut as LogOutIcon, CalendarCheck, Handshake, Bot } from 'lucide-react'; // Added Bot icon
+import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, LogOut as LogOutIcon, CalendarCheck, Handshake, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
+import { getPlanByIdAction } from '@/actions/planActions'; // Importar la acción del plan
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
@@ -24,56 +25,17 @@ interface StoredUser {
   name: string;
   avatarUrl?: string;
   role_id: string;
-  plan_id?: string | null; // Añadir plan_id
-  plan?: { // Asumimos que el objeto plan podría tener esta info
-    whatsapp_bot_enabled?: boolean;
-  };
+  plan_id?: string | null;
+  // No necesitamos planName aquí si vamos a buscar los detalles del plan
 }
 
-// Helper function to check if WhatsApp Bot is enabled for the user's plan
-async function checkWhatsAppBotAccess(userId: string): Promise<boolean> {
-  // En una implementación real, esto verificaría el plan del usuario en la BD.
-  // Por ahora, simulamos que si el usuario tiene un plan, tiene acceso.
-  // Esto debería ser reemplazado con una lógica real que consulte `plan.whatsapp_bot_enabled`.
-  //
-  // Esta función se vuelve más compleja ya que el plan se obtiene del localStorage
-  // y el permiso `whatsapp_bot_enabled` está en la BD.
-  // Para este prototipo, haremos una simplificación o requeriremos que el plan del usuario
-  // ya tenga esta información en el objeto guardado en localStorage.
-  //
-  // Simplificación: El objeto StoredUser debe tener esta info, o consultamos la BD.
-  // Aquí lo haremos de forma más simple: si tiene un plan_id, se asume que tiene acceso (placeholder).
-  // En una implementación robusta, `src/actions/userActions.ts` o `authActions.ts`
-  // al loguear, debería adjuntar las capacidades del plan al objeto User que se guarda.
-
-  const userJson = localStorage.getItem('loggedInUser');
-  if(userJson) {
-    try {
-      const userWithPlanDetails = JSON.parse(userJson) as StoredUser & { plan?: { whatsapp_bot_enabled?: boolean }};
-      // Simulación: Si el plan del usuario incluye 'whatsapp_bot_enabled: true'
-      // Esta lógica es una simulación. En producción, el plan completo se cargaría desde la BD.
-      // O, el objeto 'loggedInUser' guardado en localStorage incluiría esta propiedad del plan.
-      // Para este ejemplo, vamos a asumir que si el usuario tiene un plan_id, tiene acceso.
-      // Esto es una simplificación para este ejercicio.
-      // Una mejor forma sería:
-      // if (userWithPlanDetails.plan_id) {
-      //   const plan = await getPlanByIdAction(userWithPlanDetails.plan_id);
-      //   return !!plan?.whatsapp_bot_enabled;
-      // }
-      // Pero eso es una llamada async dentro de un hook de layout.
-      // Simplificando: si `plan.whatsapp_bot_enabled` está en el objeto del localStorage, usarlo.
-      if (userWithPlanDetails?.plan?.whatsapp_bot_enabled) {
-        return true;
-      }
-      // Como fallback, si no está en localStorage y tiene plan_id, podría devolverse false o hacer una llamada.
-      // Por simplicidad del ejemplo, si no está explícitamente, no se muestra.
-    } catch (e) {
-      return false;
-    }
-  }
-  return false; 
-}
-
+// Definición base de los items de navegación
+const baseNavItems = [
+  { href: '/dashboard', label: 'Resumen', icon: <LayoutDashboard /> },
+  { href: '/dashboard/messages', label: 'Mensajes', icon: <MessageSquare />, id: 'messagesLink' },
+  { href: '/dashboard/crm', label: 'Mi CRM', icon: <Users /> },
+  { href: '/dashboard/visits', label: 'Mis Visitas', icon: <CalendarCheck /> },
+];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
@@ -82,25 +44,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const [isClient, setIsClient] = useState(false);
-  const [currentNavItems, setCurrentNavItems] = useState<any[]>([]);
+  const [navItems, setNavItems] = useState<any[]>(baseNavItems); // Estado para los items de navegación
   const [isLoadingSession, setIsLoadingSession] = useState(true);
-
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  const updateSessionState = useCallback(async () => {
+  const updateSessionAndNav = useCallback(async () => {
     if (!isClient) return;
 
     setIsLoadingSession(true);
     const userJson = localStorage.getItem('loggedInUser');
-    let finalNavItems = [
-      { href: '/dashboard', label: 'Resumen', icon: <LayoutDashboard /> },
-      { href: '/dashboard/messages', label: 'Mensajes', icon: <MessageSquare />, id: 'messagesLink' },
-      { href: '/dashboard/crm', label: 'Mi CRM', icon: <Users /> },
-      { href: '/dashboard/visits', label: 'Mis Visitas', icon: <CalendarCheck /> },
-    ];
+    let tempNavItems = [...baseNavItems]; // Copia de los items base
 
     if (userJson) {
       try {
@@ -108,45 +64,51 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         setCurrentUser(parsedUser);
 
         if (parsedUser.role_id === 'broker') {
-          finalNavItems.push({ href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> });
+          tempNavItems.push({ href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> });
         }
-        
-        // Comprobar acceso al bot de WhatsApp y añadirlo si es necesario
-        // Esta es una simplificación, idealmente la información del plan estaría en parsedUser.
-        // O se haría una llamada al backend para obtener las características del plan del usuario.
-        // Para el prototipo, si el plan_id existe, asumimos que tiene acceso.
-        if (parsedUser.plan_id && parsedUser.plan?.whatsapp_bot_enabled) { // Asumiendo que el plan del usuario tiene la info
-            finalNavItems.push({ href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> });
+
+        // Comprobar acceso al bot de WhatsApp
+        if (parsedUser.plan_id) {
+          try {
+            const planDetails = await getPlanByIdAction(parsedUser.plan_id);
+            if (planDetails?.whatsapp_bot_enabled) {
+              tempNavItems.push({ href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> });
+            }
+          } catch (planError) {
+            console.error("Error fetching plan details for WhatsApp Bot link:", planError);
+          }
         }
 
         if (parsedUser.id) {
           const count = await getTotalUnreadMessagesCountAction(parsedUser.id);
           setTotalUnreadCount(count);
         } else {
-           setTotalUnreadCount(0);
+          setTotalUnreadCount(0);
         }
       } catch (e) {
         console.error("Error processing user session:", e);
         localStorage.removeItem('loggedInUser');
         setCurrentUser(null);
         setTotalUnreadCount(0);
+        tempNavItems = [...baseNavItems]; // Reset a items base en caso de error
         if (!pathname.startsWith('/auth')) router.push('/auth/signin');
       }
     } else {
       setCurrentUser(null);
       setTotalUnreadCount(0);
+      tempNavItems = [...baseNavItems]; // Reset a items base
       if (!pathname.startsWith('/auth')) router.push('/auth/signin');
     }
-    setCurrentNavItems(finalNavItems);
+    setNavItems(tempNavItems); // Actualizar los items de navegación
     setIsLoadingSession(false);
   }, [isClient, pathname, router]);
 
 
   useEffect(() => {
-    updateSessionState();
+    updateSessionAndNav();
 
     const handleSessionOrMessagesUpdate = () => {
-      updateSessionState();
+      updateSessionAndNav();
     };
 
     window.addEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
@@ -154,29 +116,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     
     const handleNativeStorageEvent = (event: StorageEvent) => {
         if (event.key === 'loggedInUser') {
-            updateSessionState();
+            updateSessionAndNav();
         }
     };
     window.addEventListener('storage', handleNativeStorageEvent);
-
 
     return () => {
       window.removeEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
       window.removeEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
       window.removeEventListener('storage', handleNativeStorageEvent);
     };
-  }, [updateSessionState]);
+  }, [updateSessionAndNav]);
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
     setCurrentUser(null); 
     setTotalUnreadCount(0);
-    setCurrentNavItems([ // Reset nav items on logout (sin items de broker o whatsapp)
-        { href: '/dashboard', label: 'Resumen', icon: <LayoutDashboard /> },
-        { href: '/dashboard/messages', label: 'Mensajes', icon: <MessageSquare />, id: 'messagesLink' },
-        { href: '/dashboard/crm', label: 'Mi CRM', icon: <Users /> },
-        { href: '/dashboard/visits', label: 'Mis Visitas', icon: <CalendarCheck /> },
-    ]);
+    setNavItems(baseNavItems); // Reset nav items on logout
     toast({
       title: "Sesión Cerrada",
       description: "Has cerrado sesión de tu panel.",
@@ -199,7 +155,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
                 <Separator/>
                 <div className="flex-grow space-y-1.5">
-                    {[...Array(currentNavItems.length || 5)].map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-md"/>)}
+                    {[...Array(navItems.length || 5)].map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-md"/>)}
                 </div>
                 <Separator/>
                 <div className="mt-auto space-y-3">
@@ -226,6 +182,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
   
   if (!currentUser && isClient && !pathname.startsWith('/auth')) {
+    // This state means user is definitely not logged in (after checks)
+    // and we're not on an auth page, so they should be redirected.
+    // The redirect itself happens in updateSessionAndNav if userJson is null.
+    // Here, we just show a loader while that redirect is pending or if something went wrong.
     return (
        <div className="flex items-center justify-center min-h-screen">
          <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -233,7 +193,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
        </div>
     );
   }
-
 
   return (
     <div className="flex min-h-screen bg-muted/40">
@@ -250,7 +209,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <Separator />
 
         <nav className="flex-grow space-y-1">
-          {currentNavItems.map((item) => (
+          {navItems.map((item) => (
             <Button
               key={item.href}
               variant={pathname === item.href ? "secondary" : "ghost"}
