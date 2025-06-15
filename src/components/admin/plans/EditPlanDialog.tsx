@@ -1,4 +1,3 @@
-
 // src/components/admin/plans/EditPlanDialog.tsx
 'use client';
 
@@ -37,9 +36,6 @@ interface EditPlanDialogProps {
   onPlanUpdated: () => void;
 }
 
-// Schema can be inferred or explicitly defined if more complex validation is needed client-side
-// For now, relying on server-side validation via FormData.
-
 type PlanFormValues = {
   name: string;
   description: string | null;
@@ -47,7 +43,7 @@ type PlanFormValues = {
   price_currency: string;
   max_properties_allowed: string | null;
   max_requests_allowed: string | null;
-  max_ai_searches_monthly: string | null; // Added this
+  max_ai_searches_monthly: string | null;
   can_feature_properties: boolean;
   property_listing_duration_days: string | null;
   is_active: boolean;
@@ -65,7 +61,7 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
       price_currency: 'CLP',
       max_properties_allowed: '',
       max_requests_allowed: '',
-      max_ai_searches_monthly: '', // Added this
+      max_ai_searches_monthly: '',
       can_feature_properties: false,
       property_listing_duration_days: '',
       is_active: true,
@@ -77,11 +73,11 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
       form.reset({
         name: plan.name,
         description: plan.description || '',
-        price_monthly: plan.price_monthly.toString(),
+        price_monthly: Number.isFinite(plan.price_monthly) ? plan.price_monthly.toString() : '0',
         price_currency: plan.price_currency || 'CLP',
         max_properties_allowed: plan.max_properties_allowed?.toString() || '',
         max_requests_allowed: plan.max_requests_allowed?.toString() || '',
-        max_ai_searches_monthly: plan.max_ai_searches_monthly?.toString() || '', // Added this
+        max_ai_searches_monthly: plan.max_ai_searches_monthly?.toString() || '',
         can_feature_properties: plan.can_feature_properties,
         property_listing_duration_days: plan.property_listing_duration_days?.toString() || '',
         is_active: plan.is_active,
@@ -104,7 +100,7 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
     formData.append('price_currency', values.price_currency);
     if (values.max_properties_allowed) formData.append('max_properties_allowed', values.max_properties_allowed);
     if (values.max_requests_allowed) formData.append('max_requests_allowed', values.max_requests_allowed);
-    if (values.max_ai_searches_monthly) formData.append('max_ai_searches_monthly', values.max_ai_searches_monthly); // Added this
+    if (values.max_ai_searches_monthly) formData.append('max_ai_searches_monthly', values.max_ai_searches_monthly);
     if (values.can_feature_properties) formData.append('can_feature_properties', 'on');
     if (values.property_listing_duration_days) formData.append('property_listing_duration_days', values.property_listing_duration_days);
     if (values.is_active) formData.append('is_active', 'on');
@@ -165,7 +161,7 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4"> {/* Adjusted to 2 columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                 <FormField
                 control={form.control}
                 name="max_properties_allowed"
@@ -250,4 +246,3 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
     </Dialog>
   );
 }
-
