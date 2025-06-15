@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { proposePropertyForRequestAction } from '@/actions/brokerCollaborationActions';
 import { Loader2, Send, Building, UserCircle } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import Link from 'next/link';
 
 interface ProposePropertyDialogProps {
   open: boolean;
@@ -192,4 +193,3 @@ export default function ProposePropertyDialog({
     </Dialog>
   );
 }
-```
