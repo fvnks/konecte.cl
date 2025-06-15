@@ -163,4 +163,3 @@ export async function getBrokerCollaborationByIdAction(collaborationId: string):
 
 // TODO: Add actions to get collaborations for a user (as offerer, as requester)
 // TODO: Add action to update collaboration status (accept, reject, etc.)
-```
