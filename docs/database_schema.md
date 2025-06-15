@@ -28,7 +28,7 @@ CREATE TABLE roles (
 );
 
 -- Insertar roles iniciales
-INSERT INTO roles (id, name, description) VALUES 
+INSERT INTO roles (id, name, description) VALUES
 ('admin', 'Administrador', 'Acceso total a todas las funcionalidades y configuraciones del sistema.'),
 ('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.'),
 ('broker', 'Corredor', 'Usuario corredor de propiedades con acceso a funcionalidades de colaboración.');
@@ -48,6 +48,7 @@ CREATE TABLE plans (
     price_currency VARCHAR(3) DEFAULT 'CLP',
     max_properties_allowed INT DEFAULT NULL,         -- NULL para ilimitado
     max_requests_allowed INT DEFAULT NULL,           -- NULL para ilimitado
+    max_ai_searches_monthly INT DEFAULT NULL,        -- Límite de búsquedas IA por mes (NULL o 0 para sin límite/base, >0 para límite específico)
     can_feature_properties BOOLEAN DEFAULT FALSE,
     property_listing_duration_days INT DEFAULT NULL, -- NULL para indefinido
     is_active BOOLEAN DEFAULT TRUE,
@@ -56,8 +57,8 @@ CREATE TABLE plans (
 );
 
 -- Insertar plan gratuito por defecto (opcional, puede ser gestionado desde la app)
-INSERT INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days) VALUES
-(UUID(), 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30);
+INSERT INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly) VALUES
+(UUID(), 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30, 5); -- Ejemplo: 5 búsquedas IA para el plan gratuito
 ```
 
 ---
@@ -103,7 +104,7 @@ CREATE INDEX idx_users_phone_number ON users(phone_number);
 -- Contraseña: "admin123" (hasheada con bcrypt, salt rounds: 10)
 -- El hash es: $2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS
 -- Asegúrate de que el rol 'admin' exista en la tabla 'roles'.
--- INSERT INTO users (id, name, email, password_hash, role_id) VALUES 
+-- INSERT INTO users (id, name, email, password_hash, role_id) VALUES
 -- (UUID(), 'Admin konecte', 'admin@konecte.cl', '$2a$10$V2sLg0n9jR8iO.xP9v.G8.U0z9iE.h1nQ.o0sP1cN2wE3kF4lG5tS', 'admin');
 ```
 
@@ -139,7 +140,7 @@ CREATE TABLE properties (
     is_active BOOLEAN DEFAULT TRUE,                        -- Para activar/desactivar listados
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -164,10 +165,10 @@ CREATE TABLE property_requests (
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
     description TEXT NOT NULL,
-    
+
     -- Tipos de transacción deseados (booleanos para simplificar)
-    desired_property_type_rent BOOLEAN DEFAULT FALSE,      
-    desired_property_type_sale BOOLEAN DEFAULT FALSE,      
+    desired_property_type_rent BOOLEAN DEFAULT FALSE,
+    desired_property_type_sale BOOLEAN DEFAULT FALSE,
 
     -- Categorías de propiedad deseadas (booleanos)
     desired_category_apartment BOOLEAN DEFAULT FALSE,
@@ -176,7 +177,7 @@ CREATE TABLE property_requests (
     desired_category_land BOOLEAN DEFAULT FALSE,
     desired_category_commercial BOOLEAN DEFAULT FALSE,
     desired_category_other BOOLEAN DEFAULT FALSE,
-    
+
     desired_location_city VARCHAR(100) NOT NULL,
     desired_location_neighborhood VARCHAR(100) DEFAULT NULL,
     min_bedrooms INT DEFAULT NULL,
@@ -211,7 +212,7 @@ CREATE TABLE comments (
     user_id VARCHAR(36) NOT NULL,                          -- FK a users.id
     content TEXT NOT NULL,
     parent_id VARCHAR(36) DEFAULT NULL,                    -- Para comentarios anidados (referencia a comments.id)
-    
+
     property_id VARCHAR(36) DEFAULT NULL,                  -- FK a properties.id (NULL si es para una solicitud)
     request_id VARCHAR(36) DEFAULT NULL,                   -- FK a property_requests.id (NULL si es para una propiedad)
 
@@ -220,12 +221,12 @@ CREATE TABLE comments (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE SET NULL, 
+    FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE SET NULL,
     FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
     FOREIGN KEY (request_id) REFERENCES property_requests(id) ON DELETE CASCADE,
 
     CONSTRAINT chk_comment_target CHECK (
-        (property_id IS NOT NULL AND request_id IS NULL) OR 
+        (property_id IS NOT NULL AND request_id IS NULL) OR
         (property_id IS NULL AND request_id IS NOT NULL)
     )
 );
@@ -289,12 +290,12 @@ INSERT INTO site_settings (
     announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color
 )
 VALUES (
-    1, 
-    'konecte - Encuentra Tu Próxima Propiedad', 
-    NULL, 
-    TRUE, 
-    TRUE, 
-    TRUE, 
+    1,
+    'konecte - Encuentra Tu Próxima Propiedad',
+    NULL,
+    TRUE,
+    TRUE,
+    TRUE,
     '["featured_list_requests", "ai_matching", "google_sheet"]', -- Valor por defecto para el orden
     FALSE, -- announcement_bar_is_active
     '#FFB74D', -- announcement_bar_bg_color
@@ -365,12 +366,12 @@ CREATE TABLE contact_interactions (
     outcome VARCHAR(255) DEFAULT NULL,                   -- Resultado de la interacción (ej: 'Interesado', 'Necesita seguimiento', 'No interesado')
     follow_up_needed BOOLEAN DEFAULT FALSE,
     follow_up_date DATE DEFAULT NULL,                    -- Solo fecha para el seguimiento
-    
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, 
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 
     INDEX idx_interactions_contact_id_date (contact_id, interaction_date DESC),
     INDEX idx_interactions_user_id (user_id),
@@ -525,10 +526,10 @@ CREATE TABLE property_visits (
     property_id VARCHAR(36) NOT NULL,
     visitor_user_id VARCHAR(36) NOT NULL,
     property_owner_user_id VARCHAR(36) NOT NULL,
-    
+
     proposed_datetime DATETIME NOT NULL,
     confirmed_datetime DATETIME DEFAULT NULL,
-    
+
     status ENUM(
         'pending_confirmation',
         'confirmed',
@@ -539,11 +540,11 @@ CREATE TABLE property_visits (
         'visitor_no_show',
         'owner_no_show'
     ) NOT NULL DEFAULT 'pending_confirmation',
-    
+
     visitor_notes TEXT DEFAULT NULL,
     owner_notes TEXT DEFAULT NULL,
     cancellation_reason TEXT DEFAULT NULL,
-    
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -579,13 +580,13 @@ CREATE TABLE broker_collaborations (
     accepted_at TIMESTAMP DEFAULT NULL,
     closed_at TIMESTAMP DEFAULT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (property_request_id) REFERENCES property_requests(id) ON DELETE CASCADE,
     FOREIGN KEY (requesting_broker_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
     FOREIGN KEY (offering_broker_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (chat_conversation_id) REFERENCES chat_conversations(id) ON DELETE SET NULL,
-    
+
     CONSTRAINT uq_collaboration_request_property UNIQUE (property_request_id, property_id),
     CONSTRAINT chk_different_brokers CHECK (requesting_broker_id <> offering_broker_id) -- Asegura que los dos corredores sean diferentes
 );
@@ -625,18 +626,18 @@ Almacena las preferencias (me gusta/no me gusta) de los usuarios sobre propiedad
 CREATE TABLE user_listing_interactions (
     id VARCHAR(36) PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,
-    listing_id VARCHAR(36) NOT NULL, 
+    listing_id VARCHAR(36) NOT NULL,
     listing_type ENUM('property', 'request') NOT NULL,
     interaction_type ENUM('like', 'dislike', 'skip') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     -- No se pueden añadir FK directas a properties.id y property_requests.id en una sola columna.
     -- Se manejará la integridad a nivel de aplicación o con triggers si es necesario.
     -- O considerar dos tablas separadas: user_property_interactions y user_request_interactions.
     -- Por simplicidad inicial, se usa una sola tabla.
 
-    UNIQUE KEY uq_user_listing_interaction (user_id, listing_id, listing_type) 
+    UNIQUE KEY uq_user_listing_interaction (user_id, listing_id, listing_type)
     -- Un usuario solo puede tener una interacción registrada (like, dislike, o skip) por listado.
     -- Si se permite cambiar de opinión (ej. de dislike a like), la acción debe ser un UPDATE.
 );
@@ -645,9 +646,25 @@ CREATE TABLE user_listing_interactions (
 CREATE INDEX idx_user_listing_interactions_user_listing ON user_listing_interactions(user_id, listing_type, listing_id);
 CREATE INDEX idx_user_listing_interactions_listing ON user_listing_interactions(listing_type, listing_id, interaction_type);
 ```
+---
+## Tabla: `user_ai_search_usage` (Uso de Búsquedas con IA por Usuario)
+Registra cada vez que un usuario realiza una búsqueda con IA, para controlar límites según su plan.
+
+```sql
+CREATE TABLE user_ai_search_usage (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    plan_id_at_search VARCHAR(36) DEFAULT NULL, -- El plan que tenía el usuario al momento de la búsqueda
+    flow_name VARCHAR(255) NOT NULL,            -- Nombre del flujo Genkit invocado (ej: 'findListingsForFreeTextSearchFlow')
+    search_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_id_at_search) REFERENCES plans(id) ON DELETE SET NULL,
+
+    INDEX idx_user_ai_usage_user_month (user_id, search_timestamp) -- Para contar búsquedas por mes fácilmente
+);
+```
 
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
 
-
-    

@@ -32,7 +32,7 @@ const SQL_STATEMENTS: string[] = [
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   );`,
-  `INSERT IGNORE INTO roles (id, name, description) VALUES 
+  `INSERT IGNORE INTO roles (id, name, description) VALUES
     ('admin', 'Administrador', 'Acceso total a todas las funcionalidades y configuraciones del sistema.'),
     ('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.'),
     ('broker', 'Corredor', 'Usuario corredor de propiedades con acceso a funcionalidades de colaboración.');`,
@@ -46,15 +46,16 @@ const SQL_STATEMENTS: string[] = [
     price_currency VARCHAR(3) DEFAULT 'CLP',
     max_properties_allowed INT DEFAULT NULL,
     max_requests_allowed INT DEFAULT NULL,
+    max_ai_searches_monthly INT DEFAULT NULL, -- Nueva columna
     can_feature_properties BOOLEAN DEFAULT FALSE,
     property_listing_duration_days INT DEFAULT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   );`,
-  `INSERT IGNORE INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days) VALUES
-    ('${randomUUID()}', 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30);`,
-  
+  `INSERT IGNORE INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly) VALUES
+    ('${randomUUID()}', 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30, 5);`,
+
   // users
   `CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(36) PRIMARY KEY,
@@ -207,12 +208,12 @@ const SQL_STATEMENTS: string[] = [
     announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color
   )
   VALUES (
-    1, 
-    'konecte - Encuentra Tu Próxima Propiedad', 
-    NULL, 
-    TRUE, 
-    TRUE, 
-    TRUE, 
+    1,
+    'konecte - Encuentra Tu Próxima Propiedad',
+    NULL,
+    TRUE,
+    TRUE,
+    TRUE,
     '["featured_list_requests", "ai_matching", "google_sheet"]',
     FALSE,
     '#FFB74D',
@@ -235,7 +236,7 @@ const SQL_STATEMENTS: string[] = [
   `UPDATE site_settings
    SET landing_sections_order = '["featured_list_requests", "ai_matching", "google_sheet"]'
    WHERE id = 1 AND landing_sections_order IS NULL;`,
-  
+
   // contacts (CRM)
   `CREATE TABLE IF NOT EXISTS contacts (
     id VARCHAR(36) PRIMARY KEY,
@@ -361,7 +362,7 @@ const SQL_STATEMENTS: string[] = [
     ('auth_signup_button_text', 'auth_signup', 'Texto del botón de registro', 'Registrarse', 'Registrarse'),
     ('auth_signup_signin_prompt', 'auth_signup', 'Texto del prompt para iniciar sesión', '¿Ya tienes una cuenta?', '¿Ya tienes una cuenta?'),
     ('auth_signup_signin_link_text', 'auth_signup', 'Texto del enlace para iniciar sesión', 'Inicia sesión', 'Inicia sesión');`,
-  
+
   // --- Lead Tracking Tables ---
   `CREATE TABLE IF NOT EXISTS property_views (
     id VARCHAR(36) PRIMARY KEY,
@@ -472,12 +473,12 @@ const SQL_STATEMENTS: string[] = [
     INDEX idx_contact_submissions_submitted_at (submitted_at),
     INDEX idx_contact_submissions_is_read (is_read)
   );`,
-  
+
   // --- User Listing Interactions Table ---
   `CREATE TABLE IF NOT EXISTS user_listing_interactions (
     id VARCHAR(36) PRIMARY KEY,
     user_id VARCHAR(36) NOT NULL,
-    listing_id VARCHAR(36) NOT NULL, 
+    listing_id VARCHAR(36) NOT NULL,
     listing_type ENUM('property', 'request') NOT NULL,
     interaction_type ENUM('like', 'dislike', 'skip') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -485,7 +486,19 @@ const SQL_STATEMENTS: string[] = [
     UNIQUE KEY uq_user_listing_interaction (user_id, listing_id, listing_type)
   );`,
   `CREATE INDEX IF NOT EXISTS idx_user_listing_interactions_user_listing ON user_listing_interactions(user_id, listing_type, listing_id);`,
-  `CREATE INDEX IF NOT EXISTS idx_user_listing_interactions_listing ON user_listing_interactions(listing_type, listing_id, interaction_type);`
+  `CREATE INDEX IF NOT EXISTS idx_user_listing_interactions_listing ON user_listing_interactions(listing_type, listing_id, interaction_type);`,
+
+  // --- User AI Search Usage Table (NUEVA TABLA) ---
+  `CREATE TABLE IF NOT EXISTS user_ai_search_usage (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    plan_id_at_search VARCHAR(36) DEFAULT NULL, -- El plan que tenía el usuario al momento de la búsqueda
+    flow_name VARCHAR(255) NOT NULL,            -- Nombre del flujo Genkit invocado (ej: 'findListingsForFreeTextSearchFlow')
+    search_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_id_at_search) REFERENCES plans(id) ON DELETE SET NULL, -- Si se elimina el plan, el registro de uso permanece
+    INDEX idx_user_ai_usage_user_month (user_id, search_timestamp) -- Para contar búsquedas por mes fácilmente
+  );`
 ];
 
 // --- Función principal del script ---
@@ -563,7 +576,7 @@ async function setupDatabase() {
     const adminEmail = 'admin@konecte.cl';
     const adminPassword = 'ola12345';
     const adminName = 'Administrador konecte';
-    const adminRoleId = 'admin'; 
+    const adminRoleId = 'admin';
 
     const existingAdminResult = await pool.query('SELECT id FROM users WHERE email = ?', [adminEmail]);
     // MySQL/Promise returns [rows, fields]
@@ -601,7 +614,3 @@ async function setupDatabase() {
 
 setupDatabase();
 
-
-    
-
-    
