@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { getPlanByIdAction } from '@/actions/planActions';
+import type { Plan } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
@@ -25,17 +26,16 @@ interface StoredUser {
   name: string;
   avatarUrl?: string;
   role_id: string;
-  plan_id?: string | null;
-  // No necesitamos planName aquí si vamos a buscar los detalles del plan
+  plan_id?: string | null; 
 }
 
-// Definición base de los items de navegación
-const baseNavItems = [
+const baseNavItemsDefinition = [
   { href: '/dashboard', label: 'Resumen', icon: <LayoutDashboard /> },
   { href: '/dashboard/messages', label: 'Mensajes', icon: <MessageSquare />, id: 'messagesLink' },
   { href: '/dashboard/crm', label: 'Mi CRM', icon: <Users /> },
   { href: '/dashboard/visits', label: 'Mis Visitas', icon: <CalendarCheck /> },
 ];
+
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const [isClient, setIsClient] = useState(false);
-  const [navItems, setNavItems] = useState<any[]>(baseNavItems);
+  const [navItems, setNavItems] = useState<any[]>(() => [...baseNavItemsDefinition]);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
   useEffect(() => {
@@ -52,126 +52,157 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }, []);
 
   const updateSessionAndNav = useCallback(async () => {
-    if (!isClient) return;
-    console.log('[DashboardLayout DEBUG] updateSessionAndNav called. isClient:', isClient);
+    if (!isClient) {
+        console.log('[DashboardLayout DEBUG] updateSessionAndNav: isClient is false. Aborting.');
+        if (isLoadingSession) setIsLoadingSession(false); // Ensure loading stops if aborted early
+        return;
+    }
+    console.log('[DashboardLayout DEBUG] updateSessionAndNav START. Pathname:', pathname);
 
-    setIsLoadingSession(true);
+    // Siempre comenzar con isLoadingSession en true al inicio de esta función
+    // para reflejar que estamos procesando la sesión y los items de navegación.
+    setIsLoadingSession(true); 
+    
+    let tempCurrentUser: StoredUser | null = null;
+    let tempTotalUnreadCount = 0;
+    let newNavItemsList = [...baseNavItemsDefinition];
+
     const userJson = localStorage.getItem('loggedInUser');
-    let newNavItemsList = [...baseNavItems]; // Siempre empezamos con la base
-
     if (userJson) {
+      console.log('[DashboardLayout DEBUG] userJson found in localStorage:', userJson.substring(0, 100) + '...'); // Log solo una parte por si es muy largo
       try {
         const parsedUser: StoredUser = JSON.parse(userJson);
-        setCurrentUser(parsedUser);
-        console.log('[DashboardLayout DEBUG] Parsed user:', parsedUser);
-        console.log(`[DashboardLayout DEBUG] User ID: ${parsedUser.id}, Plan ID from localStorage: ${parsedUser.plan_id}`);
+        tempCurrentUser = parsedUser; // Establecer temporalmente para usar en esta ejecución
+        console.log('[DashboardLayout DEBUG] Parsed user from localStorage:', {id: parsedUser.id, name: parsedUser.name, role_id: parsedUser.role_id, plan_id: parsedUser.plan_id});
 
-
-        // Dinámicamente añadir "Canje Clientes" si el rol es 'broker'
         if (parsedUser.role_id === 'broker') {
           if (!newNavItemsList.find(item => item.href === '/dashboard/broker/open-requests')) {
-            console.log('[DashboardLayout DEBUG] User is broker, adding "Canje Clientes" link.');
+            console.log('[DashboardLayout DEBUG] User IS BROKER. Adding "Canje Clientes" link.');
             newNavItemsList.push({ href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> });
           }
+        } else {
+            console.log(`[DashboardLayout DEBUG] User role_id ('${parsedUser.role_id}') is NOT 'broker'. Not adding "Canje Clientes".`);
         }
 
-        // Dinámicamente añadir "Chat WhatsApp" si el plan lo permite
         if (parsedUser.plan_id) {
-          console.log(`[DashboardLayout DEBUG] User has plan_id: ${parsedUser.plan_id}. Fetching plan details...`);
+          console.log(`[DashboardLayout DEBUG] User has plan_id: "${parsedUser.plan_id}". Fetching plan details...`);
           try {
-            const planDetails = await getPlanByIdAction(parsedUser.plan_id);
-            console.log('[DashboardLayout DEBUG] Fetched plan details:', planDetails);
-            if (planDetails?.whatsapp_bot_enabled) {
+            const planDetails: Plan | null = await getPlanByIdAction(parsedUser.plan_id);
+            console.log('[DashboardLayout DEBUG] Fetched plan details:', planDetails); // Log completo del plan
+            if (planDetails && planDetails.whatsapp_bot_enabled === true) { // Comprobación estricta de true
               if (!newNavItemsList.find(item => item.href === '/dashboard/whatsapp-chat')) {
-                console.log('[DashboardLayout DEBUG] Plan has whatsapp_bot_enabled=true, adding "Chat WhatsApp" link.');
+                console.log('[DashboardLayout DEBUG] Plan has whatsapp_bot_enabled=true. ADDING "Chat WhatsApp" link.');
                 newNavItemsList.push({ href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> });
               } else {
-                console.log('[DashboardLayout DEBUG] "Chat WhatsApp" link already exists in nav list.');
+                console.log('[DashboardLayout DEBUG] "Chat WhatsApp" link ALREADY EXISTS in nav list (before this potential add).');
               }
             } else {
-              console.log(`[DashboardLayout DEBUG] Plan does NOT have whatsapp_bot_enabled (current value: ${planDetails?.whatsapp_bot_enabled}) or planDetails is null/undefined.`);
+              console.log(`[DashboardLayout DEBUG] Plan either not found (null) or whatsapp_bot_enabled is NOT true (current value: ${planDetails?.whatsapp_bot_enabled}). "Chat WhatsApp" link NOT ADDED.`);
             }
-          } catch (planError) {
-            console.error("[DashboardLayout DEBUG] Error fetching plan details for WhatsApp Bot link:", planError);
+          } catch (planError: any) {
+            console.error("[DashboardLayout DEBUG] CRITICAL ERROR fetching plan details:", planError.message);
+            toast({ title: "Error de Plan", description: "No se pudo verificar tu plan para el chat de WhatsApp. Contacta a soporte.", variant: "destructive" });
           }
         } else {
-          console.log('[DashboardLayout DEBUG] User does not have a plan_id, so no "Chat WhatsApp" link will be added.');
+          console.log('[DashboardLayout DEBUG] User does NOT have a plan_id. "Chat WhatsApp" link will NOT be added.');
         }
         
         if (parsedUser.id) {
+          console.log(`[DashboardLayout DEBUG] Fetching unread messages for user ID: ${parsedUser.id}`);
           const count = await getTotalUnreadMessagesCountAction(parsedUser.id);
-          setTotalUnreadCount(count);
-           console.log(`[DashboardLayout DEBUG] Fetched unread messages count: ${count} for user ${parsedUser.id}`);
+          tempTotalUnreadCount = count;
+          console.log(`[DashboardLayout DEBUG] Fetched unread messages count: ${count}`);
         } else {
-          setTotalUnreadCount(0);
+          console.log('[DashboardLayout DEBUG] User has no ID. Unread count set to 0.');
         }
 
-      } catch (e) {
-        console.error("[DashboardLayout DEBUG] Error processing user session:", e);
+      } catch (e: any) {
+        console.error("[DashboardLayout DEBUG] CRITICAL ERROR processing user session from localStorage:", e.message);
         localStorage.removeItem('loggedInUser');
-        setCurrentUser(null);
-        setTotalUnreadCount(0);
-        newNavItemsList = [...baseNavItems]; // Revertir a la base en caso de error
-        if (!pathname.startsWith('/auth')) router.push('/auth/signin');
+        tempCurrentUser = null;
+        tempTotalUnreadCount = 0;
+        newNavItemsList = [...baseNavItemsDefinition]; 
+        if (!pathname.startsWith('/auth')) {
+            console.log('[DashboardLayout DEBUG] Error processing session, redirecting to /auth/signin.');
+            router.push('/auth/signin');
+        }
       }
     } else {
-      console.log('[DashboardLayout DEBUG] No userJson found in localStorage.');
-      setCurrentUser(null);
-      setTotalUnreadCount(0);
-      newNavItemsList = [...baseNavItems]; // Revertir a la base si no hay usuario
-      if (!pathname.startsWith('/auth')) router.push('/auth/signin');
+      console.log('[DashboardLayout DEBUG] No userJson found in localStorage. Redirecting if not on auth page.');
+      tempCurrentUser = null;
+      tempTotalUnreadCount = 0;
+      newNavItemsList = [...baseNavItemsDefinition]; 
+      if (!pathname.startsWith('/auth')) {
+        router.push('/auth/signin');
+      }
     }
     
-    console.log('[DashboardLayout DEBUG] Final navItemsList to be set:', JSON.stringify(newNavItemsList.map(item => item.href))); // Log only hrefs for brevity
+    // Actualizar estados de React
+    setCurrentUser(tempCurrentUser);
+    setTotalUnreadCount(tempTotalUnreadCount);
     setNavItems(newNavItemsList);
+
+    console.log('[DashboardLayout DEBUG] updateSessionAndNav FINISHED. Final navItems (hrefs):', newNavItemsList.map(item => item.href).join(', '));
     setIsLoadingSession(false);
-  }, [isClient, pathname, router]);
+    console.log('[DashboardLayout DEBUG] isLoadingSession set to false.');
+  }, [isClient, pathname, router, toast]);
 
 
   useEffect(() => {
     if (isClient) {
-      updateSessionAndNav(); // Llamada inicial
+      console.log('[DashboardLayout DEBUG] Main useEffect: isClient is true. Calling updateSessionAndNav and attaching listeners.');
+      updateSessionAndNav(); 
 
-      const handleSessionOrMessagesUpdate = () => {
-        console.log('[DashboardLayout DEBUG] Event listener triggered (userSessionChanged or messagesUpdated), calling updateSessionAndNav.');
+      const handleSessionOrMessagesUpdate = (event: Event) => {
+        console.log(`[DashboardLayout DEBUG] Event listener triggered: ${event.type}. Calling updateSessionAndNav.`);
         updateSessionAndNav();
+      };
+      
+      const handleStorageEvent = (event: StorageEvent) => {
+          if (event.key === 'loggedInUser') {
+              console.log('[DashboardLayout DEBUG] Storage event triggered for loggedInUser. Calling updateSessionAndNav.');
+              updateSessionAndNav();
+          }
       };
 
       window.addEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
       window.addEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
-      
-      const handleNativeStorageEvent = (event: StorageEvent) => {
-          if (event.key === 'loggedInUser') {
-              console.log('[DashboardLayout DEBUG] Storage event triggered for loggedInUser, calling updateSessionAndNav.');
-              updateSessionAndNav();
-          }
-      };
-      window.addEventListener('storage', handleNativeStorageEvent);
+      window.addEventListener('storage', handleStorageEvent);
 
       return () => {
+        console.log('[DashboardLayout DEBUG] Cleaning up event listeners from main useEffect.');
         window.removeEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
         window.removeEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
-        window.removeEventListener('storage', handleNativeStorageEvent);
+        window.removeEventListener('storage', handleStorageEvent);
       };
+    } else {
+        console.log('[DashboardLayout DEBUG] Main useEffect: isClient is false.');
     }
   }, [isClient, updateSessionAndNav]);
 
   const handleLogout = () => {
+    console.log('[DashboardLayout DEBUG] handleLogout called.');
     localStorage.removeItem('loggedInUser');
     setCurrentUser(null);
     setTotalUnreadCount(0);
-    setNavItems(baseNavItems);
+    setNavItems([...baseNavItemsDefinition]);
     toast({
       title: "Sesión Cerrada",
       description: "Has cerrado sesión de tu panel.",
     });
     window.dispatchEvent(new CustomEvent('userSessionChanged'));
     router.push('/');
+    console.log('[DashboardLayout DEBUG] Logout finished, user redirected to /.');
   };
 
   const userName = currentUser?.name || 'Usuario';
   const userAvatarUrl = currentUser?.avatarUrl || `https://placehold.co/40x40.png?text=${userName.substring(0,1)}`;
   const userAvatarFallback = userName.substring(0,1).toUpperCase();
+  
+  if (isClient) {
+    console.log('[DashboardLayout DEBUG] Render cycle. isLoadingSession:', isLoadingSession, 'currentUser exists:', !!currentUser, 'Nav items count:', navItems.length);
+  }
+
 
   if (isLoadingSession && isClient) {
      return (
@@ -183,7 +214,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
                 <Separator/>
                 <div className="flex-grow space-y-1.5">
-                    {[...Array(baseNavItems.length + 2)].map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-md"/>)}
+                    {[...Array(baseNavItemsDefinition.length + 2)].map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-md"/>)}
                 </div>
                 <Separator/>
                 <div className="mt-auto space-y-3">
@@ -217,7 +248,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
        </div>
     );
   }
-
+  
   return (
     <div className="flex min-h-screen bg-muted/40">
       <aside className="w-64 bg-background border-r p-5 space-y-6 hidden md:flex flex-col shadow-sm">
@@ -235,7 +266,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <nav className="flex-grow space-y-1">
           {navItems.map((item) => (
             <Button
-              key={item.href} // Usar href como key es más estable si label puede cambiar
+              key={item.href} 
               variant={pathname === item.href ? "secondary" : "ghost"}
               asChild
               className="w-full justify-start text-sm py-2.5 h-auto rounded-md hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
@@ -301,3 +332,4 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </div>
   );
 }
+
