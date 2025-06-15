@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import type { Plan } from '@/lib/types';
 import { addPlanAction, deletePlanAction, getPlansAction, togglePlanStatusAction, getPlanByIdAction } from '@/actions/planActions';
-import { Loader2, PlusCircle, CreditCard, Trash2, ToggleLeft, ToggleRight, Edit } from 'lucide-react';
+import { Loader2, PlusCircle, CreditCard, Trash2, ToggleLeft, ToggleRight, Edit, Brain } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +55,7 @@ export default function AdminPlansPage() {
 
   useEffect(() => {
     fetchPlans();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
   const handleAddPlan = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -159,7 +160,7 @@ export default function AdminPlansPage() {
                 <Textarea id="description" name="description" value={newPlanDescription} onChange={e => setNewPlanDescription(e.target.value)} placeholder="Breve descripción del plan" rows={2}/>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                  <div>
                     <Label htmlFor="max_properties_allowed" className="block text-sm font-medium mb-1">Máx. Propiedades</Label>
                     <Input id="max_properties_allowed" name="max_properties_allowed" type="number" min="0" placeholder="Vacío para ilimitado" />
@@ -167,6 +168,10 @@ export default function AdminPlansPage() {
                 <div>
                     <Label htmlFor="max_requests_allowed" className="block text-sm font-medium mb-1">Máx. Solicitudes</Label>
                     <Input id="max_requests_allowed" name="max_requests_allowed" type="number" min="0" placeholder="Vacío para ilimitado" />
+                </div>
+                <div>
+                    <Label htmlFor="max_ai_searches_monthly" className="block text-sm font-medium mb-1">Máx. Búsquedas IA</Label>
+                    <Input id="max_ai_searches_monthly" name="max_ai_searches_monthly" type="number" min="0" placeholder="Vacío para ilimitado" />
                 </div>
                 <div>
                     <Label htmlFor="property_listing_duration_days" className="block text-sm font-medium mb-1">Duración Publicación (días)</Label>
@@ -202,10 +207,11 @@ export default function AdminPlansPage() {
                   <TableRow>
                     <TableHead>Nombre</TableHead>
                     <TableHead className="min-w-[100px]">Precio</TableHead>
-                    <TableHead>Prop.</TableHead>
-                    <TableHead>Sol.</TableHead>
-                    <TableHead>Dest.</TableHead>
-                    <TableHead className="min-w-[100px]">Duración</TableHead>
+                    <TableHead title="Propiedades">Prop.</TableHead>
+                    <TableHead title="Solicitudes">Sol.</TableHead>
+                    <TableHead title="Búsquedas IA">B.IA</TableHead>
+                    <TableHead title="Destacar">Dest.</TableHead>
+                    <TableHead className="min-w-[100px]" title="Duración Publicación">Durac.</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right min-w-[200px]">Acciones</TableHead>
                   </TableRow>
@@ -217,6 +223,7 @@ export default function AdminPlansPage() {
                       <TableCell>${plan.price_monthly.toLocaleString('es-CL')} {plan.price_currency}</TableCell>
                       <TableCell className="text-center">{plan.max_properties_allowed ?? '∞'}</TableCell>
                       <TableCell className="text-center">{plan.max_requests_allowed ?? '∞'}</TableCell>
+                      <TableCell className="text-center">{plan.max_ai_searches_monthly ?? '∞'}</TableCell>
                       <TableCell className="text-center">{plan.can_feature_properties ? 'Sí' : 'No'}</TableCell>
                       <TableCell className="text-center">{plan.property_listing_duration_days ?? 'Indef.'} {plan.property_listing_duration_days ? 'días' : ''}</TableCell>
                       <TableCell>
@@ -276,7 +283,7 @@ export default function AdminPlansPage() {
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
             <p><strong>Campos con asterisco (*) son requeridos.</strong></p>
-            <p>Los límites de propiedades/solicitudes y la duración de publicación pueden ser dejados en blanco para indicar "ilimitado" o "indefinido".</p>
+            <p>Los límites (Propiedades, Solicitudes, Búsquedas IA) y la duración de publicación pueden ser dejados en blanco para indicar "ilimitado" o "indefinido".</p>
             <p>Si un plan se elimina, los usuarios asignados perderán esa asignación.</p>
         </CardContent>
       </Card>
@@ -291,3 +298,4 @@ export default function AdminPlansPage() {
     </div>
   );
 }
+

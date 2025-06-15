@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
     'genkit', 
     '@genkit-ai/googleai',
     'mysql2',
-    'bcryptjs', // Added bcryptjs
+    'bcryptjs',
   ],
 };
 

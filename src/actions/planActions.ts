@@ -17,6 +17,7 @@ function mapDbRowToPlan(row: any): Plan {
     price_currency: row.price_currency,
     max_properties_allowed: row.max_properties_allowed !== null ? parseInt(row.max_properties_allowed, 10) : null,
     max_requests_allowed: row.max_requests_allowed !== null ? parseInt(row.max_requests_allowed, 10) : null,
+    max_ai_searches_monthly: row.max_ai_searches_monthly !== null ? parseInt(row.max_ai_searches_monthly, 10) : null, // Added this
     can_feature_properties: Boolean(row.can_feature_properties),
     property_listing_duration_days: row.property_listing_duration_days !== null ? parseInt(row.property_listing_duration_days, 10) : null,
     is_active: Boolean(row.is_active),
@@ -59,6 +60,7 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
   const price_currency = formData.get('price_currency') as string || 'CLP';
   const max_properties_allowed_str = formData.get('max_properties_allowed') as string | null;
   const max_requests_allowed_str = formData.get('max_requests_allowed') as string | null;
+  const max_ai_searches_monthly_str = formData.get('max_ai_searches_monthly') as string | null; // Added this
   const can_feature_properties = formData.get('can_feature_properties') === 'on'; 
   const property_listing_duration_days_str = formData.get('property_listing_duration_days') as string | null;
   const is_active = formData.get('is_active') === 'on';
@@ -74,10 +76,12 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
   
   const max_properties_allowed = max_properties_allowed_str && max_properties_allowed_str.trim() !== '' ? parseInt(max_properties_allowed_str, 10) : null;
   const max_requests_allowed = max_requests_allowed_str && max_requests_allowed_str.trim() !== '' ? parseInt(max_requests_allowed_str, 10) : null;
+  const max_ai_searches_monthly = max_ai_searches_monthly_str && max_ai_searches_monthly_str.trim() !== '' ? parseInt(max_ai_searches_monthly_str, 10) : null; // Added this
   const property_listing_duration_days = property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '' ? parseInt(property_listing_duration_days_str, 10) : null;
 
   if ((max_properties_allowed_str && max_properties_allowed_str.trim() !== '' && (isNaN(max_properties_allowed!) || max_properties_allowed! < 0)) ||
       (max_requests_allowed_str && max_requests_allowed_str.trim() !== '' && (isNaN(max_requests_allowed!) || max_requests_allowed! < 0)) ||
+      (max_ai_searches_monthly_str && max_ai_searches_monthly_str.trim() !== '' && (isNaN(max_ai_searches_monthly!) || max_ai_searches_monthly! < 0)) || // Added this check
       (property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '' && (isNaN(property_listing_duration_days!) || property_listing_duration_days! < 0))) {
     return { success: false, message: "Los límites y duración deben ser números válidos no negativos si se especifican, o dejados en blanco para ilimitado/indefinido." };
   }
@@ -87,14 +91,14 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
     const sql = `
       INSERT INTO plans (
         id, name, description, price_monthly, price_currency,
-        max_properties_allowed, max_requests_allowed, can_feature_properties,
-        property_listing_duration_days, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        max_properties_allowed, max_requests_allowed, max_ai_searches_monthly, 
+        can_feature_properties, property_listing_duration_days, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     await query(sql, [
       planId, name, description || null, price_monthly, price_currency,
-      max_properties_allowed, max_requests_allowed, can_feature_properties,
-      property_listing_duration_days, is_active
+      max_properties_allowed, max_requests_allowed, max_ai_searches_monthly, // Added this
+      can_feature_properties, property_listing_duration_days, is_active
     ]);
     
     revalidatePath('/admin/plans');
@@ -102,8 +106,8 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
 
     const newPlan: Plan = {
       id: planId, name, description, price_monthly, price_currency,
-      max_properties_allowed, max_requests_allowed, can_feature_properties,
-      property_listing_duration_days, is_active
+      max_properties_allowed, max_requests_allowed, max_ai_searches_monthly, // Added this
+      can_feature_properties, property_listing_duration_days, is_active
     };
     return { success: true, message: "Plan añadido exitosamente.", plan: newPlan };
   } catch (error: any) {
@@ -122,6 +126,7 @@ export async function updatePlanAction(planId: string, formData: FormData): Prom
   const price_currency = formData.get('price_currency') as string || 'CLP';
   const max_properties_allowed_str = formData.get('max_properties_allowed') as string | null;
   const max_requests_allowed_str = formData.get('max_requests_allowed') as string | null;
+  const max_ai_searches_monthly_str = formData.get('max_ai_searches_monthly') as string | null; // Added this
   const can_feature_properties = formData.get('can_feature_properties') === 'on';
   const property_listing_duration_days_str = formData.get('property_listing_duration_days') as string | null;
   const is_active = formData.get('is_active') === 'on';
@@ -140,10 +145,12 @@ export async function updatePlanAction(planId: string, formData: FormData): Prom
 
   const max_properties_allowed = max_properties_allowed_str && max_properties_allowed_str.trim() !== '' ? parseInt(max_properties_allowed_str, 10) : null;
   const max_requests_allowed = max_requests_allowed_str && max_requests_allowed_str.trim() !== '' ? parseInt(max_requests_allowed_str, 10) : null;
+  const max_ai_searches_monthly = max_ai_searches_monthly_str && max_ai_searches_monthly_str.trim() !== '' ? parseInt(max_ai_searches_monthly_str, 10) : null; // Added this
   const property_listing_duration_days = property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '' ? parseInt(property_listing_duration_days_str, 10) : null;
 
   if ((max_properties_allowed_str && max_properties_allowed_str.trim() !== '' && (isNaN(max_properties_allowed!) || max_properties_allowed! < 0)) ||
       (max_requests_allowed_str && max_requests_allowed_str.trim() !== '' && (isNaN(max_requests_allowed!) || max_requests_allowed! < 0)) ||
+      (max_ai_searches_monthly_str && max_ai_searches_monthly_str.trim() !== '' && (isNaN(max_ai_searches_monthly!) || max_ai_searches_monthly! < 0)) || // Added this check
       (property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '' && (isNaN(property_listing_duration_days!) || property_listing_duration_days! < 0))) {
     return { success: false, message: "Los límites y duración deben ser números válidos no negativos si se especifican, o dejados en blanco para ilimitado/indefinido." };
   }
@@ -152,14 +159,15 @@ export async function updatePlanAction(planId: string, formData: FormData): Prom
     const sql = `
       UPDATE plans SET
         name = ?, description = ?, price_monthly = ?, price_currency = ?,
-        max_properties_allowed = ?, max_requests_allowed = ?, can_feature_properties = ?,
-        property_listing_duration_days = ?, is_active = ?, updated_at = NOW()
+        max_properties_allowed = ?, max_requests_allowed = ?, max_ai_searches_monthly = ?,
+        can_feature_properties = ?, property_listing_duration_days = ?, is_active = ?, 
+        updated_at = NOW()
       WHERE id = ?
     `;
     const result: any = await query(sql, [
       name, description || null, price_monthly, price_currency,
-      max_properties_allowed, max_requests_allowed, can_feature_properties,
-      property_listing_duration_days, is_active, planId
+      max_properties_allowed, max_requests_allowed, max_ai_searches_monthly, // Added this
+      can_feature_properties, property_listing_duration_days, is_active, planId
     ]);
 
     if (result.affectedRows === 0) {
