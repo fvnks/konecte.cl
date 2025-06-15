@@ -1,4 +1,3 @@
-
 // src/app/admin/whatsapp-viewer/page.tsx
 'use client';
 
@@ -10,6 +9,7 @@ import { Loader2, MessageSquare, Bot, User, AlertTriangle } from 'lucide-react';
 import type { WhatsAppMessage } from '@/lib/types';
 import { Button } from '@/components/ui/button'; // For refresh
 import Link from 'next/link'; // For login button
+import { useToast } from '@/hooks/use-toast'; // For potential errors
 
 interface AdminConversationStore {
   [telefono: string]: WhatsAppMessage[];
@@ -22,34 +22,35 @@ export default function AdminWhatsAppViewerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { toast } = useToast();
 
   // Simular llamada a una API que obtendría todas las conversaciones.
-  // En un sistema real, esto vendría de un endpoint protegido.
-  // Para este prototipo, usaremos una función simulada que importa el store.
-  async function fetchAllConversationsFromStore() {
+  // En un sistema real, esto vendría de un endpoint protegido de admin.
+  async function fetchAllConversationsForAdmin() {
     setIsLoading(true);
     setError(null);
     try {
-      // Esto es una simulación. En un entorno real, NUNCA importarías el store así en el cliente.
-      // Harías una llamada a una API route de admin.
+      // Esto es una simulación y no es seguro para producción.
+      // En un entorno real, NUNCA importarías el store directamente en el cliente de admin.
+      // Harías una llamada a una API route de admin protegida.
       const { getAllConversationsForAdmin, getUniquePhoneNumbersWithConversations } = await import('@/lib/whatsappBotStore');
-      setConversations(getAllConversationsForAdmin());
-      setPhoneNumbers(getUniquePhoneNumbersWithConversations());
-      if (getUniquePhoneNumbersWithConversations().length > 0 && !selectedTelefono) {
-        setSelectedTelefono(getUniquePhoneNumbersWithConversations()[0]);
+      const allConvos = getAllConversationsForAdmin();
+      const uniquePhones = getUniquePhoneNumbersWithConversations();
+      
+      setConversations(allConvos);
+      setPhoneNumbers(uniquePhones);
+
+      if (uniquePhones.length > 0 && !selectedTelefono) {
+        setSelectedTelefono(uniquePhones[0]);
       }
     } catch (e: any) {
-      console.error("Error fetching conversations for admin:", e);
-      setError("No se pudieron cargar las conversaciones. El almacén en memoria podría no estar disponible en este contexto de cliente directo.");
-      toast({ title: "Error", description: "No se pudieron cargar las conversaciones.", variant: "destructive" });
+      console.error("Error fetching conversations for admin viewer:", e);
+      setError("No se pudieron cargar las conversaciones. El almacén en memoria podría no estar disponible o la importación dinámica falló.");
+      toast({ title: "Error de Carga", description: "No se pudieron cargar las conversaciones para el visor de administrador.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   }
-  
-  // Temporal: Añadir toast para la simulación
-  const { toast } = (typeof window !== "undefined" ? require('@/hooks/use-toast') : { toast: () => {} });
-
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -58,7 +59,7 @@ export default function AdminWhatsAppViewerPage() {
         const user = JSON.parse(userJson);
         if (user.role_id === 'admin') {
           setIsAdmin(true);
-          fetchAllConversationsFromStore();
+          fetchAllConversationsForAdmin();
         } else {
           setIsAdmin(false);
           setError("Acceso denegado. Esta sección es solo para administradores.");
@@ -74,7 +75,8 @@ export default function AdminWhatsAppViewerPage() {
       setError("Debes iniciar sesión como administrador para ver esta página.");
       setIsLoading(false);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Se ejecuta solo una vez al montar
 
 
   const selectedConversation = conversations[selectedTelefono] || [];
@@ -101,7 +103,7 @@ export default function AdminWhatsAppViewerPage() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl font-headline flex items-center">
-            <MessageSquare className="h-6 w-6 mr-2 text-primary" /> Visor de Chats del Bot de WhatsApp
+            <MessageSquare className="h-6 w-6 mr-2 text-primary" /> Visor de Chats del Bot de WhatsApp (Admin)
           </CardTitle>
           <CardDescription>
             Visualiza las conversaciones entre los usuarios y el bot de WhatsApp. (Solo lectura)
@@ -118,10 +120,10 @@ export default function AdminWhatsAppViewerPage() {
                 <AlertTriangle className="mx-auto h-10 w-10 mb-3" />
                 <p className="font-semibold">Error al Cargar Datos</p>
                 <p className="text-sm">{error}</p>
-                 <Button onClick={fetchAllConversationsFromStore} variant="outline" className="mt-4">Reintentar</Button>
+                 <Button onClick={fetchAllConversationsForAdmin} variant="outline" className="mt-4">Reintentar</Button>
             </div>
           ) : phoneNumbers.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No hay conversaciones para mostrar.</p>
+            <p className="text-muted-foreground text-center py-8">No hay conversaciones de WhatsApp para mostrar.</p>
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-4">
@@ -136,7 +138,7 @@ export default function AdminWhatsAppViewerPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={fetchAllConversationsFromStore} variant="outline" size="icon" title="Refrescar conversaciones">
+                <Button onClick={fetchAllConversationsForAdmin} variant="outline" size="icon" title="Refrescar conversaciones">
                     <Loader2 className={`h-4 w-4 ${isLoading ? 'animate-spin': ''}`} />
                 </Button>
               </div>
@@ -144,7 +146,7 @@ export default function AdminWhatsAppViewerPage() {
               {selectedTelefono && (
                 <Card className="border-primary/30">
                   <CardHeader className="bg-secondary/30 py-3 px-4">
-                    <CardTitle className="text-lg">Chat con: {selectedTelefono}</CardTitle>
+                    <CardTitle className="text-lg">Chat con Usuario: {selectedTelefono}</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     <ScrollArea className="h-[500px] p-4">
@@ -156,6 +158,7 @@ export default function AdminWhatsAppViewerPage() {
                               msg.sender === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
                             }`}
                           >
+                            {msg.sender === 'user' ? <User className="h-6 w-6 text-primary self-start mb-1" /> : <Bot className="h-6 w-6 text-green-600 self-start mb-1" /> }
                             <div className={`p-2.5 rounded-lg shadow ${
                               msg.sender === 'user'
                                 ? "bg-primary text-primary-foreground rounded-br-none"
@@ -187,7 +190,7 @@ export default function AdminWhatsAppViewerPage() {
         </CardHeader>
         <CardContent className="text-xs text-yellow-600 dark:text-yellow-400">
             <p>Este visor de chat utiliza un almacenamiento en memoria temporal. Los mensajes se perderán si el servidor de la aplicación se reinicia.</p>
-            <p className="mt-1">Para una solución de producción, deberás integrar una base de datos persistente para almacenar los mensajes del bot de WhatsApp.</p>
+            <p className="mt-1">En un entorno real, este visor debería obtener datos de una API de administrador segura que consulte una base de datos persistente.</p>
         </CardContent>
       </Card>
     </div>
