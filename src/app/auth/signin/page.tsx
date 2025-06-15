@@ -68,15 +68,17 @@ export default function SignInPage() {
         title: "Inicio de Sesión Exitoso",
         description: `¡Bienvenido de nuevo, ${result.user.name}!`,
       });
+      // Corregir las claves para plan_id y plan_name
       localStorage.setItem('loggedInUser', JSON.stringify({
         id: result.user.id,
         name: result.user.name,
         email: result.user.email,
         role_id: result.user.role_id,
-        roleName: result.user.role_name,
-        planId: result.user.plan_id,
-        planName: result.user.plan_name,
-        avatarUrl: result.user.avatarUrl
+        roleName: result.user.role_name, // Asumiendo que signInAction lo devuelve
+        plan_id: result.user.plan_id,     // Correcto: snake_case
+        plan_name: result.user.plan_name,   // Correcto: snake_case
+        avatarUrl: result.user.avatarUrl,
+        phone_number: result.user.phone_number // Asegurarse que se guarda si existe
       }));
       // Use a specific custom event for same-tab updates
       window.dispatchEvent(new CustomEvent('userSessionChanged'));
