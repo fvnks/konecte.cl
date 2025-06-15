@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import type { Plan } from '@/lib/types';
 import { addPlanAction, deletePlanAction, getPlansAction, togglePlanStatusAction, getPlanByIdAction, togglePlanVisibilityAction } from '@/actions/planActions';
-import { Loader2, PlusCircle, CreditCard, Trash2, ToggleLeft, ToggleRight, Edit, Brain, Eye, EyeOff } from 'lucide-react';
+import { Loader2, PlusCircle, CreditCard, Trash2, ToggleLeft, ToggleRight, Edit, Brain, Eye, EyeOff, MessageSquare } from 'lucide-react'; // Added MessageSquare
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,7 +44,6 @@ export default function AdminPlansPage() {
   const fetchPlans = async () => {
     setIsLoading(true);
     try {
-      // showAllAdmin: true para ver todos los planes, activos, inactivos, visibles y ocultos
       const fetchedPlans = await getPlansAction({ showAllAdmin: true }); 
       setPlans(fetchedPlans);
     } catch (error) {
@@ -199,6 +198,10 @@ export default function AdminPlansPage() {
                     <Checkbox id="can_feature_properties" name="can_feature_properties" />
                     <Label htmlFor="can_feature_properties">Permite Destacar Propiedades</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="whatsapp_bot_enabled" name="whatsapp_bot_enabled" />
+                    <Label htmlFor="whatsapp_bot_enabled" className="flex items-center gap-1"><MessageSquare className="h-4 w-4 text-green-600"/>Habilitar Chat WhatsApp Bot</Label>
+                </div>
                  <div className="flex items-center space-x-2">
                     <Checkbox id="is_active" name="is_active" defaultChecked={true} />
                     <Label htmlFor="is_active">Plan Activo al crear</Label>
@@ -227,6 +230,7 @@ export default function AdminPlansPage() {
                     <TableHead>Nombre</TableHead>
                     <TableHead>Precio</TableHead>
                     <TableHead title="Búsquedas IA">B.IA</TableHead>
+                    <TableHead title="WhatsApp Bot">W.Bot</TableHead> {/* Nueva columna */}
                     <TableHead>Estado</TableHead>
                     <TableHead>Visibilidad</TableHead>
                     <TableHead className="text-right min-w-[200px]">Acciones</TableHead>
@@ -238,6 +242,11 @@ export default function AdminPlansPage() {
                       <TableCell className="font-medium">{plan.name}</TableCell>
                       <TableCell>${plan.price_monthly.toLocaleString('es-CL')} {plan.price_currency}</TableCell>
                       <TableCell className="text-center">{plan.max_ai_searches_monthly ?? '∞'}</TableCell>
+                      <TableCell className="text-center"> {/* Celda para WhatsApp Bot */}
+                        {plan.whatsapp_bot_enabled ? 
+                            <MessageSquare className="h-4 w-4 text-green-600 mx-auto" title="WhatsApp Bot Habilitado"/> : 
+                            <MessageSquare className="h-4 w-4 text-muted-foreground/50 mx-auto" title="WhatsApp Bot Deshabilitado"/>}
+                      </TableCell>
                       <TableCell>
                         <Button 
                           variant="ghost" 
@@ -309,6 +318,7 @@ export default function AdminPlansPage() {
             <p><strong>Campos con asterisco (*) son requeridos.</strong></p>
             <p>Los límites (Propiedades, Solicitudes, Búsquedas IA) y la duración de publicación pueden ser dejados en blanco para indicar "ilimitado" o "indefinido".</p>
             <p>Un plan "Activo" puede ser asignado a usuarios. Un plan "Visible Públicamente" aparecerá en la página de `/plans` para los visitantes.</p>
+            <p>La opción "Habilitar Chat WhatsApp Bot" permite a los usuarios con este plan acceder a la función de chat con el bot de WhatsApp.</p>
             <p>Si un plan se elimina, los usuarios asignados perderán esa asignación.</p>
         </CardContent>
       </Card>
@@ -323,4 +333,3 @@ export default function AdminPlansPage() {
     </div>
   );
 }
-

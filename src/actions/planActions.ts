@@ -7,7 +7,6 @@ import type { Plan } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
 
-// Helper to safely parse nullable integers from DB data
 const parseNullableIntFromDb = (value: any): number | null => {
   if (value === null || value === undefined || String(value).trim() === '') {
     return null;
@@ -16,7 +15,6 @@ const parseNullableIntFromDb = (value: any): number | null => {
   return isNaN(num) ? null : num;
 };
 
-// Helper to map DB row to Plan object, converting boolean-like numbers to booleans
 function mapDbRowToPlan(row: any): Plan {
   return {
     id: row.id,
@@ -27,10 +25,11 @@ function mapDbRowToPlan(row: any): Plan {
     max_properties_allowed: parseNullableIntFromDb(row.max_properties_allowed),
     max_requests_allowed: parseNullableIntFromDb(row.max_requests_allowed),
     max_ai_searches_monthly: parseNullableIntFromDb(row.max_ai_searches_monthly),
+    whatsapp_bot_enabled: Boolean(row.whatsapp_bot_enabled), // Mapear nuevo campo
     can_feature_properties: Boolean(row.can_feature_properties),
     property_listing_duration_days: parseNullableIntFromDb(row.property_listing_duration_days),
     is_active: Boolean(row.is_active),
-    is_publicly_visible: row.is_publicly_visible === null || row.is_publicly_visible === undefined ? true : Boolean(row.is_publicly_visible), // Default to true if null/undefined
+    is_publicly_visible: row.is_publicly_visible === null || row.is_publicly_visible === undefined ? true : Boolean(row.is_publicly_visible),
     created_at: row.created_at ? new Date(row.created_at).toISOString() : undefined,
     updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : undefined,
   };
@@ -89,9 +88,10 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
   const max_ai_searches_monthly_str = formData.get('max_ai_searches_monthly') as string | null;
   const property_listing_duration_days_str = formData.get('property_listing_duration_days') as string | null;
   
+  const whatsapp_bot_enabled = formData.get('whatsapp_bot_enabled') === 'on'; // Nuevo campo
   const can_feature_properties = formData.get('can_feature_properties') === 'on'; 
   const is_active = formData.get('is_active') === 'on';
-  const is_publicly_visible = formData.get('is_publicly_visible') === 'on'; // Nuevo campo
+  const is_publicly_visible = formData.get('is_publicly_visible') === 'on';
 
   if (!name) {
     return { success: false, message: "El nombre del plan es requerido." };
@@ -123,23 +123,26 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
       INSERT INTO plans (
         id, name, description, price_monthly, price_currency,
         max_properties_allowed, max_requests_allowed, max_ai_searches_monthly, 
-        can_feature_properties, property_listing_duration_days, is_active, is_publicly_visible
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        whatsapp_bot_enabled, can_feature_properties, property_listing_duration_days, 
+        is_active, is_publicly_visible
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     await query(sql, [
       planId, name, description || null, price_monthly, price_currency,
       max_properties_allowed, max_requests_allowed, max_ai_searches_monthly,
-      can_feature_properties, property_listing_duration_days, is_active, is_publicly_visible
+      whatsapp_bot_enabled, can_feature_properties, property_listing_duration_days, 
+      is_active, is_publicly_visible
     ]);
     
     revalidatePath('/admin/plans');
     revalidatePath('/admin/users'); 
-    revalidatePath('/plans'); // Revalidar página pública de planes
+    revalidatePath('/plans');
 
     const newPlan: Plan = {
       id: planId, name, description, price_monthly, price_currency,
       max_properties_allowed, max_requests_allowed, max_ai_searches_monthly,
-      can_feature_properties, property_listing_duration_days, is_active, is_publicly_visible
+      whatsapp_bot_enabled, can_feature_properties, property_listing_duration_days, 
+      is_active, is_publicly_visible
     };
     return { success: true, message: "Plan añadido exitosamente.", plan: newPlan };
   } catch (error: any) {
@@ -162,9 +165,10 @@ export async function updatePlanAction(planId: string, formData: FormData): Prom
   const max_ai_searches_monthly_str = formData.get('max_ai_searches_monthly') as string | null;
   const property_listing_duration_days_str = formData.get('property_listing_duration_days') as string | null;
   
+  const whatsapp_bot_enabled = formData.get('whatsapp_bot_enabled') === 'on'; // Nuevo campo
   const can_feature_properties = formData.get('can_feature_properties') === 'on';
   const is_active = formData.get('is_active') === 'on';
-  const is_publicly_visible = formData.get('is_publicly_visible') === 'on'; // Nuevo campo
+  const is_publicly_visible = formData.get('is_publicly_visible') === 'on';
 
   if (!planId) {
     return { success: false, message: "ID de plan no proporcionado para la actualización." };
@@ -198,14 +202,15 @@ export async function updatePlanAction(planId: string, formData: FormData): Prom
       UPDATE plans SET
         name = ?, description = ?, price_monthly = ?, price_currency = ?,
         max_properties_allowed = ?, max_requests_allowed = ?, max_ai_searches_monthly = ?,
-        can_feature_properties = ?, property_listing_duration_days = ?, is_active = ?, 
-        is_publicly_visible = ?, updated_at = NOW()
+        whatsapp_bot_enabled = ?, can_feature_properties = ?, property_listing_duration_days = ?, 
+        is_active = ?, is_publicly_visible = ?, updated_at = NOW()
       WHERE id = ?
     `;
     const result: any = await query(sql, [
       name, description || null, price_monthly, price_currency,
       max_properties_allowed, max_requests_allowed, max_ai_searches_monthly,
-      can_feature_properties, property_listing_duration_days, is_active, is_publicly_visible, planId
+      whatsapp_bot_enabled, can_feature_properties, property_listing_duration_days, 
+      is_active, is_publicly_visible, planId
     ]);
 
     if (result.affectedRows === 0) {
@@ -214,7 +219,7 @@ export async function updatePlanAction(planId: string, formData: FormData): Prom
     
     revalidatePath('/admin/plans');
     revalidatePath('/admin/users');
-    revalidatePath('/plans'); // Revalidar página pública de planes
+    revalidatePath('/plans');
 
     const updatedPlan = await getPlanByIdAction(planId);
     if (!updatedPlan) {
@@ -245,7 +250,7 @@ export async function deletePlanAction(planId: string): Promise<{ success: boole
     if (result.affectedRows > 0) {
       revalidatePath('/admin/plans');
       revalidatePath('/admin/users');
-      revalidatePath('/plans'); // Revalidar página pública de planes
+      revalidatePath('/plans');
       return { success: true, message: "Plan eliminado exitosamente y usuarios/registros de uso desvinculados." };
     } else {
       return { success: false, message: "El plan no fue encontrado o no se pudo eliminar." };
@@ -267,7 +272,7 @@ export async function togglePlanStatusAction(planId: string, isActive: boolean):
   try {
     await query('UPDATE plans SET is_active = ? WHERE id = ?', [isActive, planId]);
     revalidatePath('/admin/plans');
-    revalidatePath('/plans'); // Revalidar página pública
+    revalidatePath('/plans');
     return { success: true, message: `Plan ${isActive ? 'activado' : 'desactivado'} correctamente.` };
   } catch (error: any) {
     console.error("Error al cambiar estado del plan:", error);
@@ -282,11 +287,10 @@ export async function togglePlanVisibilityAction(planId: string, isVisible: bool
   try {
     await query('UPDATE plans SET is_publicly_visible = ? WHERE id = ?', [isVisible, planId]);
     revalidatePath('/admin/plans');
-    revalidatePath('/plans'); // Revalidar página pública
+    revalidatePath('/plans');
     return { success: true, message: `Visibilidad pública del plan ${isVisible ? 'activada' : 'desactivada'}.` };
   } catch (error: any) {
     console.error("Error al cambiar visibilidad del plan:", error);
     return { success: false, message: `Error al cambiar visibilidad del plan: ${error.message}` };
   }
 }
-

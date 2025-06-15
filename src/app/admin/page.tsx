@@ -3,9 +3,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper, MailQuestion, CalendarClock, MailWarning } from "lucide-react"; // Added MailWarning
+import { Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper, MailQuestion, CalendarClock, MailWarning, MessageSquare } from "lucide-react"; // Added MessageSquare
 import type { ReactNode } from 'react';
-import { getUnreadContactSubmissionsCountAction } from "@/actions/contactFormActions"; // Importar el contador
+import { getUnreadContactSubmissionsCountAction } from "@/actions/contactFormActions";
 
 interface AdminDashboardCardProps {
   title: string;
@@ -78,6 +78,14 @@ export default async function AdminDashboardPage() {
     cta: "Ver Mensajes",
     colorClass: "from-orange-500/10 to-orange-500/5 text-orange-600 dark:text-orange-400",
     badgeContent: unreadContactMessages > 0 ? unreadContactMessages : null,
+  },
+  {
+    title: "Visor Chat WhatsApp", // Nuevo Card
+    description: "Visualiza las conversaciones del bot de WhatsApp con los usuarios.",
+    href: "/admin/whatsapp-viewer",
+    icon: <MessageSquare className="h-8 w-8 text-primary" />,
+    cta: "Ver Chats WhatsApp",
+    colorClass: "from-sky-500/10 to-sky-500/5 text-sky-600 dark:text-sky-400",
   },
   {
     title: "Gestión de Usuarios",
@@ -166,7 +174,7 @@ export default async function AdminDashboardPage() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {adminDashboardCardsConfig.map((item) => (
+        {adminDashboardCardsConfig.sort((a,b) => a.title.localeCompare(b.title)).map((item) => ( // Ordenar alfabéticamente
           <AdminDashboardCard
             key={item.title}
             title={item.title}
@@ -182,4 +190,3 @@ export default async function AdminDashboardPage() {
     </div>
   );
 }
-

@@ -28,7 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import type { Plan } from '@/lib/types';
 import { updatePlanAction } from '@/actions/planActions';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, MessageSquare } from 'lucide-react'; // Added MessageSquare
 
 interface EditPlanDialogProps {
   open: boolean;
@@ -45,10 +45,11 @@ type PlanFormValues = {
   max_properties_allowed: string | null;
   max_requests_allowed: string | null;
   max_ai_searches_monthly: string | null;
+  whatsapp_bot_enabled: boolean; // Nuevo campo
   can_feature_properties: boolean;
   property_listing_duration_days: string | null;
   is_active: boolean;
-  is_publicly_visible: boolean; // Nuevo campo
+  is_publicly_visible: boolean;
 };
 
 export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated }: EditPlanDialogProps) {
@@ -64,10 +65,11 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
       max_properties_allowed: '',
       max_requests_allowed: '',
       max_ai_searches_monthly: '',
+      whatsapp_bot_enabled: false, // Por defecto
       can_feature_properties: false,
       property_listing_duration_days: '',
       is_active: true,
-      is_publicly_visible: true, // Por defecto
+      is_publicly_visible: true,
     },
   });
 
@@ -81,10 +83,11 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
         max_properties_allowed: plan.max_properties_allowed?.toString() || '',
         max_requests_allowed: plan.max_requests_allowed?.toString() || '',
         max_ai_searches_monthly: plan.max_ai_searches_monthly?.toString() || '',
+        whatsapp_bot_enabled: plan.whatsapp_bot_enabled || false, // Nuevo campo
         can_feature_properties: plan.can_feature_properties,
         property_listing_duration_days: plan.property_listing_duration_days?.toString() || '',
         is_active: plan.is_active,
-        is_publicly_visible: plan.is_publicly_visible === undefined ? true : plan.is_publicly_visible, // Manejar undefined
+        is_publicly_visible: plan.is_publicly_visible === undefined ? true : plan.is_publicly_visible,
       });
     } else if (!open) {
       form.reset(); 
@@ -105,10 +108,11 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
     if (values.max_properties_allowed) formData.append('max_properties_allowed', values.max_properties_allowed);
     if (values.max_requests_allowed) formData.append('max_requests_allowed', values.max_requests_allowed);
     if (values.max_ai_searches_monthly) formData.append('max_ai_searches_monthly', values.max_ai_searches_monthly);
+    if (values.whatsapp_bot_enabled) formData.append('whatsapp_bot_enabled', 'on'); // Nuevo campo
     if (values.can_feature_properties) formData.append('can_feature_properties', 'on');
     if (values.property_listing_duration_days) formData.append('property_listing_duration_days', values.property_listing_duration_days);
     if (values.is_active) formData.append('is_active', 'on');
-    if (values.is_publicly_visible) formData.append('is_publicly_visible', 'on'); // Añadir nuevo campo
+    if (values.is_publicly_visible) formData.append('is_publicly_visible', 'on');
     
     startTransition(async () => {
       const result = await updatePlanAction(plan.id, formData);
@@ -220,6 +224,16 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
                         <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                             <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                             <Label htmlFor={field.name} className="font-normal">Permite Destacar Propiedades</Label>
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="whatsapp_bot_enabled"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                            <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            <Label htmlFor={field.name} className="font-normal flex items-center gap-1"><MessageSquare className="h-4 w-4 text-green-600"/>Habilitar Chat WhatsApp Bot</Label>
                         </FormItem>
                     )}
                 />

@@ -47,15 +47,16 @@ const SQL_STATEMENTS: string[] = [
     max_properties_allowed INT DEFAULT NULL,
     max_requests_allowed INT DEFAULT NULL,
     max_ai_searches_monthly INT DEFAULT NULL,
+    whatsapp_bot_enabled BOOLEAN DEFAULT FALSE, -- Nueva columna
     can_feature_properties BOOLEAN DEFAULT FALSE,
     property_listing_duration_days INT DEFAULT NULL,
     is_active BOOLEAN DEFAULT TRUE,
-    is_publicly_visible BOOLEAN DEFAULT TRUE, -- Nueva columna
+    is_publicly_visible BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   );`,
-  `INSERT IGNORE INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly, is_publicly_visible) VALUES
-    ('${randomUUID()}', 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30, 5, TRUE);`, // Añadido is_publicly_visible
+  `INSERT IGNORE INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly, whatsapp_bot_enabled, is_publicly_visible) VALUES
+    ('${randomUUID()}', 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30, 5, FALSE, TRUE);`,
 
   // users
   `CREATE TABLE IF NOT EXISTS users (

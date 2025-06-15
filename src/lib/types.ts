@@ -16,11 +16,12 @@ export interface Plan {
   price_currency: string;
   max_properties_allowed: number | null; // null para ilimitado
   max_requests_allowed: number | null;   // null para ilimitado
-  max_ai_searches_monthly: number | null; // Nueva propiedad
+  max_ai_searches_monthly: number | null;
   can_feature_properties: boolean;
   property_listing_duration_days: number | null; // null para indefinido
   is_active: boolean;
-  is_publicly_visible: boolean; // Nueva propiedad
+  is_publicly_visible: boolean;
+  whatsapp_bot_enabled?: boolean; // Nueva propiedad para el bot de WhatsApp
   created_at?: string;
   updated_at?: string;
 }
@@ -30,14 +31,14 @@ export interface User {
   name: string;
   avatarUrl?: string;
   email?: string;
-  password_hash?: string; // Only present when fetched from DB, should not be sent to client
-  rut_tin?: string | null; // RUT (Chile) o Tax ID Number
-  phone_number?: string | null; // Número de teléfono
-  role_id: string; // FK a Role.id
-  role_name?: string; // Nombre del rol (para mostrar en UI, obtenido de un JOIN)
-  plan_id?: string | null; // FK a Plan.id
-  plan_name?: string | null; // Nombre del plan (para mostrar en UI)
-  plan_expires_at?: string | null; // Fecha de expiración del plan
+  password_hash?: string;
+  rut_tin?: string | null;
+  phone_number?: string | null;
+  role_id: string;
+  role_name?: string;
+  plan_id?: string | null;
+  plan_name?: string | null;
+  plan_expires_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -47,15 +48,15 @@ export type ListingCategory = 'apartment' | 'house' | 'condo' | 'land' | 'commer
 
 export interface PropertyListing {
   id: string;
-  user_id: string; // FK a User.id
+  user_id: string;
   title: string;
   description: string;
   propertyType: PropertyType;
   category: ListingCategory;
   price: number;
-  currency: string; // CLP, UF, USD
+  currency: string;
   address: string;
-  city: string; // Ciudad o Comuna
+  city: string;
   country: string;
   bedrooms: number;
   bathrooms: number;
@@ -65,8 +66,8 @@ export interface PropertyListing {
   slug: string;
   upvotes: number;
   commentsCount: number;
-  views_count?: number; // Añadido
-  inquiries_count?: number; // Añadido
+  views_count?: number;
+  inquiries_count?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -76,13 +77,11 @@ export interface PropertyListing {
 
 export interface SearchRequest {
   id: string;
-  user_id: string; // FK a User.id
+  user_id: string;
   title: string;
   description: string;
-
   desiredPropertyType: PropertyType[];
   desiredCategories: ListingCategory[];
-
   desiredLocation?: {
     city: string;
     neighborhood?: string;
@@ -106,17 +105,16 @@ export interface Comment {
   property_id?: string | null;
   request_id?: string | null;
   content: string;
-  parent_id?: string | null; // Para comentarios anidados
+  parent_id?: string | null;
   upvotes: number;
   created_at: string;
   updated_at: string;
-  author?: Pick<User, 'id' | 'name' | 'avatarUrl'>; // Incluimos solo lo necesario del autor
+  author?: Pick<User, 'id' | 'name' | 'avatarUrl'>;
 }
 
-// Esquema para añadir un nuevo comentario
 export const addCommentFormSchema = z.object({
   content: z.string().min(1, "El comentario no puede estar vacío.").max(1000, "El comentario no puede exceder los 1000 caracteres."),
-  parentId: z.string().uuid().optional(), // Para respuestas
+  parentId: z.string().uuid().optional(),
 });
 export type AddCommentFormValues = z.infer<typeof addCommentFormSchema>;
 
@@ -139,7 +137,6 @@ export interface SiteSettings {
   show_ai_matching_section?: boolean;
   show_google_sheet_section?: boolean;
   landing_sections_order?: LandingSectionKey[] | null;
-  // Nuevos campos para la barra de anuncios
   announcement_bar_text?: string | null;
   announcement_bar_link_url?: string | null;
   announcement_bar_link_text?: string | null;
@@ -149,14 +146,13 @@ export interface SiteSettings {
   updated_at?: string;
 }
 
-// --- User Management by Admin ---
 export const adminCreateUserFormSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
   email: z.string().email("Correo electrónico inválido.").max(255),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").max(100),
   confirmPassword: z.string().min(6, "La confirmación de contraseña debe tener al menos 6 caracteres."),
   role_id: z.string().min(1, "El rol es requerido."),
-  plan_id: z.string().optional().nullable(), // Puede ser string, undefined, o null
+  plan_id: z.string().optional().nullable(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Las contraseñas no coinciden.",
   path: ["confirmPassword"],
@@ -170,9 +166,6 @@ export const adminEditUserFormSchema = z.object({
   plan_id: z.string().optional().nullable(),
 });
 export type AdminEditUserFormValues = z.infer<typeof adminEditUserFormSchema>;
-
-
-// --- CRM Types ---
 
 export type ContactStatus =
   | 'new'
@@ -248,7 +241,7 @@ export type InteractionType =
   | 'offer_made'
   | 'other';
 
-export const interactionTypeValues = [ // This is for CRM Interaction Types
+export const interactionTypeValues = [
   'note', 'email_sent', 'email_received', 'call_made', 'call_received',
   'meeting', 'message_sent', 'message_received', 'task_completed',
   'property_viewing', 'offer_made', 'other'
@@ -272,17 +265,17 @@ export const interactionTypeOptions: { value: InteractionType; label: string }[]
 export interface Interaction {
   id: string;
   contact_id: string;
-  user_id: string; // User who logged this interaction, usually the contact owner
+  user_id: string;
   interaction_type: InteractionType;
-  interaction_date: string; // ISO string date
+  interaction_date: string;
   subject?: string | null;
   description: string;
   outcome?: string | null;
   follow_up_needed: boolean;
-  follow_up_date?: string | null; // ISO string date (date part only)
+  follow_up_date?: string | null;
   created_at: string;
   updated_at: string;
-  contact_name?: string; // For display purposes, joined from contacts table
+  contact_name?: string;
 }
 
 const baseInteractionFormSchema = z.object({
@@ -308,7 +301,6 @@ export type AddInteractionFormValues = z.infer<typeof addInteractionFormSchema>;
 export const editInteractionFormSchema = baseInteractionFormSchema;
 export type EditInteractionFormValues = z.infer<typeof editInteractionFormSchema>;
 
-// --- Auth Schemas ---
 export const signUpSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
   email: z.string().email("Correo electrónico inválido.").max(255),
@@ -321,11 +313,10 @@ export const signUpSchema = z.object({
   }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Las contraseñas no coinciden.",
-  path: ["confirmPassword"], // Path of error
+  path: ["confirmPassword"],
 });
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
 
-// --- Request Form Schema ---
 export const requestFormSchema = z.object({
   title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
   description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
@@ -340,16 +331,14 @@ export const requestFormSchema = z.object({
 });
 export type RequestFormValues = z.infer<typeof requestFormSchema>;
 
-
-// --- Chat Types ---
 export interface ChatMessage {
   id: string;
   conversation_id: string;
   sender_id: string;
   receiver_id: string;
   content: string;
-  created_at: string; // ISO string date
-  read_at?: string | null; // ISO string date
+  created_at: string;
+  read_at?: string | null;
   sender?: Pick<User, 'id' | 'name' | 'avatarUrl'>;
 }
 
@@ -361,26 +350,24 @@ export interface ChatConversation {
   user_b_id: string;
   user_a_unread_count: number;
   user_b_unread_count: number;
-  last_message_at?: string | null; // ISO string date
-  created_at: string; // ISO string date
-  updated_at: string; // ISO string date
+  last_message_at?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
-// Type for displaying a list of conversations
 export interface ChatConversationListItem {
   id: string;
-  last_message_at?: string | null; // ISO string date
+  last_message_at?: string | null;
   other_user: Pick<User, 'id' | 'name' | 'avatarUrl'>;
   last_message_content?: string | null;
   unread_count_for_current_user: number;
   property_id?: string | null;
   request_id?: string | null;
-  context_title?: string | null; // e.g., Property title or Request title
-  context_slug?: string | null; // Slug for linking
+  context_title?: string | null;
+  context_slug?: string | null;
   context_type?: 'property' | 'request' | null;
 }
 
-// --- Editable Texts Types ---
 export interface EditableText {
   id: string;
   page_group: string;
@@ -391,26 +378,25 @@ export interface EditableText {
   updated_at?: string;
 }
 
-// --- Lead Tracking Types ---
 export interface PropertyView {
   id: string;
   property_id: string;
   user_id?: string | null;
   ip_address?: string | null;
   user_agent?: string | null;
-  viewed_at: string; // ISO string date
+  viewed_at: string;
 }
 
 export interface PropertyInquiry {
   id: string;
   property_id: string;
-  property_owner_id: string; // ID del dueño de la propiedad
-  user_id?: string | null; // ID del usuario que consulta, si está logueado
+  property_owner_id: string;
+  user_id?: string | null;
   name: string;
   email: string;
   phone?: string | null;
   message: string;
-  submitted_at: string; // ISO string date
+  submitted_at: string;
   is_read: boolean;
 }
 
@@ -422,7 +408,6 @@ export const propertyInquiryFormSchema = z.object({
 });
 export type PropertyInquiryFormValues = z.infer<typeof propertyInquiryFormSchema>;
 
-// --- Property Visits Types ---
 export type PropertyVisitStatus =
   | 'pending_confirmation'
   | 'confirmed'
@@ -460,15 +445,14 @@ export interface PropertyVisit {
   property_id: string;
   visitor_user_id: string;
   property_owner_user_id: string;
-  proposed_datetime: string; // ISO string date
-  confirmed_datetime?: string | null; // ISO string date
+  proposed_datetime: string;
+  confirmed_datetime?: string | null;
   status: PropertyVisitStatus;
   visitor_notes?: string | null;
   owner_notes?: string | null;
   cancellation_reason?: string | null;
-  created_at: string; // ISO string date
-  updated_at: string; // ISO string date
-  // Optional joined data for display
+  created_at: string;
+  updated_at: string;
   property_title?: string;
   property_slug?: string;
   visitor_name?: string;
@@ -505,7 +489,6 @@ export type PropertyVisitAction =
   | 'mark_owner_no_show'
   | 'cancel_by_visitor';
 
-// --- Contact Form Submissions ---
 export interface ContactFormSubmission {
   id: string;
   name: string;
@@ -513,10 +496,10 @@ export interface ContactFormSubmission {
   phone?: string | null;
   subject?: string | null;
   message: string;
-  submitted_at: string; // ISO string date
+  submitted_at: string;
   is_read: boolean;
   admin_notes?: string | null;
-  replied_at?: string | null; // ISO string date
+  replied_at?: string | null;
 }
 
 export const contactFormPublicSchema = z.object({
@@ -528,7 +511,6 @@ export const contactFormPublicSchema = z.object({
 });
 export type ContactFormPublicValues = z.infer<typeof contactFormPublicSchema>;
 
-// --- User Listing Interactions (Likes/Dislikes) ---
 export const listingTypeValues = ['property', 'request'] as const;
 export type ListingType = (typeof listingTypeValues)[number];
 
@@ -541,7 +523,7 @@ export interface UserListingInteraction {
   listing_id: string;
   listing_type: ListingType;
   interaction_type: InteractionTypeEnum;
-  created_at: string; // ISO string date
+  created_at: string;
 }
 
 export const recordInteractionSchema = z.object({
@@ -558,14 +540,13 @@ export interface RecordInteractionResult {
   matchDetails?: {
     matchFound: boolean;
     conversationId?: string;
-    userAName?: string; 
-    userBName?: string; 
-    likedListingTitle?: string; 
-    reciprocalListingTitle?: string; 
+    userAName?: string;
+    userBName?: string;
+    likedListingTitle?: string;
+    reciprocalListingTitle?: string;
   }
 }
 
-// --- Server Action Results for Submit ---
 export interface SubmitPropertyResult {
   success: boolean;
   message?: string;
@@ -582,14 +563,32 @@ export interface SubmitRequestResult {
   autoMatchesCount?: number;
 }
 
+// Types for WhatsApp Bot Integration
+export type WhatsAppMessageSender = 'user' | 'bot';
 
-// --- DATOS DE EJEMPLO (Se mantendrán para desarrollo/fallback si la BD no está conectada) ---
+export interface WhatsAppMessage {
+  id: string;
+  telefono: string; // User's phone number, serves as conversation ID
+  text: string;
+  sender: WhatsAppMessageSender;
+  timestamp: number; // Unix timestamp
+  status?: 'pending_to_whatsapp' | 'sent_to_whatsapp' | 'delivered_to_user' | 'failed'; // Optional status for messages sent by user
+}
 
-export const placeholderUser: User = {
-  id: 'user1',
-  name: 'Juanita Pérez',
-  avatarUrl: 'https://placehold.co/40x40.png?text=JP',
-  email: 'juanita.perez@example.com',
-  role_id: 'user',
-  role_name: 'Usuario'
-};
+export interface SendMessagePayload {
+  telefono: string;
+  text: string;
+}
+
+export interface ReceiveReplyPayload {
+  telefono: string;
+  text: string; // Message from bot (received from WhatsApp)
+}
+
+export interface PendingMessageForBot {
+  id: string;
+  telefono: string;
+  text: string;
+}
+
+// End of WhatsApp Bot Integration Types
