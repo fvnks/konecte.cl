@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { WhatsAppMessage, User as StoredUser, Plan } from '@/lib/types';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { getPlanByIdAction } from '@/actions/planActions'; // Para verificar permiso del plan
+import { getPlanByIdAction } from '@/actions/planActions'; 
 
 export default function WhatsAppChatPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
@@ -24,14 +24,17 @@ export default function WhatsAppChatPage() {
   const [isCheckingPermission, setIsCheckingPermission] = useState(true);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null); // Declare messagesEndRef
 
   const scrollToBottom = () => {
-    if (scrollAreaRef.current) {
-      const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-      if (scrollViewport) {
-        scrollViewport.scrollTop = scrollViewport.scrollHeight;
-      }
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Alternative for ScrollArea component if direct scrollIntoView doesn't work as expected:
+    // if (scrollAreaRef.current) {
+    //   const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+    //   if (scrollViewport) {
+    //     scrollViewport.scrollTop = scrollViewport.scrollHeight;
+    //   }
+    // }
   };
 
   useEffect(() => {
@@ -48,7 +51,6 @@ export default function WhatsAppChatPage() {
         }
         setUserPhoneNumber(user.phone_number);
 
-        // Verificar permiso del plan
         if (user.plan_id) {
           getPlanByIdAction(user.plan_id).then(plan => {
             if (plan?.whatsapp_bot_enabled) {
@@ -62,7 +64,7 @@ export default function WhatsAppChatPage() {
             toast({ title: "Error", description: "No se pudo verificar el permiso de tu plan.", variant: "destructive" });
             setIsCheckingPermission(false);
           });
-        } else { // No plan_id means default (likely free) plan, assume no permission
+        } else { 
           toast({ title: "Función no Habilitada", description: "El chat con el bot de WhatsApp no está incluido en tu plan actual.", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
           setIsCheckingPermission(false);
         }
@@ -75,14 +77,14 @@ export default function WhatsAppChatPage() {
       }
     } else {
       setIsCheckingPermission(false);
-      setIsLoading(false); // No user logged in
+      setIsLoading(false);
     }
   }, [toast]);
   
   useEffect(() => {
     if (userPhoneNumber && hasPermission && !isCheckingPermission) {
       const fetchConversation = async () => {
-        if (!isLoading) setIsLoading(true); // Solo activar loader si no está ya cargando por otra razón
+        if (!isLoading) setIsLoading(true);
         try {
           const response = await fetch(`/api/whatsapp-bot/conversation/${userPhoneNumber}`);
           if (!response.ok) {
@@ -103,14 +105,14 @@ export default function WhatsAppChatPage() {
       };
       fetchConversation();
 
-      const intervalId = setInterval(fetchConversation, 7000); // Poll every 7 seconds
+      const intervalId = setInterval(fetchConversation, 7000); 
       return () => clearInterval(intervalId);
     } else if (!isCheckingPermission && !hasPermission) {
-        setIsLoading(false); // Si no hay permiso, no hay nada que cargar
+        setIsLoading(false);
     }
-  }, [userPhoneNumber, hasPermission, isCheckingPermission, toast, isLoading]);
+  }, [userPhoneNumber, hasPermission, isCheckingPermission, toast, isLoading]); // Added isLoading to dependencies
 
-  useEffect(() => {
+  useEffect(() => { // Auto-scroll effect
     scrollToBottom();
   }, [messages]);
 
@@ -158,7 +160,7 @@ export default function WhatsAppChatPage() {
       setNewMessage(messageToSend);
     } finally {
       setIsSending(false);
-      scrollToBottom();
+      // scrollToBottom(); // Already handled by useEffect on messages change
     }
   };
 
@@ -303,4 +305,3 @@ export default function WhatsAppChatPage() {
     </Card>
   );
 }
-
