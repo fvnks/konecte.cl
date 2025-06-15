@@ -8,14 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Send, MessageCircle, UserCircle, AlertTriangle, Bot } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import type { WhatsAppMessage, User as StoredUser, Plan } from '@/lib/types';
+import type { WhatsAppMessage, User as StoredUser, Plan, ChatMessage } from '@/lib/types';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getPlanByIdAction } from '@/actions/planActions';
-import ChatMessageItem from '@/components/chat/ChatMessageItem';
-import ChatHeader from '@/components/chat/ChatHeader'; // Assuming ChatHeader is used
-import { getConversationMessagesAction, sendMessageAction } from '@/actions/chatActions';
+import ChatMessageItem from '@/components/chat/ChatMessageItem'; // Expects ChatMessage
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'; // Import Avatar components
 
+const BOT_SENDER_ID = 'KONECTE_WHATSAPP_BOT'; // Define a constant ID for the bot
 
 export default function WhatsAppChatPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
@@ -36,7 +36,6 @@ export default function WhatsAppChatPage() {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     } else if (scrollAreaRef.current) {
-      // Fallback for initial load if messagesEndRef isn't ready
       const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
       if (scrollViewport) {
         scrollViewport.scrollTop = scrollViewport.scrollHeight;
@@ -52,6 +51,7 @@ export default function WhatsAppChatPage() {
   useEffect(() => {
     console.log('[WhatsAppChatPage DEBUG] Permission check useEffect triggered.');
     setIsCheckingPermission(true);
+    setIsLoadingInitial(true); // Start initial loading
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
@@ -83,7 +83,7 @@ export default function WhatsAppChatPage() {
               console.log('[WhatsAppChatPage DEBUG] Permission DENIED. Plan whatsapp_bot_enabled is not true.');
             }
             setIsCheckingPermission(false);
-            setIsLoadingInitial(false); 
+            // setIsLoadingInitial(false); // Moved to after conversation fetch logic
           }).catch(err => {
             console.error("[WhatsAppChatPage DEBUG] Error checking plan permission:", err);
             toast({ title: "Error de Plan", description: "No se pudo verificar el permiso de tu plan.", variant: "destructive" });
@@ -119,7 +119,7 @@ export default function WhatsAppChatPage() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`[WhatsAppChatPage DEBUG] API conversation fetch failed. Status: ${response.status}, Response: ${errorText}`);
-        throw new Error(`Error del servidor: ${response.status}`);
+        throw new Error(`Error del servidor al obtener conversación: ${response.status}`);
       }
       const data: WhatsAppMessage[] = await response.json();
       setMessages(data.sort((a, b) => a.timestamp - b.timestamp));
@@ -129,28 +129,33 @@ export default function WhatsAppChatPage() {
       toast({ title: 'Error al Actualizar Chat', description: 'No se pudo actualizar la conversación.', variant: 'destructive' });
     } finally {
       setIsLoadingConversation(false);
+      if(isLoadingInitial) setIsLoadingInitial(false); // Ensure initial load spinner stops
     }
-  }, [toast]);
+  }, [toast, isLoadingInitial]);
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout | undefined;
     console.log(`[WhatsAppChatPage DEBUG] Conversation Polling useEffect. isCheckingPermission: ${isCheckingPermission}, hasPermission: ${hasPermission}, userPhoneNumber: ${userPhoneNumber}`);
     if (!isCheckingPermission && hasPermission && userPhoneNumber) {
       console.log(`[WhatsAppChatPage DEBUG] Conditions met. Initial fetchConversation for ${userPhoneNumber}.`);
       fetchConversation(userPhoneNumber);
 
-      const intervalId = setInterval(() => {
+      intervalId = setInterval(() => {
         console.log(`[WhatsAppChatPage DEBUG] Interval: Calling fetchConversation for ${userPhoneNumber}.`);
         fetchConversation(userPhoneNumber);
-      }, 7000);
+      }, 7000); // Poll every 7 seconds
 
-      return () => {
-        console.log(`[WhatsAppChatPage DEBUG] Clearing interval for ${userPhoneNumber}.`);
-        clearInterval(intervalId);
-      };
     } else {
       console.log(`[WhatsAppChatPage DEBUG] Not setting up interval or initial fetch. isCheckingPermission: ${isCheckingPermission}, hasPermission: ${hasPermission}, userPhoneNumber: ${userPhoneNumber}`);
+      if (isLoadingInitial && !isCheckingPermission) setIsLoadingInitial(false); // Stop loader if permissions/phone are not set
     }
-  }, [isCheckingPermission, hasPermission, userPhoneNumber, fetchConversation]);
+    return () => {
+      if (intervalId) {
+        console.log(`[WhatsAppChatPage DEBUG] Clearing interval for ${userPhoneNumber}.`);
+        clearInterval(intervalId);
+      }
+    };
+  }, [isCheckingPermission, hasPermission, userPhoneNumber, fetchConversation, isLoadingInitial]);
 
 
   const handleSendMessage = async (e: FormEvent) => {
@@ -189,6 +194,7 @@ export default function WhatsAppChatPage() {
       console.log('[WhatsAppChatPage DEBUG] API send-message success. Result:', result);
       
       if (result.success && result.message) {
+        // Replace optimistic message with server-confirmed one
         setMessages(prev => prev.map(msg => msg.id === tempMessageId ? result.message : msg));
       } else {
         throw new Error(result.message || 'El servidor respondió pero falló al confirmar el envío.');
@@ -203,7 +209,7 @@ export default function WhatsAppChatPage() {
     }
   };
   
-  if (isLoadingInitial || isCheckingPermission) {
+  if (isLoadingInitial) { 
     return (
       <div className="flex flex-col h-full items-center justify-center p-6">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -267,13 +273,17 @@ export default function WhatsAppChatPage() {
   }
   
   const botName = "Asistente Konecte";
+  const botAvatarUrl = "/logo-konecte-ai-bot.png"; 
 
   return (
     <Card className="flex flex-col h-full max-h-[calc(100vh-var(--header-height,6rem)-var(--dashboard-padding-y,3rem)-2rem)] shadow-xl rounded-xl border overflow-hidden">
       <CardHeader className="p-3 sm:p-4 border-b bg-card sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="relative">
-             <Bot className="h-10 w-10 text-primary p-1.5 bg-primary/10 rounded-full border border-primary/20" />
+             <Avatar className="h-10 w-10">
+                <AvatarImage src={botAvatarUrl} alt={botName} data-ai-hint="robot bot"/>
+                <AvatarFallback><Bot className="text-primary"/></AvatarFallback>
+             </Avatar>
           </div>
           <div>
             <CardTitle className="text-base sm:text-lg">{botName}</CardTitle>
@@ -294,9 +304,23 @@ export default function WhatsAppChatPage() {
                 <p>No hay mensajes aún. ¡Envía el primero para iniciar la conversación con nuestro asistente!</p>
               </div>
           ) : (
-            messages.map((msg) => (
-              <ChatMessageItem key={msg.id} message={msg} currentUserId={loggedInUser!.id} />
-            ))
+            messages.map((msg: WhatsAppMessage) => {
+              // Transform WhatsAppMessage to the structure ChatMessageItem expects
+              const transformedMessage: ChatMessage = {
+                id: msg.id,
+                conversation_id: 'whatsapp_conv_' + msg.telefono, // Create a synthetic conversation_id
+                sender_id: msg.sender === 'user' && loggedInUser ? loggedInUser.id : BOT_SENDER_ID,
+                receiver_id: msg.sender === 'user' && loggedInUser ? BOT_SENDER_ID : (loggedInUser ? loggedInUser.id : 'unknown_receiver'),
+                content: msg.text,
+                created_at: new Date(msg.timestamp).toISOString(), // Convert WhatsApp timestamp (number) to ISO string
+                sender: msg.sender === 'user' && loggedInUser
+                  ? { id: loggedInUser.id, name: loggedInUser.name, avatarUrl: loggedInUser.avatarUrl }
+                  : { id: BOT_SENDER_ID, name: botName, avatarUrl: botAvatarUrl }
+              };
+              return (
+                <ChatMessageItem key={msg.id} message={transformedMessage} currentUserId={loggedInUser.id} />
+              );
+            })
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -321,3 +345,4 @@ export default function WhatsAppChatPage() {
     </Card>
   );
 }
+
