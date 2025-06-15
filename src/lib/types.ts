@@ -21,7 +21,7 @@ export interface Plan {
   property_listing_duration_days: number | null; // null para indefinido
   is_active: boolean;
   is_publicly_visible: boolean;
-  whatsapp_bot_enabled?: boolean; // Nueva propiedad para el bot de WhatsApp
+  whatsapp_bot_enabled?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -590,5 +590,38 @@ export interface PendingMessageForBot {
   telefono: string;
   text: string;
 }
-
 // End of WhatsApp Bot Integration Types
+
+// Broker Collaboration Types
+export type BrokerCollaborationStatus = 'pending' | 'accepted' | 'rejected' | 'deal_in_progress' | 'deal_closed_success' | 'deal_failed';
+
+export interface BrokerCollaboration {
+    id: string;
+    property_request_id: string;
+    requesting_broker_id: string; // User who owns the property_request_id
+    property_id: string;
+    offering_broker_id: string; // User who owns the property_id and is making the proposal
+    status: BrokerCollaborationStatus;
+    commission_terms?: string | null; // JSON or text
+    chat_conversation_id?: string | null;
+    proposed_at: string;
+    accepted_at?: string | null;
+    closed_at?: string | null;
+    updated_at: string;
+
+    // Optional hydrated fields for display
+    property_request_title?: string;
+    property_request_slug?: string;
+    requesting_broker_name?: string;
+    property_title?: string;
+    property_slug?: string;
+    offering_broker_name?: string;
+}
+
+export const proposePropertyFormSchema = z.object({
+  selectedPropertyId: z.string().uuid("Debes seleccionar una propiedad válida."),
+  commission_terms: z.string().max(500, "Los términos de comisión no pueden exceder los 500 caracteres.").optional().or(z.literal('')),
+});
+export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema>;
+
+// End of Broker Collaboration Types
