@@ -8,7 +8,7 @@ const chatHistories: Record<string, WhatsAppMessage[]> = {};
 // In-memory store for messages pending to be sent by the external bot
 let pendingOutboundMessages: WhatsAppMessage[] = [];
 
-// console.log('[WhatsAppStore] Store inicializado/reiniciado.');
+console.log('[WhatsAppStore] Store inicializado/reiniciado.');
 
 export const BOT_SENDER_ID = 'KONECTE_WHATSAPP_BOT_ASSISTANT';
 
@@ -18,7 +18,7 @@ export function getConversation(userPhoneNumber: string): WhatsAppMessage[] {
     return [];
   }
   const conversation = chatHistories[userPhoneNumber] || [];
-  return JSON.parse(JSON.stringify(conversation)); // Deep copy
+  return JSON.parse(JSON.stringify(conversation));
 }
 
 export function addMessageToConversation(
@@ -54,55 +54,39 @@ export function addMessageToConversation(
 }
 
 export function addMessageToPendingOutbound(
-  botPhoneNumber: string, // Este es el telefonoReceptorEnWhatsapp (número del bot de Ubuntu)
-  text: string,           // Este es el textoOriginal
-  webUserId: string,      // Este es el userId
-  webUserPhoneNumber: string // Este es el telefonoRemitenteParaRespuestaKonecte
+  botPhoneNumber: string, // Este es msg.telefono (destino WA para el bot de Ubuntu)
+  text: string,           // Este es msg.text (contenido del mensaje)
+  webUserId: string,      // Este es msg.sender_id_override (ID del usuario de Konecte)
+  webUserPhoneNumber: string // Este es msg.telefono_remitente_konecte (teléfono del usuario de Konecte, para la respuesta)
 ): WhatsAppMessage {
-  
-  console.log(`[WhatsAppStore DEBUG addMessageToPendingOutbound INCOMING PARAMS] 
-    botPhoneNumber (destino WA): ${botPhoneNumber}, 
-    text (contenido): "${text}", 
-    webUserId (originador Konecte): ${webUserId}, 
-    webUserPhoneNumber (clave respuesta Konecte): ${webUserPhoneNumber}`);
+  console.log(`[WhatsAppStore DEBUG addMessageToPendingOutbound INCOMING PARAMS] botPhone: '${botPhoneNumber}', text: '${text ? text.substring(0,20)+"..." : text}', userId: '${webUserId}', userPhone: '${webUserPhoneNumber}'`);
 
-  // Validación aún más estricta aquí
-  const textIsValid = text && typeof text === 'string' && text.trim() !== '';
-  const webUserPhoneNumberIsValid = webUserPhoneNumber && typeof webUserPhoneNumber === 'string' && webUserPhoneNumber.trim() !== '';
-  const webUserIdIsValid = webUserId && typeof webUserId === 'string' && webUserId.trim() !== '';
   const botPhoneNumberIsValid = botPhoneNumber && typeof botPhoneNumber === 'string' && botPhoneNumber.trim() !== '';
+  const textIsValid = text && typeof text === 'string' && text.trim() !== '';
+  const webUserIdIsValid = webUserId && typeof webUserId === 'string' && webUserId.trim() !== '';
+  const webUserPhoneNumberIsValid = webUserPhoneNumber && typeof webUserPhoneNumber === 'string' && webUserPhoneNumber.trim() !== '';
 
-  if (!textIsValid || !webUserPhoneNumberIsValid || !webUserIdIsValid || !botPhoneNumberIsValid) {
-    console.error(`[WhatsAppStore CRITICAL addMessageToPendingOutbound VALIDATION FAIL] Datos inválidos. Mensaje NO ENCOLADO.
-      botPhoneNumber: ${botPhoneNumber} (valido: ${botPhoneNumberIsValid})
-      text: "${text}" (valido: ${textIsValid})
-      webUserId: ${webUserId} (valido: ${webUserIdIsValid})
-      webUserPhoneNumber: ${webUserPhoneNumber} (valido: ${webUserPhoneNumberIsValid})`);
-      
-    return { 
-      id: 'error-store-invalid-data-add-' + randomUUID(), 
-      telefono: botPhoneNumber || "INVALID_BOT_PHONE", 
-      text: text || '[ERROR AL ENCOLAR: DATOS INVÁLIDOS EN STORE]', 
-      sender: 'user', 
-      timestamp: Date.now(), 
-      status: 'failed', 
-      sender_id_override: webUserId || "INVALID_USER_ID", 
-      telefono_remitente_konecte: webUserPhoneNumber || "INVALID_USER_PHONE_RESP"
-    };
+  if (!botPhoneNumberIsValid || !textIsValid || !webUserIdIsValid || !webUserPhoneNumberIsValid) {
+    console.error(`[WhatsAppStore CRITICAL addMessageToPendingOutbound VALIDATION FAIL] Datos inválidos recibidos. Mensaje NO ENCOLADO.
+      botPhoneNumber (destino WA): ${botPhoneNumber} (valido: ${botPhoneNumberIsValid})
+      text (contenido): "${text ? text.substring(0,20)+"..." : text}" (valido: ${textIsValid})
+      webUserId (originador Konecte): ${webUserId} (valido: ${webUserIdIsValid})
+      webUserPhoneNumber (clave respuesta Konecte): ${webUserPhoneNumber} (valido: ${webUserPhoneNumberIsValid})`);
+    return { id: 'error-add-invalid-data-' + randomUUID(), telefono: botPhoneNumber, text: '[ERROR AL ENCOLAR: DATOS INVÁLIDOS EN STORE]', sender: 'user', timestamp: Date.now(), status: 'failed', sender_id_override: webUserId, telefono_remitente_konecte: webUserPhoneNumber };
   }
 
   const message: WhatsAppMessage = {
     id: randomUUID(),
-    telefono: botPhoneNumber, 
-    text: text,               
-    sender: 'user',
+    telefono: botPhoneNumber, // Número del bot de Ubuntu, a dónde debe enviar el mensaje
+    text: text, // Contenido del mensaje
+    sender: 'user', // Desde la perspectiva del bot, es un mensaje originado por un usuario (vía la plataforma)
     status: 'pending_to_whatsapp',
     timestamp: Date.now(),
-    sender_id_override: webUserId, 
-    telefono_remitente_konecte: webUserPhoneNumber, 
+    sender_id_override: webUserId, // Quién lo envió desde Konecte
+    telefono_remitente_konecte: webUserPhoneNumber, // A quién responder en la UI de Konecte
   };
+  console.log('[WhatsAppStore DEBUG addMessageToPendingOutbound SUCCESS] Mensaje encolado:', JSON.stringify(message));
   pendingOutboundMessages.push(message);
-  console.log(`[WhatsAppStore DEBUG addMessageToPendingOutbound SUCCESS] Mensaje encolado. ID: ${message.id}. Total en cola: ${pendingOutboundMessages.length}. Datos encolados: ${JSON.stringify(message)}`);
   return JSON.parse(JSON.stringify(message));
 }
 
@@ -111,58 +95,52 @@ export function getPendingMessagesForBot(): PendingMessageForExternalBot[] {
   const messagesToDeliver: PendingMessageForExternalBot[] = [];
   const stillPendingForNextCycle: WhatsAppMessage[] = [];
 
-  // console.log(`[WhatsAppStore DEBUG getPendingMessagesForBot] INICIO. Procesando ${pendingOutboundMessages.length} mensajes en cola.`);
+  // console.log(`[WhatsAppStore DEBUG getPendingMessagesForBot] START. Queue length: ${pendingOutboundMessages.length}. Full queue: ${JSON.stringify(pendingOutboundMessages)}`);
 
   for (const msg of pendingOutboundMessages) {
-    // console.log(`[WhatsAppStore DEBUG getPendingMessagesForBot] Evaluando msg ID ${msg.id}:`, JSON.stringify(msg));
     if (msg.status === 'pending_to_whatsapp') {
-      
-      // Loguear valores ANTES de validar
-      // console.log(`[WhatsAppStore DEBUG getPendingMessagesForBot] Validando msg ID ${msg.id}:
-      //   msg.id: ${msg.id} (tipo: ${typeof msg.id})
-      //   msg.telefono (para bot Ubuntu): ${msg.telefono} (tipo: ${typeof msg.telefono})
-      //   msg.text (original): ${msg.text} (tipo: ${typeof msg.text})
-      //   msg.telefono_remitente_konecte (para respuesta Konecte): ${msg.telefono_remitente_konecte} (tipo: ${typeof msg.telefono_remitente_konecte})
-      //   msg.sender_id_override (userId Konecte): ${msg.sender_id_override} (tipo: ${typeof msg.sender_id_override})`);
+      // Campos fuente del objeto WhatsAppMessage
+      const sourceId = msg.id;
+      const sourceTelefonoReceptorWA = msg.telefono; // El número del bot de Ubuntu
+      const sourceTextoOriginal = msg.text;
+      const sourceTelefonoRemitenteKonecte = msg.telefono_remitente_konecte; // El número del usuario web para la UI
+      const sourceUserIdKonecte = msg.sender_id_override;
 
-      const idValido = msg.id && typeof msg.id === 'string' && msg.id.trim() !== '';
-      const telefonoReceptorValido = msg.telefono && typeof msg.telefono === 'string' && msg.telefono.trim() !== '';
-      const textoOriginalValido = msg.text && typeof msg.text === 'string' && msg.text.trim() !== '';
-      const telefonoRemitenteValido = msg.telefono_remitente_konecte && typeof msg.telefono_remitente_konecte === 'string' && msg.telefono_remitente_konecte.trim() !== '';
-      const userIdValido = msg.sender_id_override && typeof msg.sender_id_override === 'string' && msg.sender_id_override.trim() !== '';
+      // Validación estricta de cada campo necesario
+      const isMsgIdValid = sourceId && typeof sourceId === 'string' && sourceId.trim() !== '';
+      const isTelefonoReceptorWAValid = sourceTelefonoReceptorWA && typeof sourceTelefonoReceptorWA === 'string' && sourceTelefonoReceptorWA.trim() !== '';
+      const isTextoOriginalValid = sourceTextoOriginal && typeof sourceTextoOriginal === 'string' && sourceTextoOriginal.trim() !== '';
+      const isTelefonoRemitenteKonecteValid = sourceTelefonoRemitenteKonecte && typeof sourceTelefonoRemitenteKonecte === 'string' && sourceTelefonoRemitenteKonecte.trim() !== '';
+      const isUserIdKonecteValid = sourceUserIdKonecte && typeof sourceUserIdKonecte === 'string' && sourceUserIdKonecte.trim() !== '';
 
-      const isValidForDelivery = idValido && telefonoReceptorValido && textoOriginalValido && telefonoRemitenteValido && userIdValido;
-
-      if (isValidForDelivery) {
-        const messageForBot: PendingMessageForExternalBot = {
-          id: msg.id, // No usar !, ya validamos
-          telefonoReceptorEnWhatsapp: msg.telefono,
-          textoOriginal: msg.text,
-          telefonoRemitenteParaRespuestaKonecte: msg.telefono_remitente_konecte,
-          userId: msg.sender_id_override,
-        };
-        messagesToDeliver.push(messageForBot);
-        // console.log(`[WhatsAppStore DEBUG getPendingMessagesForBot] Mensaje ID ${msg.id} AÑADIDO para entrega. Objeto: ${JSON.stringify(messageForBot)}`);
+      if (isMsgIdValid && isTelefonoReceptorWAValid && isTextoOriginalValid && isTelefonoRemitenteKonecteValid && isUserIdKonecteValid) {
+        messagesToDeliver.push({
+          id: sourceId,
+          telefonoReceptorEnWhatsapp: sourceTelefonoReceptorWA,
+          textoOriginal: sourceTextoOriginal,
+          telefonoRemitenteParaRespuestaKonecte: sourceTelefonoRemitenteKonecte,
+          userId: sourceUserIdKonecte,
+        });
+        // console.log(`[WhatsAppStore DEBUG getPendingMessagesForBot] Message ID ${sourceId} ADDED to delivery.`);
       } else {
-        console.warn(`[WhatsAppStore CRITICAL getPendingMessagesForBot] Mensaje pendiente (ID: ${msg.id || 'SIN_ID_EN_MSG_OBJ'}) DESCARTADO de la entrega por datos inválidos o faltantes en el objeto almacenado:
-          - msg.id: ${msg.id} (Válido: ${idValido})
-          - msg.telefono (telefonoReceptorEnWhatsapp): ${msg.telefono} (Válido: ${telefonoReceptorValido})
-          - msg.text (textoOriginal): "${msg.text || '[VACÍO/UNDEFINED]'}" (Válido: ${textoOriginalValido})
-          - msg.telefono_remitente_konecte (telefonoRemitenteParaRespuestaKonecte): ${msg.telefono_remitente_konecte} (Válido: ${telefonoRemitenteValido})
-          - msg.sender_id_override (userId): ${msg.sender_id_override} (Válido: ${userIdValido})
-          Este mensaje no se entregará y se elimina de la cola.`);
+        console.warn(`[WhatsAppStore CRITICAL getPendingMessagesForBot] Mensaje pendiente (Source ID: ${sourceId || 'N/A'}) DESCARTADO por datos inválidos o faltantes en el objeto WhatsAppMessage fuente. No se entregará:
+          - sourceId: ${sourceId} (Válido: ${isMsgIdValid})
+          - sourceTelefonoReceptorWA (para bot Ubuntu): ${sourceTelefonoReceptorWA} (Válido: ${isTelefonoReceptorWAValid})
+          - sourceTextoOriginal: ${sourceTextoOriginal ? `"${sourceTextoOriginal.substring(0,30)}..."` : sourceTextoOriginal} (Válido: ${isTextoOriginalValid})
+          - sourceTelefonoRemitenteKonecte (para respuesta UI Konecte): ${sourceTelefonoRemitenteKonecte} (Válido: ${isTelefonoRemitenteKonecteValid})
+          - sourceUserIdKonecte: ${sourceUserIdKonecte} (Válido: ${isUserIdKonecteValid})`);
+        // Este mensaje malformado se descarta y no se añade a stillPendingForNextCycle.
       }
     } else {
+      // Si el status no es 'pending_to_whatsapp', se mantiene en la cola.
       stillPendingForNextCycle.push(msg);
     }
   }
 
-  pendingOutboundMessages = stillPendingForNextCycle; 
-  
-  // console.log(`[WhatsAppStore DEBUG getPendingMessagesForBot] FIN. Entregando ${messagesToDeliver.length} mensajes. ${pendingOutboundMessages.length} mensajes restantes en cola.`);
+  pendingOutboundMessages = stillPendingForNextCycle;
+  // console.log(`[WhatsAppStore DEBUG getPendingMessagesForBot] END. Delivering ${messagesToDeliver.length} messages. ${pendingOutboundMessages.length} remain in queue.`);
   return JSON.parse(JSON.stringify(messagesToDeliver));
 }
-
 
 export function getAllConversationsForAdmin(): Record<string, WhatsAppMessage[]> {
   return JSON.parse(JSON.stringify(chatHistories));
@@ -182,4 +160,5 @@ export function DEV_ONLY_getPendingOutboundMessagesState() {
   // console.log("[WhatsAppStore DEV_ONLY] Estado actual de pendingOutboundMessages:", JSON.stringify(pendingOutboundMessages, null, 2));
   // return JSON.parse(JSON.stringify(pendingOutboundMessages));
 }
-
+    
+    
