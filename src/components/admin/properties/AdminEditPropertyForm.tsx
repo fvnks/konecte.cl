@@ -39,8 +39,10 @@ const categoryOptions: { value: ListingCategory; label: string }[] = [
   { value: "other", label: "Otro" },
 ];
 
-// Reusing the form schema from the original property form
-const formSchema = z.object({
+// El schema principal ahora espera `images` como `string[]`.
+// Para el admin, permitiremos editarlo como un string separado por comas,
+// y lo convertiremos antes de enviarlo a la acción.
+const adminPropertyFormSchema = z.object({
   title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
   description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
   propertyType: z.enum(["rent", "sale"], { required_error: "Debes seleccionar un tipo de propiedad (arriendo/venta)." }),
@@ -53,11 +55,12 @@ const formSchema = z.object({
   bedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de dormitorios no puede ser negativo."),
   bathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de baños no puede ser negativo."),
   areaSqMeters: z.coerce.number().positive("El área (m²) debe ser un número positivo."),
-  images: z.string().optional().describe("URLs de imágenes separadas por comas. Ejemplo: url1,url2"), // Stored as comma-separated string
-  features: z.string().optional().describe("Características separadas por comas. Ejemplo: Piscina,Estacionamiento"), // Stored as comma-separated string
+  imagesString: z.string().optional().describe("URLs de imágenes separadas por comas."), // Campo para el Textarea
+  features: z.string().optional().describe("Características separadas por comas."),
 });
 
-export type PropertyFormValues = z.infer<typeof formSchema>;
+type AdminPropertyFormValues = z.infer<typeof adminPropertyFormSchema>;
+
 
 interface AdminEditPropertyFormProps {
   property: PropertyListing;
@@ -67,8 +70,8 @@ export default function AdminEditPropertyForm({ property }: AdminEditPropertyFor
   const { toast } = useToast();
   const router = useRouter();
 
-  const form = useForm<PropertyFormValues>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<AdminPropertyFormValues>({
+    resolver: zodResolver(adminPropertyFormSchema),
     defaultValues: {
       title: property.title || "",
       description: property.description || "",
@@ -82,19 +85,29 @@ export default function AdminEditPropertyForm({ property }: AdminEditPropertyFor
       bedrooms: property.bedrooms || 0,
       bathrooms: property.bathrooms || 0,
       areaSqMeters: property.areaSqMeters || 0,
-      images: property.images?.join(', ') || "", // Convert array to comma-separated string
-      features: property.features?.join(', ') || "", // Convert array to comma-separated string
+      imagesString: property.images?.join(', ') || "", // Convert array to comma-separated string for Textarea
+      features: property.features?.join(', ') || "",
     },
   });
 
-  async function onSubmit(values: PropertyFormValues) {
-    const result = await adminUpdatePropertyAction(property.id, values);
+  async function onSubmit(values: AdminPropertyFormValues) {
+    const imagesArray = values.imagesString ? values.imagesString.split(',').map(img => img.trim()).filter(img => img.length > 0 && /^https?:\/\//.test(img)) : [];
+    
+    const dataToSubmit = {
+        ...values,
+        images: imagesArray, // Ahora 'images' es string[]
+    };
+    // Quitar imagesString ya que no es parte de PropertyFormValues que espera adminUpdatePropertyAction
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { imagesString, ...finalData } = dataToSubmit;
+
+
+    const result = await adminUpdatePropertyAction(property.id, finalData);
     if (result.success) {
       toast({
         title: "Propiedad Actualizada",
         description: "Los detalles de la propiedad han sido actualizados exitosamente.",
       });
-      // Redirect back to the admin properties list or to the updated property page
       router.push('/admin/properties'); 
     } else {
       toast({
@@ -300,14 +313,14 @@ export default function AdminEditPropertyForm({ property }: AdminEditPropertyFor
         
         <FormField
           control={form.control}
-          name="images"
+          name="imagesString"
           render={({ field }) => (
             <FormItem>
               <FormLabel>URLs de Imágenes (separadas por comas)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Ej: https://placehold.co/600x400.png,https://placehold.co/600x400.png" {...field} />
+                <Textarea placeholder="Ej: https://placehold.co/600x400.png,https://placehold.co/600x400.png" {...field} className="min-h-[80px]" />
               </FormControl>
-              <FormDescription>Pega las URLs de las imágenes de tu propiedad, separadas por una coma.</FormDescription>
+              <FormDescription>Pega las URLs de las imágenes de la propiedad, separadas por una coma. Asegúrate que sean URLs válidas.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -322,7 +335,7 @@ export default function AdminEditPropertyForm({ property }: AdminEditPropertyFor
               <FormControl>
                 <Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} />
               </FormControl>
-              <FormDescription>Lista características importantes de tu propiedad.</FormDescription>
+              <FormDescription>Lista características importantes de la propiedad.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -341,3 +354,4 @@ export default function AdminEditPropertyForm({ property }: AdminEditPropertyFor
     </Form>
   );
 }
+
