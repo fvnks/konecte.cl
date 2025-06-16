@@ -1,3 +1,4 @@
+
 // src/components/layout/AppLayout.tsx
 'use client';
 
@@ -44,4 +45,3 @@ export default function AppLayout({ children }: AppLayoutProps) {
     </div>
   );
 }
-```
