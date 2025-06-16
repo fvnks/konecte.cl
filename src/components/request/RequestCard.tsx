@@ -1,11 +1,16 @@
 // src/components/request/RequestCard.tsx
+'use client';
+
 import Link from 'next/link';
-import type { SearchRequest, PropertyType, ListingCategory } from '@/lib/types';
+import type { SearchRequest, PropertyType, ListingCategory, User as StoredUser, InteractionTypeEnum } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, BedDouble, Bath, Eye, UserCircle as UserIcon, Handshake } from 'lucide-react';
+import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, BedDouble, Bath, Eye, UserCircle as UserIcon, Handshake, ThumbsUp, ThumbsDown, Loader2, HeartHandshake, MessagesSquare } from 'lucide-react';
+import { recordUserListingInteractionAction } from '@/actions/interactionActions';
+import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
 
 interface RequestCardProps {
   request: SearchRequest;
@@ -31,6 +36,7 @@ const translateCategoryBadge = (category: ListingCategory): string => {
 
 export default function RequestCard({ request }: RequestCardProps) {
   const {
+    id: requestId,
     title,
     slug,
     desiredLocation,
@@ -45,6 +51,79 @@ export default function RequestCard({ request }: RequestCardProps) {
     minBathrooms,
     open_for_broker_collaboration,
   } = request;
+
+  const { toast } = useToast();
+  const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  useEffect(() => {
+    const userJson = localStorage.getItem('loggedInUser');
+    if (userJson) {
+      try {
+        setLoggedInUser(JSON.parse(userJson));
+      } catch (error) {
+        console.error("Error parsing user from localStorage for RequestCard:", error);
+      }
+    }
+  }, []);
+
+  const handleInteraction = async (interactionType: InteractionTypeEnum) => {
+    if (!loggedInUser) {
+      toast({
+        title: "Acción Requerida",
+        description: "Debes iniciar sesión para interactuar.",
+        variant: "default",
+        action: <Button variant="link" size="sm" asChild><Link href="/auth/signin">Iniciar Sesión</Link></Button>
+      });
+      return;
+    }
+    setIsInteracting(true);
+    try {
+      const result = await recordUserListingInteractionAction(loggedInUser.id, {
+        listingId: requestId,
+        listingType: 'request',
+        interactionType,
+      });
+
+      if (result.success) {
+        if (result.matchDetails?.matchFound && result.matchDetails.conversationId) {
+            toast({
+                title: "¡Es un Match Mutuo!",
+                description: `${result.message} Revisa tus mensajes.`,
+                duration: 7000,
+                action: (
+                    <Button variant="link" size="sm" asChild>
+                        <Link href={`/dashboard/messages/${result.matchDetails.conversationId}`}>
+                            Ver Chat <MessagesSquare className="ml-1.5 h-4 w-4"/>
+                        </Link>
+                    </Button>
+                )
+            });
+            window.dispatchEvent(new CustomEvent('messagesUpdated'));
+        } else {
+            toast({
+                title: "Preferencia Guardada",
+                description: result.message || `Tu preferencia ha sido registrada.`,
+                duration: 3000,
+            });
+        }
+      } else {
+         toast({
+            title: "Error",
+            description: result.message || `No se pudo guardar tu preferencia.`,
+            variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error Inesperado",
+        description: `No se pudo guardar tu preferencia: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+       setIsInteracting(false);
+    }
+  };
 
   const locationCity = desiredLocation?.city || 'N/A';
   const locationNeighborhood = desiredLocation?.neighborhood;
@@ -108,6 +187,36 @@ export default function RequestCard({ request }: RequestCardProps) {
                 <Handshake className="h-3.5 w-3.5 mr-1.5" /> Abierta a Colaboración
             </Badge>
           )}
+
+        {/* Botones de Like/Dislike */}
+        <div className="flex justify-center gap-2.5 mt-3 mb-1">
+            <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-500/70 hover:bg-red-500/10 hover:text-red-700 hover:border-red-600 h-8 w-14 flex-1 rounded-lg shadow-sm"
+                onClick={() => handleInteraction('dislike')}
+                disabled={!loggedInUser || isInteracting}
+                title={!loggedInUser ? "Inicia sesión para interactuar" : "No me gusta"}
+            >
+                {isInteracting ? <Loader2 className="h-4 w-4 animate-spin"/> : <ThumbsDown className="h-4 w-4" />}
+            </Button>
+            <Button
+                variant="outline"
+                size="sm"
+                className="text-green-600 border-green-500/70 hover:bg-green-500/10 hover:text-green-700 hover:border-green-600 h-8 w-14 flex-1 rounded-lg shadow-sm"
+                onClick={() => handleInteraction('like')}
+                disabled={!loggedInUser || isInteracting}
+                title={!loggedInUser ? "Inicia sesión para interactuar" : "Me gusta"}
+            >
+                 {isInteracting ? <Loader2 className="h-4 w-4 animate-spin"/> : <ThumbsUp className="h-4 w-4" />}
+            </Button>
+        </div>
+         {!loggedInUser && (
+            <p className="text-[10px] text-muted-foreground text-center -mt-0.5">
+                <Link href="/auth/signin" className="underline hover:text-primary">Inicia sesión</Link> para interactuar.
+            </p>
+        )}
+
       </CardContent>
       <CardFooter className="p-4 sm:p-5 pt-2.5 border-t flex justify-between items-center mt-auto">
         <Link href={`/requests/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary text-xs sm:text-sm">
@@ -121,3 +230,4 @@ export default function RequestCard({ request }: RequestCardProps) {
     </Card>
   );
 }
+
