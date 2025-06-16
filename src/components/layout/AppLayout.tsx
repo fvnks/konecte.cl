@@ -1,4 +1,3 @@
-
 // src/components/layout/AppLayout.tsx
 'use client';
 
@@ -7,6 +6,7 @@ import Navbar from './Navbar';
 import Footer from './Footer';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import FloatingAssistantButton from './FloatingAssistantButton'; // Importar el nuevo componente
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -22,8 +22,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   
   const showNavbar = !isAdminRoute && !isDashboardRoute && !isAuthRoute;
   const showFooter = !isAdminRoute && !isDashboardRoute && !isAuthRoute;
+  const showFloatingAssistant = showNavbar; // Mostrar el asistente en las mismas páginas que el Navbar/Footer
   
-  // Layouts específicos no tendrán padding de container por defecto, lo aplicarán ellos mismos
   const useSpecificLayoutPadding = isAdminRoute || isDashboardRoute || isAuthRoute;
 
   return (
@@ -34,14 +34,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
         className={cn(
           "flex-grow",
           useSpecificLayoutPadding
-            ? "animate-fade-in" // Las páginas con layout específico (admin, dashboard, auth) gestionan su propio padding
-            : "container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 animate-fade-in" // Layout general con container y padding
+            ? "animate-fade-in" 
+            : "container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 animate-fade-in"
         )}
       >
         {children}
       </main>
 
       {showFooter && <Footer />}
+      {showFloatingAssistant && <FloatingAssistantButton />}
     </div>
   );
 }
