@@ -20,6 +20,7 @@ import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnnouncementBar from './AnnouncementBar';
+import ThemeToggle from './ThemeToggle'; // Importado el nuevo componente
 
 const navItems = [
   { href: '/', label: 'Inicio', icon: <Home /> },
@@ -254,6 +255,7 @@ export default function Navbar() {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
+             {isClient && <ThemeToggle />} {/* Theme toggle button */}
             {isClient ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -432,12 +434,13 @@ export default function Navbar() {
                     )}
                   </nav>
                   <div className="p-4 mt-auto border-t">
+                      {isClient && <ThemeToggle />} {/* Theme toggle in mobile menu footer */}
                       {isClient && loggedInUser ? (
-                          <Button variant="outline" onClick={handleLogout} className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5 cursor-pointer hover:border-destructive hover:text-destructive hover:bg-destructive/5 rounded-lg">
+                          <Button variant="outline" onClick={handleLogout} className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5 cursor-pointer hover:border-destructive hover:text-destructive hover:bg-destructive/5 rounded-lg mt-3">
                               <LogOut className="h-5 w-5" /> Cerrar Sesión
                           </Button>
                       ) : isClient ? (
-                          <div className="space-y-3">
+                          <div className="space-y-3 mt-3">
                               <Button variant="default" asChild className="w-full justify-center text-lg py-3.5 rounded-lg" onClick={() => setIsMobileMenuOpen(false)}>
                                   <Link href="/auth/signup">
                                       <span className="flex items-center gap-2.5">
@@ -454,7 +457,7 @@ export default function Navbar() {
                               </Button>
                           </div>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-3 mt-3">
                           <Skeleton className="h-12 w-full rounded-lg" />
                           <Skeleton className="h-12 w-full rounded-lg" />
                         </div>
