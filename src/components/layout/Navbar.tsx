@@ -1,4 +1,3 @@
-
 // src/components/layout/Navbar.tsx
 'use client';
 
@@ -90,7 +89,6 @@ export default function Navbar() {
             setLoggedInUser(user);
             if (user?.id) {
               const unreadCount = await getTotalUnreadMessagesCountAction(user.id);
-              console.log(`[Navbar DEBUG] Fetched unread count for user ${user.id}:`, unreadCount);
               setTotalUnreadMessages(unreadCount);
             } else {
               setTotalUnreadMessages(0);
@@ -107,7 +105,7 @@ export default function Navbar() {
         }
       };
 
-      updateState(); // Initial call
+      updateState(); 
 
       const handleStorageChange = (event: StorageEvent | CustomEvent) => {
         const isRelevantStorageEvent = event instanceof StorageEvent && event.key === 'loggedInUser';
@@ -115,7 +113,6 @@ export default function Navbar() {
         const isCustomMessagesEvent = event.type === 'messagesUpdated';
 
         if (isRelevantStorageEvent || isCustomSessionEvent || isCustomMessagesEvent) {
-          console.log(`[Navbar DEBUG] Event '${event.type}' triggered state update.`);
           updateState();
         }
       };
@@ -153,8 +150,8 @@ export default function Navbar() {
           variant="ghost"
           asChild
           className={cn(
-            "font-medium hover:bg-primary/10 hover:text-primary w-full md:w-auto",
-            isMobile ? "text-lg justify-start px-4 py-3.5" : "text-sm md:text-base md:px-3 py-2"
+            "font-medium hover:bg-primary/10 hover:text-primary w-full md:w-auto transition-colors duration-150",
+            isMobile ? "text-lg justify-start px-4 py-3.5 rounded-md" : "text-sm md:text-base md:px-3.5 py-2 rounded-lg"
           )}
           onClick={closeMenu}
         >
@@ -175,7 +172,7 @@ export default function Navbar() {
     if (isLoadingSettings) {
       return (
         <div className="flex items-center gap-2">
-          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-8 w-8 rounded-lg" />
           <Skeleton className="h-7 w-32 rounded-md" />
         </div>
       );
@@ -185,9 +182,9 @@ export default function Navbar() {
         <Image
           src={siteSettings.logoUrl}
           alt={siteTitleForDisplay}
-          width={140}
-          height={36}
-          style={{ objectFit: 'contain', maxHeight: '36px', maxWidth: '140px' }}
+          width={150} 
+          height={40} 
+          style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }}
           priority
           data-ai-hint="logo empresa"
           onError={(e) => {
@@ -217,7 +214,7 @@ export default function Navbar() {
   };
 
   const MobileMenuLink = ({ href, icon, label, closeMenu, showBadge, badgeCount }: { href: string; icon: React.ReactNode; label: string; closeMenu?: () => void; showBadge?: boolean; badgeCount?: number; }) => (
-    <Button variant="ghost" asChild className="justify-start text-lg px-4 py-3.5 w-full hover:bg-primary/10 hover:text-primary" onClick={closeMenu}>
+    <Button variant="ghost" asChild className="justify-start text-lg px-4 py-3.5 w-full hover:bg-primary/10 hover:text-primary rounded-md" onClick={closeMenu}>
       <Link href={href}>
         <span className="flex items-center justify-between w-full">
             <span className="flex items-center gap-2.5">
@@ -225,7 +222,7 @@ export default function Navbar() {
                 {label}
             </span>
             {showBadge && badgeCount && badgeCount > 0 && (
-                 <Badge variant="destructive" className="h-6 px-2 text-xs">
+                 <Badge variant="destructive" className="h-6 px-2 text-xs rounded-md">
                     {badgeCount > 99 ? '99+' : badgeCount}
                   </Badge>
             )}
@@ -234,15 +231,7 @@ export default function Navbar() {
     </Button>
   );
 
-  const showBadgeCondition = isClient && loggedInUser && totalUnreadMessages > 0;
-  if (isClient) { // Solo loguear en el cliente
-    console.log('[Navbar DEBUG] State before render:', {
-      isClient,
-      loggedInUserId: loggedInUser?.id,
-      totalUnreadMessages,
-      showBadgeCondition,
-    });
-  }
+  const showUnreadBadge = isClient && loggedInUser && totalUnreadMessages > 0;
 
   return (
     <>
@@ -250,16 +239,16 @@ export default function Navbar() {
         <AnnouncementBar settings={siteSettings} />
       )}
       {isClient && isLoadingSettings && (
-         <Skeleton className="h-10 w-full" /> // Skeleton for announcement bar if settings are loading
+         <Skeleton className="h-10 w-full bg-muted/50" /> 
       )}
 
       <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
         <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2 shrink-0" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
-            {isClient ? logoDisplayContent() : <div className="flex items-center gap-2"><Home className="h-7 w-7 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
+          <Link href="/" className="flex items-center gap-2.5 shrink-0" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
+            {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-7 w-7 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1 mx-auto">
+          <nav className="hidden md:flex items-center gap-1.5 mx-auto">
             {commonNavLinks()}
           </nav>
 
@@ -269,20 +258,20 @@ export default function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="default"
-                    className="hidden md:flex items-center gap-2 text-sm font-medium px-3 py-2 h-9 rounded-lg shadow-sm hover:bg-primary/90"
+                    className="hidden md:flex items-center gap-2 text-sm font-medium px-4 py-2 h-10 rounded-lg shadow-md hover:bg-primary/90 transition-all"
                   >
-                    <PlusCircle className="h-4 w-4" /> Publicar
+                    <PlusCircle className="h-5 w-5" /> Publicar
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-60 bg-card shadow-xl rounded-lg border mt-2">
-                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                <DropdownMenuContent align="end" className="w-60 bg-card shadow-xl rounded-xl border mt-2 p-1.5">
+                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5 px-3 rounded-md cursor-pointer">
                     <Link href="/properties/submit">
                         <span className="flex items-center gap-2.5 text-sm w-full">
                             <Briefcase className="h-4 w-4 text-primary"/>Publicar Propiedad
                         </span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5 px-3 rounded-md cursor-pointer">
                     <Link href="/requests/submit">
                         <span className="flex items-center gap-2.5 text-sm w-full">
                             <Search className="h-4 w-4 text-primary"/>Publicar Solicitud
@@ -292,28 +281,28 @@ export default function Navbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Skeleton className="h-9 w-28 hidden md:flex rounded-lg" />
+              <Skeleton className="h-10 w-32 hidden md:flex rounded-lg" />
             )}
 
             {isClient && loggedInUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-11 w-11 rounded-full p-0 hover:opacity-80 transition-opacity">
-                      <Avatar className="h-11 w-11 border-2 border-primary/50">
-                        <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/44x44.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona avatar"/>
-                        <AvatarFallback className="bg-muted text-muted-foreground text-base">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
+                  <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0 hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                      <Avatar className="h-12 w-12 border-2 border-primary/30 hover:border-primary/60 transition-colors">
+                        <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/48x48.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona avatar"/>
+                        <AvatarFallback className="bg-muted text-muted-foreground text-lg">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
                       </Avatar>
-                      {showBadgeCondition && (
+                      {showUnreadBadge && (
                           <Badge
-                            variant="destructive" // Use a prominent color
-                            className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center leading-none z-50" // Ensure z-index
+                            variant="destructive" 
+                            className="absolute top-0.5 right-0.5 transform translate-x-1/4 -translate-y-1/4 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center leading-none z-10"
                           >
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
                       )}
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 bg-card shadow-xl rounded-lg border mt-2">
+                <DropdownMenuContent align="end" className="w-64 bg-card shadow-xl rounded-xl border mt-2 p-1.5">
                   <div className="px-3.5 py-3">
                       <p className="text-sm font-semibold leading-none truncate">{loggedInUser.name}</p>
                       <p className="text-xs leading-none text-muted-foreground truncate mt-0.5">
@@ -331,8 +320,8 @@ export default function Navbar() {
                           )}
                       </div>
                     </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                  <DropdownMenuSeparator className="mx-1.5" />
+                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5 px-3 rounded-md cursor-pointer">
                     <Link href="/profile">
                       <span className="flex items-center w-full gap-2.5 text-sm">
                           <UserCircle className="h-4 w-4 text-primary"/>Perfil
@@ -340,7 +329,7 @@ export default function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   {isUserAdmin ? (
-                    <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                    <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5 px-3 rounded-md cursor-pointer">
                       <Link href="/admin">
                           <span className="flex items-center w-full gap-2.5 text-sm">
                               <LayoutDashboard className="h-4 w-4 text-primary"/>Panel Admin
@@ -348,14 +337,14 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   ) : (
-                    <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                    <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5 px-3 rounded-md cursor-pointer">
                       <Link href="/dashboard">
                           <span className="flex items-center w-full justify-between text-sm">
                               <span className="flex items-center gap-2.5">
-                                  <LayoutDashboard className="h-4 w-4 text-primary"/>Panel Usuario
+                                  <LayoutDashboard className="h-4 w-4 text-primary"/>Mi Panel
                               </span>
-                              {totalUnreadMessages > 0 && ( // Ensure this also uses showBadgeCondition or totalUnreadMessages
-                                  <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                              {showUnreadBadge && (
+                                  <Badge variant="destructive" className="h-5 px-1.5 text-xs rounded-md">
                                       {totalUnreadMessages > 99 ? '99+' : totalUnreadMessages}
                                   </Badge>
                               )}
@@ -363,29 +352,29 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5">
+                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5 px-3 rounded-md cursor-pointer">
                     <Link href="/dashboard/crm">
                       <span className="flex items-center w-full gap-2.5 text-sm">
                           <Users className="h-4 w-4 text-primary"/>Mi CRM
                       </span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2.5 cursor-pointer text-destructive hover:!bg-destructive/10 hover:!text-destructive py-2.5 text-sm">
+                  <DropdownMenuSeparator className="mx-1.5" />
+                  <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2.5 cursor-pointer text-destructive hover:!bg-destructive/10 hover:!text-destructive py-2.5 px-3 rounded-md text-sm">
                     <LogOut className="h-4 w-4" /> Cerrar Sesión
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : isClient ? (
               <div className="hidden md:flex items-center gap-2">
-                <Button variant="outline" size="default" asChild className="hover:bg-primary/5 hover:border-primary/70 hover:text-primary text-sm px-3 py-2 h-9 rounded-lg">
+                <Button variant="outline" size="default" asChild className="hover:bg-primary/5 hover:border-primary/70 hover:text-primary text-sm px-4 py-2 h-10 rounded-lg transition-colors">
                   <Link href="/auth/signin">
                     <span className="flex items-center gap-2">
                         <LogIn className="h-4 w-4" /> Iniciar Sesión
                     </span>
                   </Link>
                 </Button>
-                <Button variant="default" size="default" asChild className="text-sm px-3 py-2 h-9 rounded-lg shadow-sm hover:bg-primary/90">
+                <Button variant="default" size="default" asChild className="text-sm px-4 py-2 h-10 rounded-lg shadow-md hover:bg-primary/90 transition-all">
                   <Link href="/auth/signup">
                     <span className="flex items-center gap-2">
                         <UserPlus className="h-4 w-4" /> Regístrate
@@ -394,19 +383,19 @@ export default function Navbar() {
                 </Button>
               </div>
             ) : (
-              <div className="h-9 hidden md:flex items-center gap-2">
-                  <Skeleton className="h-full w-28 rounded-lg" />
-                  <Skeleton className="h-full w-28 rounded-lg" />
+              <div className="h-10 hidden md:flex items-center gap-2">
+                  <Skeleton className="h-full w-32 rounded-lg" />
+                  <Skeleton className="h-full w-32 rounded-lg" />
               </div>
             )}
 
             <div className="md:hidden">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-primary/10 relative">
+                  <Button variant="ghost" size="icon" className="h-11 w-11 hover:bg-primary/10 relative rounded-lg">
                     <Menu className="h-5 w-5 text-primary" />
                     <span className="sr-only">Alternar menú</span>
-                    {showBadgeCondition && ( // Use the derived condition here too
+                    {showUnreadBadge && ( 
                           <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 text-[10px] rounded-full flex items-center justify-center leading-none">
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
@@ -415,11 +404,11 @@ export default function Navbar() {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 pt-5 bg-card border-l shadow-2xl">
                   <div className="px-5 pb-4 border-b">
-                      <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
-                          {isClient ? logoDisplayContent() : <div className="flex items-center gap-2"><Home className="h-7 w-7 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
+                      <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
+                          {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-7 w-7 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
                       </Link>
                   </div>
-                  <nav className="flex-grow flex flex-col gap-1 p-4 overflow-y-auto">
+                  <nav className="flex-grow flex flex-col gap-1.5 p-4 overflow-y-auto">
                     {commonNavLinks(() => setIsMobileMenuOpen(false), true)}
 
                     <Separator className="my-3" />
@@ -435,7 +424,7 @@ export default function Navbar() {
                         {isUserAdmin ? (
                           <MobileMenuLink href="/admin" icon={<LayoutDashboard />} label="Panel Admin" closeMenu={() => setIsMobileMenuOpen(false)} />
                         ) : (
-                          <MobileMenuLink href="/dashboard" icon={<LayoutDashboard />} label="Mi Panel" closeMenu={() => setIsMobileMenuOpen(false)} showBadge={true} badgeCount={totalUnreadMessages} />
+                          <MobileMenuLink href="/dashboard" icon={<LayoutDashboard />} label="Mi Panel" closeMenu={() => setIsMobileMenuOpen(false)} showBadge={showUnreadBadge} badgeCount={totalUnreadMessages} />
                         )}
                           <MobileMenuLink href="/dashboard/crm" icon={<Users />} label="Mi CRM" closeMenu={() => setIsMobileMenuOpen(false)} />
                       </>
@@ -443,19 +432,19 @@ export default function Navbar() {
                   </nav>
                   <div className="p-4 mt-auto border-t">
                       {isClient && loggedInUser ? (
-                          <Button variant="outline" onClick={handleLogout} className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5 cursor-pointer hover:border-destructive hover:text-destructive hover:bg-destructive/5">
+                          <Button variant="outline" onClick={handleLogout} className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5 cursor-pointer hover:border-destructive hover:text-destructive hover:bg-destructive/5 rounded-lg">
                               <LogOut className="h-5 w-5" /> Cerrar Sesión
                           </Button>
                       ) : isClient ? (
                           <div className="space-y-3">
-                              <Button variant="default" asChild className="w-full justify-center text-lg py-3.5" onClick={() => setIsMobileMenuOpen(false)}>
+                              <Button variant="default" asChild className="w-full justify-center text-lg py-3.5 rounded-lg" onClick={() => setIsMobileMenuOpen(false)}>
                                   <Link href="/auth/signup">
                                       <span className="flex items-center gap-2.5">
                                           <UserPlus className="h-5 w-5" /> Regístrate
                                       </span>
                                   </Link>
                               </Button>
-                              <Button variant="outline" asChild className="w-full justify-center text-lg py-3.5" onClick={() => setIsMobileMenuOpen(false)}>
+                              <Button variant="outline" asChild className="w-full justify-center text-lg py-3.5 rounded-lg" onClick={() => setIsMobileMenuOpen(false)}>
                                   <Link href="/auth/signin">
                                       <span className="flex items-center gap-2.5">
                                           <LogIn className="h-5 w-5" /> Iniciar Sesión
@@ -479,3 +468,4 @@ export default function Navbar() {
     </>
   );
 }
+```

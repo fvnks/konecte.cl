@@ -20,11 +20,11 @@ export const dynamic = 'force-dynamic';
 // --- Section Data Fetching (remains on server) ---
 
 async function getFeaturedListingsAndRequestsData() {
-  const allProperties: PropertyListing[] = await getPropertiesAction({limit: 8, orderBy: 'createdAt_desc'});
+  const allProperties: PropertyListing[] = await getPropertiesAction({limit: 8, orderBy: 'popularity_desc'}); // Order by popularity
   const featuredProperties = allProperties; 
   
-  const allRequests: SearchRequest[] = await getRequestsAction(); 
-  const recentRequests = allRequests.slice(0, 8);
+  const allRequests: SearchRequest[] = await getRequestsAction({ includeInactive: false }); 
+  const recentRequests = allRequests.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8); // Sort by newest
   return { featuredProperties, recentRequests };
 }
 
@@ -34,28 +34,28 @@ function AIMatchingSection() {
   return (
     <Card className="shadow-xl rounded-2xl overflow-hidden border bg-card">
       <CardHeader className="p-6 md:p-8">
-        <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
+        <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
             <Brain className="h-8 w-8 mr-3 text-primary" />
             IA: Describe tu Búsqueda Ideal
         </CardTitle>
-         <CardDescription className="text-lg text-muted-foreground mt-1">
+         <CardDescription className="text-lg text-muted-foreground mt-2">
               Escribe lo que buscas (tipo de propiedad, características, ubicación, etc.) y nuestra IA buscará propiedades y solicitudes compatibles en la plataforma.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 md:p-8 pt-0 md:pt-0">
           <InteractiveAIMatching />
-          <div className="mt-6 text-sm text-muted-foreground space-y-2 pt-4 border-t">
-            <p className="flex items-center gap-2">
-              <LinkIcon className="h-4 w-4 text-primary" />
+          <div className="mt-8 text-sm text-muted-foreground space-y-3 pt-6 border-t border-border/70">
+            <p className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
+              <LinkIcon className="h-4 w-4 text-primary flex-shrink-0" />
               <strong>¿Buscas propiedades para una solicitud ya publicada?</strong>
-              <Button variant="link" asChild className="p-0 h-auto">
-                <Link href="/ai-matching-properties">Usa nuestra herramienta de búsqueda de propiedades para solicitudes (IA)</Link>
+              <Button variant="link" asChild className="p-0 h-auto text-sm text-left">
+                <Link href="/ai-matching-properties">Usa la herramienta de búsqueda de propiedades para solicitudes (IA)</Link>
               </Button>
             </p>
-            <p className="flex items-center gap-2">
-              <LinkIcon className="h-4 w-4 text-primary" />
+            <p className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
+              <LinkIcon className="h-4 w-4 text-primary flex-shrink-0" />
               <strong>¿Tienes una propiedad y buscas solicitudes compatibles?</strong>
-              <Button variant="link" asChild className="p-0 h-auto">
+              <Button variant="link" asChild className="p-0 h-auto text-sm text-left">
                 <Link href="/ai-matching">Prueba la búsqueda de solicitudes para propiedades (IA)</Link>
               </Button>
             </p>
@@ -70,14 +70,17 @@ async function GoogleSheetDataSection() {
   
   if (!config || !config.isConfigured) {
     return (
-      <Card className="bg-muted/50 shadow-xl rounded-2xl">
+      <Card className="bg-muted/30 shadow-lg rounded-2xl border border-dashed">
         <CardHeader className="p-6 md:p-8">
-          <CardTitle className="text-2xl md:text-3xl flex items-center"><AlertTriangle className="h-7 w-7 mr-3 text-yellow-600" /> Sección de Google Sheets no configurada</CardTitle>
+          <CardTitle className="text-2xl md:text-3xl flex items-center text-muted-foreground">
+            <AlertTriangle className="h-7 w-7 mr-3 text-yellow-500" /> 
+            Datos Externos (Google Sheets)
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-6 md:p-8">
           <p className="text-base text-muted-foreground">
-            La sección para mostrar datos de Google Sheets aún no ha sido configurada por un administrador.
-            Visita la <Link href="/admin/settings" className="text-primary hover:underline font-medium">página de configuración</Link> para activarla.
+            Esta sección mostrará datos de una hoja de cálculo de Google, pero aún no ha sido configurada.
+            Un administrador puede habilitarla desde el <Link href="/admin/settings" className="text-primary hover:underline font-medium">panel de configuración</Link>.
           </p>
         </CardContent>
       </Card>
@@ -88,13 +91,13 @@ async function GoogleSheetDataSection() {
 
   if (!sheetData) { 
     return (
-       <Card className="shadow-xl rounded-2xl">
+       <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
-          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
+          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
             <DatabaseZap className="h-8 w-8 mr-3 text-primary" />
             Datos Externos
           </CardTitle>
-           <CardDescription className="text-lg text-muted-foreground mt-1">No se pudieron cargar los datos de la hoja de cálculo. Verifica la configuración y la consola del servidor para más detalles.</CardDescription>
+           <CardDescription className="text-lg text-muted-foreground mt-2">No se pudieron cargar los datos de la hoja de cálculo. Verifica la configuración y la consola del servidor para más detalles.</CardDescription>
         </CardHeader>
          <CardContent className="p-6 md:p-8">
            <p className="text-base text-muted-foreground">Asegúrate de que el ID de la hoja, el nombre de la pestaña y las columnas sean correctos, y que la hoja esté compartida públicamente.</p>
@@ -105,13 +108,13 @@ async function GoogleSheetDataSection() {
 
   if (sheetData.rows.length === 0 && sheetData.headers.length > 0) {
      return (
-       <Card className="shadow-xl rounded-2xl">
+       <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
-          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
+          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
              <DatabaseZap className="h-8 w-8 mr-3 text-primary" />
             Datos Externos
           </CardTitle>
-           <CardDescription className="text-lg text-muted-foreground mt-1">La hoja de cálculo está configurada pero no contiene filas de datos (solo encabezados).</CardDescription>
+           <CardDescription className="text-lg text-muted-foreground mt-2">La hoja de cálculo está configurada pero no contiene filas de datos (solo encabezados).</CardDescription>
         </CardHeader>
         <CardContent className="p-6 md:p-8">
             <PaginatedSheetTable headers={sheetData.headers} rows={sheetData.rows} />
@@ -122,26 +125,26 @@ async function GoogleSheetDataSection() {
   
   if (sheetData.headers.length === 0) {
     return (
-       <Card className="shadow-xl rounded-2xl">
+       <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
-          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
+          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
              <DatabaseZap className="h-8 w-8 mr-3 text-primary" />
             Datos Externos
           </CardTitle>
-           <CardDescription className="text-lg text-muted-foreground mt-1">No se encontraron encabezados en la hoja de cálculo. Verifica los nombres de las columnas en la configuración y en la hoja.</CardDescription>
+           <CardDescription className="text-lg text-muted-foreground mt-2">No se encontraron encabezados en la hoja de cálculo. Verifica los nombres de las columnas en la configuración y en la hoja.</CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
   return (
-    <Card className="shadow-xl rounded-2xl">
+    <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
-         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
+         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
             <DatabaseZap className="h-8 w-8 mr-3 text-primary" />
             Datos Externos de Google Sheets
         </CardTitle>
-        <CardDescription className="text-lg text-muted-foreground mt-1">Información adicional obtenida directamente desde nuestra hoja de cálculo configurada.</CardDescription>
+        <CardDescription className="text-lg text-muted-foreground mt-2">Información adicional obtenida directamente desde nuestra hoja de cálculo configurada.</CardDescription>
       </CardHeader>
       <CardContent className="p-6 md:p-8">
         <PaginatedSheetTable headers={sheetData.headers} rows={sheetData.rows} />
@@ -181,13 +184,13 @@ export default async function HomePage() {
 
   const sectionComponentsRender: Record<LandingSectionKey, () => ReactNode | null> = {
     featured_list_requests: () => showFeaturedListings ? (
-      <Card className="shadow-xl rounded-2xl overflow-hidden">
+      <Card className="shadow-xl rounded-2xl overflow-hidden border bg-card">
         <CardHeader className="p-6 md:p-8 bg-secondary/30">
-          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center">
+          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
             <ListChecks className="h-8 w-8 mr-3 text-primary" />
             Destacados y Recientes
           </CardTitle>
-          <CardDescription className="text-lg text-muted-foreground mt-1">Explora las últimas propiedades y las solicitudes de búsqueda más nuevas.</CardDescription>
+          <CardDescription className="text-lg text-muted-foreground mt-2">Explora las últimas propiedades y las solicitudes de búsqueda más nuevas.</CardDescription>
         </CardHeader>
         <CardContent className="p-6 md:p-8">
           <FeaturedListingsClient 
@@ -202,39 +205,39 @@ export default async function HomePage() {
   };
 
   return (
-    <div className="space-y-16 md:space-y-20"> 
+    <div className="space-y-16 md:space-y-24 lg:space-y-28"> 
       {/* Hero Section (Always Visible) */}
-      <section className="text-center py-16 md:py-24 bg-card rounded-2xl shadow-2xl overflow-hidden relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-70"></div>
+      <section className="text-center py-16 md:py-24 lg:py-32 bg-card rounded-3xl shadow-2xl overflow-hidden relative border">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-60"></div>
         <div className="container mx-auto px-4 relative z-10">
-          <h1 className="text-4xl font-headline font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl !leading-tight"> 
+          <h1 className="text-4xl font-headline font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl !leading-tight text-foreground"> 
             {heroTitle}
           </h1>
           <p className="mt-6 max-w-xl mx-auto text-lg text-muted-foreground sm:text-xl md:mt-8 md:text-2xl md:max-w-3xl">
             {heroSubtitle}
           </p>
-          <div className="mt-12 max-w-2xl mx-auto"> 
-            <form className="flex flex-col sm:flex-row gap-4"> 
+          <div className="mt-10 max-w-2xl mx-auto"> 
+            <form className="flex flex-col sm:flex-row gap-3 sm:gap-4"> 
               <Input
                 type="search"
                 placeholder={searchPlaceholder}
-                className="flex-grow text-base h-14 rounded-xl shadow-md focus:ring-2 focus:ring-primary px-5" 
+                className="flex-grow text-base h-14 rounded-xl shadow-lg focus:ring-2 focus:ring-primary px-6 border-border focus:border-primary transition-all" 
                 aria-label="Buscar propiedades y solicitudes"
               />
-              <Button size="lg" className="h-14 rounded-xl flex items-center gap-2 text-base shadow-md hover:shadow-lg transition-shadow px-8 bg-accent hover:bg-accent/90 text-accent-foreground" type="submit">
+              <Button size="lg" className="h-14 rounded-xl flex items-center gap-2 text-base shadow-lg hover:shadow-xl transition-all px-8 bg-primary hover:bg-primary/90 text-primary-foreground" type="submit">
                 <SearchIcon className="h-5 w-5" /> Buscar
               </Button>
             </form>
           </div>
-          <div className="mt-12 flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
-            <Button size="lg" variant="default" asChild className="w-full sm:w-auto rounded-xl text-lg h-16 px-10 shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105">
+          <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
+            <Button size="lg" variant="default" asChild className="w-full sm:w-auto rounded-xl text-base sm:text-lg h-16 px-8 sm:px-10 shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 bg-accent hover:bg-accent/90 text-accent-foreground">
               <Link href="/properties/submit">
-                <PlusCircle className="mr-2.5 h-6 w-6" /> {publishPropertyButtonText}
+                <PlusCircle className="mr-2.5 h-5 w-5 sm:h-6 sm:w-6" /> {publishPropertyButtonText}
               </Link>
             </Button>
-            <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto rounded-xl text-lg h-16 px-10 shadow-lg hover:shadow-xl transition-shadow transform hover:scale-105 bg-card hover:bg-muted">
+            <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto rounded-xl text-base sm:text-lg h-16 px-8 sm:px-10 shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 bg-card hover:bg-muted border border-border">
               <Link href="/requests/submit">
-                <PlusCircle className="mr-2.5 h-6 w-6" /> {publishRequestButtonText}
+                <PlusCircle className="mr-2.5 h-5 w-5 sm:h-6 sm:w-6" /> {publishRequestButtonText}
               </Link>
             </Button>
           </div>
@@ -250,4 +253,3 @@ export default async function HomePage() {
   );
 }
     
-

@@ -1,4 +1,3 @@
-
 // src/components/property/FeaturedPropertyCard.tsx
 'use client';
 
@@ -129,9 +128,9 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
   return (
-    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl flex flex-col h-full group border">
+    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl flex flex-col h-full group border border-border hover:border-primary/30">
       <Link href={`/properties/${slug}`} className="block">
-        <div className="relative aspect-[16/10] w-full overflow-hidden">
+        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-2xl"> {/* Bordes redondeados solo arriba para la imagen */}
           <Image
             src={mainImage}
             alt={title}
@@ -140,77 +139,77 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
             className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-105"
             data-ai-hint="fachada propiedad compacta"
           />
-          <Badge variant="default" className="absolute top-2.5 left-2.5 capitalize text-xs px-2 py-0.5 shadow-md bg-primary/90 text-primary-foreground rounded-md">
+          <Badge variant="default" className="absolute top-3 left-3 capitalize text-xs px-2.5 py-1 shadow-md bg-primary/90 text-primary-foreground rounded-md">
             {translatePropertyTypeBadge(propertyType)}
           </Badge>
         </div>
       </Link>
-      <CardHeader className="p-3 sm:p-4 flex-grow">
+      <CardHeader className="p-4 sm:p-5 flex-grow">
         <Link href={`/properties/${slug}`} className="block">
           <CardTitle className="text-base sm:text-lg font-headline leading-snug hover:text-primary transition-colors line-clamp-2 h-[48px] sm:h-[56px]">
             {title}
           </CardTitle>
         </Link>
-        <div className="flex items-center text-xs sm:text-sm text-muted-foreground mt-1">
-          <MapPin className="mr-1 h-3.5 w-3.5 flex-shrink-0 text-primary/70" />
+        <div className="flex items-center text-xs sm:text-sm text-muted-foreground mt-1.5">
+          <MapPin className="mr-1.5 h-4 w-4 flex-shrink-0 text-primary/80" />
           <span className="truncate">{city}</span>
         </div>
       </CardHeader>
-      <CardContent className="p-3 sm:p-4 pt-0">
-         <div className="text-lg sm:text-xl font-bold text-accent mb-2 flex items-center">
-          <DollarSign className="h-5 w-5 mr-1 text-accent/80" />
+      <CardContent className="p-4 sm:p-5 pt-0">
+         <div className="text-lg sm:text-xl font-bold text-accent mb-2.5 flex items-center">
+          <DollarSign className="h-5 w-5 mr-1.5 text-accent/90" />
           {formatPriceCompact(price, currency)}
-          {propertyType === 'rent' && <span className="text-xs font-normal text-muted-foreground ml-1">/mes</span>}
+          {propertyType === 'rent' && <span className="text-xs font-normal text-muted-foreground ml-1.5">/mes</span>}
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={authorAvatar || `https://placehold.co/24x24.png?text=${authorInitials}`} alt={authorName} data-ai-hint="agente inmobiliario"/>
-              <AvatarFallback className="text-[10px] bg-muted">{authorInitials || <UserIcon className="h-3 w-3"/>}</AvatarFallback>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3.5">
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={authorAvatar || `https://placehold.co/28x28.png?text=${authorInitials}`} alt={authorName} data-ai-hint="agente inmobiliario"/>
+              <AvatarFallback className="text-[10px] bg-muted">{authorInitials || <UserIcon className="h-3.5 w-3.5"/>}</AvatarFallback>
             </Avatar>
             <span className="truncate line-clamp-1" title={authorName}>{authorName}</span>
-             <span className="text-muted-foreground/70 ml-auto whitespace-nowrap">
-                <CalendarDays className="h-3 w-3 inline-block mr-0.5 relative -top-px"/>
+             <span className="text-muted-foreground/80 ml-auto whitespace-nowrap flex items-center">
+                <CalendarDays className="h-3.5 w-3.5 inline-block mr-1"/>
                 {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}
             </span>
         </div>
 
         {/* Botones de Like/Dislike */}
-        <div className="flex justify-center gap-2 mb-3">
+        <div className="flex justify-center gap-2.5 mb-3">
             <Button
                 variant="outline"
                 size="sm"
-                className="text-red-500 border-red-400 hover:bg-red-50 hover:text-red-600 h-8 w-16 flex-1"
+                className="text-red-600 border-red-500/70 hover:bg-red-500/10 hover:text-red-700 hover:border-red-600 h-9 w-16 flex-1 rounded-lg shadow-sm"
                 onClick={() => handleInteraction('dislike')}
                 disabled={!loggedInUser || isInteracting}
                 title={!loggedInUser ? "Inicia sesión para interactuar" : "No me gusta"}
             >
-                {isInteracting ? <Loader2 className="h-4 w-4 animate-spin"/> : <ThumbsDown className="h-4 w-4" />}
+                {isInteracting ? <Loader2 className="h-5 w-5 animate-spin"/> : <ThumbsDown className="h-5 w-5" />}
             </Button>
             <Button
                 variant="outline"
                 size="sm"
-                className="text-green-500 border-green-400 hover:bg-green-50 hover:text-green-600 h-8 w-16 flex-1"
+                className="text-green-600 border-green-500/70 hover:bg-green-500/10 hover:text-green-700 hover:border-green-600 h-9 w-16 flex-1 rounded-lg shadow-sm"
                 onClick={() => handleInteraction('like')}
                 disabled={!loggedInUser || isInteracting}
                 title={!loggedInUser ? "Inicia sesión para interactuar" : "Me gusta"}
             >
-                {isInteracting ? <Loader2 className="h-4 w-4 animate-spin"/> : <ThumbsUp className="h-4 w-4" />}
+                 {isInteracting ? <Loader2 className="h-5 w-5 animate-spin"/> : <ThumbsUp className="h-5 w-5" />}
             </Button>
         </div>
          {!loggedInUser && (
-            <p className="text-[10px] text-muted-foreground text-center -mt-2 mb-2">
+            <p className="text-[11px] text-muted-foreground text-center -mt-2 mb-2">
                 <Link href="/auth/signin" className="underline hover:text-primary">Inicia sesión</Link> para interactuar.
             </p>
         )}
       </CardContent>
-      <CardFooter className="p-3 sm:p-4 pt-0 mt-auto">
-        <Button size="sm" asChild className="w-full text-xs sm:text-sm rounded-md shadow-sm hover:shadow-md transition-shadow">
-          <Link href={`/properties/${slug}`} className="flex items-center gap-1.5">
-            <Eye className="h-4 w-4" /> Ver Detalles
+      <CardFooter className="p-4 sm:p-5 pt-0 mt-auto">
+        <Button size="default" asChild className="w-full text-sm sm:text-base rounded-lg shadow-md hover:shadow-lg transition-shadow h-11">
+          <Link href={`/properties/${slug}`} className="flex items-center gap-2">
+            <Eye className="h-5 w-5" /> Ver Detalles
           </Link>
         </Button>
       </CardFooter>
     </Card>
   );
 }
-
+```

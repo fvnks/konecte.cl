@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowBigUp, MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, Eye, DollarSign } from 'lucide-react'; // Added DollarSign
+import { ArrowBigUp, MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, Eye, DollarSign, CalendarDays } from 'lucide-react'; // Added CalendarDays
 
 interface PropertyListItemProps {
   property: PropertyListing;
@@ -58,6 +58,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     propertyType,
     areaSqMeters,
     description,
+    createdAt,
   } = property;
 
   const mainImage = images && images.length > 0 ? images[0] : 'https://placehold.co/320x240.png?text=Propiedad';
@@ -65,20 +66,19 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
   const authorAvatar = author?.avatarUrl;
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
-
   return (
-    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full flex flex-col md:flex-row group border">
-      <Link href={`/properties/${slug}`} className="md:w-[240px] lg:w-[280px] block flex-shrink-0 relative">
-        <div className="aspect-video md:aspect-square w-full h-full overflow-hidden md:rounded-l-xl md:rounded-r-none rounded-t-xl">
+    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full flex flex-col md:flex-row group border border-border hover:border-primary/30">
+      <Link href={`/properties/${slug}`} className="md:w-[240px] lg:w-[280px] xl:w-[320px] block flex-shrink-0 relative">
+        <div className="aspect-video md:aspect-[4/3] w-full h-full overflow-hidden md:rounded-l-xl md:rounded-r-none rounded-t-xl">
           <Image
             src={mainImage}
             alt={title}
             fill
-            sizes="(max-width: 767px) 100vw, (min-width: 768px) 240px, (min-width: 1024px) 280px"
+            sizes="(max-width: 767px) 100vw, (min-width: 768px) 240px, (min-width: 1024px) 280px, (min-width: 1280px) 320px"
             className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-105"
             data-ai-hint="fachada casa departamento"
           />
-          <Badge variant="default" className="absolute top-2.5 left-2.5 capitalize text-xs px-2 py-0.5 shadow-md bg-primary/90 text-primary-foreground rounded-md">
+          <Badge variant="default" className="absolute top-2.5 left-2.5 capitalize text-xs px-2.5 py-1 shadow-md bg-primary/90 text-primary-foreground rounded-md">
             {translatePropertyTypeBadge(propertyType)}
           </Badge>
         </div>
@@ -93,17 +93,17 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
               </CardTitle>
             </Link>
             <div className="flex items-center text-xs sm:text-sm text-muted-foreground mt-1">
-              <MapPin className="mr-1.5 h-3.5 w-3.5 flex-shrink-0 text-primary/70" />
+              <MapPin className="mr-1.5 h-4 w-4 flex-shrink-0 text-primary/80" />
               <span className="truncate">{city}</span>
             </div>
           </CardHeader>
           <CardContent className="p-0 mb-2.5 sm:mb-3">
             <div className="text-xl sm:text-2xl font-bold text-accent mb-1.5 flex items-center">
-                <DollarSign className="h-5 w-5 mr-1 text-accent/80"/>
+                <DollarSign className="h-5 w-5 mr-1.5 text-accent/90"/>
                 {formatPrice(price, currency)}
-                {propertyType === 'rent' && <span className="text-sm font-normal text-muted-foreground ml-1">/mes</span>}
+                {propertyType === 'rent' && <span className="text-sm font-normal text-muted-foreground ml-1.5">/mes</span>}
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-2 leading-relaxed">
+            <p className="text-xs sm:text-sm text-muted-foreground mb-2.5 line-clamp-2 leading-relaxed">
               {description}
             </p>
             <div className="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground">
@@ -123,7 +123,13 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
               <AvatarImage src={authorAvatar || `https://placehold.co/32x32.png?text=${authorInitials}`} alt={authorName} data-ai-hint="agente inmobiliario" />
               <AvatarFallback className="text-xs bg-muted">{authorInitials}</AvatarFallback>
             </Avatar>
-            <span className="text-xs text-muted-foreground line-clamp-1">Por {authorName}</span>
+            <div className="text-xs">
+              <span className="text-muted-foreground line-clamp-1">Por {authorName}</span>
+              <p className="text-muted-foreground/70 flex items-center">
+                <CalendarDays className="h-3 w-3 mr-1" />
+                {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-1.5 self-end sm:self-center w-full sm:w-auto justify-end">
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary p-1 h-auto text-xs">
@@ -136,9 +142,9 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
                 <span>{commentsCount}</span>
               </Button>
             </Link>
-             <Button size="sm" asChild className="text-xs sm:text-sm px-3 h-8 rounded-md shadow-sm">
-              <Link href={`/properties/${slug}`} className="flex items-center gap-1">
-                <Eye className="h-3.5 w-3.5" /> Ver Detalles
+             <Button size="sm" asChild className="text-xs sm:text-sm px-3 h-9 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <Link href={`/properties/${slug}`} className="flex items-center gap-1.5">
+                <Eye className="h-4 w-4" /> Ver Detalles
               </Link>
             </Button>
           </div>
@@ -147,3 +153,4 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     </Card>
   );
 }
+```

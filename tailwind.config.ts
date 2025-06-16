@@ -1,6 +1,6 @@
-import type {Config} from 'tailwindcss';
+// Removed: import type {Config} from 'tailwindcss';
 
-export default {
+const config = {
   darkMode: ['class'],
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -16,14 +16,14 @@ export default {
         md: "768px",
         lg: "1024px",
         xl: "1280px",
-        "2xl": "1536px", // Wider max container
+        "2xl": "1440px", // Slightly adjusted 2xl for common screen size
       },
     },
     extend: {
       fontFamily: {
         sans: ['var(--font-inter)', 'sans-serif'],
         body: ['var(--font-inter)', 'sans-serif'],
-        headline: ['var(--font-inter)', 'sans-serif'],
+        headline: ['var(--font-inter)', 'Inter', 'sans-serif'], // Ensure Inter is preferred, then system sans-serif
         code: ['monospace'],
       },
       colors: {
@@ -58,7 +58,10 @@ export default {
           foreground: 'hsl(var(--destructive-foreground))',
         },
         border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
+        input: {
+          DEFAULT: 'hsl(var(--input))',
+          border: 'hsl(var(--input-border))'
+        },
         ring: 'hsl(var(--ring))',
         chart: {
           '1': 'hsl(var(--chart-1))',
@@ -78,17 +81,22 @@ export default {
           ring: 'hsl(var(--sidebar-ring))',
         },
       },
-      borderRadius: { // More pronounced rounding
-        xl: 'calc(var(--radius) + 4px)', // Example: 0.75rem + 4px = 1rem
-        '2xl': 'calc(var(--radius) + 8px)', // Example: 0.75rem + 8px = 1.25rem
-        '3xl': 'calc(var(--radius) + 16px)',// Example: 0.75rem + 16px = 1.75rem
-        lg: 'var(--radius)', // 0.75rem
-        md: 'calc(var(--radius) - 2px)', // 0.75rem - 2px
-        sm: 'calc(var(--radius) - 4px)', // 0.75rem - 4px
+      borderRadius: {
+        xl: 'calc(var(--radius) + 4px)',
+        '2xl': 'calc(var(--radius) + 8px)',
+        '3xl': 'calc(var(--radius) + 16px)',
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
       },
-      boxShadow: { // Adding more pronounced shadows
+      boxShadow: {
+        'sm': '0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07)',
+        'md': '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        'lg': '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
         'xl': '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
         '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+        'inner-sm': 'inset 0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        'inner': 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
       },
       keyframes: {
         'accordion-down': {
@@ -108,16 +116,24 @@ export default {
           },
         },
         'fade-in': {
-          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '0%': { opacity: '0', transform: 'translateY(8px)' }, /* Subtle Y transform */
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'pulse-subtle': { /* For loading states or highlights */
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '.7' },
         }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'fade-in': 'fade-in 0.6s ease-out forwards', // Added forwards
+        'fade-in': 'fade-in 0.5s ease-out forwards',
+        'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
     },
   },
   plugins: [require('tailwindcss-animate')],
-} satisfies Config;
+};
+
+export default config;
+// Removed: satisfies Config;

@@ -43,7 +43,7 @@ export default function RequestListItem({ request }: RequestListItemProps) {
     description,
     minBedrooms,
     minBathrooms,
-    open_for_broker_collaboration, // Nuevo campo
+    open_for_broker_collaboration,
   } = request;
 
   const locationCity = desiredLocation?.city || 'N/A';
@@ -53,7 +53,7 @@ export default function RequestListItem({ request }: RequestListItemProps) {
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
   return (
-    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full group border">
+    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full group border border-border hover:border-primary/30">
       <div className="flex flex-1 flex-col p-4 sm:p-5 justify-between">
         <div>
           <CardHeader className="p-0 mb-2 sm:mb-3">
@@ -72,8 +72,8 @@ export default function RequestListItem({ request }: RequestListItemProps) {
                 </div>
                 </div>
                 {open_for_broker_collaboration && (
-                    <Badge variant="outline" className="text-xs py-1 px-2 border-purple-500 text-purple-600 h-fit">
-                        <Handshake className="h-3.5 w-3.5 mr-1" /> Colaboración
+                    <Badge variant="outline" className="text-xs py-1 px-2.5 border-purple-500 text-purple-600 h-fit rounded-md">
+                        <Handshake className="h-3.5 w-3.5 mr-1.5" /> Colaboración
                     </Badge>
                 )}
             </div>
@@ -88,7 +88,7 @@ export default function RequestListItem({ request }: RequestListItemProps) {
             <p className="text-xs sm:text-sm text-muted-foreground mb-2.5 line-clamp-2 leading-relaxed">
               {description}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground mb-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground mb-1.5">
               <span className="flex items-center truncate"><MapPin className="mr-1.5 h-3.5 w-3.5 text-primary/80 flex-shrink-0" /> {locationCity}{locationNeighborhood ? ` (${locationNeighborhood})` : ''}</span>
               {desiredPropertyType && desiredPropertyType.length > 0 && (
                 <span className="flex items-center truncate"><Tag className="mr-1.5 h-3.5 w-3.5 text-primary/80 flex-shrink-0" /> {desiredPropertyType.map(translatePropertyTypeBadge).join(' / ')}</span>
@@ -105,19 +105,19 @@ export default function RequestListItem({ request }: RequestListItemProps) {
             )}
             <div className="mt-2.5 space-x-1.5 space-y-1.5">
               {desiredCategories && desiredCategories.map(cat => (
-                  <Badge key={cat} variant="outline" className="text-xs py-0.5 px-1.5 capitalize rounded-md">{translateCategoryBadge(cat)}</Badge>
+                  <Badge key={cat} variant="secondary" className="text-xs py-0.5 px-2 capitalize rounded-md">{translateCategoryBadge(cat)}</Badge>
               ))}
             </div>
           </CardContent>
         </div>
-        <CardFooter className="p-0 pt-3 sm:pt-4 border-t flex justify-between items-center">
+        <CardFooter className="p-0 pt-2.5 sm:pt-3 border-t flex justify-between items-center">
           <Link href={`/requests/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary text-xs sm:text-sm">
             <MessageCircle className="mr-1.5 h-3.5 w-3.5" />
             {commentsCount} comentarios
           </Link>
-           <Button size="sm" asChild className="text-xs sm:text-sm px-3 h-8 rounded-md">
-            <Link href={`/requests/${slug}`} className="flex items-center gap-1">
-                <Eye className="h-3.5 w-3.5" /> Ver Solicitud
+           <Button size="sm" asChild className="text-xs sm:text-sm px-3.5 h-9 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <Link href={`/requests/${slug}`} className="flex items-center gap-1.5">
+                <Eye className="h-4 w-4" /> Ver Solicitud
             </Link>
           </Button>
         </CardFooter>
@@ -125,3 +125,4 @@ export default function RequestListItem({ request }: RequestListItemProps) {
     </Card>
   );
 }
+```
