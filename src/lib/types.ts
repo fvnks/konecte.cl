@@ -61,7 +61,7 @@ export interface PropertyListing {
   bedrooms: number;
   bathrooms: number;
   areaSqMeters: number;
-  images: string[];
+  images: string[]; // Cambiado a array de strings para URLs
   features?: string[];
   slug: string;
   upvotes: number;
@@ -316,6 +316,26 @@ export const signUpSchema = z.object({
   path: ["confirmPassword"],
 });
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
+
+// Schema para el formulario de creación de propiedades
+export const propertyFormSchema = z.object({
+  title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
+  description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
+  propertyType: z.enum(["rent", "sale"], { required_error: "Debes seleccionar un tipo de propiedad (arriendo/venta)." }),
+  category: z.enum(["apartment", "house", "condo", "land", "commercial", "other"], { required_error: "Debes seleccionar una categoría." }),
+  price: z.coerce.number().positive("El precio debe ser un número positivo."),
+  currency: z.string().min(3, "La moneda debe tener 3 caracteres (ej: CLP, USD).").max(3).toUpperCase(),
+  address: z.string().min(5, "La dirección es requerida."),
+  city: z.string().min(2, "La ciudad es requerida."),
+  country: z.string().min(2, "El país es requerido."),
+  bedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de dormitorios no puede ser negativo."),
+  bathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de baños no puede ser negativo."),
+  areaSqMeters: z.coerce.number().positive("El área (m²) debe ser un número positivo."),
+  images: z.array(z.string().url("Cada imagen debe ser una URL válida.")).optional().default([]), // Array de URLs
+  features: z.string().optional().describe("Características separadas por comas. Ejemplo: Piscina,Estacionamiento"),
+});
+export type PropertyFormValues = z.infer<typeof propertyFormSchema>;
+
 
 export const requestFormSchema = z.object({
   title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
@@ -589,8 +609,8 @@ export interface SendMessageToBotPayload {
   userId: string; // El ID del usuario web que envía el mensaje (para sender_id_override)
 }
 
-export interface ReceiveReplyFromBotPayload {
-  telefonoUsuarioWeb: string; // El número de teléfono del usuario web al que el bot está respondiendo
+export type ReceiveReplyPayload = { // Renombrado para evitar conflicto con arriba
+  telefono: string; // El número de teléfono del usuario web al que el bot está respondiendo
   text: string; // Mensaje del bot externo (recibido de WhatsApp y enviado aquí)
 }
 
@@ -636,3 +656,4 @@ export const proposePropertyFormSchema = z.object({
 export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema>;
 
 // End of Broker Collaboration Types
+

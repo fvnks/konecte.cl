@@ -2,7 +2,7 @@
 // src/actions/propertyActions.ts
 'use server';
 
-import type { PropertyFormValues } from "@/components/property/PropertyForm";
+import type { PropertyFormValues } from "@/lib/types"; // Usaremos el schema de types
 import { query } from "@/lib/db";
 import type { PropertyListing, User, PropertyType, ListingCategory, SubmitPropertyResult } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -48,7 +48,7 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     bedrooms: Number(row.bedrooms),
     bathrooms: Number(row.bathrooms),
     areaSqMeters: Number(row.area_sq_meters),
-    images: parseJsonString(row.images),
+    images: parseJsonString(row.images), // Esto ya espera un JSON de array de strings
     features: parseJsonString(row.features),
     upvotes: Number(row.upvotes),
     commentsCount: Number(row.comments_count),
@@ -61,7 +61,7 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
       id: row.user_id,
       name: row.author_name,
       avatarUrl: row.author_avatar_url || undefined,
-      role_id: row.author_role_id || '', // Assuming author_role_id is fetched
+      role_id: row.author_role_id || '',
     } : undefined,
   };
 }
@@ -82,7 +82,8 @@ export async function submitPropertyAction(
   let propertyPublisherDetails: User | null = null;
 
   try {
-    const imagesJson = data.images ? JSON.stringify(data.images.split(',').map(img => img.trim()).filter(img => img.length > 0)) : null;
+    // data.images ahora es un array de URLs, así que lo convertimos a JSON string
+    const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
     const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
 
     const sql = `
@@ -109,7 +110,7 @@ export async function submitPropertyAction(
       data.bedrooms,
       data.bathrooms,
       data.areaSqMeters,
-      imagesJson,
+      imagesJson, // Guardar el JSON string de URLs de imágenes
       featuresJson
     ];
 
@@ -163,7 +164,7 @@ export async function submitPropertyAction(
               const chatMessage = `¡Hola ${match.requestAuthorName || 'Usuario'}! Mi propiedad "${propertyForAIMatch.title}" podría interesarte, ya que parece coincidir con tu solicitud "${match.requestTitle}".`;
               await sendMessageAction(
                 conversationResult.conversation.id,
-                userId, // Property publisher (current user) sends the message
+                userId, 
                 match.requestAuthorId,
                 chatMessage
               );
@@ -179,7 +180,7 @@ export async function submitPropertyAction(
         successMessage = `Propiedad publicada. ¡Encontramos ${autoMatchesFoundCount} solicitud(es) que podrían coincidir! Se han iniciado chats.`;
     }
     
-    return { success: true, message: successMessage, propertyId, propertySlug, autoMatchesCount: autoMatchesFoundCount };
+    return { success: true, message: successMessage, propertyId, propertySlug: slug, autoMatchesCount: autoMatchesFoundCount }; // Devuelve el slug
 
   } catch (error: any) {
     console.error("[PropertyAction] Error submitting property:", error);
@@ -221,7 +222,7 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
     maxPrice,
     minBedrooms,
     minBathrooms,
-    orderBy = 'createdAt_desc', // Default order
+    orderBy = 'createdAt_desc',
   } = options;
 
   try {
@@ -286,7 +287,6 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
       sql += ' WHERE ' + whereClauses.join(' AND ');
     }
 
-    // ORDER BY clause
     switch (orderBy) {
       case 'price_asc':
         sql += ' ORDER BY p.price ASC, p.created_at DESC';
@@ -303,26 +303,21 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
         break;
     }
 
-    // Interpolate LIMIT and OFFSET directly and safely
     if (limit !== undefined) {
       const numLimit = parseInt(String(limit), 10);
-      if (!isNaN(numLimit) && numLimit >= 0) { // Allow 0 for limit
+      if (!isNaN(numLimit) && numLimit >= 0) {
         if (offset !== undefined) {
           const numOffset = parseInt(String(offset), 10);
           if (!isNaN(numOffset) && numOffset >= 0) {
-            sql += ` LIMIT ${numOffset}, ${numLimit}`; // LIMIT offset, count
+            sql += ` LIMIT ${numOffset}, ${numLimit}`;
           } else {
-            // Offset is invalid, but limit is valid
             sql += ` LIMIT ${numLimit}`;
           }
         } else {
-          // Limit is valid, no offset
           sql += ` LIMIT ${numLimit}`;
         }
       }
-      // If limit is invalid (NaN or negative), it's simply not added to the SQL query.
     }
-    // Parameters for LIMIT and OFFSET are NOT added to queryParams.
 
     const rows = await query(sql, queryParams);
     if (!Array.isArray(rows)) {
@@ -348,7 +343,7 @@ export async function getPropertyBySlugAction(slug: string): Promise<PropertyLis
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.slug = ?
         AND p.is_active = TRUE
-    `; // For public view, only active properties by slug
+    `; 
     const rows = await query(sql, [slug]);
     if (!Array.isArray(rows) || rows.length === 0) {
       return null;
@@ -439,7 +434,7 @@ export async function getPropertyByIdForAdminAction(propertyId: string): Promise
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.id = ?
-    `; // No filter by is_active for admin
+    `; 
     const rows = await query(sql, [propertyId]);
     if (!Array.isArray(rows) || rows.length === 0) {
       return null;
@@ -451,9 +446,10 @@ export async function getPropertyByIdForAdminAction(propertyId: string): Promise
   }
 }
 
+// El tipo de `data` para adminUpdatePropertyAction debe coincidir con PropertyFormValues de types.ts
 export async function adminUpdatePropertyAction(
   propertyId: string,
-  data: PropertyFormValues
+  data: Omit<PropertyFormValues, 'images'> & { images: string[] } // Asegurar que images es array de strings
 ): Promise<{ success: boolean; message?: string; propertySlug?: string }> {
   console.log("[PropertyAction Admin] Property update data received on server:", data, "PropertyID:", propertyId);
 
@@ -462,7 +458,8 @@ export async function adminUpdatePropertyAction(
   }
 
   try {
-    const imagesJson = data.images ? JSON.stringify(data.images.split(',').map(img => img.trim()).filter(img => img.length > 0)) : null;
+    // data.images ya es un array de URLs, así que solo stringify si no está vacío
+    const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
     const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
 
     const sql = `
@@ -540,3 +537,4 @@ export async function getPropertiesCountAction(activeOnly: boolean = false): Pro
     return 0;
   }
 }
+

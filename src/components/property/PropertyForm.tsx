@@ -4,7 +4,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,11 +19,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
-import type { PropertyType, ListingCategory, User as StoredUser } from "@/lib/types"; // Renamed User to StoredUser to avoid conflict
-import { Loader2, UserCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import type { PropertyType, ListingCategory, User as StoredUser } from "@/lib/types";
+import { propertyFormSchema, type PropertyFormValues } from "@/lib/types"; // Importar schema y tipo
+import { Loader2, UserCircle, UploadCloud, Image as ImageIcon, Trash2 } from "lucide-react";
+import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"; // Import Link
+import Link from "next/link";
+import Image from "next/image"; // Importar Next Image
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -40,30 +41,18 @@ const categoryOptions: { value: ListingCategory; label: string }[] = [
   { value: "other", label: "Otro" },
 ];
 
-const formSchema = z.object({
-  title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
-  description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
-  propertyType: z.enum(["rent", "sale"], { required_error: "Debes seleccionar un tipo de propiedad (arriendo/venta)." }),
-  category: z.enum(["apartment", "house", "condo", "land", "commercial", "other"], { required_error: "Debes seleccionar una categoría." }),
-  price: z.coerce.number().positive("El precio debe ser un número positivo."),
-  currency: z.string().min(3, "La moneda debe tener 3 caracteres (ej: CLP, USD).").max(3, "La moneda debe tener 3 caracteres (ej: CLP, USD).").toUpperCase(),
-  address: z.string().min(5, "La dirección es requerida."),
-  city: z.string().min(2, "La ciudad es requerida."),
-  country: z.string().min(2, "El país es requerido."),
-  bedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de dormitorios no puede ser negativo."),
-  bathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de baños no puede ser negativo."),
-  areaSqMeters: z.coerce.number().positive("El área (m²) debe ser un número positivo."),
-  images: z.string().optional().describe("URLs de imágenes separadas por comas. Ejemplo: url1,url2"),
-  features: z.string().optional().describe("Características separadas por comas. Ejemplo: Piscina,Estacionamiento"),
-});
-
-export type PropertyFormValues = z.infer<typeof formSchema>;
+const MAX_IMAGES = 5;
+const MAX_FILE_SIZE_MB = 5;
 
 export default function PropertyForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -72,42 +61,122 @@ export default function PropertyForm() {
         setLoggedInUser(JSON.parse(userJson));
       } catch (error) {
         console.error("Error parsing user from localStorage", error);
-        localStorage.removeItem('loggedInUser'); // Clear corrupted data
+        localStorage.removeItem('loggedInUser');
       }
     }
     setIsCheckingAuth(false);
   }, []);
 
   const form = useForm<PropertyFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(propertyFormSchema),
     defaultValues: {
       title: "",
       description: "",
       price: 0,
-      currency: "CLP", // Default to CLP for Chile
+      currency: "CLP",
       address: "",
       city: "",
-      country: "Chile", // Default to Chile
+      country: "Chile",
       bedrooms: 0,
       bathrooms: 0,
       areaSqMeters: 0,
-      images: "",
+      images: [], // Inicializar como array vacío
       features: "",
     },
   });
 
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const filesArray = Array.from(event.target.files);
+      const newTotalImages = imageFiles.length + filesArray.length;
+
+      if (newTotalImages > MAX_IMAGES) {
+        toast({
+          title: "Límite de Imágenes Alcanzado",
+          description: `Solo puedes subir un máximo de ${MAX_IMAGES} imágenes.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const validFiles = filesArray.filter(file => {
+        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+          toast({
+            title: "Archivo Demasiado Grande",
+            description: `La imagen "${file.name}" excede el tamaño máximo de ${MAX_FILE_SIZE_MB}MB.`,
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      });
+
+      setImageFiles(prevFiles => [...prevFiles, ...validFiles]);
+      const newPreviews = validFiles.map(file => URL.createObjectURL(file));
+      setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
+    }
+  };
+
+  const removeImage = (indexToRemove: number) => {
+    setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
+    setImagePreviews(prevPreviews => prevPreviews.filter((_, index) => index !== indexToRemove));
+    setUploadedImageUrls(prevUrls => prevUrls.filter((_, index) => index !== indexToRemove));
+  };
+
+  const uploadImagesToProxy = async (): Promise<string[]> => {
+    if (imageFiles.length === 0) return [];
+    setIsUploading(true);
+    const uploadedUrls: string[] = [];
+    const cpanelUploadEndpoint = process.env.NEXT_PUBLIC_CPANEL_UPLOAD_ENDPOINT;
+
+    if (!cpanelUploadEndpoint) {
+      toast({ title: "Error de Configuración", description: "El endpoint de subida no está configurado.", variant: "destructive" });
+      setIsUploading(false);
+      return [];
+    }
+
+    for (const file of imageFiles) {
+      const formData = new FormData();
+      formData.append("imageFile", file); // El script PHP esperará "imageFile"
+
+      try {
+        const response = await fetch('/api/upload-image-to-cpanel', { // API Route en Next.js
+          method: 'POST',
+          body: formData,
+        });
+        const result = await response.json();
+        if (response.ok && result.success && result.url) {
+          uploadedUrls.push(result.url);
+        } else {
+          throw new Error(result.message || `Error al subir ${file.name}`);
+        }
+      } catch (error: any) {
+        toast({ title: "Error de Subida", description: error.message || `No se pudo subir ${file.name}.`, variant: "destructive" });
+        // Continuar con las otras imágenes
+      }
+    }
+    setIsUploading(false);
+    return uploadedUrls;
+  };
+
+
   async function onSubmit(values: PropertyFormValues) {
     if (!loggedInUser || !loggedInUser.id) {
-      toast({
-        title: "Acción Requerida",
-        description: "Debes iniciar sesión para publicar una propiedad.",
-        variant: "destructive",
-        action: <Button variant="outline" size="sm" onClick={() => router.push('/auth/signin')}>Iniciar Sesión</Button>
-      });
+      toast({ title: "Acción Requerida", description: "Debes iniciar sesión para publicar.", variant: "destructive" });
       return;
     }
 
-    const result = await submitPropertyAction(values, loggedInUser.id);
+    const finalImageUrls = await uploadImagesToProxy();
+    if (imageFiles.length > 0 && finalImageUrls.length === 0 && !confirm("Algunas imágenes no pudieron subirse. ¿Deseas continuar sin ellas?")) {
+        return; // No continuar si el usuario cancela y hubo errores de subida
+    }
+    
+    const dataToSubmit = {
+      ...values,
+      images: finalImageUrls, // Usar las URLs del servidor cPanel
+    };
+
+    const result = await submitPropertyAction(dataToSubmit, loggedInUser.id);
     if (result.success && result.propertyId) {
       toast({
         title: result.autoMatchesCount && result.autoMatchesCount > 0 ? "¡Propiedad Publicada y Matches Encontrados!" : "Propiedad Publicada",
@@ -115,17 +184,16 @@ export default function PropertyForm() {
         duration: result.autoMatchesCount && result.autoMatchesCount > 0 ? 7000 : 5000,
       });
       form.reset();
+      setImageFiles([]);
+      setImagePreviews([]);
+      setUploadedImageUrls([]);
       if (result.propertySlug) {
         router.push(`/properties/${result.propertySlug}`);
       } else {
         router.push('/properties');
       }
     } else {
-      toast({
-        title: "Error al Publicar",
-        description: result.message || "No se pudo enviar tu propiedad. Intenta de nuevo.",
-        variant: "destructive",
-      });
+      toast({ title: "Error al Publicar", description: result.message || "No se pudo enviar tu propiedad.", variant: "destructive" });
     }
   }
   
@@ -240,7 +308,7 @@ export default function PropertyForm() {
                 <FormLabel>Moneda</FormLabel>
                 <FormControl>
                   <Input placeholder="Ej: CLP, UF, USD" {...field} />
-                </FormControl>
+                </FormLabel>
                 <FormDescription>Código de 3 letras para la moneda.</FormDescription>
                 <FormMessage />
               </FormItem>
@@ -333,20 +401,49 @@ export default function PropertyForm() {
           />
         </div>
         
-        <FormField
-          control={form.control}
-          name="images"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>URLs de Imágenes (separadas por comas)</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Ej: https://placehold.co/600x400.png,https://placehold.co/600x400.png" {...field} />
-              </FormControl>
-              <FormDescription>Pega las URLs de las imágenes de tu propiedad, separadas por una coma.</FormDescription>
-              <FormMessage />
-            </FormItem>
+        {/* Image Upload Section */}
+        <FormItem>
+          <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES}, hasta {MAX_FILE_SIZE_MB}MB c/u)</FormLabel>
+          <FormControl>
+            <div className="flex items-center justify-center w-full">
+                <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/70 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <UploadCloud className="w-8 h-8 mb-3 text-muted-foreground" />
+                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Haz clic para subir</span> o arrastra y suelta</p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG, GIF, WEBP (Máx. {MAX_FILE_SIZE_MB}MB)</p>
+                    </div>
+                    <Input id="dropzone-file" type="file" className="hidden" multiple onChange={handleImageChange} accept="image/png, image/jpeg, image/gif, image/webp" disabled={imageFiles.length >= MAX_IMAGES || isUploading} />
+                </label>
+            </div>
+          </FormControl>
+          {imagePreviews.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {imagePreviews.map((previewUrl, index) => (
+                <div key={index} className="relative group aspect-square border rounded-md overflow-hidden">
+                  <Image src={previewUrl} alt={`Preview ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removeImage(index)}
+                    disabled={isUploading}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           )}
-        />
+          {isUploading && (
+            <div className="flex items-center mt-2 text-sm text-primary">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Subiendo imágenes... ({uploadedImageUrls.length + 1 > imageFiles.length ? imageFiles.length : uploadedImageUrls.length + 1} de {imageFiles.length})
+            </div>
+          )}
+          <FormMessage />
+        </FormItem>
+
 
         <FormField
           control={form.control}
@@ -363,9 +460,9 @@ export default function PropertyForm() {
           )}
         />
         
-        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth || !loggedInUser}>
-          {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Publicar Propiedad
+        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth || !loggedInUser || isUploading}>
+          {(form.formState.isSubmitting || isCheckingAuth || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isUploading ? 'Subiendo imágenes...' : 'Publicar Propiedad'}
         </Button>
         {!isCheckingAuth && !loggedInUser && (
           <p className="text-sm text-destructive text-center mt-2">
@@ -377,3 +474,4 @@ export default function PropertyForm() {
     </Form>
   );
 }
+
