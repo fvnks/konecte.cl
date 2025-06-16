@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, Eye, UserCircle as UserIcon } from 'lucide-react';
+import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, BedDouble, Bath, Eye, UserCircle as UserIcon, Handshake } from 'lucide-react';
 
 interface RequestCardProps {
   request: SearchRequest;
@@ -41,9 +41,13 @@ export default function RequestCard({ request }: RequestCardProps) {
     desiredPropertyType,
     createdAt,
     description,
+    minBedrooms,
+    minBathrooms,
+    open_for_broker_collaboration,
   } = request;
 
-  const locationCity = desiredLocation?.city || 'No especificada';
+  const locationCity = desiredLocation?.city || 'N/A';
+  const locationNeighborhood = desiredLocation?.neighborhood;
   const authorName = author?.name || "Usuario Anónimo";
   const authorAvatar = author?.avatarUrl;
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
@@ -51,16 +55,16 @@ export default function RequestCard({ request }: RequestCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl h-full group border border-border hover:border-primary/30">
        <CardHeader className="p-4 sm:p-5">
-        <div className="flex items-center gap-2.5 mb-2">
+        <div className="flex items-center gap-2.5 mb-2.5">
             <Avatar className="h-10 w-10 sm:h-11 sm:w-11 border">
-              <AvatarImage src={authorAvatar || `https://placehold.co/44x44.png?text=${authorInitials}`} alt={authorName} data-ai-hint="persona solicitante" />
+              <AvatarImage src={authorAvatar || `https://placehold.co/44x44.png?text=${authorInitials}`} alt={authorName} data-ai-hint="usuario buscando"/>
               <AvatarFallback className="text-sm bg-muted">{authorInitials || <UserIcon className="h-5 w-5"/>}</AvatarFallback>
             </Avatar>
             <div>
               <p className="text-sm sm:text-base font-semibold line-clamp-1" title={authorName}>{authorName}</p>
               <p className="text-xs text-muted-foreground flex items-center">
-                <CalendarDays className="h-3.5 w-3.5 mr-1" />
-                {new Date(createdAt).toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'2-digit' })}
+                <CalendarDays className="h-3 w-3 mr-1" />
+                Publicado el {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short', year:'numeric'})}
               </p>
             </div>
         </div>
@@ -76,12 +80,12 @@ export default function RequestCard({ request }: RequestCardProps) {
         <div className="space-y-1 text-xs text-muted-foreground">
           <div className="flex items-center">
             <MapPin className="mr-1.5 h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
-            <span className="truncate">En: {locationCity}</span>
+            <span className="truncate">En: {locationCity}{locationNeighborhood ? ` (${locationNeighborhood})` : ''}</span>
           </div>
           {desiredPropertyType && desiredPropertyType.length > 0 && (
              <div className="flex items-center">
                 <Tag className="mr-1.5 h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
-                <span className="truncate">Para: {desiredPropertyType.map(translatePropertyTypeBadge).join(', ')}</span>
+                <span className="truncate">Para: {desiredPropertyType.map(translatePropertyTypeBadge).join(' / ')}</span>
              </div>
           )}
         </div>
@@ -99,13 +103,16 @@ export default function RequestCard({ request }: RequestCardProps) {
               <span>Hasta ${budgetMax.toLocaleString('es-CL', {notation: 'compact', compactDisplay: 'short'})}</span>
             </div>
           )}
+          {open_for_broker_collaboration && (
+            <Badge variant="outline" className="mt-2.5 text-xs py-1 px-2.5 border-purple-500 text-purple-600 rounded-md">
+                <Handshake className="h-3.5 w-3.5 mr-1.5" /> Abierta a Colaboración
+            </Badge>
+          )}
       </CardContent>
       <CardFooter className="p-4 sm:p-5 pt-2.5 border-t flex justify-between items-center mt-auto">
-        <Link href={`/requests/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary">
-          <Button variant="ghost" size="sm" className="p-1 h-auto text-xs">
-            <MessageCircle className="mr-1 h-3.5 w-3.5" />
-            {commentsCount} <span className="hidden sm:inline ml-1">Comentarios</span>
-          </Button>
+        <Link href={`/requests/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary text-xs sm:text-sm">
+          <MessageCircle className="mr-1.5 h-3.5 w-3.5" />
+          {commentsCount} comentarios
         </Link>
         <Button size="sm" asChild className="text-xs sm:text-sm rounded-lg shadow-md hover:shadow-lg transition-shadow h-9 px-3.5">
             <Link href={`/requests/${slug}`} className="flex items-center gap-1.5"> <Eye className="h-4 w-4" /> Ver Solicitud</Link>
@@ -114,4 +121,3 @@ export default function RequestCard({ request }: RequestCardProps) {
     </Card>
   );
 }
-```

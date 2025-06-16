@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { recordUserListingInteractionAction } from '@/actions/interactionActions';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
+import { Progress } from '@/components/ui/progress';
+import { MessageSquareText, Building } from 'lucide-react';
 
 interface FeaturedPropertyCardProps {
   property: PropertyListing;
@@ -212,4 +214,3 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
     </Card>
   );
 }
-```
