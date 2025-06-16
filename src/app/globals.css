@@ -26,8 +26,8 @@ body {
     --muted: 220 15% 88%; /* #DFE3E8 Gris apagado */
     --muted-foreground: 220 5% 45%; /* #6C727B Texto para apagado */
     
-    --accent: 35 92% 58%; /* #FFA726 Naranja de acento vibrante */
-    --accent-foreground: 0 0% 100%; /* Texto blanco para naranja de acento */
+    --accent: 35 100% 65%; /* #FFB74D Naranja de acento más vibrante */
+    --accent-foreground: 20 25% 10%; /* Texto oscuro para acento */
     
     --destructive: 0 75% 55%; /* #D93434 Rojo destructivo */
     --destructive-foreground: 0 0% 100%; /* Texto blanco para destructivo */
@@ -45,62 +45,62 @@ body {
     
     --radius: 0.75rem; /* Radio de borde base - tarjetas usarán rounded-xl */
 
-    /* Sidebar specific colors (can be refined later if admin panel is tackled) */
-    --sidebar-background: 0 0% 100%; /* #FFFFFF */
-    --sidebar-foreground: 220 10% 25%; /* #383F47 */
-    --sidebar-primary: 207 88% 58%; /* Mismo que el primario */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 96.5%; /* Mismo que el fondo principal */
-    --sidebar-accent-foreground: 207 88% 58%; /* Primario como texto de acento */
-    --sidebar-border: 220 15% 90%; /* #E1E5E9 */
-    --sidebar-ring: 207 88% 50%;
+    /* Sidebar specific colors */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 10% 25%;
+    --sidebar-primary: hsl(var(--primary));
+    --sidebar-primary-foreground: hsl(var(--primary-foreground));
+    --sidebar-accent: hsl(var(--secondary)); /* Usar el secundario del tema principal */
+    --sidebar-accent-foreground: hsl(var(--secondary-foreground)); /* Usar el foreground secundario del tema principal */
+    --sidebar-border: hsl(var(--border));
+    --sidebar-ring: hsl(var(--ring));
   }
 
   .dark {
-    --background: 220 15% 12%; /* #1A1D21 */
-    --foreground: 220 10% 85%; /* #CED4DA */
+    --background: 220 15% 10%;
+    --foreground: 220 20% 95%;
     
-    --card: 220 15% 18%; /* #262A2E */
-    --card-foreground: 220 10% 85%;
+    --card: 220 15% 16%;
+    --card-foreground: 220 20% 93%;
     
-    --popover: 220 15% 18%;
-    --popover-foreground: 220 10% 85%;
+    --popover: 220 15% 14%; /* Un poco más oscuro que card para popovers */
+    --popover-foreground: 220 20% 95%;
     
-    --primary: 207 88% 65%; /* #64B5F6 Azul primario más claro para dark mode */
-    --primary-foreground: 220 10% 10%; /* Texto oscuro para primario claro */
+    --primary: 207 88% 65%; /* PropSpot Blue: #64B5F6 */
+    --primary-foreground: 220 25% 10%; /* Texto oscuro para botones primarios claros */
     
-    --secondary: 220 15% 25%; /* #363B40 */
-    --secondary-foreground: 220 10% 75%; /* #B3B9BF */
+    --secondary: 220 15% 25%; /* Gris oscuro para elementos secundarios */
+    --secondary-foreground: 220 15% 80%; /* Texto más claro para secundario */
     
-    --muted: 220 15% 30%; /* #41464B */
-    --muted-foreground: 220 10% 60%; /* #90969C */
+    --muted: 220 15% 20%; /* Gris aún más oscuro para fondos sutiles */
+    --muted-foreground: 220 10% 55%; /* Texto para muted, contraste adecuado */
     
-    --accent: 35 92% 65%; /* #FFB74D Naranja de acento más claro */
-    --accent-foreground: 220 10% 10%; /* Texto oscuro para acento claro */
+    --accent: 35 100% 65%; /* PropSpot Orange: #FFB74D */
+    --accent-foreground: 20 25% 10%; /* Texto oscuro para botones de acento claros */
     
-    --destructive: 0 70% 60%; /* #E54848 */
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 70% 58%; /* Rojo para errores, no demasiado brillante */
+    --destructive-foreground: 0 0% 100%; /* Texto blanco para destructivo */
     
-    --border: 220 15% 30%; /* #41464B */
-    --input: 220 15% 22%; /* #2E3236 */
-    --input-border: 220 15% 35%; /* #4E5358 */
-    --ring: 207 88% 60%; /* #58A6E8 */
+    --border: 220 15% 28%; /* Bordes sutiles pero visibles */
+    --input: 220 15% 13%; /* Fondo de input, más oscuro que card */
+    --input-border: 220 15% 30%; /* Borde para inputs */
+    --ring: 207 88% 60%; /* Primario ligeramente más oscuro para focus ring */
 
-    --chart-1: 207 75% 60%;
-    --chart-2: 35 80% 60%;
-    --chart-3: 160 55% 50%;
-    --chart-4: 280 60% 65%;
-    --chart-5: 50 70% 55%;
+    --chart-1: 207 80% 60%;
+    --chart-2: 35 90% 60%;
+    --chart-3: 160 65% 55%;
+    --chart-4: 280 70% 65%;
+    --chart-5: 50 75% 58%;
 
     /* Sidebar dark theme colors */
-    --sidebar-background: 220 15% 15%; /* #202428 */
-    --sidebar-foreground: 220 10% 80%; /* #C2C8CD */
-    --sidebar-primary: 207 88% 65%;
-    --sidebar-primary-foreground: 220 10% 10%;
-    --sidebar-accent: 220 15% 22%;
-    --sidebar-accent-foreground: 207 88% 65%;
-    --sidebar-border: 220 15% 25%;
-    --sidebar-ring: 207 88% 60%;
+    --sidebar-background: 220 15% 12%; /* Ligeramente diferente al fondo principal para flotar o mismo */
+    --sidebar-foreground: 220 15% 90%; /* Texto claro para sidebar */
+    --sidebar-primary: hsl(var(--primary)); /* Usa el primario global */
+    --sidebar-primary-foreground: hsl(var(--primary-foreground)); /* Usa el foreground primario global */
+    --sidebar-accent: 220 15% 20%; /* Color de fondo para hover/activo */
+    --sidebar-accent-foreground: hsl(var(--primary)); /* Color de texto para hover/activo */
+    --sidebar-border: 220 15% 25%; /* Borde para elementos de sidebar */
+    --sidebar-ring: hsl(var(--ring)); /* Anillo de foco global */
   }
 }
 

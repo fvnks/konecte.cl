@@ -60,7 +60,7 @@ const config = {
         border: 'hsl(var(--border))',
         input: {
           DEFAULT: 'hsl(var(--input))',
-          border: 'hsl(var(--input-border))'
+          border: 'hsl(var(--input-border))' // Define una variable específica para el borde del input
         },
         ring: 'hsl(var(--ring))',
         chart: {
