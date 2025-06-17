@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, Eye, CalendarPlus, Share2 } from "lucide-react";
+import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, Eye, CalendarPlus, Share2, ShieldCheck } from "lucide-react";
 import PropertyComments from "@/components/comments/PropertyComments"; 
 import Link from "next/link";
 import RecordView from '@/components/lead-tracking/RecordView';
@@ -44,6 +44,15 @@ const formatPrice = (price: number, currency: string) => {
   }
 };
 
+const getRoleDisplayName = (roleId?: string, roleName?: string): string | null => {
+  if (roleName) return roleName;
+  if (roleId === 'user') return 'Usuario';
+  if (roleId === 'broker') return 'Corredor';
+  if (roleId === 'admin') return 'Admin';
+  return roleId || null; // Retorna el ID si no hay nombre y no es uno de los mapeados
+};
+
+
 export default async function PropertyDetailPage({ params }: { params: { slug: string } }) {
   const property = await getPropertyBySlugAction(params.slug);
 
@@ -69,6 +78,8 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
   const authorName = property.author?.name || "Anunciante";
   const authorAvatar = property.author?.avatarUrl;
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+  const authorRoleDisplay = getRoleDisplayName(property.author?.role_id, property.author?.role_name);
+
 
   const featureIcons: Record<string, React.ElementType> = {
     "Estacionamiento": ParkingCircle,
@@ -156,7 +167,12 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
                   </Avatar>
                   <div className="flex-grow">
                     <p className="font-semibold text-lg">{authorName}</p>
-                    {property.author.created_at && <p className="text-sm text-muted-foreground flex items-center"><CalendarDays className="h-4 w-4 mr-1.5"/>Miembro desde {new Date(property.author.created_at).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })}</p>}
+                    {authorRoleDisplay && (
+                        <Badge variant="outline" className="text-xs capitalize mt-0.5 border-primary/40 text-primary/90">
+                            <ShieldCheck className="h-3 w-3 mr-1"/> {authorRoleDisplay}
+                        </Badge>
+                    )}
+                    {property.author.created_at && <p className="text-sm text-muted-foreground flex items-center mt-1"><CalendarDays className="h-4 w-4 mr-1.5"/>Miembro desde {new Date(property.author.created_at).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })}</p>}
                     <p className="text-xs text-muted-foreground mt-0.5">Propiedad publicada el {new Date(property.createdAt).toLocaleDateString('es-CL')} </p>
                   </div>
                   <RequestVisitButtonClient 
@@ -182,3 +198,4 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
     </>
   );
 }
+
