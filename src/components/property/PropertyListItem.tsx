@@ -1,4 +1,3 @@
-
 // src/components/property/PropertyListItem.tsx
 import Link from 'next/link';
 import Image from 'next/image';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays, ShieldCheck } from 'lucide-react';
+import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays, ShieldCheck, Eye } from 'lucide-react';
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
 import LikeButton from '@/components/ui/LikeButton';
 
@@ -151,13 +150,13 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
           </div>
           <div className="flex items-center gap-1.5 self-end sm:self-center w-full sm:w-auto justify-end">
             <LikeButton listingId={id} listingType="property" />
-            <Link href={`/properties/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary">
-              <Button variant="ghost" size="sm" className="p-1 h-auto text-xs">
-                <MessageCircle className="mr-0.5 h-3.5 w-3.5" />
+            <Link href={`/properties/${slug}#comments`} aria-label={`${commentsCount} comentarios`} className="flex items-center">
+              <Button variant="ghost" size="sm" className="h-9 px-2 py-1 text-xs text-muted-foreground hover:text-primary">
+                <MessageCircle className="mr-1 h-4 w-4" />
                 <span>{commentsCount}</span>
               </Button>
             </Link>
-             <CustomDetailButton href={`/properties/${slug}`} className="self-stretch sm:self-center">
+             <CustomDetailButton href={`/properties/${slug}`}>
                 Ver Detalles
             </CustomDetailButton>
           </div>
@@ -166,3 +165,4 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     </Card>
   );
 }
+

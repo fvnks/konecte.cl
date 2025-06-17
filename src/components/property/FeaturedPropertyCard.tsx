@@ -1,4 +1,3 @@
-
 // src/components/property/FeaturedPropertyCard.tsx
 'use client';
 
@@ -114,8 +113,8 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
             </span>
         </div>
       </CardContent>
-      <CardFooter className="p-4 sm:p-5 pt-0 mt-auto flex flex-col items-center">
-        <LikeButton listingId={propertyId} listingType="property" className="mb-[10px]" />
+      <CardFooter className="p-4 sm:p-5 pt-0 mt-auto flex flex-row items-center justify-center gap-2">
+        <LikeButton listingId={propertyId} listingType="property" />
         <CustomDetailButton href={`/properties/${slug}`}>
           Ver Detalles
         </CustomDetailButton>
