@@ -2,7 +2,7 @@
 // src/components/dashboard/visits/ManageVisitDialog.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { updateVisitStatusFormSchema, type UpdateVisitStatusFormValues, type PropertyVisit, type PropertyVisitAction, PropertyVisitStatusLabels } from '@/lib/types';
@@ -23,7 +23,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/hooks/use-toast';
@@ -61,7 +60,6 @@ export default function ManageVisitDialog({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // State for the new date/time picker for rescheduling
   const [selectedDatePart, setSelectedDatePart] = useState<Date | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
   const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
@@ -81,7 +79,7 @@ export default function ManageVisitDialog({
     },
   });
   
-  const fetchBookedSlots = React.useCallback(async (date: Date) => {
+  const fetchBookedSlots = useCallback(async (date: Date) => {
     if (!visit?.property_id) return;
     setIsLoadingBookedSlots(true);
     try {
@@ -107,14 +105,13 @@ export default function ManageVisitDialog({
       switch (actionType) {
         case 'confirm_original_proposal':
           newStatus = 'confirmed';
-          confirmedDt = visit.proposed_datetime; // Confirm with original proposed time
+          confirmedDt = visit.proposed_datetime;
           needsOwnerNotes = true;
           break;
         case 'reschedule_proposal':
           newStatus = 'rescheduled_by_owner';
           needsDateTimePicker = true;
           needsOwnerNotes = true;
-          // For reschedule, pre-fill date picker to today + 1, time to null
           const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(10,0,0,0);
           setSelectedDatePart(tomorrow);
           fetchBookedSlots(tomorrow);
@@ -141,10 +138,10 @@ export default function ManageVisitDialog({
           break;
         case 'accept_owner_reschedule':
           newStatus = 'confirmed';
-          confirmedDt = visit.confirmed_datetime; // Visitor accepts the time owner set
+          confirmedDt = visit.confirmed_datetime; // This should be the time owner proposed
           break;
         case 'reject_owner_reschedule':
-          newStatus = 'cancelled_by_visitor'; // Visitor rejects, so it's a cancellation by them
+          newStatus = 'cancelled_by_visitor';
           needsCancellationReason = true;
           break;
         case 'cancel_own_request':
@@ -166,7 +163,6 @@ export default function ManageVisitDialog({
       setShowCancellationReason(needsCancellationReason);
       setShowOwnerNotes(needsOwnerNotes);
       
-      // If not using date time picker for this action, reset its specific states
       if (!needsDateTimePicker) {
           setSelectedDatePart(null);
           setSelectedTimeSlot(null);
@@ -183,8 +179,8 @@ export default function ManageVisitDialog({
   const handleDatePartChange = (date?: Date) => {
     if (date) {
       setSelectedDatePart(date);
-      setSelectedTimeSlot(null); // Reset time when date changes
-      form.setValue('confirmed_datetime', '', { shouldValidate: true }); // Clear combined datetime
+      setSelectedTimeSlot(null); 
+      form.setValue('confirmed_datetime', '', { shouldValidate: true }); 
       fetchBookedSlots(date);
     }
   };
@@ -206,7 +202,7 @@ export default function ManageVisitDialog({
       return;
     }
     
-    if (actionType === 'reschedule_proposal' && !values.confirmed_datetime) {
+    if (showDateTimePicker && !values.confirmed_datetime) {
       toast({ title: 'Información Faltante', description: 'Por favor, selecciona una nueva fecha y hora para reagendar.', variant: 'warning'});
       return;
     }
@@ -335,7 +331,7 @@ export default function ManageVisitDialog({
                     )}
                   </FormItem>
                 )}
-                <FormField control={form.control} name="confirmed_datetime" render={() => <FormMessage />} />
+                <FormField control={form.control} name="confirmed_datetime" render={({ field }) => <FormMessage />} />
               </>
             )}
 
@@ -365,7 +361,7 @@ export default function ManageVisitDialog({
                 )}
               />
             )}
-             <FormField control={form.control} name="new_status" render={({ field }) => <Input type="hidden" {...field} />} />
+             <FormField control={form.control} name="new_status" render={({ field }) => <input type="hidden" {...field} />} />
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
@@ -382,4 +378,3 @@ export default function ManageVisitDialog({
     </Dialog>
   );
 }
-

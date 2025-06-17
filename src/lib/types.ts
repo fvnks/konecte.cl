@@ -493,17 +493,18 @@ export const requestVisitFormSchema = z.object({
 });
 export type RequestVisitFormValues = z.infer<typeof requestVisitFormSchema>;
 
+// Tipo de acciones posibles para gestionar una visita
 export type PropertyVisitAction =
-  | 'confirm_original_proposal' // Owner confirms visitor's original proposed time
-  | 'reschedule_proposal'       // Owner proposes a new time
-  | 'cancel_pending_request'    // Owner rejects/cancels a pending request
-  | 'cancel_confirmed_visit'    // Owner cancels a visit they previously confirmed
-  | 'mark_completed'            // Owner marks visit as completed
-  | 'mark_visitor_no_show'      // Owner marks visitor as no-show
-  | 'mark_owner_no_show'        // (Potentially for visitor to mark owner as no-show, or admin)
-  | 'accept_owner_reschedule'   // Visitor accepts owner's new proposed time
-  | 'reject_owner_reschedule'   // Visitor rejects owner's new proposed time
-  | 'cancel_own_request';       // Visitor cancels their own request (pending or confirmed by them)
+  | 'confirm_original_proposal' // Propietario confirma propuesta original del visitante
+  | 'reschedule_proposal'       // Propietario propone nueva fecha/hora
+  | 'cancel_pending_request'    // Propietario rechaza solicitud pendiente
+  | 'cancel_confirmed_visit'    // Propietario cancela visita ya confirmada
+  | 'mark_completed'            // Propietario marca como completada
+  | 'mark_visitor_no_show'      // Propietario marca que el visitante no asistió
+  | 'mark_owner_no_show'        // Visitante marca que el propietario no asistió
+  | 'accept_owner_reschedule'   // Visitante acepta nueva fecha/hora propuesta por propietario
+  | 'reject_owner_reschedule'   // Visitante rechaza nueva propuesta del propietario
+  | 'cancel_own_request';       // Visitante cancela su propia solicitud (pendiente o confirmada)
 
 export const updateVisitStatusFormSchema = z.object({
   new_status: z.enum(propertyVisitStatusValues, { required_error: "El nuevo estado es requerido." }),
@@ -660,5 +661,3 @@ export const proposePropertyFormSchema = z.object({
 export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema>;
 
 // End of Broker Collaboration Types
-
-

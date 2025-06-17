@@ -79,7 +79,8 @@ export async function requestVisitAction(
 
     revalidatePath('/dashboard/visits');
     revalidatePath(`/admin/visits`); 
-    revalidatePath(`/properties/${visitId}`); // Assuming property slug might be visitId for revalidation logic, adjust if needed
+    // Revalidate property page if needed, depends on if visit info is shown there
+    // revalidatePath(`/properties/${propertySlug}`); // Needs slug
 
     // Fetch the newly created visit to return it
     const newVisitResult = await query('SELECT * FROM property_visits WHERE id = ?', [visitId]);
@@ -91,6 +92,15 @@ export async function requestVisitAction(
 
   } catch (error: any) {
     console.error("[VisitAction] Error requesting visit:", error);
+    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      if (error.message.includes('property_visits_ibfk_1')) { // FK to properties
+        return { success: false, message: "Error: La propiedad especificada no existe." };
+      } else if (error.message.includes('property_visits_ibfk_2')) { // FK to users (visitor_user_id)
+        return { success: false, message: "Error: El usuario visitante no existe. Por favor, verifica tu sesión." };
+      } else if (error.message.includes('property_visits_ibfk_3')) { // FK to users (property_owner_user_id)
+        return { success: false, message: "Error: El propietario de la propiedad no existe." };
+      }
+    }
     return { success: false, message: `Error al solicitar visita: ${error.message}` };
   }
 }
@@ -175,16 +185,17 @@ export async function updateVisitStatusAction(
       return { success: false, message: "No tienes permiso para actualizar esta visita." };
     }
     
+    // Basic permission checks based on who is making the change and the new status
     if (new_status === 'cancelled_by_visitor' && !isVisitor) {
-        return { success: false, message: "Solo el visitante puede cancelar su propia solicitud de visita." };
+        return { success: false, message: "Solo el visitante puede cancelar su propia solicitud/visita." };
     }
-    if ((new_status === 'confirmed' || new_status === 'cancelled_by_owner' || new_status === 'rescheduled_by_owner') && !isOwner) {
-        return { success: false, message: "Solo el propietario puede gestionar las visitas a su propiedad." };
+    if ( (new_status === 'confirmed' || new_status === 'cancelled_by_owner' || new_status === 'rescheduled_by_owner' || new_status === 'completed' || new_status === 'visitor_no_show') && !isOwner) {
+        return { success: false, message: "Solo el propietario puede realizar esta acción." };
     }
-    
-    if (isVisitor && (new_status === 'confirmed' || new_status === 'rescheduled_by_owner')) {
-        return { success: false, message: "Los visitantes no pueden confirmar ni reagendar visitas de esta manera." };
+    if (new_status === 'owner_no_show' && !isVisitor) { // Assuming only visitor can mark owner no-show
+        return { success: false, message: "Solo el visitante puede marcar al propietario como no asistente." };
     }
+
 
     const updateFields: string[] = [];
     const updateParams: (string | Date | null | boolean)[] = [];
@@ -192,14 +203,12 @@ export async function updateVisitStatusAction(
     updateFields.push('status = ?');
     updateParams.push(new_status);
 
-    if (new_status === 'confirmed' || new_status === 'rescheduled_by_owner') {
-      if (confirmed_datetime) {
+    if (confirmed_datetime) { // This will be set by the dialog logic for 'confirm' or 'reschedule'
         updateFields.push('confirmed_datetime = ?');
         updateParams.push(new Date(confirmed_datetime));
-      } else if (new_status === 'confirmed') {
-         updateFields.push('confirmed_datetime = ?');
-         updateParams.push(new Date(visit.proposed_datetime)); // Confirm with original proposed time if no new time provided
-      }
+    } else if (new_status === 'pending_confirmation' || new_status.startsWith('cancel')) {
+        // When cancelling or reverting to pending, clear confirmed_datetime if it's being reset
+        updateFields.push('confirmed_datetime = NULL');
     }
     
     if (owner_notes && isOwner) { 
@@ -222,7 +231,10 @@ export async function updateVisitStatusAction(
     revalidatePath('/dashboard/visits');
     revalidatePath(`/admin/visits`);
 
-    const updatedVisitResult = await query('SELECT * FROM property_visits WHERE id = ?', [visitId]);
+    const updatedVisitResult = await query(
+      `SELECT pv.*, p.title as property_title, p.slug as property_slug, visitor.name as visitor_name, visitor.avatar_url as visitor_avatar_url, owner.name as owner_name, owner.avatar_url as owner_avatar_url
+       FROM property_visits pv JOIN properties p ON pv.property_id = p.id JOIN users visitor ON pv.visitor_user_id = visitor.id JOIN users owner ON pv.property_owner_user_id = owner.id
+       WHERE pv.id = ?`, [visitId]);
      if (!Array.isArray(updatedVisitResult) || updatedVisitResult.length === 0) {
         return { success: false, message: "Error al actualizar la visita, no se pudo recuperar." };
     }
@@ -264,6 +276,9 @@ export async function getVisitByIdAction(
     }
     const visit = mapDbRowToPropertyVisit(rows[0]);
 
+    // This check might be too restrictive if an admin needs to fetch it without being a participant.
+    // For admin UI, consider a separate getVisitByIdForAdminAction that doesn't check participation.
+    // For now, assuming this is for user-facing context.
     if (visit.visitor_user_id !== currentUserId && visit.property_owner_user_id !== currentUserId) {
       console.warn(`[VisitAction] Unauthorized attempt to access visit ${visitId} by user ${currentUserId}`);
       return null; 
@@ -318,8 +333,8 @@ export async function getAllVisitsForAdminAction(options: GetAllVisitsForAdminOp
     }
 
     switch (orderBy) {
-      case 'proposed_datetime_desc': sql += ' ORDER BY pv.proposed_datetime DESC'; break;
-      case 'proposed_datetime_asc': sql += ' ORDER BY pv.proposed_datetime ASC'; break;
+      case 'proposed_datetime_desc': sql += ' ORDER BY pv.proposed_datetime DESC, pv.created_at DESC'; break;
+      case 'proposed_datetime_asc': sql += ' ORDER BY pv.proposed_datetime ASC, pv.created_at ASC'; break;
       case 'status_asc': sql += ' ORDER BY pv.status ASC, pv.created_at DESC'; break;
       case 'status_desc': sql += ' ORDER BY pv.status DESC, pv.created_at DESC'; break;
       case 'created_at_asc': sql += ' ORDER BY pv.created_at ASC'; break;
@@ -359,7 +374,7 @@ export async function getVisitCountsByStatusForAdmin(): Promise<Record<PropertyV
       }
     });
     return counts;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[VisitAction Admin] Error fetching visit counts by status:`, error);
     return counts; // Return default counts on error
   }

@@ -34,9 +34,9 @@ const getStatusVariant = (status: PropertyVisitStatus): { variant: "default" | "
     case 'completed':
       return { variant: 'default', icon: <CheckSquare className="h-3.5 w-3.5" />, labelClass: 'bg-indigo-500 hover:bg-indigo-600 text-white border-indigo-600' };
     case 'visitor_no_show':
-      return { variant: 'destructive', icon: <UserX className="h-3.5 w-3.5" />, labelClass: 'text-slate-600 border-slate-500' };
+      return { variant: 'destructive', icon: <UserX className="h-3.5 w-3.5" />, labelClass: 'text-slate-600 border-slate-500' }; // Changed to destructive for clarity
     case 'owner_no_show':
-      return { variant: 'destructive', icon: <UserCheck className="h-3.5 w-3.5" />, labelClass: 'text-slate-600 border-slate-500' };
+      return { variant: 'destructive', icon: <UserCheck className="h-3.5 w-3.5" />, labelClass: 'text-slate-600 border-slate-500' }; // Changed to destructive for clarity
     default:
       return { variant: 'secondary', icon: <AlertCircle className="h-3.5 w-3.5" />, labelClass: 'text-gray-600 border-gray-500' };
   }
@@ -53,11 +53,15 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
 
   const statusInfo = getStatusVariant(visit.status);
   
-  // Date to display: if confirmed, show confirmed_datetime, otherwise proposed_datetime
   const displayDate = visit.confirmed_datetime || visit.proposed_datetime;
-  const dateLabelSuffix = visit.status === 'confirmed' && visit.confirmed_datetime ? '(Confirmada)' 
-                        : visit.status === 'rescheduled_by_owner' && visit.confirmed_datetime ? `(Reagendada por Propietario para ${format(new Date(visit.confirmed_datetime), "dd MMM, HH:mm", { locale: es })})`
-                        : '(Propuesta)';
+  let dateLabelSuffix = '';
+  if (visit.status === 'confirmed' && visit.confirmed_datetime) {
+    dateLabelSuffix = '(Confirmada)';
+  } else if (visit.status === 'rescheduled_by_owner' && visit.confirmed_datetime) {
+    dateLabelSuffix = `(Reagendada por Dueño)`;
+  } else if (visit.status === 'pending_confirmation') {
+    dateLabelSuffix = '(Propuesta)';
+  }
 
 
   return (
@@ -81,23 +85,23 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
             {format(new Date(displayDate), "dd MMM yyyy, HH:mm", { locale: es })} {dateLabelSuffix}
           </p>
         </div>
-        <Badge variant={statusInfo.variant} className={`capitalize text-xs h-fit ${statusInfo.labelClass} border-${statusInfo.labelClass?.replace('text-','')} dark:border-${statusInfo.labelClass?.replace('text-','').replace('-600','-400')}`}>
+        <Badge variant={statusInfo.variant} className={`capitalize text-xs h-fit ${statusInfo.labelClass}`}>
           {React.cloneElement(statusInfo.icon as React.ReactElement, { className: `mr-1.5 ${statusInfo.icon?.props.className}`})}
           {PropertyVisitStatusLabels[visit.status]}
         </Badge>
       </CardHeader>
-      {(visit.visitor_notes || visit.owner_notes || visit.cancellation_reason) && (
-        <CardContent className="p-4 pt-0 text-xs text-muted-foreground">
-            {isVisitor && visit.owner_notes && <p><strong>Notas del Propietario:</strong> {visit.owner_notes}</p>}
-            {!isVisitor && visit.visitor_notes && <p><strong>Notas del Visitante:</strong> {visit.visitor_notes}</p>}
-            {visit.cancellation_reason && <p><strong>Motivo Cancelación/Rechazo:</strong> {visit.cancellation_reason}</p>}
+      {(visit.visitor_notes && !isVisitor || visit.owner_notes && isVisitor || visit.cancellation_reason) && (
+        <CardContent className="p-4 pt-0 text-xs text-muted-foreground border-t mt-2">
+            {isVisitor && visit.owner_notes && <p className="mt-2"><strong>Notas del Propietario:</strong> {visit.owner_notes}</p>}
+            {!isVisitor && visit.visitor_notes && <p className="mt-2"><strong>Notas del Visitante:</strong> {visit.visitor_notes}</p>}
+            {visit.cancellation_reason && <p className="mt-2"><strong>Motivo Cancelación/Rechazo:</strong> {visit.cancellation_reason}</p>}
         </CardContent>
       )}
       <CardFooter className="p-4 pt-2 border-t flex flex-wrap gap-2 justify-end">
-        {/* Acciones para el Propietario */}
+        {/* --- Acciones para el Propietario --- */}
         {isOwner && visit.status === 'pending_confirmation' && (
           <>
-            <Button size="sm" variant="default" onClick={() => onManageVisit(visit, 'confirm_original_proposal')}>Confirmar Hora Original</Button>
+            <Button size="sm" variant="default" onClick={() => onManageVisit(visit, 'confirm_original_proposal')}>Confirmar Hora</Button>
             <Button size="sm" variant="outline" onClick={() => onManageVisit(visit, 'reschedule_proposal')}>Reagendar</Button>
             <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_pending_request')}>Rechazar</Button>
           </>
@@ -110,13 +114,18 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
            </>
         )}
         {isOwner && visit.status === 'rescheduled_by_owner' && (
-             <p className="text-xs text-muted-foreground italic w-full text-right">Esperando respuesta del visitante a la nueva propuesta.</p>
+             <p className="text-xs text-muted-foreground italic w-full text-right">Esperando respuesta del visitante a tu nueva propuesta.</p>
+        )}
+        {isOwner && (visit.status === 'completed' || visit.status === 'visitor_no_show' || visit.status === 'owner_no_show' || visit.status.startsWith('cancel')) && (
+            <p className="text-xs text-muted-foreground italic w-full text-right">Visita finalizada o cancelada.</p>
         )}
 
-
-        {/* Acciones para el Visitante */}
+        {/* --- Acciones para el Visitante --- */}
         {isVisitor && visit.status === 'pending_confirmation' && (
           <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_own_request')}>Cancelar Solicitud</Button>
+        )}
+        {isVisitor && visit.status === 'confirmed' && (
+          <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_own_request')}>Cancelar Visita Confirmada</Button>
         )}
         {isVisitor && visit.status === 'rescheduled_by_owner' && (
           <>
@@ -124,11 +133,10 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
             <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'reject_owner_reschedule')}>Rechazar Nueva Hora</Button>
           </>
         )}
-         {isVisitor && visit.status === 'confirmed' && (
-          <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_own_request')}>Cancelar Visita Confirmada</Button>
+         {isVisitor && (visit.status === 'completed' || visit.status === 'visitor_no_show' || visit.status === 'owner_no_show' || visit.status.startsWith('cancel')) && (
+            <p className="text-xs text-muted-foreground italic w-full text-right">Visita finalizada o cancelada.</p>
         )}
       </CardFooter>
     </Card>
   );
 }
-
