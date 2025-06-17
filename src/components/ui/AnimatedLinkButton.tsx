@@ -21,11 +21,12 @@ const AnimatedLinkButton: React.FC<AnimatedLinkButtonProps> = ({
     <Link href={href} passHref legacyBehavior>
       <a
         className={`
-          overflow-hidden relative w-48 p-2 h-12 bg-black text-white border-none 
+          overflow-hidden relative w-48 p-2 h-12 text-white border-none 
           rounded-md text-lg font-bold cursor-pointer z-10 group
           inline-flex items-center justify-center text-center
           ${className || ''}
         `}
+        style={{ backgroundColor: '#369DF2' }} // Reemplazado bg-black
       >
         {/* Texto Normal - se oculta en hover */}
         <span className="transition-opacity duration-100 group-hover:opacity-0">
@@ -37,7 +38,7 @@ const AnimatedLinkButton: React.FC<AnimatedLinkButtonProps> = ({
         <span className="absolute w-[150%] h-[200%] -top-8 -left-4 bg-green-400 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform group-hover:duration-700 duration-700 origin-bottom z-[-1]" />
         <span 
           className="absolute w-[150%] h-[200%] -top-8 -left-4 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform group-hover:duration-1000 duration-500 origin-bottom z-[-1]"
-          style={{ backgroundColor: '#369DF2' }} // Color activo/hover aplicado aquí
+          style={{ backgroundColor: '#369DF2' }} // Este es el color final del hover que ya ajustamos
         />
 
         {/* Texto Hover - se muestra en hover */}
