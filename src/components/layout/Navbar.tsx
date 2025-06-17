@@ -20,7 +20,8 @@ import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnnouncementBar from './AnnouncementBar';
-import ThemeToggle from './ThemeToggle'; // Importado el nuevo componente
+import ThemeToggle from './ThemeToggle';
+import styled from 'styled-components';
 
 const navItems = [
   { href: '/', label: 'Inicio', icon: <Home /> },
@@ -42,6 +43,86 @@ interface StoredUser {
 }
 
 const DEFAULT_NAVBAR_TITLE = "konecte";
+
+// Styled components for the new animation
+const StyledNavAnimationWrapper = styled.div`
+  position: relative;
+  /* width: 400px; /* Adjust as needed or make it flexible */
+  height: 60px; /* Matches SVG height */
+  border-radius: 40px; /* Matches example */
+  background: rgba(16, 16, 16, 0.05); /* Subtle background, can be themed */
+  display: flex; /* To contain the nav items */
+  align-items: center; /* To vertically align nav items */
+  padding: 0 0.5em; /* Matches example's .container padding */
+  
+  .dark & {
+    background: rgba(220, 220, 220, 0.08); /* Slightly different background for dark theme */
+  }
+
+  .outline {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: 40px; /* Ensure SVG mask matches container */
+    overflow: hidden; /* To clip the SVG rect if it exceeds rounded corners */
+  }
+
+  .rect {
+    stroke-dashoffset: 5;
+    stroke-dasharray: 0 0 10 40 10 40; /* Initial animation state */
+    transition: stroke-dashoffset 0.5s, stroke-dasharray 0.5s;
+    stroke: #49A7F3; /* Requested color */
+    stroke-width: 3; /* Adjusted stroke width for better visibility */
+    fill: transparent;
+  }
+
+  /* When the whole wrapper is hovered, animate the full outline */
+  &:hover .rect {
+    transition-duration: 1s; /* Slower animation for full outline */
+    stroke-dashoffset: 0;
+    stroke-dasharray: 1000; /* A large number to ensure it draws fully */
+  }
+`;
+
+const StyledNavLink = styled(Link)`
+  padding: 0.5em 1.2em; /* Adjusted padding */
+  color: hsl(var(--foreground)); /* Use theme's foreground color */
+  font-weight: 500; /* Medium weight */
+  font-size: 0.9rem; /* Slightly smaller */
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  border-radius: 20px; /* Rounded buttons */
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  text-decoration: none;
+
+  .dark & {
+    color: hsl(var(--foreground));
+  }
+
+  &:hover {
+    background: #49A7F3; /* Requested hover color */
+    color: white !important; /* Ensure text becomes white */
+  }
+
+  &:hover svg { /* Ensure icons also turn white on hover */
+    color: white !important;
+    stroke: white !important; 
+  }
+
+  /* Adjust icon color if it's directly in the link text */
+  & svg {
+    color: hsl(var(--muted-foreground)); /* Default icon color */
+    transition: color 0.2s;
+  }
+  
+  .dark &:hover svg {
+    color: white !important;
+    stroke: white !important;
+  }
+`;
+
 
 export default function Navbar() {
   const router = useRouter();
@@ -144,26 +225,18 @@ export default function Navbar() {
 
   const isUserAdmin = loggedInUser?.role_id === 'admin';
 
-  const commonNavLinks = (closeMenu?: () => void, isMobile?: boolean) => (
+  const commonNavLinksDesktop = (closeMenu?: () => void) => (
     <>
       {navItems.map((item) => (
-        <Button
+        <StyledNavLink
           key={item.label}
-          variant="ghost"
-          asChild
-          className={cn(
-            "font-medium hover:bg-primary/10 hover:text-primary w-full md:w-auto transition-colors duration-150",
-            isMobile ? "text-lg justify-start px-4 py-3.5 rounded-md" : "text-sm md:text-base md:px-3.5 py-2 rounded-lg"
-          )}
+          href={item.href}
           onClick={closeMenu}
+          className="nav-link-item" // Added class for potential specific targeting if needed
         >
-          <Link href={item.href}>
-            <span className="flex items-center gap-2.5">
-              {React.cloneElement(item.icon as React.ReactElement, { className: "h-5 w-5"})}
-              {item.label}
-            </span>
-          </Link>
-        </Button>
+          {React.cloneElement(item.icon as React.ReactElement, { className: "h-4 w-4"})}
+          {item.label}
+        </StyledNavLink>
       ))}
     </>
   );
@@ -251,7 +324,12 @@ export default function Navbar() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-1.5 mx-auto">
-            {commonNavLinks()}
+            <StyledNavAnimationWrapper>
+              {commonNavLinksDesktop()}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 60" height={60} width="100%" /* Adjusted width to 100% */ overflow="visible" className="outline">
+                <rect strokeWidth={3} fill="transparent" height="100%" width="100%" y={0} x={0} pathLength={100} className="rect" rx="30" ry="30" />
+              </svg>
+            </StyledNavAnimationWrapper>
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -412,7 +490,15 @@ export default function Navbar() {
                       </Link>
                   </div>
                   <nav className="flex-grow flex flex-col gap-1.5 p-4 overflow-y-auto">
-                    {commonNavLinks(() => setIsMobileMenuOpen(false), true)}
+                    {navItems.map((item) => (
+                      <MobileMenuLink 
+                        key={`mobile-${item.label}`}
+                        href={item.href} 
+                        icon={item.icon} 
+                        label={item.label} 
+                        closeMenu={() => setIsMobileMenuOpen(false)} 
+                      />
+                    ))}
 
                     <Separator className="my-3" />
                     <p className="px-4 text-sm font-semibold text-muted-foreground mb-1.5">Publicar</p>
