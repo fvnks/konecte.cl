@@ -34,9 +34,9 @@ const StyledWrapper = styled.div`
     /* Variables */
     --fs: 0.875rem; /* text-sm equivalent */
     --col1: #FFFFFF; /* White text */
-    --col2: rgba(240, 128, 128, 0.603); /* Light red for effects */
-    --col3: #369DF2; /* Main background blue, as requested */
-    --col4: maroon; /* Dark red for effects */
+    --col2: #369DF2; /* Light red for effects - CHANGED */
+    --col3: #369DF2; /* Main background blue */
+    --col4: #369DF2; /* Dark red for effects - CHANGED */
     --pd-y: .5em; /* Vertical padding based on font size */
     --pd-x: .75em; /* Horizontal padding based on font size */
 
@@ -79,7 +79,7 @@ const StyledWrapper = styled.div`
   }
 
   .animated-detail-button:hover {
-    color: var(--col4);
+    color: var(--col1); /* CHANGED from var(--col4) to maintain text visibility */
     box-shadow: inset -2px 1px 1px var(--col2),
                 inset 2px 1px 1px var(--col2),
                 inset 0px -2px 20px var(--col4),
