@@ -1,4 +1,3 @@
-
 // src/app/dashboard/layout.tsx
 'use client';
 
@@ -8,7 +7,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, Handshake, Bot, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-// import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // No longer needed here
 import { useToast } from '@/hooks/use-toast';
 import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { getPlanByIdAction } from '@/actions/planActions';
@@ -17,7 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import CustomPageLoader from '@/components/ui/CustomPageLoader';
 import StyledLogoutButton from '@/components/ui/StyledLogoutButton';
-import StyledUserProfileWidget from '@/components/ui/StyledUserProfileWidget'; // Import the new component
+import StyledUserProfileWidget from '@/components/ui/StyledUserProfileWidget';
+import AnimatedLetterButton from '@/components/ui/AnimatedLetterButton'; // Import the new button
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -26,10 +25,10 @@ interface DashboardLayoutProps {
 interface StoredUser {
   id: string;
   name: string;
-  avatarUrl?: string; // Avatar URL not directly used by new widget, but keep for type
+  avatarUrl?: string;
   role_id: string;
   plan_id?: string | null;
-  phone_number?: string | null; 
+  phone_number?: string | null;
 }
 
 const baseNavItemsDefinition = [
@@ -165,8 +164,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const userName = currentUser?.name || "Usuario";
-  // const userAvatarUrl = currentUser?.avatarUrl || `https://placehold.co/40x40.png?text=${userName.substring(0,1)}`;
-  // const userAvatarFallback = userName.substring(0,1).toUpperCase();
 
   if (isLoadingSession && isClient) {
     return (
@@ -182,7 +179,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
                 <Separator/>
                 <div className="mt-auto space-y-4">
-                    {/* Skeleton for the new user profile widget */}
                     <Skeleton className="h-[50px] w-full rounded-lg"/>
                     <Skeleton className="h-10 w-full rounded-md"/>
                     <Skeleton className="h-10 w-full rounded-md"/>
@@ -259,11 +255,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <StyledUserProfileWidget userName={userName} userRole={currentUser.role_id} />
             )}
           <StyledLogoutButton onClick={handleLogout} />
-          <Button variant="outline" asChild className="w-full text-base py-2.5 h-auto rounded-md border-primary/50 text-primary hover:bg-primary/5 hover:text-primary">
-            <Link href="/profile" className="flex items-center gap-2">
-                <UserCircle className="h-4 w-4 transform"/> Mi Perfil
-            </Link>
-          </Button>
+          <AnimatedLetterButton href="/profile" text="MI PERFIL" />
         </div>
       </aside>
       

@@ -1,4 +1,3 @@
-
 // src/app/admin/layout.tsx
 'use client';
 
@@ -8,14 +7,14 @@ import { useRouter } from 'next/navigation';
 import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, Newspaper, BarChart3, CalendarClock, MailWarning, MessageSquare, Bot } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-// import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // No longer needed here
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import CustomPageLoader from '@/components/ui/CustomPageLoader'; 
 import { Badge } from '@/components/ui/badge';
 import { getUnreadContactSubmissionsCountAction } from '@/actions/contactFormActions';
 import StyledLogoutButton from '@/components/ui/StyledLogoutButton';
-import StyledUserProfileWidget from '@/components/ui/StyledUserProfileWidget'; // Import the new component
+import StyledUserProfileWidget from '@/components/ui/StyledUserProfileWidget';
+import AnimatedLetterButton from '@/components/ui/AnimatedLetterButton'; // Import the new button
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -40,7 +39,7 @@ const adminNavItems = [
 interface StoredAdminUser {
   id: string;
   name: string;
-  avatarUrl?: string; // Avatar URL is not used by the new widget, but keeping for type consistency
+  avatarUrl?: string; 
   role_id: string;
 }
 
@@ -124,8 +123,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   const adminName = adminUser?.name || 'Admin';
-  // const adminAvatarUrl = adminUser?.avatarUrl || `https://placehold.co/40x40.png?text=${adminName.substring(0,1)}`;
-  // const adminAvatarFallback = adminName.substring(0,1).toUpperCase();
 
   if (isLoadingSession && isClient) {
     return (
@@ -141,7 +138,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
                 <Separator/>
                 <div className="mt-auto space-y-4">
-                    {/* Skeleton for the new user profile widget */}
                     <Skeleton className="h-[50px] w-full rounded-lg"/> 
                     <Skeleton className="h-10 w-full rounded-md"/>
                     <Skeleton className="h-10 w-full rounded-md"/>
@@ -213,9 +209,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <StyledUserProfileWidget userName={adminName} userRole="Administrador" />
             )}
           <StyledLogoutButton onClick={handleAdminLogout} />
+          {/* Se mantiene el botón original para "Ir al Sitio" en admin por ahora */}
           <Button variant="outline" asChild className="w-full text-base py-2.5 h-auto rounded-md border-primary/50 text-primary hover:bg-primary/5 hover:text-primary">
             <Link href="/" className="flex items-center gap-2">
-                <Home className="h-4 w-4 transform"/> Volver al Sitio
+                <Home className="h-4 w-4 transform"/> Ir al Sitio
             </Link>
           </Button>
         </div>
