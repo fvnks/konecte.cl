@@ -1,4 +1,3 @@
-
 // src/components/layout/Navbar.tsx
 'use client';
 
@@ -44,82 +43,76 @@ interface StoredUser {
 
 const DEFAULT_NAVBAR_TITLE = "konecte";
 
-// Styled components for the new animation
-const StyledNavAnimationWrapper = styled.div`
+const StyledNavContainer = styled.div`
   position: relative;
-  /* width: 400px; /* Adjust as needed or make it flexible */
-  height: 60px; /* Matches SVG height */
-  border-radius: 40px; /* Matches example */
-  background: rgba(16, 16, 16, 0.05); /* Subtle background, can be themed */
-  display: flex; /* To contain the nav items */
-  align-items: center; /* To vertically align nav items */
-  padding: 0 0.5em; /* Matches example's .container padding */
+  display: inline-flex; /* So it wraps its content */
+  align-items: center;
+  height: 50px; /* Overall height of the nav bar area */
+  padding: 5px; /* Padding around the links inside */
+  background: rgba(16, 16, 16, 0.05);
+  border-radius: 25px; /* Rounded corners for the container */
   
   .dark & {
-    background: rgba(220, 220, 220, 0.08); /* Slightly different background for dark theme */
+    background: rgba(220, 220, 220, 0.08);
   }
 
-  .outline {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    border-radius: 40px; /* Ensure SVG mask matches container */
-    overflow: hidden; /* To clip the SVG rect if it exceeds rounded corners */
-  }
-
-  .rect {
-    stroke-dashoffset: 5;
-    stroke-dasharray: 0 0 10 40 10 40; /* Initial animation state */
-    transition: stroke-dashoffset 0.5s, stroke-dasharray 0.5s;
-    stroke: #49A7F3; /* Requested color */
-    stroke-width: 3; /* Adjusted stroke width for better visibility */
-    fill: transparent;
-  }
-
-  /* When the whole wrapper is hovered, animate the full outline */
-  &:hover .rect {
-    transition-duration: 1s; /* Slower animation for full outline */
+  &:hover .animated-rect {
+    stroke-dasharray: 1; /* Draw full line on container hover */
     stroke-dashoffset: 0;
-    stroke-dasharray: 1000; /* A large number to ensure it draws fully */
   }
 `;
 
 const StyledNavLink = styled(Link)`
-  padding: 0.5em 1.2em; /* Adjusted padding */
-  color: hsl(var(--foreground)); /* Use theme's foreground color */
-  font-weight: 500; /* Medium weight */
-  font-size: 0.9rem; /* Slightly smaller */
-  cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
-  border-radius: 20px; /* Rounded buttons */
   display: flex;
   align-items: center;
   gap: 0.5em;
+  padding: 8px 12px; /* Padding inside each link */
+  margin: 0 2px; /* Small margin between links */
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  font-size: 0.9rem;
   text-decoration: none;
+  border-radius: 20px; /* Rounded corners for link hover effect */
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  z-index: 1; /* Links above the SVG */
 
   .dark & {
     color: hsl(var(--foreground));
   }
 
   &:hover {
-    background: #49A7F3; /* Requested hover color */
-    color: white !important; /* Ensure text becomes white */
-  }
-
-  &:hover svg { /* Ensure icons also turn white on hover */
+    background-color: #49A7F3;
     color: white !important;
-    stroke: white !important; 
   }
 
-  /* Adjust icon color if it's directly in the link text */
-  & svg {
-    color: hsl(var(--muted-foreground)); /* Default icon color */
-    transition: color 0.2s;
-  }
-  
-  .dark &:hover svg {
+  &:hover svg {
     color: white !important;
     stroke: white !important;
+  }
+
+  & svg {
+    color: hsl(var(--muted-foreground));
+    transition: color 0.2s, stroke 0.2s;
+  }
+`;
+
+const AnimatedRectSVG = styled.svg`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* So it doesn't interfere with link clicks */
+  z-index: 0; /* Behind the links */
+
+  .animated-rect {
+    stroke: #49A7F3;
+    stroke-width: 2px; /* Thinner stroke */
+    fill: transparent;
+    stroke-dasharray: 0.02 0.98; /* Start with a very small dash, mostly gap */
+    stroke-dashoffset: 0.01;   /* Slightly offset to hide the initial dot better */
+    transition: stroke-dasharray 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), stroke-dashoffset 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+    /* Use pathLength="1" on rect for fractional dasharray/dashoffset */
   }
 `;
 
@@ -232,7 +225,6 @@ export default function Navbar() {
           key={item.label}
           href={item.href}
           onClick={closeMenu}
-          className="nav-link-item" // Added class for potential specific targeting if needed
         >
           {React.cloneElement(item.icon as React.ReactElement, { className: "h-4 w-4"})}
           {item.label}
@@ -323,17 +315,27 @@ export default function Navbar() {
             {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-7 w-7 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1.5 mx-auto">
-            <StyledNavAnimationWrapper>
-              {commonNavLinksDesktop()}
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 60" height={60} width="100%" /* Adjusted width to 100% */ overflow="visible" className="outline">
-                <rect strokeWidth={3} fill="transparent" height="100%" width="100%" y={0} x={0} pathLength={100} className="rect" rx="30" ry="30" />
-              </svg>
-            </StyledNavAnimationWrapper>
+          <nav className="hidden md:flex items-center gap-0 mx-auto"> {/* gap set by link margin */}
+             <StyledNavContainer>
+                {commonNavLinksDesktop()}
+                <AnimatedRectSVG 
+                    preserveAspectRatio="none" /* Stretches SVG content */
+                >
+                    <rect 
+                        className="animated-rect"
+                        x="1" y="1"  /* Offset by half stroke-width */
+                        width="calc(100% - 2px)" /* SVG width minus stroke-width */
+                        height="calc(100% - 2px)" /* SVG height minus stroke-width */
+                        rx="24" /* container radius - stroke-width/2 */
+                        ry="24"
+                        pathLength="1" /* Allows dasharray/offset to be fractions */
+                    />
+                </AnimatedRectSVG>
+             </StyledNavContainer>
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-             {isClient && <ThemeToggle />} {/* Theme toggle button */}
+             {isClient && <ThemeToggle />}
             {isClient ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -520,7 +522,7 @@ export default function Navbar() {
                     )}
                   </nav>
                   <div className="p-4 mt-auto border-t">
-                      {isClient && <ThemeToggle />} {/* Theme toggle in mobile menu footer */}
+                      {isClient && <ThemeToggle />} 
                       {isClient && loggedInUser ? (
                           <Button variant="outline" onClick={handleLogout} className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5 cursor-pointer hover:border-destructive hover:text-destructive hover:bg-destructive/5 rounded-lg mt-3">
                               <LogOut className="h-5 w-5" /> Cerrar Sesión
