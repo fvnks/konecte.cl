@@ -17,103 +17,102 @@ interface LikeButtonProps {
   className?: string;
 }
 
-// Adjusted StyledWrapper based on user's new design
 const StyledWrapper = styled.div`
   .button-container {
     position: relative;
-    display: inline-block;
+    display: inline-block; /* Ensures the wrapper fits the button */
   }
 
   .button {
     cursor: pointer;
-    width: auto; /* Adjusted for content */
-    height: 40px; /* Adjusted height */
+    width: auto; /* Auto width based on content */
+    height: 40px; /* Fixed height */
     display: flex;
     align-items: center;
-    background-color: hsl(var(--card)); /* Themed */
+    background-color: hsl(var(--card)); /* Themed card background */
     border: 1px solid hsl(var(--border)); /* Themed border */
-    box-shadow: 0px 3px 0px rgba(45, 45, 45, 0.1); /* Adjusted shadow */
+    box-shadow: 0px 3px 0px rgba(45, 45, 45, 0.1);
     overflow: hidden;
     border-radius: 0.5em;
     transition: all 0.2s ease;
-    padding: 0 8px; /* Added padding for spacing */
+    padding: 0; /* Remove padding from button itself, handle in parts */
   }
 
   #fontlikebutton {
     font-family: "Trebuchet MS", sans-serif;
     font-weight: 600;
     font-size: 14px; /* Adjusted font size */
-    color: hsl(var(--primary)); /* Themed */
-    margin-left: 0.3em; /* Adjusted margin */
-    transition: transform 0.2s ease, color 0.2s ease; /* Added color transition */
+    color: hsl(var(--primary)); /* Themed primary color for text */
+    margin-left: 0.3em; /* Space between icon and text */
+    transition: transform 0.2s ease, color 0.2s ease;
   }
 
   .button:hover {
-    background-color: hsl(var(--primary)); /* Themed hover */
+    background-color: hsl(var(--primary)); /* Themed primary on hover */
   }
 
   .button:hover svg#likeimg {
-    stroke: hsl(var(--primary-foreground)); /* Themed icon color on hover */
-    transform: scale(1.3) translateX(30%); /* Adjusted transform */
+    stroke: hsl(var(--primary-foreground)); /* White/contrasting icon on hover */
+    transform: scale(1.3) translateX(30%); /* Icon moves right and scales */
   }
 
   .button:hover #fontlikebutton {
-    color: hsl(var(--primary-foreground)); /* Themed text color on hover */
-    transform: translateX(60%); /* Adjusted transform */
+    color: hsl(var(--primary-foreground)); /* White/contrasting text on hover */
+    transform: translateX(60%); /* Text moves right */
   }
 
   .button:active {
-    transform: scale(0.95) translateY(2px); /* Adjusted active transform */
-    box-shadow: 0px 1px 0px 0px hsla(var(--primary), 0.5); /* Themed active shadow */
+    transform: scale(0.95) translateY(2px); /* Press effect */
+    box-shadow: 0px 1px 0px 0px hsla(var(--primary), 0.5); /* Adjusted active shadow */
   }
 
   .button:active svg#likeimg {
-    /* Keeping transform from hover, adding rotation */
     stroke: hsl(var(--primary-foreground));
-    transform: scale(1.3) translateX(25%) rotate(-15deg); /* Adjusted active icon transform */
+    transform: scale(1.3) translateX(25%) rotate(-15deg); /* Active icon transform */
   }
   
   .button:active #fontlikebutton {
     color: hsl(var(--primary-foreground));
-    transform: translateX(60%);
+    transform: translateX(60%); /* Keep text position same as hover during active */
   }
 
   svg#likeimg {
     transition: all 0.2s ease;
-    stroke: hsl(var(--primary)); /* Initial themed stroke */
-    width: 20px; /* Adjusted SVG size */
-    height: 20px; /* Adjusted SVG size */
+    stroke: hsl(var(--primary)); /* Initial themed stroke for icon */
+    width: 20px;
+    height: 20px;
   }
 
   #rightpart {
-    flex-grow: 1; /* Allow right part to take remaining space */
+    /* width: 70%; /* Let it be flexible */
+    flex-grow: 1;
     height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0 8px; /* Padding for right part */
+    padding: 0 10px; /* Padding for icon and text area */
   }
 
   #leftpart {
-    color: hsl(var(--primary-foreground)); /* Themed */
+    color: hsl(var(--primary-foreground)); /* White/contrasting text for numbers */
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
     font-family: "Trebuchet MS", sans-serif;
     font-weight: 600;
-    font-size: 12px; /* Adjusted font size for numbers */
-    background-color: hsl(var(--primary)); /* Themed */
-    width: 36px; /* Adjusted width */
+    font-size: 12px; /* Font size for numbers */
+    background-color: hsl(var(--primary)); /* Themed primary background */
+    width: 36px; /* Fixed width for number part */
     height: 100%;
     transition: all 0.2s ease;
-    border-right: 1px solid hsla(var(--primary-foreground), 0.2);
+    border-right: 1px solid hsla(var(--primary-foreground), 0.2); /* Separator */
   }
 
   .button:hover #leftpart {
-    color: hsl(var(--primary)); /* Themed */
-    background: hsl(var(--card)); /* Themed */
-    border-right-color: hsl(var(--primary));
+    color: hsl(var(--primary)); /* Text color primary on hover */
+    background: hsl(var(--card)); /* Card background on hover */
+    border-right-color: hsl(var(--primary)); /* Border color primary on hover */
   }
 
   #currentnumber {
@@ -139,31 +138,70 @@ const StyledWrapper = styled.div`
   input#checknumber:checked ~ .button #leftpart {
     background-color: hsl(var(--accent)); /* Example: use accent color when liked */
     color: hsl(var(--accent-foreground));
+    border-right-color: hsla(var(--accent-foreground), 0.2);
   }
   input#checknumber:checked ~ .button:hover #leftpart {
-    background-color: hsl(var(--accent) / 0.9);
-    color: hsl(var(--accent-foreground));
+    background-color: hsl(var(--card)); /* Card background on hover when liked */
+    color: hsl(var(--accent)); /* Accent text color on hover when liked */
+    border-right-color: hsl(var(--accent));
   }
+  
+  /* Change icon and text color when liked and button is not hovered */
+  input#checknumber:checked ~ .button svg#likeimg {
+    stroke: hsl(var(--accent)); 
+  }
+  input#checknumber:checked ~ .button #fontlikebutton {
+    color: hsl(var(--accent));
+  }
+
+  /* Ensure hover overrides liked state colors for icon and text in rightpart */
+  input#checknumber:checked ~ .button:hover svg#likeimg {
+    stroke: hsl(var(--primary-foreground)); /* Back to white on primary bg */
+  }
+  input#checknumber:checked ~ .button:hover #fontlikebutton {
+    color: hsl(var(--primary-foreground)); /* Back to white on primary bg */
+  }
+
 
   /* Disabled state */
   .button.disabled {
     cursor: not-allowed;
     opacity: 0.6;
+    background-color: hsl(var(--muted)); /* Muted background for disabled */
+    border-color: hsl(var(--border));
+    box-shadow: none;
   }
   .button.disabled:hover {
-    background-color: hsl(var(--card)); 
+    background-color: hsl(var(--muted)); 
   }
+  .button.disabled svg#likeimg,
   .button.disabled:hover svg#likeimg {
-    stroke: hsl(var(--primary));
+    stroke: hsl(var(--muted-foreground));
     transform: none;
   }
+  .button.disabled #fontlikebutton,
   .button.disabled:hover #fontlikebutton {
-    color: hsl(var(--primary));
+    color: hsl(var(--muted-foreground));
     transform: none;
   }
+  .button.disabled #leftpart,
   .button.disabled:hover #leftpart {
-    color: hsl(var(--primary-foreground));
-    background: hsl(var(--primary));
+    color: hsl(var(--muted-foreground));
+    background: hsl(var(--muted) / 0.5);
+    border-right-color: hsl(var(--border));
+  }
+   input#checknumber:checked ~ .button.disabled svg#likeimg,
+   input#checknumber:checked ~ .button.disabled:hover svg#likeimg {
+    stroke: hsl(var(--muted-foreground));
+  }
+   input#checknumber:checked ~ .button.disabled #fontlikebutton,
+   input#checknumber:checked ~ .button.disabled:hover #fontlikebutton {
+    color: hsl(var(--muted-foreground));
+  }
+  input#checknumber:checked ~ .button.disabled #leftpart,
+  input#checknumber:checked ~ .button.disabled:hover #leftpart {
+    background: hsl(var(--muted) / 0.5); /* Muted accent color when liked and disabled */
+    color: hsl(var(--muted-foreground));
   }
 `;
 
@@ -171,7 +209,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
   const { toast } = useToast();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
-  const [isChecked, setIsChecked] = useState(false); // Local state for checkbox
+  const [isChecked, setIsChecked] = useState(false); 
 
   // Static like numbers for demo animation
   const currentLikes = 24; 
@@ -207,11 +245,11 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
       const result = await recordUserListingInteractionAction(loggedInUser.id, {
         listingId,
         listingType,
-        interactionType: newCheckedState ? 'like' : 'skip', // 'skip' if unliking, or could be 'unlike' if you add that
+        interactionType: newCheckedState ? 'like' : 'skip', 
       });
 
       if (result.success) {
-        setIsChecked(newCheckedState); // Update local checkbox state
+        setIsChecked(newCheckedState); 
         if (newCheckedState && result.matchDetails?.matchFound && result.matchDetails.conversationId) {
           toast({
             title: "¡Es un Match Mutuo!",
@@ -234,10 +272,10 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
           });
         }
       } else {
-        toast({
-          title: "Error",
-          description: result.message || `No se pudo registrar tu preferencia.`,
-          variant: "destructive",
+         toast({
+            title: "Error",
+            description: result.message || `No se pudo registrar tu preferencia.`,
+            variant: "destructive",
         });
       }
     } catch (error: any) {
@@ -258,19 +296,24 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
       <div className="button-container">
         <input 
           hidden 
-          id={`checknumber-${listingId}`} // Unique ID for each button instance
+          id={`checknumber-${listingId}-${listingType}`} // More unique ID
           type="checkbox" 
           checked={isChecked} 
-          onChange={handleLike} // Let label handle click, checkbox reflects state
+          onChange={() => {
+            // This onChange is primarily for semantic correctness of the checkbox,
+            // the main logic is in the label's onClick.
+            // We could call handleLike here too, but to avoid double calls,
+            // it's better to rely on the label's click handler.
+          }}
           disabled={buttonDisabled}
         />
         <label 
-          htmlFor={`checknumber-${listingId}`} 
+          htmlFor={`checknumber-${listingId}-${listingType}`}
           className={cn("button", buttonDisabled && "disabled")}
           onClick={(e) => { if(buttonDisabled) e.preventDefault(); else handleLike(); }}
           title={!loggedInUser ? "Inicia sesión para dar Me Gusta" : (isChecked ? "Quitar Me Gusta" : "Me Gusta")}
           aria-pressed={isChecked}
-          tabIndex={buttonDisabled ? -1 : 0} // Make it focusable only if not disabled
+          tabIndex={buttonDisabled ? -1 : 0}
           onKeyDown={(e) => {
             if (!buttonDisabled && (e.key === 'Enter' || e.key === ' ')) {
               e.preventDefault();
@@ -279,7 +322,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
           }}
         >
           <div id="leftpart">
-            {isInteracting && isChecked ? ( // Show loader only when unliking and interacting
+            {isInteracting && isChecked ? ( 
                  <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
@@ -289,11 +332,11 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
             )}
           </div>
           <div id="rightpart">
-            {isInteracting && !isChecked ? ( // Show loader only when liking and interacting
+            {isInteracting && !isChecked ? ( 
                 <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
               <>
-                <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={2.5} fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={2.5} fill="none" viewBox="0 0 24 24" height={24} width={24} xmlns="http://www.w3.org/2000/svg">
                   <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
                 </svg>
                 <div id="fontlikebutton">Me Gusta</div>
