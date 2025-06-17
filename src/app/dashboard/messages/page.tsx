@@ -1,16 +1,17 @@
+
 // src/app/dashboard/messages/page.tsx
 'use client';
 
 import React, { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
-// Removed: import { Button } from '@/components/ui/button'; // Standard Button no longer used for refresh
+import { Button } from '@/components/ui/button'; // Added missing import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, MessageSquare, UserCircle, Inbox, AlertTriangle } from 'lucide-react';
 import type { ChatConversationListItem, User as StoredUserType } from '@/lib/types';
 import { getUserConversationsAction } from '@/actions/chatActions';
 import { useToast } from '@/hooks/use-toast';
 import ConversationListItem from '@/components/chat/ConversationListItem';
-import StyledRefreshButton from '@/components/ui/StyledRefreshButton'; // Import the new button
+import StyledRefreshButton from '@/components/ui/StyledRefreshButton'; 
 
 export default function MessagesPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUserType | null>(null);
@@ -141,3 +142,4 @@ export default function MessagesPage() {
     </div>
   );
 }
+
