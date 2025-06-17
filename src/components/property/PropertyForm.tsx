@@ -7,22 +7,22 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Form,
-  FormControl, // Keep this import as it might be used by other fields
+  FormControl, // Kept for standard fields
   FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  useFormField, // Import useFormField
+  useFormField, 
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
-import type { PropertyType, ListingCategory, User as StoredUser } from "@/lib/types";
-import { propertyFormSchema, type PropertyFormValues } from "@/lib/types";
-import { Loader2, UserCircle, UploadCloud, Image as ImageIcon, Trash2, FileImage } from "lucide-react";
+import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues } from "@/lib/types";
+import { propertyFormSchema } from "@/lib/types";
+import { Loader2, UserCircle, UploadCloud, Trash2 } from "lucide-react";
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -73,15 +73,15 @@ export default function PropertyForm() {
     defaultValues: {
       title: "",
       description: "",
-      price: 0,
+      price: undefined,
       currency: "CLP",
       address: "",
       city: "",
       country: "Chile",
       bedrooms: 0,
       bathrooms: 0,
-      areaSqMeters: 0,
-      images: [],
+      areaSqMeters: undefined,
+      images: [], // This field in the form will hold the array of uploaded image URLs (string[])
       features: "",
     },
   });
@@ -115,16 +115,17 @@ export default function PropertyForm() {
       setImageFiles(prevFiles => [...prevFiles, ...validFiles]);
       const newPreviews = validFiles.map(file => URL.createObjectURL(file));
       setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
-      event.target.value = '';
+      event.target.value = ''; 
     }
   };
 
   const removeImage = (indexToRemove: number) => {
     setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
     setImagePreviews(prevPreviews => {
-      const newPreviews = prevPreviews.filter((_, index) => index !== indexToRemove);
-      if (prevPreviews[indexToRemove]) {
-        URL.revokeObjectURL(prevPreviews[indexToRemove]);
+      const newPreviews = [...prevPreviews];
+      const removedUrl = newPreviews.splice(indexToRemove, 1)[0];
+      if (removedUrl) {
+        URL.revokeObjectURL(removedUrl);
       }
       return newPreviews;
     });
@@ -158,7 +159,6 @@ export default function PropertyForm() {
     return uploadedUrls;
   };
 
-
   async function onSubmit(values: PropertyFormValues) {
     if (!loggedInUser || !loggedInUser.id) {
       toast({ title: "Acción Requerida", description: "Debes iniciar sesión para publicar.", variant: "destructive" });
@@ -166,12 +166,6 @@ export default function PropertyForm() {
     }
 
     const finalImageUrls = await uploadImagesToProxy();
-    if (imageFiles.length > 0 && finalImageUrls.length !== imageFiles.length) {
-        const confirmed = confirm("Algunas imágenes no pudieron subirse. ¿Deseas continuar con las que sí se subieron?");
-        if (!confirmed) {
-            return; 
-        }
-    }
     
     const dataToSubmit = {
       ...values,
@@ -202,8 +196,7 @@ export default function PropertyForm() {
     return () => {
       imagePreviews.forEach(url => URL.revokeObjectURL(url));
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [imagePreviews]); 
   
   if (isCheckingAuth) {
     return (
@@ -224,7 +217,7 @@ export default function PropertyForm() {
           <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría de Propiedad</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Selecciona una categoría" /> </SelectTrigger> </FormControl> <SelectContent> {categoryOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 85000000" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 85000000" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> </FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <FormControl> <Input placeholder="Ej: CLP, UF, USD" {...field} /> </FormControl> <FormDescription>Código de 3 letras para la moneda.</FormDescription> <FormMessage /> </FormItem> )}/>
         </div>
         <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl> <Input placeholder="Ej: Av. Siempre Viva 742, Villa Alemana" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
@@ -233,24 +226,24 @@ export default function PropertyForm() {
           <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl> <Input placeholder="Ej: Chile" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 3" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Baños</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 2" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="areaSqMeters" render={({ field }) => ( <FormItem> <FormLabel>Superficie (m²)</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 120" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 3" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> </FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Baños</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 2" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> </FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="areaSqMeters" render={({ field }) => ( <FormItem> <FormLabel>Superficie (m²)</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 120" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> </FormControl> <FormMessage /> </FormItem> )}/>
         </div>
         
+        {/* Custom Image Upload Field - No FormControl */}
         <FormField
           control={form.control}
-          name="images"
-          render={() => { // Removed 'field' as it's not directly used for value/onChange here
+          name="images" // This field in RHF schema is string[]
+          render={() => { // The 'field' object is not directly used for value/onChange on the visible input
             const { formItemId, formDescriptionId, formMessageId, error } = useFormField(); // Get context values
             return (
-              <FormItem>
-                <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES}, hasta {MAX_FILE_SIZE_MB}MB c/u)</FormLabel>
-                {/* FormControl is removed, attributes applied to label */}
-                <label
-                  htmlFor="image-upload-input" // Standard htmlFor for the actual file input
-                  id={formItemId} // The FormLabel will point to this clickable label
-                  aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
+              <FormItem id={formItemId}> {/* Associate FormItem with the field */}
+                {/* No explicit FormLabel here, the dropzone label serves as the primary label */}
+                <label // This is the clickable dropzone area
+                  htmlFor="image-upload-input-actual" // Points to the actual hidden file input
+                  // The id for this label itself will be formItemId via FormItem's context
+                  aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`}
                   aria-invalid={!!error}
                   className={cn(
                     "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors",
@@ -264,23 +257,30 @@ export default function PropertyForm() {
                       <span className="font-semibold text-primary">Haz clic para subir</span> o arrastra y suelta
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      PNG, JPG, GIF, WEBP (Máx. {MAX_FILE_SIZE_MB}MB por imagen)
+                      Imágenes (Máx. {MAX_IMAGES}, hasta {MAX_FILE_SIZE_MB}MB c/u)
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG, GIF, WEBP
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Imágenes subidas: {imagePreviews.length} de {MAX_IMAGES}
                     </p>
                   </div>
-                  <Input // This is the actual file input, hidden
-                    id="image-upload-input" // This ID is for the label's own htmlFor
+                  <Input // Actual hidden file input
+                    id="image-upload-input-actual" // Unique ID for the file input
                     type="file"
                     className="hidden"
                     multiple
-                    onChange={handleImageChange}
+                    onChange={handleImageChange} // Uses local handler
                     accept="image/png, image/jpeg, image/gif, image/webp"
                     disabled={imagePreviews.length >= MAX_IMAGES || isUploading}
+                    // No {...field} spread here as react-hook-form's 'images' field is an array of URLs, not FileList
                   />
                 </label>
-                {/* You can add a FormDescription here if needed, ensure it has id={formDescriptionId} if not using FormControl */}
+                <FormDescription id={formDescriptionId}> {/* Ensure this ID is set for aria-describedby */}
+                  Sube imágenes claras y de buena calidad de tu propiedad.
+                </FormDescription>
+                
                 {imagePreviews.length > 0 && (
                   <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                     {imagePreviews.map((previewUrl, index) => (
@@ -307,7 +307,7 @@ export default function PropertyForm() {
                     Subiendo imágenes...
                   </div>
                 )}
-                <FormMessage /> {/* This will still work correctly */}
+                <FormMessage /> {/* Displays validation errors for the 'images' field */}
               </FormItem>
             );
           }}
