@@ -2,6 +2,7 @@
 // src/components/dashboard/visits/VisitListItem.tsx
 'use client';
 
+import React from 'react'; // Added React import
 import type { PropertyVisit, PropertyVisitStatus, PropertyVisitAction } from '@/lib/types';
 import { PropertyVisitStatusLabels } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
