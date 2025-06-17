@@ -47,16 +47,17 @@ const StyledNavLink = styled(Link)`
   display: flex;
   align-items: center;
   gap: 0.5em;
-  padding: 10px 12px; /* Padding for space around text/icon */
-  margin: 0 2px; 
+  padding: 10px 12px;
+  margin: 0 2px;
   color: hsl(var(--foreground));
   font-weight: 500;
   font-size: 0.9rem;
   text-decoration: none;
-  border-radius: 8px; /* Slight rounding for aesthetics */
-  transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out; // Added background-color transition
-  position: relative; /* For pseudo-elements */
-  z-index: 1; 
+  border-radius: 8px;
+  transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+  position: relative;
+  z-index: 1;
+  overflow: visible; /* Allow pseudo-elements to be visible outside */
 
   .dark & {
     color: hsl(var(--foreground));
@@ -64,40 +65,42 @@ const StyledNavLink = styled(Link)`
 
   & svg {
     color: hsl(var(--muted-foreground));
-    transition: color 0.2s, stroke 0.2s; // Added stroke transition
+    transition: color 0.2s, stroke 0.2s;
   }
 
+  /* Lines for hover effect */
   &::before,
   &::after {
     content: '';
     position: absolute;
     left: 0;
-    width: 0%;
-    height: 2px; /* Thickness of the line */
-    background-color: #49A7F3; /* Hover line color */
+    width: 0%; /* Start with 0 width */
+    height: 3px; /* Line thickness */
+    background-color: #49A7F3; /* Line color */
     transition: width 0.3s ease-out;
+    z-index: 0; /* Behind the link content if needed, but negative positioning handles it */
   }
 
   &::before {
-    top: 0;
+    top: -6px; /* Position above the link content area */
   }
 
   &::after {
-    bottom: 0;
+    bottom: -6px; /* Position below the link content area */
   }
 
   &:hover {
-    color: #fff; // Text color on hover
-    background-color: #49A7F3; // Background color on hover
+    color: #fff; /* Text color on hover */
+    background-color: #49A7F3; /* Background color on hover */
 
     & svg {
-      color: #fff; // Icon color on hover
-      stroke: #fff; // Ensure stroke also changes if applicable
+      color: #fff; /* Icon color on hover */
+      stroke: #fff; /* Ensure stroke also changes if applicable */
     }
 
     &::before,
     &::after {
-      width: 100%;
+      width: 100%; /* Expand lines to full width on hover */
     }
   }
 `;
