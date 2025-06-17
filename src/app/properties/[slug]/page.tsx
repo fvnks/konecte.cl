@@ -106,13 +106,8 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
               {formatPrice(property.price, property.currency)}
               {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground">/mes</span>}
             </div>
-            <div className="mt-4 flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Compartir:</span>
-              <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={property.title} />
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 md:p-8 pt-0 space-y-6">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center">
+            {/* Grid de características (dormitorios, baños, etc.) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center mt-3">
               {[
                 { icon: BedDouble, label: `${property.bedrooms} Dorms` },
                 { icon: Bath, label: `${property.bathrooms} Baños` },
@@ -125,7 +120,13 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
                 </div>
               ))}
             </div>
-            
+            {/* Botones de compartir */}
+            <div className="mt-3 flex items-center gap-2"> {/* Reducido mt-4 a mt-3 */}
+              <span className="text-sm text-muted-foreground">Compartir:</span>
+              <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={property.title} />
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 md:p-8 pt-0 space-y-5"> {/* Reducido space-y-6 a space-y-5 */}
             <div>
               <h3 className="text-xl lg:text-2xl font-semibold mb-3 font-headline">Descripción de la Propiedad</h3>
               <p className="text-muted-foreground whitespace-pre-line leading-relaxed text-base">{property.description}</p>
@@ -148,7 +149,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             )}
             
             {property.author && (
-              <div className="border-t pt-6 mt-8">
+              <div className="border-t pt-6 mt-6"> {/* Ajustado mt para consistencia con space-y */}
                 <h3 className="text-xl lg:text-2xl font-semibold mb-3 font-headline">Información del Anunciante</h3>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 bg-secondary/30 p-4 rounded-lg">
                   <Avatar className="h-16 w-16">
