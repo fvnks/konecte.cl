@@ -3,11 +3,13 @@ import type { PropertyType, ListingCategory, SearchRequest } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, BedDouble, Bath, DollarSign, Tag, SearchCheck as SearchIcon, AlertTriangle, CalendarDays, Building, Handshake } from "lucide-react";
+import { MapPin, BedDouble, Bath, DollarSign, Tag, SearchCheck as SearchIcon, AlertTriangle, CalendarDays, Building, Handshake, Share2 } from "lucide-react";
 import { getRequestBySlugAction } from "@/actions/requestActions";
 import RequestComments from "@/components/comments/RequestComments"; 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import SocialShareButtons from '@/components/ui/SocialShareButtons';
+import { headers } from 'next/headers';
 
 const translatePropertyType = (type: PropertyType): string => {
   if (type === 'rent') return 'Arriendo';
@@ -29,6 +31,10 @@ const translateCategory = (category: ListingCategory): string => {
 
 export default async function RequestDetailPage({ params }: { params: { slug: string } }) {
   const request = await getRequestBySlugAction(params.slug);
+
+  const host = headers().get('host');
+  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+  const sharingUrl = request ? `${protocol}://${host}/requests/${request.slug}` : '';
 
   if (!request) {
     return (
@@ -57,7 +63,7 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                 <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
-                    <AvatarImage src={authorAvatar || `https://placehold.co/80x80.png?text=${authorInitials}`} alt={authorName} data-ai-hint="persona solicitante"/>
+                    <AvatarImage src={authorAvatar || `https://placehold.co/80x80.png?text=${authorInitials}`} alt={authorName} data-ai-hint="usuario buscando"/>
                     <AvatarFallback className="text-2xl">{authorInitials}</AvatarFallback>
                 </Avatar>
                 <div>
@@ -143,6 +149,13 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
               </div>
             </div>
           </div>
+           <div className="pt-6 mt-6 border-t">
+              <h3 className="text-xl font-semibold mb-4 text-center font-headline flex items-center justify-center">
+                <Share2 className="mr-2 h-6 w-6 text-primary" />
+                Compartir esta Solicitud
+              </h3>
+              <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={request.title} className="justify-center" />
+          </div>
         </CardContent>
       </Card>
 
@@ -151,4 +164,3 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
     </div>
   );
 }
-

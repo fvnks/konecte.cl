@@ -6,12 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, Eye, CalendarPlus } from "lucide-react";
+import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, Eye, CalendarPlus, Share2 } from "lucide-react";
 import PropertyComments from "@/components/comments/PropertyComments"; 
 import Link from "next/link";
 import RecordView from '@/components/lead-tracking/RecordView';
 import PropertyInquiryForm from "@/components/property/PropertyInquiryForm";
-import RequestVisitButtonClient from "@/components/property/RequestVisitButtonClient"; // Importar el nuevo componente
+import RequestVisitButtonClient from "@/components/property/RequestVisitButtonClient";
+import SocialShareButtons from '@/components/ui/SocialShareButtons'; 
+import { headers } from 'next/headers'; 
 
 const translatePropertyType = (type: 'rent' | 'sale'): string => {
   if (type === 'rent') return 'En Arriendo';
@@ -44,6 +46,11 @@ const formatPrice = (price: number, currency: string) => {
 
 export default async function PropertyDetailPage({ params }: { params: { slug: string } }) {
   const property = await getPropertyBySlugAction(params.slug);
+
+  const host = headers().get('host');
+  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+  const sharingUrl = property ? `${protocol}://${host}/properties/${property.slug}` : '';
+
 
   if (!property) {
     return (
@@ -135,6 +142,14 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
                 </ul>
               </div>
             )}
+            
+            <div className="pt-6 mt-6 border-t">
+              <h3 className="text-xl font-semibold mb-4 text-center font-headline flex items-center justify-center">
+                <Share2 className="mr-2 h-6 w-6 text-primary" />
+                Compartir esta Propiedad
+              </h3>
+              <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={property.title} className="justify-center" />
+            </div>
 
             {property.author && (
               <div className="border-t pt-6 mt-8">
@@ -149,7 +164,6 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
                     {property.author.created_at && <p className="text-sm text-muted-foreground flex items-center"><CalendarDays className="h-4 w-4 mr-1.5"/>Miembro desde {new Date(property.author.created_at).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })}</p>}
                     <p className="text-xs text-muted-foreground mt-0.5">Propiedad publicada el {new Date(property.createdAt).toLocaleDateString('es-CL')} </p>
                   </div>
-                  {/* Botón de Solicitar Visita */}
                   <RequestVisitButtonClient 
                     propertyId={property.id}
                     propertyOwnerId={property.user_id}
