@@ -189,7 +189,7 @@ CREATE TABLE property_requests (
     -- budget_currency VARCHAR(3) DEFAULT 'CLP', -- Considerar si el presupuesto puede ser en diferentes monedas
     open_for_broker_collaboration BOOLEAN DEFAULT FALSE,
     comments_count INT DEFAULT 0,
-    upvotes INT DEFAULT 0, -- Nueva columna para upvotes
+    upvotes INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -242,6 +242,29 @@ CREATE INDEX idx_comments_property_id ON comments(property_id);
 CREATE INDEX idx_comments_request_id ON comments(request_id);
 CREATE INDEX idx_comments_parent_id ON comments(parent_id);
 ```
+---
+
+## Tabla: `user_comment_interactions` (Interacciones con Comentarios)
+Almacena las interacciones de los usuarios con los comentarios, como "me gusta".
+
+```sql
+CREATE TABLE user_comment_interactions (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    comment_id VARCHAR(36) NOT NULL,
+    interaction_type ENUM('like') NOT NULL DEFAULT 'like', -- Puede expandirse a otros tipos de interacción en el futuro
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_user_comment_interaction (user_id, comment_id, interaction_type) -- Un usuario solo puede tener una interacción de un tipo por comentario
+);
+
+-- Índices
+CREATE INDEX idx_user_comment_interactions_user_comment ON user_comment_interactions(user_id, comment_id);
+CREATE INDEX idx_user_comment_interactions_comment ON user_comment_interactions(comment_id);
+```
+
 ---
 
 ## Tabla: `google_sheet_configs` (Configuración de Google Sheets)
@@ -674,5 +697,3 @@ CREATE TABLE user_ai_search_usage (
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
 
 
-
-    

@@ -91,7 +91,7 @@ export interface SearchRequest {
   budgetMax?: number;
   open_for_broker_collaboration?: boolean;
   commentsCount: number;
-  upvotes: number; // Added upvotes field
+  upvotes: number;
   slug: string;
   isActive: boolean;
   createdAt: string;
@@ -118,6 +118,19 @@ export const addCommentFormSchema = z.object({
   parentId: z.string().uuid().optional(),
 });
 export type AddCommentFormValues = z.infer<typeof addCommentFormSchema>;
+
+export interface UserCommentInteraction {
+  id: string;
+  user_id: string;
+  comment_id: string;
+  interaction_type: 'like'; // Can be extended later
+  created_at: string;
+}
+
+export interface CommentInteractionDetails {
+  totalLikes: number;
+  currentUserLiked: boolean;
+}
 
 
 export interface GoogleSheetConfig {
@@ -566,8 +579,8 @@ export type RecordInteractionValues = z.infer<typeof recordInteractionSchema>;
 export interface RecordInteractionResult {
   success: boolean;
   message?: string;
-  newTotalLikes?: number; // Updated for real count
-  newInteractionType?: InteractionTypeEnum; // Updated for real state
+  newTotalLikes?: number;
+  newInteractionType?: InteractionTypeEnum;
   matchDetails?: {
     matchFound: boolean;
     conversationId?: string;
@@ -672,5 +685,3 @@ export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema
 // End of Broker Collaboration Types
 
 
-
-    

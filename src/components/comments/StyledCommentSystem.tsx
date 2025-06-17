@@ -1,10 +1,11 @@
+
 // src/components/comments/StyledCommentSystem.tsx
 'use client';
 
 import React from 'react';
 import styled from 'styled-components';
 import type { Comment as CommentType, User as StoredUserType } from '@/lib/types';
-import CommentItem from './CommentItem'; // Asumimos que CommentItem se adaptará
+import CommentItem from './CommentItem'; 
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,7 +13,7 @@ import { Send, Loader2, UserCircle } from 'lucide-react';
 import Link from 'next/link';
 
 interface StyledCommentSystemProps {
-  title: string; // "Comentarios" o "Discusión"
+  title: string; 
   comments: CommentType[];
   isLoading: boolean;
   newCommentContent: string;
@@ -22,7 +23,7 @@ interface StyledCommentSystemProps {
   loggedInUser: StoredUserType | null;
   targetTypeForLink: 'properties' | 'requests';
   targetSlugForLink: string;
-  targetIdForLink: string;
+  targetIdForLink: string; 
 }
 
 // SVG Icons (se podrían importar de lucide-react si coinciden o usar los tuyos)
@@ -35,9 +36,9 @@ const EmojiIcon = () => <svg fill="none" viewBox="0 0 24 24" height={16} width={
 
 const StyledCommentSystemWrapper = styled.div`
   .card {
-    width: 100%; // Adaptable width
-    max-width: 700px; // Max width para mejor lectura
-    margin: 0 auto; // Centrar
+    width: 100%; 
+    max-width: 700px; 
+    margin: 0 auto; 
     height: fit-content;
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
@@ -54,51 +55,48 @@ const StyledCommentSystemWrapper = styled.div`
     padding-left: 20px;
     border-bottom: 1px solid hsl(var(--border));
     font-weight: 700;
-    font-size: 1.125rem; // Tailwind text-lg
+    font-size: 1.125rem; 
     color: hsl(var(--card-foreground));
   }
 
-  .title::after { // La línea decorativa bajo el título
+  .title::after { 
     content: '';
-    width: 8ch; // Ancho basado en caracteres
+    width: 8ch; 
     height: 2px;
     position: absolute;
-    bottom: -1.5px; // Ajuste para que quede sobre el borde
+    bottom: -1.5px; 
     background-color: hsl(var(--primary));
   }
 
-  .comments-list { // Renombrado desde .comments para claridad
+  .comments-list { 
     display: flex;
-    flex-direction: column; // Comentarios apilados verticalmente
-    gap: 1rem; // Espacio entre comentarios
-    padding: 1.25rem; // Tailwind p-5
+    flex-direction: column; 
+    gap: 1rem; 
+    padding: 1.25rem; 
   }
 
   .text-box {
     width: 100%;
     height: fit-content;
-    background-color: hsl(var(--secondary)); // Color de fondo secundario
-    padding: 0.75rem; // Tailwind p-3
+    background-color: hsl(var(--secondary)); 
+    padding: 0.75rem; 
     border-top: 1px solid hsl(var(--border));
   }
 
   .text-box .box-container {
-    background-color: hsl(var(--card)); // Fondo de la tarjeta para el input
+    background-color: hsl(var(--card)); 
     border-radius: 8px 8px 21px 21px;
-    padding: 0.75rem; // Tailwind p-3
+    padding: 0.75rem; 
     border: 1px solid hsl(var(--border));
   }
   
-  // Usar Textarea de ShadCN, no necesita estilo aquí
-  // .text-box textarea { ... }
-
   .text-box .formatting {
-    display: flex; // Cambiado a flex para mejor alineamiento
+    display: flex; 
     align-items: center;
-    gap: 0.25rem; // Tailwind gap-1
+    gap: 0.25rem; 
   }
 
-  .text-box .formatting button {
+  .text-box .formatting button:not(.send-button-wrapper button) {
     width: 30px;
     height: 30px;
     position: relative;
@@ -113,21 +111,23 @@ const StyledCommentSystemWrapper = styled.div`
     transition: background-color 0.2s ease-in-out;
   }
 
-  .text-box .formatting button:hover {
+  .text-box .formatting button:not(.send-button-wrapper button):hover {
     background-color: hsl(var(--accent) / 0.1);
     color: hsl(var(--accent-foreground));
   }
 
-  .text-box .formatting .send-button { // Estilo específico para el botón de enviar
-    width: 36px; // Ligeramente más grande
+  .text-box .formatting .send-button-wrapper { /* Wrapper para el botón de enviar */
+    margin-left: auto; 
+  }
+  .text-box .formatting .send-button-wrapper button { /* Estilo específico para el botón de enviar */
+    width: 36px; 
     height: 36px;
     background-color: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
-    margin-left: auto; // Alinea a la derecha
-    border-radius: 8px; // Borde más cuadrado
+    border-radius: 8px; 
   }
 
-  .text-box .formatting .send-button:hover {
+  .text-box .formatting .send-button-wrapper button:hover:not(:disabled) {
     background-color: hsl(var(--primary) / 0.9);
   }
 
@@ -136,8 +136,8 @@ const StyledCommentSystemWrapper = styled.div`
     padding: 1rem;
     background-color: hsl(var(--secondary) / 0.5);
     border-radius: 8px;
-    margin: 1.25rem; // Tailwind m-5
-    font-size: 0.875rem; // Tailwind text-sm
+    margin: 1.25rem; 
+    font-size: 0.875rem; 
     color: hsl(var(--muted-foreground));
   }
 
@@ -148,11 +148,6 @@ const StyledCommentSystemWrapper = styled.div`
   }
   .login-prompt a:hover {
     text-decoration: underline;
-  }
-
-  @keyframes ripple { /* Mantener por si se usa en CommentItem */
-    0% { transform: scale(0); opacity: 0.6; }
-    100% { transform: scale(1); opacity: 0; }
   }
 `;
 
@@ -165,9 +160,8 @@ const StyledCommentSystem: React.FC<StyledCommentSystemProps> = ({
   onSubmitComment,
   isSubmittingComment,
   loggedInUser,
-  targetSlugForLink, // No se usa directamente aquí, pero se pasa a CommentItem
-  targetTypeForLink, // Idem
-  targetIdForLink, // Idem
+  targetTypeForLink, 
+  targetSlugForLink, 
 }) => {
   const authorName = loggedInUser?.name || 'Tú';
   const authorAvatar = loggedInUser?.avatarUrl;
@@ -186,7 +180,7 @@ const StyledCommentSystem: React.FC<StyledCommentSystemProps> = ({
         ) : comments.length > 0 ? (
           <div className="comments-list">
             {comments.map(comment => (
-              <CommentItem key={comment.id} comment={comment} />
+              <CommentItem key={comment.id} comment={comment} loggedInUser={loggedInUser} />
             ))}
           </div>
         ) : (
@@ -217,15 +211,17 @@ const StyledCommentSystem: React.FC<StyledCommentSystemProps> = ({
                 <button type="button" title="Subrayado (decorativo)"><UnderlineIcon /></button>
                 <button type="button" title="Tachado (decorativo)"><StrikethroughIcon /></button>
                 <button type="button" title="Emoji (decorativo)"><EmojiIcon /></button>
-                <Button
-                  size="icon"
-                  className="send-button h-9 w-9"
-                  title="Enviar Comentario"
-                  onClick={onSubmitComment}
-                  disabled={isSubmittingComment || !newCommentContent.trim()}
-                >
-                  {isSubmittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
+                <div className="send-button-wrapper">
+                    <Button
+                    size="icon"
+                    className="h-9 w-9" 
+                    title="Enviar Comentario"
+                    onClick={onSubmitComment}
+                    disabled={isSubmittingComment || !newCommentContent.trim()}
+                    >
+                    {isSubmittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                </div>
               </div>
             </div>
           ) : (

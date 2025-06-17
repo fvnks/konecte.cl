@@ -1,10 +1,11 @@
+
 // src/components/comments/PropertyComments.tsx
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
 import type { Comment as CommentType, User as StoredUserType } from '@/lib/types';
 import { addCommentAction, getCommentsAction } from '@/actions/commentActions';
-import StyledCommentSystem from './StyledCommentSystem'; // Importar el nuevo sistema
+import StyledCommentSystem from './StyledCommentSystem'; 
 import { useToast } from '@/hooks/use-toast';
 
 interface PropertyCommentsProps {
@@ -51,7 +52,6 @@ export default function PropertyComments({ propertyId, propertySlug }: PropertyC
 
   const handleAddComment = async () => {
     if (!loggedInUser?.id) {
-      // El componente StyledCommentSystem manejará el prompt de login
       return;
     }
     if (!newCommentContent.trim()) {
@@ -68,7 +68,12 @@ export default function PropertyComments({ propertyId, propertySlug }: PropertyC
 
       if (result.success && result.comment) {
         toast({ title: "Comentario Añadido", description: "Tu comentario ha sido publicado." });
-        setComments(prevComments => [result.comment!, ...prevComments]);
+        // Para asegurar que el nuevo comentario tenga el autor correcto, lo tomamos del resultado
+        const newCommentWithAuthor = {
+          ...result.comment,
+          author: { id: loggedInUser.id, name: loggedInUser.name, avatarUrl: loggedInUser.avatarUrl }
+        };
+        setComments(prevComments => [newCommentWithAuthor, ...prevComments]);
         setNewCommentContent('');
       } else {
         toast({ title: "Error al Comentar", description: result.message || "No se pudo añadir tu comentario.", variant: "destructive" });
@@ -88,7 +93,7 @@ export default function PropertyComments({ propertyId, propertySlug }: PropertyC
       loggedInUser={loggedInUser}
       targetTypeForLink="properties"
       targetSlugForLink={propertySlug}
-      targetIdForLink={propertyId}
+      targetIdForLink={propertyId} // Necesario para el CommentItem
     />
   );
 }

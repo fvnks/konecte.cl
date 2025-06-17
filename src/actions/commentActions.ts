@@ -3,7 +3,7 @@
 'use server';
 
 import { query } from '@/lib/db';
-import type { Comment, AddCommentFormValues, User } from '@/lib/types';
+import type { Comment, AddCommentFormValues, User, CommentInteractionDetails } from '@/lib/types';
 import { addCommentFormSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
@@ -82,12 +82,7 @@ export async function addCommentAction(
     if (target.requestSlug) {
       revalidatePath(`/requests/${target.requestSlug}`);
     }
-    // Potencialmente revalidar la página de listado si los contadores se muestran allí.
-    // revalidatePath('/properties');
-    // revalidatePath('/requests');
-
-
-    // Obtener el comentario recién creado con información del autor
+    
     const newCommentResult = await query(
         `SELECT c.*, u.id as author_id, u.name as author_name, u.avatar_url as author_avatar_url
          FROM comments c
@@ -144,7 +139,7 @@ export async function getCommentsAction(
       params.push(target.requestId);
     }
     
-    sql += ' ORDER BY c.created_at DESC'; // O ASC si prefieres los más antiguos primero
+    sql += ' ORDER BY c.created_at DESC'; 
 
     const rows = await query(sql, params);
     if (!Array.isArray(rows)) {
@@ -155,5 +150,88 @@ export async function getCommentsAction(
   } catch (error: any) {
     console.error(`[CommentAction] Error fetching comments for ${target.propertyId ? 'property' : 'request'} ${target.propertyId || target.requestId}:`, error);
     return [];
+  }
+}
+
+export async function getCommentInteractionDetailsAction(
+  commentId: string,
+  userId?: string
+): Promise<CommentInteractionDetails> {
+  if (!commentId) {
+    throw new Error("commentId is required.");
+  }
+
+  let totalLikes = 0;
+  let currentUserLiked = false;
+
+  try {
+    const likesResult: any[] = await query(
+      'SELECT upvotes FROM comments WHERE id = ?',
+      [commentId]
+    );
+    if (likesResult.length > 0) {
+      totalLikes = Number(likesResult[0].upvotes) || 0;
+    }
+
+    if (userId) {
+      const userInteractionResult: any[] = await query(
+        'SELECT id FROM user_comment_interactions WHERE user_id = ? AND comment_id = ? AND interaction_type = "like"',
+        [userId, commentId]
+      );
+      currentUserLiked = userInteractionResult.length > 0;
+    }
+    return { totalLikes, currentUserLiked };
+  } catch (error: any) {
+    console.error("[CommentAction] Error in getCommentInteractionDetailsAction:", error);
+    return { totalLikes: 0, currentUserLiked: false };
+  }
+}
+
+export async function toggleCommentLikeAction(
+  commentId: string,
+  userId: string
+): Promise<{ success: boolean; message?: string; newUpvotesCount?: number; userNowLikes?: boolean }> {
+  if (!commentId || !userId) {
+    return { success: false, message: "Se requiere el ID del comentario y del usuario." };
+  }
+
+  try {
+    const existingInteraction: any[] = await query(
+      'SELECT id FROM user_comment_interactions WHERE user_id = ? AND comment_id = ? AND interaction_type = "like"',
+      [userId, commentId]
+    );
+
+    let userNowLikes: boolean;
+    let newUpvotesCount: number;
+
+    if (existingInteraction.length > 0) {
+      // User has liked, so unlike
+      await query('DELETE FROM user_comment_interactions WHERE id = ?', [existingInteraction[0].id]);
+      await query('UPDATE comments SET upvotes = GREATEST(0, upvotes - 1) WHERE id = ?', [commentId]);
+      userNowLikes = false;
+    } else {
+      // User has not liked, so like
+      const interactionId = randomUUID();
+      await query(
+        'INSERT INTO user_comment_interactions (id, user_id, comment_id, interaction_type) VALUES (?, ?, ?, "like")',
+        [interactionId, userId, commentId]
+      );
+      await query('UPDATE comments SET upvotes = upvotes + 1 WHERE id = ?', [commentId]);
+      userNowLikes = true;
+    }
+
+    const updatedComment: any[] = await query('SELECT upvotes FROM comments WHERE id = ?', [commentId]);
+    newUpvotesCount = updatedComment.length > 0 ? Number(updatedComment[0].upvotes) : 0;
+
+    return {
+      success: true,
+      newUpvotesCount,
+      userNowLikes,
+      message: userNowLikes ? "¡Te gusta este comentario!" : "Ya no te gusta este comentario."
+    };
+
+  } catch (error: any) {
+    console.error("[CommentAction] Error in toggleCommentLikeAction:", error);
+    return { success: false, message: `Error al procesar 'Me gusta': ${error.message}` };
   }
 }
