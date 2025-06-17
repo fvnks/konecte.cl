@@ -105,7 +105,7 @@ export default function SignUpPage() {
           src="https://bukmy.cl/img/register.png"
           alt="Ilustración de registro"
           fill
-          style={{objectFit: "cover"}}
+          style={{objectFit: "cover", objectPosition: "top"}}
           sizes="50vw"
           priority
           data-ai-hint="registro usuarios"

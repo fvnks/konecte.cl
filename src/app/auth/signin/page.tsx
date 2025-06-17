@@ -112,7 +112,7 @@ export default function SignInPage() {
           src="https://bukmy.cl/img/login.jpg"
           alt="Ilustración de inicio de sesión"
           fill
-          style={{objectFit: "cover"}}
+          style={{objectFit: "cover", objectPosition: "top"}}
           sizes="50vw"
           priority
           data-ai-hint="acceso seguridad login"

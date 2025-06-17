@@ -2,9 +2,7 @@
 // src/lib/db.ts
 import mysql from 'mysql2/promise';
 import type { Pool, PoolConnection } from 'mysql2/promise';
-import dotenv from 'dotenv';
-
-dotenv.config(); // Load .env file into process.env
+// dotenv.config() is removed as Next.js handles .env files automatically.
 
 let pool: Pool | undefined; // Allow pool to be undefined initially
 
