@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import AppLayout from '@/components/layout/AppLayout';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from "next-themes"; // Importado
+import StyledComponentsRegistry from '@/lib/styled-components-registry'; // Import the registry
 
 const inter = Inter({
   subsets: ['latin'],
@@ -31,17 +32,19 @@ export default function RootLayout({
   return (
     <html lang="es-CL" className={`${inter.variable} antialiased`} suppressHydrationWarning>
       <body className="font-body"> 
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-        >
-          <AppLayout>
-            {children}
-          </AppLayout>
-          <Toaster />
-        </ThemeProvider>
+        <StyledComponentsRegistry> {/* Add the registry here */}
+          <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+          >
+            <AppLayout>
+              {children}
+            </AppLayout>
+            <Toaster />
+          </ThemeProvider>
+        </StyledComponentsRegistry>
       </body>
     </html>
   );

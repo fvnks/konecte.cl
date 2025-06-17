@@ -3,6 +3,12 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  compiler: {
+    styledComponents: {
+      ssr: true,
+      displayName: true,
+    },
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -31,15 +37,15 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-  // Corrected: serverExternalPackages is a top-level key
   serverExternalPackages: [
     'handlebars',
     'dotprompt',
     '@genkit-ai/core',
-    // 'genkit', // genkit main package might also be included if issues persist
-    // '@genkit-ai/googleai', // and googleai plugin
+    'genkit', 
+    '@genkit-ai/googleai',
+    'mysql2',
+    'bcryptjs',
   ],
 };
 
 export default nextConfig;
-
