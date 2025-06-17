@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import FeaturedPropertyCard from '@/components/property/FeaturedPropertyCard';
 import RequestCard from '@/components/request/RequestCard';
 import { Building, FileSearch, ArrowRight } from 'lucide-react';
-import AnimatedLinkButton from '@/components/ui/AnimatedLinkButton'; // Importar el nuevo botón
+import AnimatedLinkButton from '@/components/ui/AnimatedLinkButton';
 
 interface FeaturedListingsClientProps {
   featuredProperties: PropertyListing[];
@@ -56,11 +56,9 @@ export default function FeaturedListingsClient({ featuredProperties, recentReque
           )}
           {featuredProperties.length > 0 && (
             <div className="mt-10 text-center">
-              <AnimatedLinkButton
-                href="/properties"
-                textNormal="Ver Todas"
-                textHover="Las Propiedades"
-              />
+              <AnimatedLinkButton href="/properties">
+                Ver Todas
+              </AnimatedLinkButton>
             </div>
           )}
         </div>
@@ -82,11 +80,9 @@ export default function FeaturedListingsClient({ featuredProperties, recentReque
           )}
            {recentRequests.length > 0 && (
             <div className="mt-10 text-center">
-              <AnimatedLinkButton
-                href="/requests"
-                textNormal="Ver Todas"
-                textHover="Las Solicitudes"
-              />
+              <AnimatedLinkButton href="/requests">
+                Ver Todas
+              </AnimatedLinkButton>
             </div>
            )}
         </div>
