@@ -5,10 +5,10 @@
 import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, Handshake, Bot, ListTree } from 'lucide-react'; // Removed LogOutIcon
+import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, Handshake, Bot, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+// import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // No longer needed here
 import { useToast } from '@/hooks/use-toast';
 import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { getPlanByIdAction } from '@/actions/planActions';
@@ -16,7 +16,8 @@ import type { Plan } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import CustomPageLoader from '@/components/ui/CustomPageLoader';
-import StyledLogoutButton from '@/components/ui/StyledLogoutButton'; // Importar nuevo botón
+import StyledLogoutButton from '@/components/ui/StyledLogoutButton';
+import StyledUserProfileWidget from '@/components/ui/StyledUserProfileWidget'; // Import the new component
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -25,7 +26,7 @@ interface DashboardLayoutProps {
 interface StoredUser {
   id: string;
   name: string;
-  avatarUrl?: string;
+  avatarUrl?: string; // Avatar URL not directly used by new widget, but keep for type
   role_id: string;
   plan_id?: string | null;
   phone_number?: string | null; 
@@ -36,7 +37,7 @@ const baseNavItemsDefinition = [
   { href: '/dashboard/my-listings', label: 'Mis Publicaciones', icon: <ListTree /> },
   { href: '/dashboard/messages', label: 'Mensajes', icon: <MessageSquare />, id: 'messagesLink' },
   { href: '/dashboard/crm', label: 'Mi CRM', icon: <Users /> },
-  { href: '/dashboard/visits', label: 'Mis Visitas', icon: <Edit /> }, // Icono actualizado para visitas
+  { href: '/dashboard/visits', label: 'Mis Visitas', icon: <Edit /> },
 ];
 
 
@@ -164,8 +165,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const userName = currentUser?.name || "Usuario";
-  const userAvatarUrl = currentUser?.avatarUrl || `https://placehold.co/40x40.png?text=${userName.substring(0,1)}`;
-  const userAvatarFallback = userName.substring(0,1).toUpperCase();
+  // const userAvatarUrl = currentUser?.avatarUrl || `https://placehold.co/40x40.png?text=${userName.substring(0,1)}`;
+  // const userAvatarFallback = userName.substring(0,1).toUpperCase();
 
   if (isLoadingSession && isClient) {
     return (
@@ -181,10 +182,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
                 <Separator/>
                 <div className="mt-auto space-y-4">
-                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
-                        <Skeleton className="h-10 w-10 rounded-full"/>
-                        <div className="space-y-1.5"><Skeleton className="h-4 w-24 rounded"/><Skeleton className="h-3 w-20 rounded"/></div>
-                    </div>
+                    {/* Skeleton for the new user profile widget */}
+                    <Skeleton className="h-[50px] w-full rounded-lg"/>
                     <Skeleton className="h-10 w-full rounded-md"/>
                     <Skeleton className="h-10 w-full rounded-md"/>
                 </div>
@@ -257,16 +256,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         
         <div className="mt-auto space-y-4">
             {currentUser && (
-                <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
-                    <Avatar className="h-10 w-10">
-                    <AvatarImage src={userAvatarUrl} alt={userName} data-ai-hint="usuario perfil"/>
-                    <AvatarFallback className="bg-primary text-primary-foreground">{userAvatarFallback}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                    <p className="text-sm font-semibold text-foreground truncate" title={userName}>{userName}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{currentUser.role_id}</p>
-                    </div>
-                </div>
+                <StyledUserProfileWidget userName={userName} userRole={currentUser.role_id} />
             )}
           <StyledLogoutButton onClick={handleLogout} />
           <Button variant="outline" asChild className="w-full text-base py-2.5 h-auto rounded-md border-primary/50 text-primary hover:bg-primary/5 hover:text-primary">

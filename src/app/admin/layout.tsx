@@ -8,13 +8,14 @@ import { useRouter } from 'next/navigation';
 import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, Newspaper, BarChart3, CalendarClock, MailWarning, MessageSquare, Bot } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+// import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // No longer needed here
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import CustomPageLoader from '@/components/ui/CustomPageLoader'; 
 import { Badge } from '@/components/ui/badge';
 import { getUnreadContactSubmissionsCountAction } from '@/actions/contactFormActions';
-import StyledLogoutButton from '@/components/ui/StyledLogoutButton'; // Importar nuevo botón
+import StyledLogoutButton from '@/components/ui/StyledLogoutButton';
+import StyledUserProfileWidget from '@/components/ui/StyledUserProfileWidget'; // Import the new component
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -39,7 +40,7 @@ const adminNavItems = [
 interface StoredAdminUser {
   id: string;
   name: string;
-  avatarUrl?: string;
+  avatarUrl?: string; // Avatar URL is not used by the new widget, but keeping for type consistency
   role_id: string;
 }
 
@@ -123,8 +124,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   const adminName = adminUser?.name || 'Admin';
-  const adminAvatarUrl = adminUser?.avatarUrl || `https://placehold.co/40x40.png?text=${adminName.substring(0,1)}`;
-  const adminAvatarFallback = adminName.substring(0,1).toUpperCase();
+  // const adminAvatarUrl = adminUser?.avatarUrl || `https://placehold.co/40x40.png?text=${adminName.substring(0,1)}`;
+  // const adminAvatarFallback = adminName.substring(0,1).toUpperCase();
 
   if (isLoadingSession && isClient) {
     return (
@@ -140,10 +141,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
                 <Separator/>
                 <div className="mt-auto space-y-4">
-                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
-                        <Skeleton className="h-10 w-10 rounded-full"/>
-                        <div className="space-y-1.5"><Skeleton className="h-4 w-24 rounded"/><Skeleton className="h-3 w-20 rounded"/></div>
-                    </div>
+                    {/* Skeleton for the new user profile widget */}
+                    <Skeleton className="h-[50px] w-full rounded-lg"/> 
                     <Skeleton className="h-10 w-full rounded-md"/>
                     <Skeleton className="h-10 w-full rounded-md"/>
                 </div>
@@ -211,16 +210,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         
         <div className="mt-auto space-y-4">
             {adminUser && (
-                <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
-                    <Avatar className="h-10 w-10">
-                    <AvatarImage src={adminAvatarUrl} alt={adminName} data-ai-hint="admin avatar"/>
-                    <AvatarFallback className="bg-primary text-primary-foreground">{adminAvatarFallback}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                    <p className="text-sm font-semibold text-foreground">{adminName}</p>
-                    <p className="text-xs text-muted-foreground">Administrador</p>
-                    </div>
-                </div>
+                <StyledUserProfileWidget userName={adminName} userRole="Administrador" />
             )}
           <StyledLogoutButton onClick={handleAdminLogout} />
           <Button variant="outline" asChild className="w-full text-base py-2.5 h-auto rounded-md border-primary/50 text-primary hover:bg-primary/5 hover:text-primary">
@@ -240,7 +230,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </Link>
             </div>
         </header>
-        <main className="flex-grow p-6 sm:p-8 md:p-10 bg-muted/30">
+        <main className="flex-1 flex flex-col items-center justify-center bg-muted/30">
           {children}
         </main>
       </div>
