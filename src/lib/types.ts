@@ -591,7 +591,7 @@ export interface RecordInteractionResult {
   }
 }
 
-// For getListingInteractionDetailsAction
+// For getListingInteractionDetails
 export interface ListingInteractionDetails {
   totalLikes: number;
   currentUserInteraction: InteractionTypeEnum | null;
@@ -681,6 +681,16 @@ export const proposePropertyFormSchema = z.object({
   commission_terms: z.string().max(500, "Los términos de comisión no pueden exceder los 500 caracteres.").optional().or(z.literal('')),
 });
 export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema>;
-
 // End of Broker Collaboration Types
 
+// Bug Report Form Types
+export const bugReportFormSchema = z.object({
+  name: z.string().max(100, "El nombre no puede exceder los 100 caracteres.").optional().or(z.literal('')),
+  email: z.string().email("Correo electrónico inválido.").max(100).optional().or(z.literal('')),
+  pageUrl: z.string().url("Debe ser una URL válida.").max(2048).optional().or(z.literal('')),
+  description: z.string().min(10, "La descripción del error debe tener al menos 10 caracteres.").max(2000, "La descripción no puede exceder los 2000 caracteres."),
+  stepsToReproduce: z.string().max(2000, "Los pasos no pueden exceder los 2000 caracteres.").optional().or(z.literal('')),
+  browserDevice: z.string().max(500, "La información del navegador/dispositivo no puede exceder los 500 caracteres.").optional().or(z.literal('')),
+});
+export type BugReportFormValues = z.infer<typeof bugReportFormSchema>;
+// End of Bug Report Form Types
