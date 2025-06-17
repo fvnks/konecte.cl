@@ -331,7 +331,7 @@ export const propertyFormSchema = z.object({
   bedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de dormitorios no puede ser negativo."),
   bathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de baños no puede ser negativo."),
   areaSqMeters: z.coerce.number().positive("El área (m²) debe ser un número positivo."),
-  images: z.array(z.string().url("Cada imagen debe ser una URL válida.")).optional().default([]), // Array de URLs
+  images: z.array(z.string().url("Cada imagen debe ser una URL válida.")).min(0).max(5, "Puedes subir un máximo de 5 imágenes.").optional().default([]),
   features: z.string().optional().describe("Características separadas por comas. Ejemplo: Piscina,Estacionamiento"),
 });
 export type PropertyFormValues = z.infer<typeof propertyFormSchema>;
@@ -486,12 +486,24 @@ export interface PropertyVisit {
 }
 
 export const requestVisitFormSchema = z.object({
-  proposed_datetime: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: "La fecha y hora propuestas son inválidas.",
+  proposed_datetime: z.string().refine((date) => date && !isNaN(Date.parse(date)), {
+    message: "La fecha y hora propuestas son inválidas o no han sido seleccionadas.",
   }),
   visitor_notes: z.string().max(1000, "Las notas no pueden exceder los 1000 caracteres.").optional().or(z.literal('')),
 });
 export type RequestVisitFormValues = z.infer<typeof requestVisitFormSchema>;
+
+export type PropertyVisitAction =
+  | 'confirm_original_proposal' // Owner confirms visitor's original proposed time
+  | 'reschedule_proposal'       // Owner proposes a new time
+  | 'cancel_pending_request'    // Owner rejects/cancels a pending request
+  | 'cancel_confirmed_visit'    // Owner cancels a visit they previously confirmed
+  | 'mark_completed'            // Owner marks visit as completed
+  | 'mark_visitor_no_show'      // Owner marks visitor as no-show
+  | 'mark_owner_no_show'        // (Potentially for visitor to mark owner as no-show, or admin)
+  | 'accept_owner_reschedule'   // Visitor accepts owner's new proposed time
+  | 'reject_owner_reschedule'   // Visitor rejects owner's new proposed time
+  | 'cancel_own_request';       // Visitor cancels their own request (pending or confirmed by them)
 
 export const updateVisitStatusFormSchema = z.object({
   new_status: z.enum(propertyVisitStatusValues, { required_error: "El nuevo estado es requerido." }),
@@ -504,14 +516,6 @@ export const updateVisitStatusFormSchema = z.object({
 });
 export type UpdateVisitStatusFormValues = z.infer<typeof updateVisitStatusFormSchema>;
 
-export type PropertyVisitAction =
-  | 'confirm'
-  | 'cancel_by_owner'
-  | 'reschedule'
-  | 'mark_completed'
-  | 'mark_visitor_no_show'
-  | 'mark_owner_no_show'
-  | 'cancel_by_visitor';
 
 export interface ContactFormSubmission {
   id: string;
@@ -656,4 +660,5 @@ export const proposePropertyFormSchema = z.object({
 export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema>;
 
 // End of Broker Collaboration Types
+
 
