@@ -15,15 +15,15 @@ const StyledWrapper = styled.div`
   display: inline-block; 
 
   .custom-reject-button {
-    width: 180px; /* Increased width for longer text */
-    height: 40px; /* Reduced height to be thinner */
+    width: 190px; /* Increased width for longer text */
+    height: 36px; /* Reduced height to match ShadCN sm button (h-9) */
     cursor: pointer;
     display: flex;
     align-items: center;
     /* Theme colors */
     background: hsl(var(--destructive));
     border: 1px solid hsl(var(--destructive) / 0.9); /* Matching border like in original CSS */
-    border-radius: 0.375rem; /* Corresponds to rounded-md (5px is close to this) */
+    border-radius: 0.375rem; /* Corresponds to rounded-md (6px) */
     box-shadow: 1px 1px 3px rgba(0,0,0,0.15);
     overflow: hidden; /* Important for the icon slide effect */
     position: relative; /* Needed if icon is absolute within it */
@@ -44,7 +44,7 @@ const StyledWrapper = styled.div`
   .custom-reject-button .icon {
     position: absolute;
     border-left: 1px solid hsl(var(--destructive) / 0.8); /* Darker separator */
-    transform: translateX(140px); /* New width (180) - icon width (40) = 140px */
+    transform: translateX(150px); /* New width (190) - icon width (40) = 150px */
     height: 100%; /* Make icon part take full height of button */
     width: 40px; /* Icon part width */
     display: flex;
@@ -68,7 +68,7 @@ const StyledWrapper = styled.div`
   }
 
   .custom-reject-button:hover:not(:disabled) .icon {
-    width: 180px; /* Expand to full button width */
+    width: 190px; /* Expand to full button width */
     border-left: none;
     transform: translateX(0);
   }
@@ -100,7 +100,7 @@ const StyledWrapper = styled.div`
   }
   .custom-reject-button:disabled .icon {
     border-left: 1px solid hsl(var(--muted-foreground) / 0.5);
-    transform: translateX(140px); /* Keep icon position for disabled */
+    transform: translateX(150px); /* Keep icon position for disabled */
     background-color: hsl(var(--muted) / 0.5); /* Slightly different bg for icon part when disabled */
   }
   .custom-reject-button:disabled svg {
@@ -108,7 +108,7 @@ const StyledWrapper = styled.div`
   }
   .custom-reject-button:disabled:hover .icon { /* Prevent icon expansion on hover when disabled */
      width: 40px;
-     transform: translateX(140px);
+     transform: translateX(150px);
   }
 `;
 
