@@ -6,8 +6,9 @@ import { useToast } from '@/hooks/use-toast';
 import { recordUserListingInteractionAction } from '@/actions/interactionActions';
 import type { User as StoredUser, InteractionTypeEnum, ListingType } from '@/lib/types';
 import Link from 'next/link';
-import { Button } from './button';
+import { Button as ShadButton } from './button'; // Renombrar para evitar conflicto
 import { Loader2 } from 'lucide-react';
+import styled from 'styled-components';
 import { cn } from '@/lib/utils';
 
 interface LikeButtonProps {
@@ -16,11 +17,63 @@ interface LikeButtonProps {
   className?: string;
 }
 
+const StyledWrapper = styled.div`
+  button {
+    padding: 0 20px 0 10px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 5px 7px #e7413373;
+    background-color: #e74133; // Color rojo por defecto del diseño original
+    color: white;
+    font-size: 17px;
+    border: none;
+    display: flex;
+    align-items: center;
+    transition: all .5s ease-in-out;
+    letter-spacing: 2px;
+    height: 50px; // Altura fija para consistencia
+  }
+
+  button:hover {
+    background-color: #f54d3e;
+    transition: all .5s ease-in-out;
+    box-shadow: 0px 0px 5px 3px #e7413373;
+  }
+
+  button::before {
+    content: "";
+    background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iNzUycHQiIGhlaWdodD0iNzUycHQiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDc1MiA3NTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiA8cGF0aCBkPSJtMzc2LjMyIDU1Mi4zYy0wLjM4NjcyIDAtMC43ODEyNS0wLjAxNTYyNS0xLjE3MTktMC4wNTA3ODEtMS4wNzgxLTAuMDc0MjE5LTIuMTM2Ny0wLjI2NTYyLTMuMTU2Mi0wLjU0Njg4LTIuNzMwNS0wLjU5Mzc1LTUuMjkzLTEuODUxNi03LjM0MzgtMy43ODEybC0xMzcuNTQtMTI5LjY2Yy00NC40NTMtNDEuOTAyLTQ5LjQ4LTExNS40Ni0xMS4yMTUtMTYzLjk3IDE5LjA4Mi0yNC4xODQgNDUuNzctMzguNjk1IDc1LjE1Mi00MC44NTUgMjguOTMtMi4xMTcyIDU2Ljg2MyA4LjAzMTIgNzguNjggMjguNTk4bDYuMjY1NiA1LjkwMjMgNi4yNjU2LTUuOTAyM2MyMS44MzItMjAuNTcgNDkuODA1LTMwLjY5MSA3OC42OTEtMjguNTk4IDI5LjM4MyAyLjE2NDEgNTYuMDY2IDE2LjY3NiA3NS4xNDUgNDAuODU1IDM4LjI2MiA0OC41MTIgMzMuMjM0IDEyMi4wNy0xMS4yMTUgMTYzLjk3bC0xMzcuNTQgMTI5LjY3Yy0yLjk5MjIgMi44MTY0LTYuOTM3NSA0LjM3NS0xMS4wMjMgNC4zNzV6bS03Ny44MTItMzA3LjAxYy0xLjY5NTMgMC0zLjM5NDUgMC4wNjI1LTUuMTAxNiAwLjE4NzUtMjAuMjgxIDEuNDk2MS0zOC44NTIgMTEuNjkxLTUyLjI4MSAyOC43MTEtMjguMjE1IDM1Ljc3My0yNC42MTMgODkuOTEgOC4wMjczIDEyMC42OGwxMjYuODQgMTE5LjU5IDEyNi44NC0xMTkuNTljMzIuNjQ1LTMwLjc3MyAzNi4yNDYtODQuOTEgOC4wMjczLTEyMC42OC0xMy40MjItMTcuMDItMzEuOTg0LTI3LjIxNS01Mi4yNy0yOC43MTEtMTkuODI4LTEuNDY0OC0zOS4xMDUgNS42MjExLTU0LjI4NSAxOS45MzRsLTE3LjI4NSAxNi4yOTNjLTYuMTk1MyA1LjgzOTgtMTUuODU5IDUuODM5OC0yMi4wNDcgMGwtMTcuMjg1LTE2LjI5M2MtMTMuODcxLTEzLjA3OC0zMS4xNzYtMjAuMTE3LTQ5LjE4LTIwLjExN3oiIGZpbGw9IiNmZmYiLz4KPC9zdmc+Cg==");
+    background-size: 100%;
+    background-repeat: no-repeat;
+    color: transparent;
+    position: relative;
+    width: 50px;
+    height: 50px;
+    display: block;
+    margin-right: 5px;
+    transition: all .9s ease-in-out;
+  }
+
+  button:hover::before {
+    background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iNzUycHQiIGhlaWdodD0iNzUycHQiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDc1MiA3NTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiA8cGF0aCBkPSJtMzY5Ljg0IDU1MC4yOGMwLjQ3MjY2IDAuNDcyNjYgMC45NDUzMSAwLjQ3MjY2IDAuOTQ1MzEgMC45NDUzMSA2NS4zNTUtNTEuNjIxIDE5My43LTE0OC4yMyAxOTMuNy0yNDkuMTEgMC01NS44ODMtNDUuNDY1LTEwMS4zNS0xMDEuMzUtMTAxLjM1LTM5Ljc4MSAwLTc0LjM1MiAyMy4yMDctOTAuOTI2IDU2LjgyOC0wLjQ3MjY2IDAuOTQ1MzEtMS40MjE5IDMuMzE2NC0xLjQyMTkgMy4zMTY0cy0wLjk0NTMxLTEuODk0NS0wLjk0NTMxLTIuMzY3MmMtMTYuMTAyLTM0LjA5LTUwLjY3Mi01Ny43Ny05MC45MjYtNTcuNzctNTUuODgzIDAtMTAxLjM1IDQ1LjQ2MS0xMDEuMzUgMTAxLjM0IDAgMTAxLjgyIDEyNy44NyAxOTcuMDEgMTkyLjI3IDI0OC4xNnoiIGZpbGw9IiNmZmYiLz4KPC9zdmc+Cg==");
+    transition: all .9s ease-in-out;
+    transform: rotate(-1turn);
+  }
+
+  button.liked {
+    background-color: #f54d3e; /* Color cuando está "liked" */
+    box-shadow: 0px 0px 5px 3px #e7413373;
+  }
+
+  button.liked::before {
+    background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iNzUycHQiIGhlaWdodD0iNzUycHQiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDc1MiA3NTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiA8cGF0aCBkPSJtMzY5Ljg0IDU1MC4yOGMwLjQ3MjY2IDAuNDcyNjYgMC45NDUzMSAwLjQ3MjY2IDAuOTQ1MzEgMC45NDUzMSA2NS4zNTUtNTEuNjIxIDE5My43LTE0OC4yMyAxOTMuNy0yNDkuMTEgMC01NS44ODMtNDUuNDY1LTEwMS4zNS0xMDEuMzUtMTAxLjM1LTM5Ljc4MSAwLTc0LjM1MiAyMy4yMDctOTAuOTI2IDU2LjgyOC0wLjQ3MjY2IDAuOTQ1MzEtMS40MjE5IDMuMzE2NC0xLjQyMTkgMy4zMTY0cy0wLjk0NTMxLTEuODk0NS0wLjk0NTMxLTIuMzY3MmMtMTYuMTAyLTM0LjA5LTUwLjY3Mi01Ny43Ny05MC45MjYtNTcuNzctNTUuODgzIDAtMTAxLjM1IDQ1LjQ2MS0xMDEuMzUgMTAxLjM0IDAgMTAxLjgyIDEyNy44NyAxOTcuMDEgMTkyLjI3IDI0OC4xNnoiIGZpbGw9IiNmZmYiLz4KPC9zdmc+Cg==");
+  }
+`;
+
 export default function LikeButton({ listingId, listingType, className }: LikeButtonProps) {
   const { toast } = useToast();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
+  const [isChecked, setIsChecked] = useState(false); // Para el estado visual del like
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -38,38 +91,36 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
       toast({
         title: "Acción Requerida",
         description: "Debes iniciar sesión para dar 'Me Gusta'.",
-        action: <Button variant="link" size="sm" asChild><Link href="/auth/signin">Iniciar Sesión</Link></Button>
+        action: <ShadButton variant="link" size="sm" asChild><Link href="/auth/signin">Iniciar Sesión</Link></ShadButton>
       });
-      setIsChecked(false);
       return;
     }
 
     if (isInteracting) return;
     setIsInteracting(true);
 
-    // Toggle isChecked state optimistically for UI feedback
     const newCheckedState = !isChecked;
-    setIsChecked(newCheckedState);
 
     try {
       const result = await recordUserListingInteractionAction(loggedInUser.id, {
         listingId,
         listingType,
-        interactionType: newCheckedState ? 'like' : 'skip', // Send 'skip' if unliking, 'like' if liking
+        interactionType: newCheckedState ? 'like' : 'skip', 
       });
 
       if (result.success) {
+        setIsChecked(newCheckedState); // Actualizar el estado visual solo si la acción fue exitosa
         if (newCheckedState && result.matchDetails?.matchFound && result.matchDetails.conversationId) {
           toast({
             title: "¡Es un Match Mutuo!",
             description: `${result.message} Revisa tus mensajes.`,
             duration: 7000,
             action: (
-              <Button variant="link" size="sm" asChild>
+              <ShadButton variant="link" size="sm" asChild>
                 <Link href={`/dashboard/messages/${result.matchDetails.conversationId}`}>
                   Ver Chat
                 </Link>
-              </Button>
+              </ShadButton>
             )
           });
           window.dispatchEvent(new CustomEvent('messagesUpdated'));
@@ -86,7 +137,8 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
           description: result.message || `No se pudo registrar tu preferencia.`,
           variant: "destructive",
         });
-        setIsChecked(!newCheckedState); // Revert UI on error
+        // No revertimos isChecked aquí, ya que el backend es la fuente de verdad.
+        // Considerar re-sincronizar el estado `isChecked` desde la base de datos si es necesario.
       }
     } catch (error: any) {
       toast({
@@ -94,61 +146,22 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
         description: `No se pudo registrar tu preferencia: ${error.message}`,
         variant: "destructive",
       });
-      setIsChecked(!newCheckedState); // Revert UI on error
     } finally {
       setIsInteracting(false);
     }
   };
 
   return (
-    <label className={className}>
-      <input
-        className="peer hidden"
-        type="checkbox"
-        checked={isChecked}
-        onChange={handleLike}
+    <StyledWrapper className={cn(className)}>
+      <button 
+        onClick={handleLike} 
         disabled={isInteracting || !loggedInUser}
-        title={!loggedInUser ? "Inicia sesión para dar Me Gusta" : "Me Gusta"}
-      />
-      <div className={cn(
-        "group flex w-fit cursor-pointer items-center gap-2 overflow-hidden border rounded-full border-pink-700 p-2 px-3 font-extrabold text-pink-500 transition-all duration-300 ease-in-out active:scale-90",
-        // Estilos cuando está marcado (checked)
-        "peer-checked:bg-pink-100 peer-checked:text-pink-700",
-        // Estilos de hover general (independiente de si está checked o no)
-        // Al hacer hover, el fondo se vuelve rosa oscuro, el texto blanco, y el gap se elimina.
-        "group-hover:bg-pink-500 group-hover:text-white group-hover:gap-0 group-hover:justify-center",
-        className
-      )}>
-        {isInteracting ? (
-            <Loader2 className="size-5 animate-spin" />
-        ) : (
-            <>
-                {/* Texto "Me Gusta" */}
-                <div className={cn(
-                  "z-10 transition-all duration-300 ease-in-out",
-                  // En hover, el texto se expande y se centra
-                  "group-hover:flex-grow group-hover:text-center"
-                )}>
-                  Me Gusta
-                </div>
-                {/* SVG del Corazón */}
-                <svg
-                  className={cn(
-                    "size-6 shrink-0 transition-all duration-300 ease-in-out",
-                    // En hover, el SVG desaparece y no ocupa espacio
-                    "group-hover:w-0 group-hover:h-0 group-hover:opacity-0 group-hover:m-0 group-hover:p-0"
-                  )}
-                  stroke="currentColor" // Hereda el color del texto padre (text-pink-500 o group-hover:text-white)
-                  strokeWidth="1.5"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none" // Asegurarse de que el fill sea none si se usa stroke
-                >
-                  <path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" strokeLinejoin="round" strokeLinecap="round" />
-                </svg>
-            </>
-        )}
-      </div>
-    </label>
+        className={cn(isChecked && 'liked')}
+        title={!loggedInUser ? "Inicia sesión para dar Me Gusta" : (isChecked ? "Quitar Me Gusta" : "Me Gusta")}
+        aria-pressed={isChecked}
+      >
+        {isInteracting ? <Loader2 className="h-5 w-5 animate-spin text-white" /> : <span>Me Gusta</span>}
+      </button>
+    </StyledWrapper>
   );
 }
