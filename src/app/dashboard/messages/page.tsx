@@ -1,4 +1,3 @@
-
 // src/app/dashboard/messages/page.tsx
 'use client';
 
@@ -142,4 +141,3 @@ export default function MessagesPage() {
     </div>
   );
 }
-

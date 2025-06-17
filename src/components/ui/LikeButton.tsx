@@ -26,13 +26,13 @@ const StyledWrapper = styled.div`
   .button {
     cursor: pointer;
     width: auto; 
-    min-width: 100px; /* Adjusted: from 130px to 100px */
-    height: 36px; /* Adjusted: from 40px to 36px */
+    min-width: 100px; 
+    height: 36px; 
     display: flex;
     align-items: center;
     background-color: hsl(var(--card)); 
     border: 1px solid hsl(var(--border));
-    box-shadow: 0px 2px 0px rgba(45, 45, 45, 0.05); /* Adjusted shadow */
+    box-shadow: 0px 2px 0px rgba(45, 45, 45, 0.05); 
     overflow: hidden;
     border-radius: 0.375rem; /* md */
     transition: all 0.2s ease;
@@ -40,11 +40,12 @@ const StyledWrapper = styled.div`
   }
 
   #fontlikebutton {
-    font-family: "Trebuchet MS", sans-serif;
+    /* font-family: "Trebuchet MS", sans-serif; // Removed to use default Inter */
+    line-height: 1.25rem; /* Added to match CustomDetailButton text line-height */
     font-weight: 600;
-    font-size: 12px; /* Adjusted: from 14px to 12px */
+    font-size: 12px; 
     color: hsl(var(--primary)); 
-    margin-left: 0.2em; /* Adjusted: from 0.3em to 0.2em */
+    margin-left: 0.2em; 
     transition: transform 0.3s ease-out, opacity 0.3s ease-out, color 0.2s ease;
   }
 
@@ -54,7 +55,7 @@ const StyledWrapper = styled.div`
 
   .button:hover svg#likeimg {
     stroke: hsl(var(--primary-foreground)); 
-    transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)); /* Adjust hover transform */
+    transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)); 
   }
 
   .button:hover #fontlikebutton {
@@ -63,13 +64,13 @@ const StyledWrapper = styled.div`
   }
 
   .button:active {
-    transform: scale(0.95) translateY(1px); /* Adjusted active effect */
+    transform: scale(0.95) translateY(1px); 
     box-shadow: 0px 1px 0px 0px hsla(var(--primary) / 0.5); 
   }
 
   .button:active svg#likeimg {
     stroke: hsl(var(--primary-foreground));
-    transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)) rotate(-5deg); /* Minor rotation */
+    transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)) rotate(-5deg); 
   }
   
   .button:active #fontlikebutton {
@@ -80,8 +81,8 @@ const StyledWrapper = styled.div`
   svg#likeimg {
     transition: transform 0.3s ease-out, stroke 0.2s ease; 
     stroke: hsl(var(--primary)); 
-    width: 15px; /* Adjusted: from 20px to 15px */
-    height: 15px; /* Adjusted: from 20px to 15px */
+    width: 15px; 
+    height: 15px; 
   }
 
   #rightpart {
@@ -90,7 +91,7 @@ const StyledWrapper = styled.div`
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0 8px; /* Adjusted: from 0 10px to 0 8px */
+    padding: 0 8px; 
     transition: background-color 0.2s ease;
     /* Define CSS variables for dynamic calculation in hover transform */
     --min-width: 100px;
@@ -103,12 +104,12 @@ const StyledWrapper = styled.div`
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    font-family: "Trebuchet MS", sans-serif;
+    /* font-family: "Trebuchet MS", sans-serif; // Removed to use default Inter */
     font-weight: 600;
-    font-size: 11px; /* Adjusted: from 12px to 11px */
+    font-size: 11px; 
     background-color: hsl(var(--primary)); 
     color: hsl(var(--primary-foreground));
-    width: 28px; /* Adjusted: from 36px to 28px */
+    width: 28px; 
     height: 100%;
     transition: all 0.2s ease;
     border-right: 1px solid hsla(var(--primary) / 0.2); 
@@ -161,11 +162,11 @@ const StyledWrapper = styled.div`
   }
 
   input#checknumber:checked ~ .button:hover svg#likeimg {
-    stroke: hsl(var(--primary-foreground)); /* Should be accent-foreground if button bg is accent on hover? */
+    stroke: hsl(var(--primary-foreground)); 
     transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)); 
   }
   input#checknumber:checked ~ .button:hover #fontlikebutton {
-    color: hsl(var(--primary-foreground)); /* Similarly, should this be accent-foreground? */
+    color: hsl(var(--primary-foreground)); 
     transform: translateX(200%); 
     opacity: 0;
   }
@@ -211,7 +212,7 @@ const StyledWrapper = styled.div`
     background: hsl(var(--muted) / 0.5); 
     color: hsl(var(--muted-foreground));
   }
-`;
+</StyledWrapper>
 
 export default function LikeButton({ listingId, listingType, className }: LikeButtonProps) {
   const { toast } = useToast();
@@ -279,18 +280,18 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
         
         if (newInteractionType === 'like' && result.matchDetails?.matchFound && result.matchDetails.conversationId) {
           toast({
-            title: "¡Es un Match Mutuo!",
-            description: `${result.message} Revisa tus mensajes.`,
-            duration: 7000,
-            action: (
-              <ShadButton variant="link" size="sm" asChild>
-                <Link href={`/dashboard/messages/${result.matchDetails.conversationId}`}>
-                  Ver Chat
-                </Link>
-              </ShadButton>
-            )
-          });
-          window.dispatchEvent(new CustomEvent('messagesUpdated'));
+                title: "¡Es un Match Mutuo!",
+                description: `${result.message} Revisa tus mensajes.`,
+                duration: 7000,
+                action: (
+                    <ShadButton variant="link" size="sm" asChild>
+                        <Link href={`/dashboard/messages/${result.matchDetails.conversationId}`}>
+                            Ver Chat
+                        </Link>
+                    </ShadButton>
+                )
+            });
+            window.dispatchEvent(new CustomEvent('messagesUpdated'));
         }
       } else {
          toast({
