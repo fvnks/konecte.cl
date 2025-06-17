@@ -1,16 +1,16 @@
-
 // src/app/dashboard/messages/page.tsx
 'use client';
 
 import React, { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+// Removed: import { Button } from '@/components/ui/button'; // Standard Button no longer used for refresh
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, MessageSquare, UserCircle, Inbox, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Loader2, MessageSquare, UserCircle, Inbox, AlertTriangle } from 'lucide-react';
 import type { ChatConversationListItem, User as StoredUserType } from '@/lib/types';
 import { getUserConversationsAction } from '@/actions/chatActions';
 import { useToast } from '@/hooks/use-toast';
-import ConversationListItem from '@/components/chat/ConversationListItem'; // Ensure this path is correct
+import ConversationListItem from '@/components/chat/ConversationListItem';
+import StyledRefreshButton from '@/components/ui/StyledRefreshButton'; // Import the new button
 
 export default function MessagesPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUserType | null>(null);
@@ -20,8 +20,8 @@ export default function MessagesPage() {
   const { toast } = useToast();
 
   const fetchConversations = async (userId: string) => {
-    if (isRefreshing) return; // Avoid multiple refreshes
-    if (!isLoading) setIsLoading(true); // Show general loader if not already loading
+    if (isRefreshing) return; 
+    if (!isLoading) setIsLoading(true); 
 
     try {
       const fetchedConversations = await getUserConversationsAction(userId);
@@ -51,21 +51,22 @@ export default function MessagesPage() {
         setIsLoading(false);
       }
     } else {
-      setIsLoading(false); // No user logged in
+      setIsLoading(false); 
     }
-  }, []); // Empty dependency array, runs once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
 
   const handleRefresh = () => {
     if (loggedInUser?.id) {
         startRefreshingTransition(() => {
-            setIsLoading(true); // Set loading to true when refresh starts
+            setIsLoading(true); 
             fetchConversations(loggedInUser.id);
         });
     }
   };
 
 
-  if (isLoading && conversations.length === 0) { // Show full page loader only on initial load
+  if (isLoading && conversations.length === 0) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-12rem)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -105,12 +106,14 @@ export default function MessagesPage() {
             </CardTitle>
             <CardDescription>Aquí encontrarás todas tus conversaciones.</CardDescription>
           </div>
-           <Button onClick={handleRefresh} variant="outline" size="icon" disabled={isRefreshing || isLoading} aria-label="Refrescar conversaciones">
-            <RefreshCw className={`h-4 w-4 ${isRefreshing || isLoading ? 'animate-spin' : ''}`} />
-          </Button>
+           <StyledRefreshButton 
+            onClick={handleRefresh} 
+            disabled={isRefreshing || isLoading}
+            aria-label="Refrescar conversaciones"
+           />
         </CardHeader>
         <CardContent>
-          {isLoading && conversations.length > 0 && ( // Show subtle loader when refreshing non-empty list
+          {isLoading && conversations.length > 0 && ( 
              <div className="flex items-center justify-center py-4 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin mr-2" /> Actualizando...
             </div>
