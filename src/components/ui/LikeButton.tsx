@@ -217,7 +217,7 @@ const StyledWrapper = styled.div`
     background: hsl(var(--muted) / 0.5); 
     color: hsl(var(--muted-foreground));
   }
-</StyledWrapper>
+`;
 
 export default function LikeButton({ listingId, listingType, className }: LikeButtonProps) {
   const { toast } = useToast();
@@ -373,4 +373,3 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
     </StyledWrapper>
   );
 }
-
