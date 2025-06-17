@@ -1,3 +1,4 @@
+
 // src/components/ui/LikeButton.tsx
 'use client';
 
@@ -27,7 +28,7 @@ const StyledWrapper = styled.div`
     cursor: pointer;
     width: auto; 
     min-width: 100px; 
-    height: 36px; 
+    height: 36px; /* Consistent height for sm-like button */
     display: flex;
     align-items: center;
     background-color: hsl(var(--card)); 
@@ -37,11 +38,11 @@ const StyledWrapper = styled.div`
     border-radius: 0.375rem; /* md */
     transition: all 0.2s ease;
     padding: 0; 
+    font-family: var(--font-inter, Inter, sans-serif); /* Ensure consistent font */
   }
 
   #fontlikebutton {
-    /* font-family: "Trebuchet MS", sans-serif; // Removed to use default Inter */
-    line-height: 1.25rem; /* Added to match CustomDetailButton text line-height */
+    line-height: 1.25rem; /* Consistent line-height */
     font-weight: 600;
     font-size: 12px; 
     color: hsl(var(--primary)); 
@@ -61,6 +62,7 @@ const StyledWrapper = styled.div`
   .button:hover #fontlikebutton {
     transform: translateX(200%); 
     opacity: 0;
+    color: hsl(var(--primary-foreground)); /* Change text color on hover to match background */
   }
 
   .button:active {
@@ -104,7 +106,6 @@ const StyledWrapper = styled.div`
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    /* font-family: "Trebuchet MS", sans-serif; // Removed to use default Inter */
     font-weight: 600;
     font-size: 11px; 
     background-color: hsl(var(--primary)); 
@@ -191,6 +192,8 @@ const StyledWrapper = styled.div`
     color: hsl(var(--muted-foreground));
     transform: none;
     opacity: 1;
+    font-family: var(--font-inter, Inter, sans-serif); /* Ensure consistent font */
+    line-height: 1.25rem; /* Ensure consistent line-height */
   }
   .button.disabled #leftpart,
   .button.disabled:hover #leftpart {
@@ -206,6 +209,8 @@ const StyledWrapper = styled.div`
    input#checknumber:checked ~ .button.disabled:hover #fontlikebutton {
     color: hsl(var(--muted-foreground));
     opacity: 1;
+    font-family: var(--font-inter, Inter, sans-serif); /* Ensure consistent font */
+    line-height: 1.25rem; /* Ensure consistent line-height */
   }
   input#checknumber:checked ~ .button.disabled #leftpart,
   input#checknumber:checked ~ .button.disabled:hover #leftpart {
@@ -281,29 +286,35 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
         if (newInteractionType === 'like' && result.matchDetails?.matchFound && result.matchDetails.conversationId) {
           toast({
                 title: "¡Es un Match Mutuo!",
-                description: `${result.message} Revisa tus mensajes.`,
+                description: (result.message || "") + " Revisa tus mensajes.",
                 duration: 7000,
                 action: (
                     <ShadButton variant="link" size="sm" asChild>
-                        <Link href={`/dashboard/messages/${result.matchDetails.conversationId}`}>
+                        <Link href={"/dashboard/messages/" + result.matchDetails.conversationId}>
                             Ver Chat
                         </Link>
                     </ShadButton>
                 )
             });
             window.dispatchEvent(new CustomEvent('messagesUpdated'));
+        } else {
+            toast({
+                title: "Preferencia Guardada",
+                description: result.message || "Tu preferencia ha sido registrada.",
+                duration: 3000,
+            });
         }
       } else {
          toast({
             title: "Error",
-            description: result.message || `No se pudo registrar tu preferencia.`,
+            description: result.message || "No se pudo registrar tu preferencia.",
             variant: "destructive",
         });
       }
     } catch (error: any) {
       toast({
         title: "Error Inesperado",
-        description: `No se pudo registrar tu preferencia: ${error.message}`,
+        description: "No se pudo registrar tu preferencia: " + error.message,
         variant: "destructive",
       });
     } finally {
@@ -321,14 +332,14 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
       <div className="button-container">
         <input 
           hidden 
-          id={`checknumber-${listingId}-${listingType}`} 
+          id={"checknumber-" + listingId + "-" + listingType} 
           type="checkbox" 
           checked={currentUserHasLiked} 
           onChange={() => { /* Logic handled by label's onClick */ }}
           disabled={buttonDisabled}
         />
         <label 
-          htmlFor={`checknumber-${listingId}-${listingType}`}
+          htmlFor={"checknumber-" + listingId + "-" + listingType}
           className={cn("button", buttonDisabled && "disabled")}
           onClick={(e) => { if(buttonDisabled) e.preventDefault(); else handleLikeToggle(); }}
           title={!loggedInUser ? "Inicia sesión para dar Me Gusta" : (currentUserHasLiked ? "Quitar Me Gusta" : "Me Gusta")}
@@ -362,3 +373,4 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
     </StyledWrapper>
   );
 }
+
