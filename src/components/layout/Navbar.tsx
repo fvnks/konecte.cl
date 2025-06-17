@@ -54,7 +54,7 @@ const StyledNavLink = styled(Link)`
   font-size: 0.9rem;
   text-decoration: none;
   border-radius: 8px; /* Slight rounding for aesthetics */
-  transition: color 0.2s ease-in-out;
+  transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out; // Added background-color transition
   position: relative; /* For pseudo-elements */
   z-index: 1; 
 
@@ -64,7 +64,7 @@ const StyledNavLink = styled(Link)`
 
   & svg {
     color: hsl(var(--muted-foreground));
-    transition: color 0.2s;
+    transition: color 0.2s, stroke 0.2s; // Added stroke transition
   }
 
   &::before,
@@ -87,17 +87,18 @@ const StyledNavLink = styled(Link)`
   }
 
   &:hover {
-    color: hsl(var(--primary)); /* Text color change on hover */
-  }
-  
-  &:hover svg {
-    color: hsl(var(--primary)); /* Icon color change on hover */
-    stroke: hsl(var(--primary));
-  }
+    color: #fff; // Text color on hover
+    background-color: #49A7F3; // Background color on hover
 
-  &:hover::before,
-  &:hover::after {
-    width: 100%;
+    & svg {
+      color: #fff; // Icon color on hover
+      stroke: #fff; // Ensure stroke also changes if applicable
+    }
+
+    &::before,
+    &::after {
+      width: 100%;
+    }
   }
 `;
 
