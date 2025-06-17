@@ -120,15 +120,13 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
                 </div>
               ))}
             </div>
-            {/* Botones de compartir */}
-            <div className="mt-3 flex items-center gap-2"> {/* Reducido mt-4 a mt-3 */}
-              <span className="text-sm text-muted-foreground">Compartir:</span>
-              <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={property.title} />
-            </div>
           </CardHeader>
-          <CardContent className="p-6 md:p-8 pt-0 space-y-5"> {/* Reducido space-y-6 a space-y-5 */}
+          <CardContent className="p-6 md:p-8 pt-0 space-y-5"> 
             <div>
-              <h3 className="text-xl lg:text-2xl font-semibold mb-3 font-headline">Descripción de la Propiedad</h3>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-xl lg:text-2xl font-semibold font-headline">Descripción de la Propiedad</h3>
+                <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={property.title} />
+              </div>
               <p className="text-muted-foreground whitespace-pre-line leading-relaxed text-base">{property.description}</p>
             </div>
 
@@ -149,7 +147,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             )}
             
             {property.author && (
-              <div className="border-t pt-6 mt-6"> {/* Ajustado mt para consistencia con space-y */}
+              <div className="border-t pt-6 mt-6"> 
                 <h3 className="text-xl lg:text-2xl font-semibold mb-3 font-headline">Información del Anunciante</h3>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 bg-secondary/30 p-4 rounded-lg">
                   <Avatar className="h-16 w-16">
@@ -184,4 +182,3 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
     </>
   );
 }
-

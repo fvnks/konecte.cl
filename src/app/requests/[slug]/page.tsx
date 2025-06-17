@@ -84,11 +84,10 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
             <SearchIcon className="mr-3 h-8 w-8 text-primary flex-shrink-0 mt-1"/>
             {request.title}
           </CardTitle>
-          <CardDescription className="text-base lg:text-lg text-muted-foreground mt-3 leading-relaxed">
-            {request.description}
-          </CardDescription>
-          <div className="mt-4 flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Compartir:</span>
+          <div className="flex justify-between items-center mt-3">
+            <CardDescription className="text-base lg:text-lg text-muted-foreground leading-relaxed flex-grow pr-4">
+                {request.description}
+            </CardDescription>
             <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={request.title} />
           </div>
         </CardHeader>
@@ -161,4 +160,3 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
     </div>
   );
 }
-
