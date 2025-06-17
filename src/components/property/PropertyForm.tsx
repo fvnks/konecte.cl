@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Form,
-  FormControl, // Kept for standard fields
+  // FormControl, // No longer needed for the images field
   FormDescription,
   FormField,
   FormItem,
@@ -81,7 +81,7 @@ export default function PropertyForm() {
       bedrooms: 0,
       bathrooms: 0,
       areaSqMeters: undefined,
-      images: [], // This field in the form will hold the array of uploaded image URLs (string[])
+      images: [], 
       features: "",
     },
   });
@@ -115,6 +115,15 @@ export default function PropertyForm() {
       setImageFiles(prevFiles => [...prevFiles, ...validFiles]);
       const newPreviews = validFiles.map(file => URL.createObjectURL(file));
       setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
+      
+      // Update react-hook-form state for 'images' field
+      // This is important for validation to work correctly with the custom input
+      // We'll update it with the current array of preview URLs (or file names, or file count)
+      // Since schema expects string[], URLs are appropriate if they become available after upload
+      // For now, let's use the number of files to trigger validation state.
+      // The actual URLs will be set in onSubmit.
+      form.setValue('images', [...imagePreviews, ...newPreviews], { shouldValidate: true, shouldDirty: true });
+      
       event.target.value = ''; 
     }
   };
@@ -127,6 +136,8 @@ export default function PropertyForm() {
       if (removedUrl) {
         URL.revokeObjectURL(removedUrl);
       }
+      // Update react-hook-form state after removal
+      form.setValue('images', newPreviews, { shouldValidate: true, shouldDirty: true });
       return newPreviews;
     });
   };
@@ -210,46 +221,48 @@ export default function PropertyForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl> <Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /> </FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
-        <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl> <Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+        {/* Standard Fields using FormControl */}
+        <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
+        <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField control={form.control} name="propertyType" render={({ field }) => ( <FormItem> <FormLabel>Tipo de Transacción</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Selecciona arriendo o venta" /> </SelectTrigger> </FormControl> <SelectContent> {propertyTypeOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría de Propiedad</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Selecciona una categoría" /> </SelectTrigger> </FormControl> <SelectContent> {categoryOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="propertyType" render={({ field }) => ( <FormItem> <FormLabel>Tipo de Transacción</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <Input type="hidden" {...field} /> <SelectTrigger> <SelectValue placeholder="Selecciona arriendo o venta" /> </SelectTrigger> <SelectContent> {propertyTypeOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría de Propiedad</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <Input type="hidden" {...field} /> <SelectTrigger> <SelectValue placeholder="Selecciona una categoría" /> </SelectTrigger> <SelectContent> {categoryOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 85000000" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> </FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <FormControl> <Input placeholder="Ej: CLP, UF, USD" {...field} /> </FormControl> <FormDescription>Código de 3 letras para la moneda.</FormDescription> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <Input type="number" placeholder="Ej: 85000000" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <Input placeholder="Ej: CLP, UF, USD" {...field} /> <FormDescription>Código de 3 letras para la moneda.</FormDescription> <FormMessage /> </FormItem> )}/>
         </div>
-        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl> <Input placeholder="Ej: Av. Siempre Viva 742, Villa Alemana" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <Input placeholder="Ej: Av. Siempre Viva 742, Villa Alemana" {...field} /> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl> <Input placeholder="Ej: Valparaíso" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl> <Input placeholder="Ej: Chile" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <Input placeholder="Ej: Valparaíso" {...field} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <Input placeholder="Ej: Chile" {...field} /> <FormMessage /> </FormItem> )}/>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 3" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> </FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Baños</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 2" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> </FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="areaSqMeters" render={({ field }) => ( <FormItem> <FormLabel>Superficie (m²)</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 120" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> </FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <Input type="number" placeholder="Ej: 3" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Baños</FormLabel> <Input type="number" placeholder="Ej: 2" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="areaSqMeters" render={({ field }) => ( <FormItem> <FormLabel>Superficie (m²)</FormLabel> <Input type="number" placeholder="Ej: 120" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> <FormMessage /> </FormItem> )}/>
         </div>
         
-        {/* Custom Image Upload Field - No FormControl */}
+        {/* Custom Image Upload Field - Bypassing FormControl */}
         <FormField
           control={form.control}
-          name="images" // This field in RHF schema is string[]
-          render={() => { // The 'field' object is not directly used for value/onChange on the visible input
-            const { formItemId, formDescriptionId, formMessageId, error } = useFormField(); // Get context values
+          name="images"
+          render={({ field }) => { // RHF field passed here, but we control value/onChange customly
+            const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
             return (
-              <FormItem id={formItemId}> {/* Associate FormItem with the field */}
-                {/* No explicit FormLabel here, the dropzone label serves as the primary label */}
-                <label // This is the clickable dropzone area
-                  htmlFor="image-upload-input-actual" // Points to the actual hidden file input
-                  // The id for this label itself will be formItemId via FormItem's context
-                  aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`}
-                  aria-invalid={!!error}
+              <FormItem id={formItemId}>
+                <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
+                {/* Main interactive element for the custom input */}
+                <label
+                  htmlFor="image-upload-input-actual"
                   className={cn(
                     "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors",
                     "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50",
-                    isUploading && "cursor-not-allowed opacity-70"
+                    isUploading && "cursor-not-allowed opacity-70",
+                    error && "border-destructive" // Add error styling if RHF signals an error
                   )}
+                  aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`}
+                  aria-invalid={!!error}
                 >
                   <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
                     <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
@@ -259,28 +272,24 @@ export default function PropertyForm() {
                     <p className="text-xs text-muted-foreground">
                       Imágenes (Máx. {MAX_IMAGES}, hasta {MAX_FILE_SIZE_MB}MB c/u)
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      PNG, JPG, GIF, WEBP
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Imágenes subidas: {imagePreviews.length} de {MAX_IMAGES}
-                    </p>
+                    <p className="text-xs text-muted-foreground">PNG, JPG, GIF, WEBP</p>
+                    <p className="text-xs text-muted-foreground mt-1">Imágenes subidas: {imagePreviews.length} de {MAX_IMAGES}</p>
                   </div>
                   <Input // Actual hidden file input
-                    id="image-upload-input-actual" // Unique ID for the file input
+                    id="image-upload-input-actual"
                     type="file"
                     className="hidden"
                     multiple
-                    onChange={handleImageChange} // Uses local handler
+                    onChange={(e) => {
+                        handleImageChange(e);
+                        // Trigger RHF validation when files change
+                        // We're using form.setValue for images in handleImageChange now
+                    }}
                     accept="image/png, image/jpeg, image/gif, image/webp"
                     disabled={imagePreviews.length >= MAX_IMAGES || isUploading}
-                    // No {...field} spread here as react-hook-form's 'images' field is an array of URLs, not FileList
                   />
                 </label>
-                <FormDescription id={formDescriptionId}> {/* Ensure this ID is set for aria-describedby */}
-                  Sube imágenes claras y de buena calidad de tu propiedad.
-                </FormDescription>
-                
+                <FormDescription id={formDescriptionId}>Sube imágenes claras y de buena calidad de tu propiedad.</FormDescription>
                 {imagePreviews.length > 0 && (
                   <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                     {imagePreviews.map((previewUrl, index) => (
@@ -307,26 +316,13 @@ export default function PropertyForm() {
                     Subiendo imágenes...
                   </div>
                 )}
-                <FormMessage /> {/* Displays validation errors for the 'images' field */}
+                <FormMessage id={formMessageId} />
               </FormItem>
             );
           }}
         />
 
-        <FormField
-          control={form.control}
-          name="features"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Características Adicionales (separadas por comas)</FormLabel>
-              <FormControl>
-                <Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} />
-              </FormControl>
-              <FormDescription>Lista características importantes de tu propiedad.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
         
         <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth || !loggedInUser || isUploading}>
           {(form.formState.isSubmitting || isCheckingAuth || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
