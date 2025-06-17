@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import styled from 'styled-components';
-import React from 'react';
+import React from 'react'; // Asegurarse de que React esté importado
 
 interface CustomDetailButtonProps {
   href: string;
@@ -38,19 +38,19 @@ const StyledWrapper = styled.div`
   .btn-23 {
     -webkit-tap-highlight-color: transparent;
     -webkit-appearance: button;
-    background-color: #369DF2; /* Color de fondo principal cambiado */
+    background-color: #369DF2; /* Color de fondo principal */
     background-image: none;
     color: #fff;
     cursor: pointer;
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif,
       Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
-    font-size: 100%; /* Relativo al contenedor, usualmente text-sm (0.875rem) en las tarjetas */
+    font-size: 0.875rem; /* Ajustado para text-sm */
     font-weight: 900;
-    line-height: 1.5;
+    line-height: 1.25rem; /* Ajustado para leading-5 */
     margin: 0;
     -webkit-mask-image: -webkit-radial-gradient(#000, #fff);
-    padding: 0; /* El padding se define más abajo */
+    padding: 0;
     text-transform: uppercase;
   }
 
@@ -62,7 +62,7 @@ const StyledWrapper = styled.div`
     outline: auto;
   }
 
-  .btn-23 svg { /* Aunque no hay SVG directo, se mantiene por si se añade */
+  .btn-23 svg {
     display: block;
     vertical-align: middle;
   }
@@ -72,15 +72,12 @@ const StyledWrapper = styled.div`
   }
 
   .btn-23 {
-    border-radius: 99rem; /* fully rounded */
-    border-width: 2px; /* Podría ser border: 2px solid transparent; si se quiere un borde del color de fondo */
-    border-color: transparent; /* Para asegurar que el borde inicial no interfiera con el bg */
+    border-radius: 99rem;
+    border-width: 2px;
+    border-color: transparent;
     overflow: hidden;
-    padding: 0.6rem 1.5rem; /* Ajustado para un tamaño más similar a un botón 'sm' */
+    padding: 0.6rem 1.5rem; /* Ajustado para un tamaño más compacto */
     position: relative;
-    /* Ajustar el tamaño de fuente aquí si 100% no es el deseado para el texto del botón */
-    font-size: 0.875rem; /* text-sm */
-    line-height: 1.25rem; /* leading-5 */
   }
 
   .btn-23 span {
@@ -92,19 +89,17 @@ const StyledWrapper = styled.div`
   }
 
   .btn-23 .marquee {
-    --spacing: 7em; /* Aumentado para asegurar que el texto "Ver Detalles" tenga espacio */
+    --spacing: 10em; /* Aumentado para más espacio */
     --start: 0em;
-    --end: 7em; /* Coincide con --spacing */
-    -webkit-animation: marquee 1s linear infinite;
-    animation: marquee 1s linear infinite;
+    --end: 10em; /* Aumentado para más espacio */
+    -webkit-animation: marquee 1.5s linear infinite; /* Duración ligeramente aumentada para texto más largo */
+    animation: marquee 1.5s linear infinite; /* Duración ligeramente aumentada */
     -webkit-animation-play-state: paused;
     animation-play-state: paused;
     opacity: 0;
     position: relative;
-    /* El text-shadow crea copias del texto para el efecto marquee */
-    /* El color del shadow debe ser el mismo que el color del texto para que se vea como texto repetido */
     text-shadow: #fff var(--spacing) 0, #fff calc(var(--spacing) * -1) 0,
-                 #fff calc(var(--spacing) * -2) 0; 
+      #fff calc(var(--spacing) * -2) 0;
   }
 
   .btn-23:hover .marquee {
