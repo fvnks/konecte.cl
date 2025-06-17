@@ -190,10 +190,12 @@ export default function InteractiveAIMatching() {
               </FormItem>
             )}
           />
-          <GenerateAIButton type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-            Buscar Propiedades con IA
-          </GenerateAIButton>
+          <div className="text-center">
+            <GenerateAIButton type="submit" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+              Buscar Propiedades con IA
+            </GenerateAIButton>
+          </div>
         </form>
       </Form>
 
