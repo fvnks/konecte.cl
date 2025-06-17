@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarDays, UserCircle, Building, AlertCircle, CheckCircle2, XCircle, History, CheckSquare, UserX, UserCheck, Clock, Edit3, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
+import StyledRejectButton from '@/components/ui/StyledRejectButton'; // Importar el nuevo botón
 
 interface VisitListItemProps {
   visit: PropertyVisit;
@@ -97,7 +98,6 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
       )}
       <CardFooter className="p-4 pt-2 border-t flex flex-wrap gap-2 justify-end">
         {/* --- Acciones para el Propietario --- */}
-        {/* Propietario puede confirmar propuesta original, reagendar, o rechazar si está pendiente */}
         {isOwner && visit.status === 'pending_confirmation' && (
           <>
             <Button size="sm" variant="default" onClick={() => onManageVisit(visit, 'confirm_original_proposal')}>Confirmar Hora</Button>
@@ -105,7 +105,6 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
             <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_pending_request')}>Rechazar</Button>
           </>
         )}
-        {/* Propietario gestiona visita confirmada */}
         {isOwner && visit.status === 'confirmed' && (
            <>
             <Button size="sm" variant="outline" onClick={() => onManageVisit(visit, 'mark_completed')}>Marcar Completada</Button>
@@ -113,34 +112,30 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
             <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_confirmed_visit')}>Cancelar Confirmada</Button>
            </>
         )}
-        {/* Propietario ve estado si reagendó y espera respuesta */}
         {isOwner && visit.status === 'rescheduled_by_owner' && (
              <p className="text-xs text-muted-foreground italic w-full text-right">Esperando respuesta del visitante a tu nueva propuesta.</p>
         )}
-        {/* Propietario ve estado finalizado o cancelado */}
         {isOwner && (visit.status === 'completed' || visit.status === 'visitor_no_show' || visit.status === 'owner_no_show' || visit.status.startsWith('cancel')) && (
             <p className="text-xs text-muted-foreground italic w-full text-right">Visita finalizada o cancelada.</p>
         )}
 
         {/* --- Acciones para el Visitante --- */}
-        {/* Visitante puede cancelar su solicitud si está pendiente o confirmada */}
         {isVisitor && (visit.status === 'pending_confirmation' || visit.status === 'confirmed') && (
           <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_own_request')}>
             {visit.status === 'pending_confirmation' ? 'Cancelar Solicitud' : 'Cancelar Visita Confirmada'}
           </Button>
         )}
-        {/* Visitante responde a reagendamiento del propietario */}
         {isVisitor && visit.status === 'rescheduled_by_owner' && (
           <>
             <Button size="sm" variant="default" onClick={() => onManageVisit(visit, 'accept_owner_reschedule')}>Aceptar Nueva Hora</Button>
-            <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'reject_owner_reschedule')}>Rechazar Nueva Hora</Button>
+            <StyledRejectButton onClick={() => onManageVisit(visit, 'reject_owner_reschedule')}>
+              Rechazar
+            </StyledRejectButton>
           </>
         )}
-        {/* Visitante marca si propietario no asistió (solo si estaba confirmada y no la canceló él) */}
-        {isVisitor && visit.status === 'confirmed' && ( // O podría ser también si fue 'completed' y quiere reportar
+        {isVisitor && visit.status === 'confirmed' && (
             <Button size="sm" variant="outline" onClick={() => onManageVisit(visit, 'mark_owner_no_show')}>Propietario No Asistió</Button>
         )}
-         {/* Visitante ve estado finalizado o cancelado */}
          {isVisitor && (visit.status === 'completed' || visit.status === 'visitor_no_show' || visit.status === 'owner_no_show' || visit.status.startsWith('cancel')) && (
             <p className="text-xs text-muted-foreground italic w-full text-right">Visita finalizada o cancelada.</p>
         )}
