@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays, ShieldCheck } from 'lucide-react';
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
-import LikeButton from '@/components/ui/LikeButton'; 
+import LikeButton from '@/components/ui/LikeButton';
 
 interface PropertyListItemProps {
   property: PropertyListing;
@@ -54,7 +54,7 @@ const getRoleDisplayName = (roleId?: string, roleName?: string): string | null =
 
 export default function PropertyListItem({ property }: PropertyListItemProps) {
   const {
-    id, 
+    id,
     title,
     slug,
     images,
@@ -68,7 +68,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     commentsCount,
     propertyType,
     areaSqMeters,
-    description, 
+    description,
     createdAt,
   } = property;
 

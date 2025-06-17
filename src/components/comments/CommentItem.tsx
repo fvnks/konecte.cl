@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Heart, MessageSquare, UserCircle, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import styled from 'styled-components';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { toggleCommentLikeAction, getCommentInteractionDetailsAction } from '@/actions/commentActions';
@@ -18,142 +17,6 @@ interface CommentItemProps {
   comment: CommentType;
   loggedInUser: StoredUserType | null;
 }
-
-const StyledCommentItemWrapper = styled.div`
-  display: grid;
-  grid-template-columns: 35px 1fr; 
-  gap: 1rem; 
-
-  .comment-react {
-    width: 35px;
-    height: fit-content;
-    display: flex;
-    flex-direction: column; 
-    align-items: center;
-    margin: 0;
-    background-color: hsl(var(--secondary) / 0.7);
-    border-radius: 0.375rem; 
-    padding: 0.25rem 0; 
-  }
-
-  .comment-react button {
-    width: 30px; 
-    height: 30px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: transparent;
-    border: 0;
-    outline: none;
-    color: hsl(var(--muted-foreground));
-    transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
-    border-radius: 50%; 
-    cursor: pointer;
-  }
-  .comment-react button.liked svg {
-    fill: hsl(var(--destructive)); /* Use destructive for liked heart, same as producthunt */
-    stroke: hsl(var(--destructive));
-  }
-
-  .comment-react button:hover:not(:disabled) {
-    background-color: hsl(var(--destructive) / 0.1);
-    color: hsl(var(--destructive));
-  }
-  .comment-react button:disabled {
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-  
-  .comment-react hr {
-    width: 70%;
-    height: 1px;
-    background-color: hsl(var(--border));
-    margin: 0.25rem auto; 
-    border: 0;
-  }
-
-  .comment-react span { 
-    height: 20px; 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: auto;
-    font-size: 0.75rem; 
-    font-weight: 600;
-    color: hsl(var(--muted-foreground));
-  }
-
-  .comment-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem; 
-    padding: 0;
-    margin: 0;
-  }
-
-  .comment-container .user {
-    display: flex; 
-    align-items: center;
-    gap: 0.625rem; 
-  }
-
-  .comment-container .user .user-pic-wrapper { 
-    width: 36px; 
-    height: 36px;
-    position: relative;
-  }
-  
-  .comment-container .user .user-info {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 0.125rem; 
-  }
-
-  .comment-container .user .user-info span { 
-    font-weight: 600; 
-    font-size: 0.875rem; 
-    color: hsl(var(--card-foreground));
-  }
-
-  .comment-container .user .user-info p { 
-    font-weight: 400; 
-    font-size: 0.75rem; 
-    color: hsl(var(--muted-foreground));
-  }
-
-  .comment-container .comment-content {
-    font-size: 0.875rem; 
-    line-height: 1.6; 
-    font-weight: 400; 
-    color: hsl(var(--foreground) / 0.9);
-    white-space: pre-line;
-    padding: 0.5rem 0.75rem; 
-    background-color: hsl(var(--background)); 
-    border-radius: 0.375rem; 
-    border: 1px solid hsl(var(--border) / 0.7);
-  }
-  
-  .comment-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem; 
-    margin-top: 0.5rem; 
-  }
-  .comment-actions button {
-    font-size: 0.75rem; 
-    padding: 0.25rem 0.5rem; 
-    height: auto;
-    color: hsl(var(--muted-foreground));
-  }
-  .comment-actions button:hover {
-    color: hsl(var(--primary));
-    background-color: hsl(var(--accent) / 0.1);
-  }
-`;
 
 export default function CommentItem({ comment, loggedInUser }: CommentItemProps) {
   const authorName = comment.author?.name || 'Usuario Anónimo';
@@ -218,52 +81,48 @@ export default function CommentItem({ comment, loggedInUser }: CommentItemProps)
       setIsLiking(false);
     }
   };
-  
-  const heartIconColor = currentUserLiked ? 'hsl(var(--destructive))' : 'currentColor'; // currentcolor from button
+
+  const heartIconColor = currentUserLiked ? 'hsl(var(--destructive))' : 'currentColor';
   const heartIconFill = currentUserLiked ? 'hsl(var(--destructive))' : 'none';
 
   return (
-    <StyledCommentItemWrapper>
-      <div className="comment-react">
-        <button 
-          onClick={handleToggleLike} 
-          disabled={isLiking || isLoadingInitialState || !loggedInUser}
-          className={cn(currentUserLiked && "liked")}
-          title={currentUserLiked ? "Quitar Me gusta" : "Me gusta"}
-        >
-          {isLiking || isLoadingInitialState ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Heart className="h-4 w-4" style={{ fill: heartIconFill, stroke: heartIconColor }}/>
-          )}
-        </button>
-        <hr />
-        <span>{totalLikes}</span>
-      </div>
-      <div className="comment-container">
-        <div className="user">
-          <div className="user-pic-wrapper">
-            <Avatar className="h-9 w-9"> 
-              <AvatarImage src={authorAvatar} alt={authorName} data-ai-hint="persona"/>
-              <AvatarFallback>{authorInitials || <UserCircle className="h-5 w-5" />}</AvatarFallback>
-            </Avatar>
-          </div>
-          <div className="user-info">
-            <span>{authorName}</span>
-            <p title={new Date(comment.created_at).toLocaleString('es-CL')}>
-              {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: es })}
-            </p>
-          </div>
+    <div className="flex items-start space-x-3 py-3 border-b border-border/70">
+      <Avatar className="h-9 w-9">
+        <AvatarImage src={authorAvatar} alt={authorName} data-ai-hint="persona"/>
+        <AvatarFallback>{authorInitials || <UserCircle className="h-5 w-5"/>}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-card-foreground">{authorName}</p>
+          <p className="text-xs text-muted-foreground" title={new Date(comment.created_at).toLocaleString('es-CL')}>
+            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: es })}
+          </p>
         </div>
-        <p className="comment-content">
-          {comment.content}
-        </p>
-        <div className="comment-actions">
-          <Button variant="ghost" size="sm" disabled>
+        <p className="text-sm text-foreground/90 mt-0.5 whitespace-pre-line">{comment.content}</p>
+        <div className="flex items-center gap-2 mt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleToggleLike}
+            disabled={isLiking || isLoadingInitialState || !loggedInUser}
+            className={cn(
+              "text-muted-foreground hover:text-destructive h-auto px-1.5 py-1 text-xs",
+              currentUserLiked && "text-destructive"
+            )}
+            title={currentUserLiked ? "Quitar Me gusta" : "Me gusta"}
+          >
+            {isLiking || isLoadingInitialState ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Heart className="h-3.5 w-3.5" style={{ fill: heartIconFill, stroke: heartIconColor }}/>
+            )}
+            <span className="ml-1">{totalLikes}</span>
+          </Button>
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary h-auto px-1.5 py-1 text-xs" disabled>
             <MessageSquare className="h-3.5 w-3.5 mr-1" /> Responder
           </Button>
         </div>
       </div>
-    </StyledCommentItemWrapper>
+    </div>
   );
 }
