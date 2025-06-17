@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, UserCircle as UserIcon, Handshake, Eye } from 'lucide-react';
-import LikeButton from '@/components/ui/LikeButton'; // Importar el nuevo LikeButton
+import LikeButton from '@/components/ui/LikeButton';
 
 interface RequestCardProps {
   request: SearchRequest;
@@ -45,8 +45,6 @@ export default function RequestCard({ request }: RequestCardProps) {
     desiredPropertyType,
     createdAt,
     description,
-    // minBedrooms, // No se usa actualmente en la tarjeta
-    // minBathrooms, // No se usa actualmente en la tarjeta
     open_for_broker_collaboration,
   } = request;
 
@@ -112,20 +110,18 @@ export default function RequestCard({ request }: RequestCardProps) {
                 <Handshake className="h-3.5 w-3.5 mr-1.5" /> Abierta a Colaboración
             </Badge>
           )}
-
-        {/* Botón de Like */}
-        <div className="flex justify-center mt-3 mb-1">
-            <LikeButton listingId={requestId} listingType="request" />
-        </div>
       </CardContent>
-      <CardFooter className="p-4 sm:p-5 pt-2.5 border-t flex justify-between items-center mt-auto">
-        <Link href={`/requests/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary text-xs sm:text-sm">
+      <CardFooter className="p-4 sm:p-5 pt-2.5 border-t flex flex-col items-center gap-3 mt-auto">
+        <div className="flex flex-col items-center w-full">
+          <LikeButton listingId={requestId} listingType="request" className="mb-[10px]" />
+          <Button size="sm" asChild className="text-xs sm:text-sm rounded-lg shadow-sm hover:shadow-md transition-shadow h-9 px-3.5 w-full max-w-xs">
+            <Link href={`/requests/${slug}`} className="flex items-center gap-1.5"> <Eye className="h-4 w-4" /> Ver Solicitud</Link>
+          </Button>
+        </div>
+        <Link href={`/requests/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary text-xs sm:text-sm mt-1">
           <MessageCircle className="mr-1.5 h-3.5 w-3.5" />
           {commentsCount} comentarios
         </Link>
-        <Button size="sm" asChild className="text-xs sm:text-sm rounded-lg shadow-sm hover:shadow-md transition-shadow h-9 px-3.5">
-            <Link href={`/requests/${slug}`} className="flex items-center gap-1.5"> <Eye className="h-4 w-4" /> Ver Solicitud</Link>
-        </Button>
       </CardFooter>
     </Card>
   );

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, DollarSign, CalendarDays, UserCircle as UserIcon } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
-import LikeButton from '@/components/ui/LikeButton'; // Importar el nuevo LikeButton
+import LikeButton from '@/components/ui/LikeButton';
 
 interface FeaturedPropertyCardProps {
   property: PropertyListing;
@@ -96,14 +96,10 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
                 {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}
             </span>
         </div>
-
-        {/* Botón de Like */}
-        <div className="flex justify-center mb-3">
-            <LikeButton listingId={propertyId} listingType="property" />
-        </div>
       </CardContent>
-      <CardFooter className="p-4 sm:p-5 pt-0 mt-auto">
-        <CustomDetailButton href={`/properties/${slug}`} className="w-full">
+      <CardFooter className="p-4 sm:p-5 pt-0 mt-auto flex flex-col items-center">
+        <LikeButton listingId={propertyId} listingType="property" className="mb-[10px]" />
+        <CustomDetailButton href={`/properties/${slug}`}>
           Ver Detalles
         </CustomDetailButton>
       </CardFooter>
