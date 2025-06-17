@@ -5,7 +5,7 @@
 import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, LogOut as LogOutIcon, CalendarCheck, Handshake, Bot, ListTree } from 'lucide-react';
+import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, Handshake, Bot, ListTree } from 'lucide-react'; // Removed LogOutIcon
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,6 +16,7 @@ import type { Plan } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import CustomPageLoader from '@/components/ui/CustomPageLoader';
+import StyledLogoutButton from '@/components/ui/StyledLogoutButton'; // Importar nuevo botón
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -27,7 +28,7 @@ interface StoredUser {
   avatarUrl?: string;
   role_id: string;
   plan_id?: string | null;
-  phone_number?: string | null; // Asegúrate que phone_number esté en StoredUser
+  phone_number?: string | null; 
 }
 
 const baseNavItemsDefinition = [
@@ -35,7 +36,7 @@ const baseNavItemsDefinition = [
   { href: '/dashboard/my-listings', label: 'Mis Publicaciones', icon: <ListTree /> },
   { href: '/dashboard/messages', label: 'Mensajes', icon: <MessageSquare />, id: 'messagesLink' },
   { href: '/dashboard/crm', label: 'Mi CRM', icon: <Users /> },
-  { href: '/dashboard/visits', label: 'Mis Visitas', icon: <CalendarCheck /> },
+  { href: '/dashboard/visits', label: 'Mis Visitas', icon: <Edit /> }, // Icono actualizado para visitas
 ];
 
 
@@ -84,7 +85,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
              if (messagesIndex !== -1) {
                 newNavItemsList.splice(messagesIndex, 0, brokerItem);
              } else {
-                newNavItemsList.push(brokerItem); // Fallback: add to end
+                newNavItemsList.push(brokerItem); 
              }
           }
         }
@@ -93,7 +94,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         let hasWhatsAppItem = newNavItemsList.some(item => item.href === chatWhatsAppItem.href);
         let userHasWhatsAppPermission = false;
 
-        if (parsedUser.plan_id && parsedUser.phone_number) { // User needs phone number for WhatsApp chat
+        if (parsedUser.plan_id && parsedUser.phone_number) { 
           try {
             const planDetails: Plan | null = await getPlanByIdAction(parsedUser.plan_id);
             if (planDetails && planDetails.whatsapp_bot_enabled === true) {
@@ -105,7 +106,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         }
         
         if (userHasWhatsAppPermission && !hasWhatsAppItem) {
-            // Insert after 'Mis Visitas' or before 'Profile' (if no 'Mis Visitas')
             const visitsIndex = newNavItemsList.findIndex(item => item.href === '/dashboard/visits');
             if (visitsIndex !== -1) {
                  newNavItemsList.splice(visitsIndex + 1, 0, chatWhatsAppItem);
@@ -113,7 +113,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                  newNavItemsList.push(chatWhatsAppItem);
             }
         } else if (!userHasWhatsAppPermission && hasWhatsAppItem) {
-            // Remove if exists and no permission
             newNavItemsList = newNavItemsList.filter(item => item.href !== chatWhatsAppItem.href);
         }
 
@@ -132,24 +131,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     setCurrentUser(tempCurrentUser);
     setTotalUnreadCount(tempTotalUnreadCount);
     setIsLoadingSession(false);
-  }, [isClient, toast]); // Removed router from deps as it's stable, toast is stable
+  }, [isClient, toast]); 
 
   useEffect(() => {
     if (isClient) {
-      updateSessionAndNav(); // Initial call
+      updateSessionAndNav(); 
 
       const handleSessionChange = () => updateSessionAndNav();
-      const handleMessagesUpdate = () => updateSessionAndNav(); // Re-fetch unread count too
+      const handleMessagesUpdate = () => updateSessionAndNav(); 
 
       window.addEventListener('userSessionChanged', handleSessionChange);
       window.addEventListener('messagesUpdated', handleMessagesUpdate);
-      // Optional: listen to storage events if changes can happen across tabs
-      // window.addEventListener('storage', handleStorageChange);
-
+      
       return () => {
         window.removeEventListener('userSessionChanged', handleSessionChange);
         window.removeEventListener('messagesUpdated', handleMessagesUpdate);
-        // window.removeEventListener('storage', handleStorageChange);
       };
     }
   }, [isClient, updateSessionAndNav]);
@@ -163,7 +159,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       title: "Sesión Cerrada",
       description: "Has cerrado sesión de tu panel.",
     });
-    window.dispatchEvent(new CustomEvent('userSessionChanged')); // Notify Navbar
+    window.dispatchEvent(new CustomEvent('userSessionChanged')); 
     router.push('/');
   };
 
@@ -272,9 +268,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </div>
                 </div>
             )}
-          <Button variant="outline" onClick={handleLogout} className="w-full text-base py-2.5 h-auto rounded-md border-destructive/50 text-destructive hover:bg-destructive/5 hover:text-destructive">
-            <LogOutIcon className="mr-2 h-4 w-4" /> Cerrar Sesión
-          </Button>
+          <StyledLogoutButton onClick={handleLogout} />
           <Button variant="outline" asChild className="w-full text-base py-2.5 h-auto rounded-md border-primary/50 text-primary hover:bg-primary/5 hover:text-primary">
             <Link href="/profile" className="flex items-center gap-2">
                 <UserCircle className="h-4 w-4 transform"/> Mi Perfil
@@ -290,7 +284,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <LayoutDashboard className="h-6 w-6" />
                     <span className="text-lg font-bold font-headline">Panel</span>
                 </Link>
-                {/* Podrías añadir un SheetTrigger aquí para el menú móvil si lo necesitas */}
             </div>
         </header>
         <main className="flex-grow p-4 sm:p-6 md:p-8 bg-muted/30">

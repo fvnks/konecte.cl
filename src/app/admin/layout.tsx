@@ -5,15 +5,16 @@
 import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper, BarChart3, CalendarClock, MailWarning, MessageSquare, Bot } from 'lucide-react'; 
+import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, Newspaper, BarChart3, CalendarClock, MailWarning, MessageSquare, Bot } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import CustomPageLoader from '@/components/ui/CustomPageLoader'; // Importar el nuevo loader
+import CustomPageLoader from '@/components/ui/CustomPageLoader'; 
 import { Badge } from '@/components/ui/badge';
 import { getUnreadContactSubmissionsCountAction } from '@/actions/contactFormActions';
+import StyledLogoutButton from '@/components/ui/StyledLogoutButton'; // Importar nuevo botón
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -26,7 +27,7 @@ const adminNavItems = [
   { href: '/admin/content', label: 'Contenido del Sitio', icon: <Newspaper className="h-5 w-5" /> },
   { href: '/admin/contact-submissions', label: 'Mensajes de Contacto', icon: <MailWarning className="h-5 w-5" />, id: 'contactSubmissionsLink' },
   { href: '/admin/whatsapp-viewer', label: 'Visor Chat WhatsApp', icon: <MessageSquare className="h-5 w-5" /> }, 
-  { href: '/admin/settings', label: 'Análisis WhatsBot', icon: <Bot className="h-5 w-5" /> }, // Renamed and icon changed
+  { href: '/admin/settings', label: 'Análisis WhatsBot', icon: <Bot className="h-5 w-5" /> }, 
   { href: '/admin/users', label: 'Usuarios', icon: <Users className="h-5 w-5" /> },
   { href: '/admin/roles', label: 'Roles', icon: <ShieldAlert className="h-5 w-5" /> },
   { href: '/admin/plans', label: 'Planes', icon: <CreditCard className="h-5 w-5" /> },
@@ -221,9 +222,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     </div>
                 </div>
             )}
-          <Button variant="outline" onClick={handleAdminLogout} className="w-full text-base py-2.5 h-auto rounded-md border-destructive/50 text-destructive hover:bg-destructive/5 hover:text-destructive">
-            <LogOutIcon className="mr-2 h-4 w-4" /> Cerrar Sesión
-          </Button>
+          <StyledLogoutButton onClick={handleAdminLogout} />
           <Button variant="outline" asChild className="w-full text-base py-2.5 h-auto rounded-md border-primary/50 text-primary hover:bg-primary/5 hover:text-primary">
             <Link href="/" className="flex items-center gap-2">
                 <Home className="h-4 w-4 transform"/> Volver al Sitio
@@ -248,4 +247,3 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     </div>
   );
 }
-
