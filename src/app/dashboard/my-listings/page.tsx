@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, PlusCircle, ListTree, Building, FileSearch, AlertTriangle, Edit3, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Loader2, PlusCircle, ListTree, Building, FileSearch, AlertTriangle, Edit3, ToggleLeft, ToggleRight, Search as SearchIcon } from 'lucide-react';
 import PropertyListItem from '@/components/property/PropertyListItem';
 import RequestListItem from '@/components/request/RequestListItem';
 import type { PropertyListing, SearchRequest, User as StoredUserType } from '@/lib/types';
@@ -15,7 +15,8 @@ import { getUserPropertiesAction, updatePropertyStatusAction } from '@/actions/p
 import { getUserRequestsAction, updateRequestStatusAction } from '@/actions/requestActions';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch'; 
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input'; // Importar Input
 
 export default function MyListingsPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUserType | null>(null);
@@ -24,6 +25,7 @@ export default function MyListingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isTogglingStatus, startToggleTransition] = useTransition();
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState(''); // Estado para el término de búsqueda
 
   const fetchUserListings = useCallback(async (userId: string) => {
     setIsLoading(true);
@@ -91,6 +93,20 @@ export default function MyListingsPage() {
     });
   };
 
+  // Filtrar propiedades y solicitudes basadas en el término de búsqueda
+  const filteredProperties = userProperties.filter(property => 
+    property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    property.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    property.city.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredRequests = userRequests.filter(request =>
+    request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (request.desiredLocation?.city && request.desiredLocation.city.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+
   if (!loggedInUser && !isLoading) {
     return (
         <Card className="shadow-lg">
@@ -140,16 +156,30 @@ export default function MyListingsPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Campo de Búsqueda */}
+          <div className="mb-6">
+            <div className="relative">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Buscar en mis publicaciones por título, descripción o ciudad..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full h-11 rounded-lg"
+              />
+            </div>
+          </div>
+
           <Tabs defaultValue="properties" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6 h-auto">
-              <TabsTrigger value="properties" className="py-2.5 text-sm"><Building className="mr-2 h-4 w-4"/>Propiedades ({userProperties.length})</TabsTrigger>
-              <TabsTrigger value="requests" className="py-2.5 text-sm"><FileSearch className="mr-2 h-4 w-4"/>Solicitudes ({userRequests.length})</TabsTrigger>
+              <TabsTrigger value="properties" className="py-2.5 text-sm"><Building className="mr-2 h-4 w-4"/>Propiedades ({filteredProperties.length})</TabsTrigger>
+              <TabsTrigger value="requests" className="py-2.5 text-sm"><FileSearch className="mr-2 h-4 w-4"/>Solicitudes ({filteredRequests.length})</TabsTrigger>
             </TabsList>
             
             <TabsContent value="properties">
-              {userProperties.length > 0 ? (
+              {filteredProperties.length > 0 ? (
                 <div className="space-y-4">
-                  {userProperties.map(property => (
+                  {filteredProperties.map(property => (
                     <div key={property.id} className="p-3 border rounded-lg bg-card shadow-sm">
                       <PropertyListItem property={property} />
                       <div className="mt-3 pt-3 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -178,18 +208,22 @@ export default function MyListingsPage() {
               ) : (
                 <div className="text-center py-10 border-2 border-dashed rounded-lg">
                   <Building className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-lg font-medium text-muted-foreground">No has publicado ninguna propiedad.</p>
-                  <Button asChild variant="link" className="mt-2">
-                    <Link href="/properties/submit">Publicar mi primera propiedad</Link>
-                  </Button>
+                  <p className="text-lg font-medium text-muted-foreground">
+                    {searchTerm ? `No se encontraron propiedades que coincidan con "${searchTerm}".` : "No has publicado ninguna propiedad."}
+                  </p>
+                  {!searchTerm && (
+                    <Button asChild variant="link" className="mt-2">
+                      <Link href="/properties/submit">Publicar mi primera propiedad</Link>
+                    </Button>
+                  )}
                 </div>
               )}
             </TabsContent>
 
             <TabsContent value="requests">
-              {userRequests.length > 0 ? (
+              {filteredRequests.length > 0 ? (
                 <div className="space-y-4">
-                  {userRequests.map(request => (
+                  {filteredRequests.map(request => (
                      <div key={request.id} className="p-3 border rounded-lg bg-card shadow-sm">
                       <RequestListItem request={request} />
                       <div className="mt-3 pt-3 border-t flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -218,10 +252,14 @@ export default function MyListingsPage() {
               ) : (
                 <div className="text-center py-10 border-2 border-dashed rounded-lg">
                   <FileSearch className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-lg font-medium text-muted-foreground">No has creado ninguna solicitud.</p>
-                  <Button asChild variant="link" className="mt-2">
-                    <Link href="/requests/submit">Crear mi primera solicitud</Link>
-                  </Button>
+                  <p className="text-lg font-medium text-muted-foreground">
+                    {searchTerm ? `No se encontraron solicitudes que coincidan con "${searchTerm}".` : "No has creado ninguna solicitud."}
+                  </p>
+                  {!searchTerm && (
+                    <Button asChild variant="link" className="mt-2">
+                      <Link href="/requests/submit">Crear mi primera solicitud</Link>
+                    </Button>
+                  )}
                 </div>
               )}
             </TabsContent>
