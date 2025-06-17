@@ -106,6 +106,10 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
               {formatPrice(property.price, property.currency)}
               {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground">/mes</span>}
             </div>
+            <div className="mt-4 flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Compartir:</span>
+              <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={property.title} />
+            </div>
           </CardHeader>
           <CardContent className="p-6 md:p-8 pt-0 space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center">
@@ -143,14 +147,6 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
               </div>
             )}
             
-            <div className="pt-6 mt-6 border-t">
-              <h3 className="text-xl font-semibold mb-4 text-center font-headline flex items-center justify-center">
-                <Share2 className="mr-2 h-6 w-6 text-primary" />
-                Compartir esta Propiedad
-              </h3>
-              <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={property.title} className="justify-center" />
-            </div>
-
             {property.author && (
               <div className="border-t pt-6 mt-8">
                 <h3 className="text-xl lg:text-2xl font-semibold mb-3 font-headline">Información del Anunciante</h3>

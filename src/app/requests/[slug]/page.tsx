@@ -87,6 +87,10 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
           <CardDescription className="text-base lg:text-lg text-muted-foreground mt-3 leading-relaxed">
             {request.description}
           </CardDescription>
+          <div className="mt-4 flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Compartir:</span>
+            <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={request.title} />
+          </div>
         </CardHeader>
         <CardContent className="p-6 md:p-8 pt-0 space-y-6">
           <div>
@@ -149,13 +153,6 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
               </div>
             </div>
           </div>
-           <div className="pt-6 mt-6 border-t">
-              <h3 className="text-xl font-semibold mb-4 text-center font-headline flex items-center justify-center">
-                <Share2 className="mr-2 h-6 w-6 text-primary" />
-                Compartir esta Solicitud
-              </h3>
-              <SocialShareButtons sharingUrl={sharingUrl} sharingTitle={request.title} className="justify-center" />
-          </div>
         </CardContent>
       </Card>
 
@@ -164,3 +161,4 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
     </div>
   );
 }
+
