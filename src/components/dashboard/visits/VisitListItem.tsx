@@ -1,4 +1,3 @@
-
 // src/components/dashboard/visits/VisitListItem.tsx
 'use client';
 
@@ -23,22 +22,22 @@ interface VisitListItemProps {
 const getStatusVariant = (status: PropertyVisitStatus): { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode; labelClass?: string } => {
   switch (status) {
     case 'pending_confirmation':
-      return { variant: 'outline', icon: <History className="h-3.5 w-3.5" />, labelClass: 'text-amber-600 border-amber-500' };
+      return { variant: 'outline', icon: <History className="h-3.5 w-3.5" />, labelClass: 'text-amber-600 border-amber-500 dark:text-amber-400 dark:border-amber-600' };
     case 'confirmed':
       return { variant: 'default', icon: <CheckCircle2 className="h-3.5 w-3.5" />, labelClass: 'bg-green-500 hover:bg-green-600 text-white border-green-600' };
     case 'cancelled_by_visitor':
     case 'cancelled_by_owner':
-      return { variant: 'destructive', icon: <XCircle className="h-3.5 w-3.5" />, labelClass: 'text-red-600' };
+      return { variant: 'destructive', icon: <XCircle className="h-3.5 w-3.5" />, labelClass: 'bg-red-500 hover:bg-red-600 text-white border-red-600' };
     case 'rescheduled_by_owner':
-      return { variant: 'outline', icon: <Clock className="h-3.5 w-3.5" />, labelClass: 'text-blue-600 border-blue-500' };
+      return { variant: 'outline', icon: <Clock className="h-3.5 w-3.5" />, labelClass: 'text-blue-600 border-blue-500 dark:text-blue-400 dark:border-blue-600' };
     case 'completed':
       return { variant: 'default', icon: <CheckSquare className="h-3.5 w-3.5" />, labelClass: 'bg-indigo-500 hover:bg-indigo-600 text-white border-indigo-600' };
-    case 'visitor_no_show':
-      return { variant: 'destructive', icon: <UserX className="h-3.5 w-3.5" />, labelClass: 'text-slate-600 border-slate-500' }; // Changed to destructive for clarity
-    case 'owner_no_show':
-      return { variant: 'destructive', icon: <UserCheck className="h-3.5 w-3.5" />, labelClass: 'text-slate-600 border-slate-500' }; // Changed to destructive for clarity
+    case 'visitor_no_show': // Considera si este debería ser 'secondary' u 'outline' si 'destructive' es muy fuerte
+      return { variant: 'destructive', icon: <UserX className="h-3.5 w-3.5" />, labelClass: 'text-slate-600 border-slate-500 dark:text-slate-400 dark:border-slate-600' };
+    case 'owner_no_show': // Idem
+      return { variant: 'destructive', icon: <UserCheck className="h-3.5 w-3.5" />, labelClass: 'text-slate-600 border-slate-500 dark:text-slate-400 dark:border-slate-600' };
     default:
-      return { variant: 'secondary', icon: <AlertCircle className="h-3.5 w-3.5" />, labelClass: 'text-gray-600 border-gray-500' };
+      return { variant: 'secondary', icon: <AlertCircle className="h-3.5 w-3.5" />, labelClass: 'text-gray-600 border-gray-500 dark:text-gray-400 dark:border-gray-600' };
   }
 };
 
@@ -62,7 +61,6 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
   } else if (visit.status === 'pending_confirmation') {
     dateLabelSuffix = '(Propuesta)';
   }
-
 
   return (
     <Card className="shadow-md hover:shadow-lg transition-shadow border rounded-xl">
@@ -99,6 +97,7 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
       )}
       <CardFooter className="p-4 pt-2 border-t flex flex-wrap gap-2 justify-end">
         {/* --- Acciones para el Propietario --- */}
+        {/* Propietario puede confirmar propuesta original, reagendar, o rechazar si está pendiente */}
         {isOwner && visit.status === 'pending_confirmation' && (
           <>
             <Button size="sm" variant="default" onClick={() => onManageVisit(visit, 'confirm_original_proposal')}>Confirmar Hora</Button>
@@ -106,6 +105,7 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
             <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_pending_request')}>Rechazar</Button>
           </>
         )}
+        {/* Propietario gestiona visita confirmada */}
         {isOwner && visit.status === 'confirmed' && (
            <>
             <Button size="sm" variant="outline" onClick={() => onManageVisit(visit, 'mark_completed')}>Marcar Completada</Button>
@@ -113,26 +113,34 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
             <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_confirmed_visit')}>Cancelar Confirmada</Button>
            </>
         )}
+        {/* Propietario ve estado si reagendó y espera respuesta */}
         {isOwner && visit.status === 'rescheduled_by_owner' && (
              <p className="text-xs text-muted-foreground italic w-full text-right">Esperando respuesta del visitante a tu nueva propuesta.</p>
         )}
+        {/* Propietario ve estado finalizado o cancelado */}
         {isOwner && (visit.status === 'completed' || visit.status === 'visitor_no_show' || visit.status === 'owner_no_show' || visit.status.startsWith('cancel')) && (
             <p className="text-xs text-muted-foreground italic w-full text-right">Visita finalizada o cancelada.</p>
         )}
 
         {/* --- Acciones para el Visitante --- */}
-        {isVisitor && visit.status === 'pending_confirmation' && (
-          <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_own_request')}>Cancelar Solicitud</Button>
+        {/* Visitante puede cancelar su solicitud si está pendiente o confirmada */}
+        {isVisitor && (visit.status === 'pending_confirmation' || visit.status === 'confirmed') && (
+          <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_own_request')}>
+            {visit.status === 'pending_confirmation' ? 'Cancelar Solicitud' : 'Cancelar Visita Confirmada'}
+          </Button>
         )}
-        {isVisitor && visit.status === 'confirmed' && (
-          <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_own_request')}>Cancelar Visita Confirmada</Button>
-        )}
+        {/* Visitante responde a reagendamiento del propietario */}
         {isVisitor && visit.status === 'rescheduled_by_owner' && (
           <>
             <Button size="sm" variant="default" onClick={() => onManageVisit(visit, 'accept_owner_reschedule')}>Aceptar Nueva Hora</Button>
             <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'reject_owner_reschedule')}>Rechazar Nueva Hora</Button>
           </>
         )}
+        {/* Visitante marca si propietario no asistió (solo si estaba confirmada y no la canceló él) */}
+        {isVisitor && visit.status === 'confirmed' && ( // O podría ser también si fue 'completed' y quiere reportar
+            <Button size="sm" variant="outline" onClick={() => onManageVisit(visit, 'mark_owner_no_show')}>Propietario No Asistió</Button>
+        )}
+         {/* Visitante ve estado finalizado o cancelado */}
          {isVisitor && (visit.status === 'completed' || visit.status === 'visitor_no_show' || visit.status === 'owner_no_show' || visit.status.startsWith('cancel')) && (
             <p className="text-xs text-muted-foreground italic w-full text-right">Visita finalizada o cancelada.</p>
         )}
