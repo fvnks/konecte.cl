@@ -1,4 +1,3 @@
-
 // src/app/admin/plans/page.tsx
 'use client';
 
@@ -12,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import type { Plan } from '@/lib/types';
 import { addPlanAction, deletePlanAction, getPlansAction, togglePlanStatusAction, getPlanByIdAction, togglePlanVisibilityAction } from '@/actions/planActions';
-import { Loader2, PlusCircle, CreditCard, Trash2, ToggleLeft, ToggleRight, Edit, Brain, Eye, EyeOff, MessageSquare } from 'lucide-react'; // Added MessageSquare
+import { Loader2, PlusCircle, CreditCard, Trash2, ToggleLeft, ToggleRight, Brain, Eye, EyeOff, MessageSquare } from 'lucide-react'; // Removed Edit
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
 import EditPlanDialog from '@/components/admin/plans/EditPlanDialog';
+import StyledEditButton from '@/components/ui/StyledEditButton'; // Import new button
 
 export default function AdminPlansPage() {
   const { toast } = useToast();
@@ -230,7 +230,7 @@ export default function AdminPlansPage() {
                     <TableHead>Nombre</TableHead>
                     <TableHead>Precio</TableHead>
                     <TableHead title="Búsquedas IA">B.IA</TableHead>
-                    <TableHead title="WhatsApp Bot">W.Bot</TableHead> {/* Nueva columna */}
+                    <TableHead title="WhatsApp Bot">W.Bot</TableHead> 
                     <TableHead>Estado</TableHead>
                     <TableHead>Visibilidad</TableHead>
                     <TableHead className="text-right min-w-[200px]">Acciones</TableHead>
@@ -242,7 +242,7 @@ export default function AdminPlansPage() {
                       <TableCell className="font-medium">{plan.name}</TableCell>
                       <TableCell>${plan.price_monthly.toLocaleString('es-CL')} {plan.price_currency}</TableCell>
                       <TableCell className="text-center">{plan.max_ai_searches_monthly ?? '∞'}</TableCell>
-                      <TableCell className="text-center"> {/* Celda para WhatsApp Bot */}
+                      <TableCell className="text-center"> 
                         {plan.whatsapp_bot_enabled ? 
                             <MessageSquare className="h-4 w-4 text-green-600 mx-auto" title="WhatsApp Bot Habilitado"/> : 
                             <MessageSquare className="h-4 w-4 text-muted-foreground/50 mx-auto" title="WhatsApp Bot Deshabilitado"/>}
@@ -272,14 +272,15 @@ export default function AdminPlansPage() {
                         </Button>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEditPlanRequest(plan.id)} disabled={isPending} aria-label="Editar plan" title="Editar plan">
-                          {isPending && editingPlan?.id === plan.id ? <Loader2 className="h-3 w-3 animate-spin md:mr-1" /> : <Edit className="h-3 w-3 md:mr-1"/>}
-                          <span className="hidden md:inline">Editar</span>
-                        </Button>
+                        <StyledEditButton 
+                          onClick={() => handleEditPlanRequest(plan.id)}
+                          disabled={isPending}
+                          title="Editar plan"
+                        />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={isPending} aria-label="Eliminar plan" title="Eliminar plan">
-                              <Trash2 className="h-3 w-3 md:mr-1" /> <span className="hidden md:inline">Eliminar</span>
+                            <Button variant="destructive" size="icon" className="h-10 w-10" disabled={isPending} title="Eliminar plan">
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>

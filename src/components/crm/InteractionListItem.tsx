@@ -1,16 +1,15 @@
-
 // src/components/crm/InteractionListItem.tsx
 import type { Interaction, InteractionType } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, isPast, isToday } from 'date-fns'; // Añadido isPast, isToday
+import { format, parseISO, isPast, isToday } from 'date-fns'; 
 import { es } from 'date-fns/locale';
 import {
   StickyNote, MessageSquareText, Mail, PhoneOutgoing, PhoneIncoming, Users,
-  Send, CheckSquare, Eye, Sparkles, History, Briefcase, Building, Trash2, AlertTriangle, Edit3,
-  AlertCircle, // Para seguimiento pendiente/vencido
-} from 'lucide-react';
+  Send, CheckSquare, Eye, Sparkles, History, Briefcase, Building, Trash2, AlertTriangle, 
+  AlertCircle, 
+} from 'lucide-react'; // Removed Edit3
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertDialog,
@@ -24,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useState } from 'react';
+import StyledEditButton from '@/components/ui/StyledEditButton'; // Import new button
 
 interface InteractionListItemProps {
   interaction: Interaction;
@@ -84,37 +84,37 @@ export default function InteractionListItem({ interaction, onDeleteRequest, onEd
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const followUpDate = interaction.follow_up_date ? parseISO(interaction.interaction_date.split('T')[0] + 'T' + interaction.follow_up_date.split('T')[1]) : null;
-  // Necesitamos usar la fecha parseada de interaction.follow_up_date para isPast e isToday
   const parsedFollowUpDateOnly = interaction.follow_up_date ? parseISO(interaction.follow_up_date.split('T')[0]) : null;
 
 
   let followUpIsDueOrToday = false;
-  let followUpStyle = "text-muted-foreground"; // Default for "Requiere seguimiento" if no date
+  let followUpStyle = "text-muted-foreground"; 
   let followUpIcon = null;
 
   if (interaction.follow_up_needed && parsedFollowUpDateOnly) {
     if (isPast(parsedFollowUpDateOnly) && !isToday(parsedFollowUpDateOnly)) {
       followUpIsDueOrToday = true;
-      followUpStyle = "text-red-600 dark:text-red-500"; // Vencido
+      followUpStyle = "text-red-600 dark:text-red-500"; 
       followUpIcon = <AlertCircle className="h-3.5 w-3.5 mr-1 flex-shrink-0" />;
     } else if (isToday(parsedFollowUpDateOnly)) {
       followUpIsDueOrToday = true;
-      followUpStyle = "text-orange-500 dark:text-orange-400"; // Para hoy
+      followUpStyle = "text-orange-500 dark:text-orange-400"; 
       followUpIcon = <AlertCircle className="h-3.5 w-3.5 mr-1 flex-shrink-0" />;
-    } else { // Futuro
-      followUpStyle = "text-green-600 dark:text-green-500"; // Programado
+    } else { 
+      followUpStyle = "text-green-600 dark:text-green-500"; 
     }
   } else if (interaction.follow_up_needed) {
-     followUpStyle = "text-blue-500 dark:text-blue-400"; // Requiere seguimiento pero sin fecha específica
+     followUpStyle = "text-blue-500 dark:text-blue-400"; 
   }
 
 
   return (
     <Card className="shadow-sm border-l-4 border-primary/50 relative group">
       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditRequest(interaction)} title="Editar Interacción">
-          <Edit3 className="h-4 w-4" />
-        </Button>
+        <StyledEditButton 
+          onClick={() => onEditRequest(interaction)}
+          title="Editar Interacción"
+        />
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive/90" title="Eliminar Interacción">
@@ -181,4 +181,3 @@ export default function InteractionListItem({ interaction, onDeleteRequest, onEd
     </Card>
   );
 }
-

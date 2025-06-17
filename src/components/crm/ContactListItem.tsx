@@ -1,11 +1,10 @@
-
 // src/components/crm/ContactListItem.tsx
 import type { Contact } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, Building, Edit3, Trash2, Info, UserCircle, History } from 'lucide-react';
+import { Mail, Phone, Building, Trash2, Info, UserCircle, History } from 'lucide-react'; // Removed Edit3
 import { contactStatusOptions } from '@/lib/types'; 
 import {
   AlertDialog,
@@ -19,6 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useState } from 'react';
+import StyledEditButton from '@/components/ui/StyledEditButton'; // Import new button
 
 interface ContactListItemProps {
   contact: Contact;
@@ -66,9 +66,10 @@ export default function ContactListItem({ contact, onEdit, onDeleteRequest, onVi
           <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver interacciones" onClick={() => onViewInteractions(contact)}>
             <History className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar contacto" onClick={() => onEdit(contact)}>
-            <Edit3 className="h-4 w-4" />
-          </Button>
+          <StyledEditButton 
+            onClick={() => onEdit(contact)}
+            title="Editar contacto"
+          />
           
           <AlertDialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
             <AlertDialogTrigger asChild>

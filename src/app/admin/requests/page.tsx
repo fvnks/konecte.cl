@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { SearchRequest } from '@/lib/types';
 import { getRequestsAction, updateRequestStatusAction, adminDeleteRequestAction } from '@/actions/requestActions';
-import { Loader2, FileSearch, Trash2, Eye, ToggleLeft, ToggleRight, Edit3, Sparkles } from 'lucide-react';
+import { Loader2, FileSearch, Trash2, Eye, ToggleLeft, ToggleRight, Sparkles } from 'lucide-react'; // Removed Edit3
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -25,9 +25,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import StyledEditButton from '@/components/ui/StyledEditButton'; // Import new button
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 export default function AdminRequestsPage() {
   const { toast } = useToast();
+  const router = useRouter(); // Initialize router
   const [requests, setRequests] = useState<SearchRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -46,6 +49,7 @@ export default function AdminRequestsPage() {
 
   useEffect(() => {
     fetchRequests();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
   const handleToggleStatus = async (requestId: string, currentStatus: boolean) => {
@@ -141,11 +145,10 @@ export default function AdminRequestsPage() {
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
-                        <Button variant="ghost" size="icon" asChild title="Editar solicitud">
-                          <Link href={`/admin/requests/${req.id}/edit`}>
-                            <Edit3 className="h-4 w-4" />
-                          </Link>
-                        </Button>
+                        <StyledEditButton
+                           onClick={() => router.push(`/admin/requests/${req.id}/edit`)}
+                           title="Editar solicitud"
+                        />
                         <Button variant="ghost" size="icon" asChild title="Buscar propiedades coincidentes (IA)" className="text-purple-600 hover:text-purple-700">
                           <Link href={`/ai-matching-properties?requestId=${req.id}`}>
                             <Sparkles className="h-4 w-4" />

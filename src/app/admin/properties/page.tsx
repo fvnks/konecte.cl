@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { PropertyListing } from '@/lib/types';
 import { getPropertiesAction, updatePropertyStatusAction, deletePropertyByAdminAction } from '@/actions/propertyActions';
-import { Loader2, ListOrdered, Trash2, Eye, ToggleLeft, ToggleRight, Edit3, Sparkles } from 'lucide-react'; // Added Edit3 and Sparkles
+import { Loader2, ListOrdered, Trash2, Eye, ToggleLeft, ToggleRight, Sparkles } from 'lucide-react'; // Removed Edit3
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -25,6 +25,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import StyledEditButton from '@/components/ui/StyledEditButton'; // Import new button
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 const translatePropertyType = (type: 'rent' | 'sale'): string => {
   if (type === 'rent') return 'Arriendo';
@@ -34,6 +36,7 @@ const translatePropertyType = (type: 'rent' | 'sale'): string => {
 
 export default function AdminPropertiesPage() {
   const { toast } = useToast();
+  const router = useRouter(); // Initialize router
   const [properties, setProperties] = useState<PropertyListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -53,6 +56,7 @@ export default function AdminPropertiesPage() {
 
   useEffect(() => {
     fetchProperties();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
   const handleToggleStatus = async (propertyId: string, currentStatus: boolean) => {
@@ -158,11 +162,10 @@ export default function AdminPropertiesPage() {
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
-                        <Button variant="ghost" size="icon" asChild title="Editar propiedad">
-                          <Link href={`/admin/properties/${prop.id}/edit`}>
-                            <Edit3 className="h-4 w-4" />
-                          </Link>
-                        </Button>
+                        <StyledEditButton 
+                          onClick={() => router.push(`/admin/properties/${prop.id}/edit`)}
+                          title="Editar propiedad"
+                        />
                         <Button variant="ghost" size="icon" asChild title="Buscar solicitudes coincidentes (IA)" className="text-purple-600 hover:text-purple-700">
                           <Link href={`/ai-matching?propertyId=${prop.id}`}>
                             <Sparkles className="h-4 w-4" />

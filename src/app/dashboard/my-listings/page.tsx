@@ -1,4 +1,3 @@
-
 // src/app/dashboard/my-listings/page.tsx
 'use client';
 
@@ -6,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, PlusCircle, ListTree, Building, FileSearch, AlertTriangle, Edit3, ToggleLeft, ToggleRight, Search as SearchIcon } from 'lucide-react';
+import { Loader2, PlusCircle, ListTree, Building, FileSearch, AlertTriangle, ToggleLeft, ToggleRight, Search as SearchIcon } from 'lucide-react'; // Removed Edit3
 import PropertyListItem from '@/components/property/PropertyListItem';
 import RequestListItem from '@/components/request/RequestListItem';
 import type { PropertyListing, SearchRequest, User as StoredUserType } from '@/lib/types';
@@ -16,7 +15,9 @@ import { getUserRequestsAction, updateRequestStatusAction } from '@/actions/requ
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input'; // Importar Input
+import { Input } from '@/components/ui/input'; 
+import StyledEditButton from '@/components/ui/StyledEditButton'; // Import new button
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 export default function MyListingsPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUserType | null>(null);
@@ -25,7 +26,8 @@ export default function MyListingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isTogglingStatus, startToggleTransition] = useTransition();
   const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState(''); // Estado para el término de búsqueda
+  const [searchTerm, setSearchTerm] = useState(''); 
+  const router = useRouter(); // Initialize router
 
   const fetchUserListings = useCallback(async (userId: string) => {
     setIsLoading(true);
@@ -93,7 +95,6 @@ export default function MyListingsPage() {
     });
   };
 
-  // Filtrar propiedades y solicitudes basadas en el término de búsqueda
   const filteredProperties = userProperties.filter(property => 
     property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     property.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -156,7 +157,6 @@ export default function MyListingsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Campo de Búsqueda */}
           <div className="mb-6">
             <div className="relative">
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -196,11 +196,10 @@ export default function MyListingsPage() {
                                 {property.isActive ? 'Activa' : 'Inactiva'}
                            </Badge>
                         </div>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/dashboard/my-listings/property/${property.id}/edit`}> 
-                            <Edit3 className="mr-1.5 h-3.5 w-3.5"/> Editar
-                          </Link>
-                        </Button>
+                        <StyledEditButton
+                           onClick={() => router.push(`/dashboard/my-listings/property/${property.id}/edit`)}
+                           title="Editar propiedad"
+                        />
                       </div>
                     </div>
                   ))}
@@ -240,11 +239,10 @@ export default function MyListingsPage() {
                                 {request.isActive ? 'Activa' : 'Inactiva'}
                            </Badge>
                         </div>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/admin/requests/${request.id}/edit`}> {/* TODO: Usar /dashboard/my-listings/request/${request.id}/edit cuando esté */}
-                            <Edit3 className="mr-1.5 h-3.5 w-3.5"/> Editar
-                          </Link>
-                        </Button>
+                        <StyledEditButton
+                           onClick={() => router.push(`/admin/requests/${request.id}/edit`)} // TODO: Usar /dashboard/my-listings/request/${request.id}/edit cuando esté
+                           title="Editar solicitud"
+                        />
                       </div>
                     </div>
                   ))}
@@ -269,4 +267,3 @@ export default function MyListingsPage() {
     </div>
   );
 }
-

@@ -1,6 +1,5 @@
-
 // src/app/admin/users/[userId]/edit/page.tsx
-import { getUserByIdAction, getUsersAction } from '@/actions/userActions'; // getUsersAction no es necesaria aquí
+import { getUserByIdAction } from '@/actions/userActions'; 
 import { getRolesAction } from '@/actions/roleActions';
 import { getPlansAction } from '@/actions/planActions';
 import AdminEditUserForm from '@/components/admin/users/AdminEditUserForm';
@@ -8,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, AlertTriangle, UserCog } from 'lucide-react';
 import Link from 'next/link';
-import type { User, Role, Plan } from '@/lib/types';
+// Removed: import type { User, Role, Plan } from '@/lib/types'; // No longer needed here
 
 interface AdminEditUserPageProps {
   params: {
@@ -19,10 +18,14 @@ interface AdminEditUserPageProps {
 export default async function AdminEditUserPage({ params }: AdminEditUserPageProps) {
   const userId = params.userId;
 
-  const user = await getUserByIdAction(userId);
-  const roles = await getRolesAction();
-  const allPlans = await getPlansAction();
-  const activePlans = allPlans.filter(plan => plan.is_active);
+  // Fetch data concurrently
+  const [user, roles, allPlans] = await Promise.all([
+    getUserByIdAction(userId),
+    getRolesAction(),
+    getPlansAction({ showAllAdmin: true }) // Fetch all plans for admin selection
+  ]);
+  
+  const activePlans = allPlans.filter(plan => plan.is_active); // Filter active plans for the dropdown
 
   if (!user) {
     return (
@@ -65,4 +68,3 @@ export default async function AdminEditUserPage({ params }: AdminEditUserPagePro
     </div>
   );
 }
-
