@@ -1,4 +1,3 @@
-
 // src/components/dashboard/visits/ManageVisitDialog.tsx
 'use client';
 
@@ -30,6 +29,7 @@ import { updateVisitStatusAction, getBookedTimeSlotsForPropertyOnDateAction } fr
 import { Loader2, Save, CalendarClock, AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale'; // Importación añadida
 
 interface ManageVisitDialogProps {
   open: boolean;
@@ -298,7 +298,7 @@ export default function ManageVisitDialog({
                   <FormItem>
                     <FormLabel className="flex items-center">
                       <Clock className="mr-2 h-4 w-4 text-primary" />
-                      2. Selecciona la Nueva Hora (para el {selectedDatePart.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long'})})
+                      2. Selecciona la Nueva Hora (para el {format(selectedDatePart, "dd MMM yyyy", { locale: es})})
                     </FormLabel>
                     {isLoadingBookedSlots ? (
                       <div className="flex items-center justify-center py-4">
