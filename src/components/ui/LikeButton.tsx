@@ -1,4 +1,3 @@
-
 // src/components/ui/LikeButton.tsx
 'use client';
 
@@ -16,7 +15,6 @@ interface LikeButtonProps {
   listingId: string;
   listingType: ListingType;
   className?: string;
-  // initialTotalLikes and initialUserInteraction are no longer needed as props
 }
 
 const StyledWrapper = styled.div`
@@ -28,15 +26,15 @@ const StyledWrapper = styled.div`
   .button {
     cursor: pointer;
     width: auto; 
-    min-width: 130px; 
-    height: 40px; 
+    min-width: 100px; /* Adjusted: from 130px to 100px */
+    height: 36px; /* Adjusted: from 40px to 36px */
     display: flex;
     align-items: center;
     background-color: hsl(var(--card)); 
     border: 1px solid hsl(var(--border));
-    box-shadow: 0px 3px 0px rgba(45, 45, 45, 0.1);
+    box-shadow: 0px 2px 0px rgba(45, 45, 45, 0.05); /* Adjusted shadow */
     overflow: hidden;
-    border-radius: 0.5em;
+    border-radius: 0.375rem; /* md */
     transition: all 0.2s ease;
     padding: 0; 
   }
@@ -44,9 +42,9 @@ const StyledWrapper = styled.div`
   #fontlikebutton {
     font-family: "Trebuchet MS", sans-serif;
     font-weight: 600;
-    font-size: 14px; 
+    font-size: 12px; /* Adjusted: from 14px to 12px */
     color: hsl(var(--primary)); 
-    margin-left: 0.3em; 
+    margin-left: 0.2em; /* Adjusted: from 0.3em to 0.2em */
     transition: transform 0.3s ease-out, opacity 0.3s ease-out, color 0.2s ease;
   }
 
@@ -56,7 +54,7 @@ const StyledWrapper = styled.div`
 
   .button:hover svg#likeimg {
     stroke: hsl(var(--primary-foreground)); 
-    transform: scale(1.5) translateX(100%); 
+    transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)); /* Adjust hover transform */
   }
 
   .button:hover #fontlikebutton {
@@ -65,13 +63,13 @@ const StyledWrapper = styled.div`
   }
 
   .button:active {
-    transform: scale(0.95) translateY(2px); 
+    transform: scale(0.95) translateY(1px); /* Adjusted active effect */
     box-shadow: 0px 1px 0px 0px hsla(var(--primary) / 0.5); 
   }
 
   .button:active svg#likeimg {
     stroke: hsl(var(--primary-foreground));
-    transform: scale(1.5) translateX(100%) rotate(-10deg);
+    transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)) rotate(-5deg); /* Minor rotation */
   }
   
   .button:active #fontlikebutton {
@@ -82,8 +80,8 @@ const StyledWrapper = styled.div`
   svg#likeimg {
     transition: transform 0.3s ease-out, stroke 0.2s ease; 
     stroke: hsl(var(--primary)); 
-    width: 20px;
-    height: 20px;
+    width: 15px; /* Adjusted: from 20px to 15px */
+    height: 15px; /* Adjusted: from 20px to 15px */
   }
 
   #rightpart {
@@ -92,8 +90,12 @@ const StyledWrapper = styled.div`
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0 10px; 
+    padding: 0 8px; /* Adjusted: from 0 10px to 0 8px */
     transition: background-color 0.2s ease;
+    /* Define CSS variables for dynamic calculation in hover transform */
+    --min-width: 100px;
+    --left-part-width: 28px;
+    --icon-size: 15px;
   }
 
   #leftpart {
@@ -103,10 +105,10 @@ const StyledWrapper = styled.div`
     flex-direction: column;
     font-family: "Trebuchet MS", sans-serif;
     font-weight: 600;
-    font-size: 12px; 
+    font-size: 11px; /* Adjusted: from 12px to 11px */
     background-color: hsl(var(--primary)); 
     color: hsl(var(--primary-foreground));
-    width: 36px; 
+    width: 28px; /* Adjusted: from 36px to 28px */
     height: 100%;
     transition: all 0.2s ease;
     border-right: 1px solid hsla(var(--primary) / 0.2); 
@@ -159,11 +161,11 @@ const StyledWrapper = styled.div`
   }
 
   input#checknumber:checked ~ .button:hover svg#likeimg {
-    stroke: hsl(var(--primary-foreground));
-    transform: scale(1.5) translateX(100%); 
+    stroke: hsl(var(--primary-foreground)); /* Should be accent-foreground if button bg is accent on hover? */
+    transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)); 
   }
   input#checknumber:checked ~ .button:hover #fontlikebutton {
-    color: hsl(var(--primary-foreground));
+    color: hsl(var(--primary-foreground)); /* Similarly, should this be accent-foreground? */
     transform: translateX(200%); 
     opacity: 0;
   }
@@ -217,7 +219,6 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
   const [isProcessingServerAction, setIsProcessingServerAction] = useState(false);
   const [isLoadingInitialState, setIsLoadingInitialState] = useState(true);
 
-  // State for the button's appearance and count
   const [currentTotalLikes, setCurrentTotalLikes] = useState(0);
   const [currentUserHasLiked, setCurrentUserHasLiked] = useState(false);
 
@@ -232,7 +233,6 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
     }
   }, []);
 
-  // Fetch initial like state
   useEffect(() => {
     async function fetchInitialState() {
       if (!listingId || !listingType) return;
@@ -243,7 +243,6 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
         setCurrentUserHasLiked(details.currentUserInteraction === 'like');
       } catch (error) {
         console.error("Error fetching initial like state:", error);
-        // Potentially show a toast or error state for the button itself
       } finally {
         setIsLoadingInitialState(false);
       }
@@ -265,7 +264,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
     if (isProcessingServerAction || isLoadingInitialState) return;
     setIsProcessingServerAction(true);
 
-    const newInteractionType = currentUserHasLiked ? 'skip' : 'like'; // Toggle 'like' or set to 'skip' if unliking
+    const newInteractionType = currentUserHasLiked ? 'skip' : 'like';
 
     try {
       const result = await recordUserListingInteractionAction(loggedInUser.id, {
@@ -292,13 +291,6 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
             )
           });
           window.dispatchEvent(new CustomEvent('messagesUpdated'));
-        } else {
-          // No toast for simple like/unlike to avoid being too noisy
-          // toast({
-          //   title: newInteractionType === 'like' ? "'Me Gusta' Registrado" : "Preferencia Actualizada",
-          //   description: result.message || `Tu preferencia ha sido registrada.`,
-          //   duration: 3000,
-          // });
         }
       } else {
          toast({
@@ -350,7 +342,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
         >
           <div id="leftpart">
             {isProcessingServerAction || isLoadingInitialState ? (
-                 <Loader2 className="h-4 w-4 animate-spin" />
+                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <>
                 <p id="currentnumber">{displayLikes}</p>
@@ -359,7 +351,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
             )}
           </div>
           <div id="rightpart">
-            <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={3} fill="none" viewBox="0 0 24 24" height={20} width={20} xmlns="http://www.w3.org/2000/svg">
+            <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={3} fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
             </svg>
             <div id="fontlikebutton">Me Gusta</div>
@@ -369,7 +361,3 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
     </StyledWrapper>
   );
 }
-
-
-
-    

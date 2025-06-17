@@ -23,6 +23,8 @@ const CustomDetailButton: React.FC<CustomDetailButtonProps> = ({ href, children,
 };
 
 const StyledWrapper = styled.div`
+  display: inline-block; /* Allows the button to be sized by its content or explicit width */
+
   .btn-23,
   .btn-23 *,
   .btn-23 :after,
@@ -36,24 +38,30 @@ const StyledWrapper = styled.div`
   .btn-23 {
     -webkit-tap-highlight-color: transparent;
     -webkit-appearance: button;
-    background-color: #369DF2; /* Color de fondo principal */
+    background-color: hsl(var(--primary)); 
     background-image: none;
-    color: #fff;
+    color: hsl(var(--primary-foreground));
     cursor: pointer;
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif,
       Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
-    font-size: 0.875rem; /* text-sm */
-    font-weight: 900;
-    line-height: 1.25rem; /* leading-5 */
+    font-size: 0.75rem; /* 12px (Adjusted from 0.875rem) */
+    font-weight: 700; /* Adjusted from 900 for less harshness */
+    line-height: 1.25rem; /* 20px (Standard for text-sm Tailwind) */
     margin: 0;
     -webkit-mask-image: -webkit-radial-gradient(#000, #fff);
-    padding: 0.6rem 1.5rem; /* Ajustado para un tamaño más compacto */
+    padding: 0.5rem 1.2rem; /* py-2 (8px), px-4/5. Total height with line-height ~36px */
     text-transform: uppercase;
+    min-width: 110px; /* Ensuring a minimum width */
+    height: 36px; /* Explicit height to match size="sm" buttons */
+    display: inline-flex; /* Added for centering content with flex properties */
+    align-items: center; /* Center content vertically */
+    justify-content: center; /* Center content horizontally */
   }
 
   .btn-23:disabled {
     cursor: default;
+    opacity: 0.7; /* Shadcn disabled opacity */
   }
 
   .btn-23:-moz-focusring {
@@ -70,33 +78,42 @@ const StyledWrapper = styled.div`
   }
 
   .btn-23 {
-    border-radius: 99rem;
-    border-width: 2px;
-    border-color: transparent; /* Usa el color base para el borde inicial */
+    border-radius: 0.375rem; /* rounded-md (6px) */
+    border-width: 1px; /* Changed from 2px to 1px to match Shadcn button borders better */
+    border-color: transparent;
     overflow: hidden;
     position: relative;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* Subtle shadow */
   }
 
-  .btn-23 span {
+  .btn-23 span { /* Shared style for .text and .marquee */
     display: grid;
     inset: 0;
     place-items: center;
     position: absolute;
     transition: opacity 0.2s ease;
+    white-space: nowrap; /* Prevent text wrapping */
   }
 
   .btn-23 .marquee {
-    --spacing: 10em; /* Aumentado para más espacio */
+    --spacing: 7em; /* Adjusted from 10em */
     --start: 0em;
-    --end: 10em; /* Aumentado para más espacio */
-    -webkit-animation: marquee 1.5s linear infinite;
-    animation: marquee 1.5s linear infinite;
+    --end: 7em; /* Adjusted from 10em */
+    -webkit-animation: marquee 1.2s linear infinite; /* Faster marquee */
+    animation: marquee 1.2s linear infinite;
     -webkit-animation-play-state: paused;
     animation-play-state: paused;
     opacity: 0;
-    position: relative;
-    text-shadow: #fff var(--spacing) 0, #fff calc(var(--spacing) * -1) 0,
-      #fff calc(var(--spacing) * -2) 0;
+    position: relative; /* Keep it relative for the text-shadow trick */
+    /* Adjusted text shadow for better readability of marquee */
+    text-shadow: 
+      hsl(var(--primary-foreground)) var(--spacing) 0, 
+      hsl(var(--primary-foreground)) calc(var(--spacing) * -1) 0,
+      hsl(var(--primary-foreground)) calc(var(--spacing) * -2) 0;
+  }
+
+  .btn-23:hover {
+    background-color: hsl(var(--primary) / 0.9); /* Shadcn primary hover */
   }
 
   .btn-23:hover .marquee {
@@ -108,6 +125,11 @@ const StyledWrapper = styled.div`
   .btn-23:hover .text {
     opacity: 0;
   }
+  
+  .btn-23:active {
+    transform: scale(0.98); /* Shadcn active scale */
+  }
+
 
   @-webkit-keyframes marquee {
     0% {
