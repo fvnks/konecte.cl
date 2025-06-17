@@ -129,7 +129,7 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
           <>
             <Button size="sm" variant="default" onClick={() => onManageVisit(visit, 'accept_owner_reschedule')}>Aceptar Nueva Hora</Button>
             <StyledRejectButton onClick={() => onManageVisit(visit, 'reject_owner_reschedule')}>
-              Rechazar
+              Rechazar Nueva Hora
             </StyledRejectButton>
           </>
         )}
