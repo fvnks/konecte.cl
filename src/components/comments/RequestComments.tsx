@@ -4,14 +4,8 @@
 import { useEffect, useState, useTransition } from 'react';
 import type { Comment as CommentType, User as StoredUserType } from '@/lib/types';
 import { addCommentAction, getCommentsAction } from '@/actions/commentActions';
-import CommentItem from './CommentItem';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, Loader2, UserCircle, MessageSquare } from 'lucide-react';
+import StyledCommentSystem from './StyledCommentSystem'; // Importar el nuevo sistema
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import Link from 'next/link';
 
 interface RequestCommentsProps {
   requestId: string;
@@ -56,10 +50,8 @@ export default function RequestComments({ requestId, requestSlug }: RequestComme
   }, [requestId, toast]);
 
   const handleAddComment = async () => {
-    if (!loggedInUser?.id) {
-      toast({ title: "Acción Requerida", description: "Debes iniciar sesión para comentar.", variant: "default", 
-        action: <Button variant="link" size="sm" asChild><Link href="/auth/signin">Iniciar Sesión</Link></Button>
-      });
+     if (!loggedInUser?.id) {
+      // El componente StyledCommentSystem manejará el prompt de login
       return;
     }
     if (!newCommentContent.trim()) {
@@ -71,7 +63,7 @@ export default function RequestComments({ requestId, requestSlug }: RequestComme
       const result = await addCommentAction(
         { content: newCommentContent },
         loggedInUser.id,
-        { requestId, requestSlug } // Usar requestId y requestSlug
+        { requestId, requestSlug }
       );
 
       if (result.success && result.comment) {
@@ -84,63 +76,19 @@ export default function RequestComments({ requestId, requestSlug }: RequestComme
     });
   };
   
-  const authorName = loggedInUser?.name || 'Tú';
-  const authorAvatar = loggedInUser?.avatarUrl;
-  const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
-
   return (
-    <Card id="comments" className="shadow-md">
-      <CardHeader>
-        <CardTitle className="text-2xl font-headline flex items-center">
-          <MessageSquare className="mr-3 h-7 w-7 text-primary" /> Discusiones ({comments.length})
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {loggedInUser ? (
-          <div className="flex gap-3 items-start border p-4 rounded-lg bg-background">
-            <Avatar className="mt-1 h-10 w-10">
-              <AvatarImage src={authorAvatar} alt={authorName} data-ai-hint="persona"/>
-              <AvatarFallback>{authorInitials || <UserCircle className="h-5 w-5"/>}</AvatarFallback>
-            </Avatar>
-            <div className="flex-grow space-y-2">
-              <Textarea
-                placeholder="Añade un comentario público o sugerencia..."
-                className="min-h-[80px] text-sm"
-                value={newCommentContent}
-                onChange={(e) => setNewCommentContent(e.target.value)}
-                disabled={isSubmitting}
-              />
-              <Button onClick={handleAddComment} disabled={isSubmitting || !newCommentContent.trim()} size="sm">
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                Publicar Comentario
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center p-4 border rounded-lg bg-muted/50">
-            <p className="text-muted-foreground">
-              <Link href="/auth/signin" className="text-primary hover:underline font-semibold">Inicia sesión</Link> o <Link href="/auth/signup" className="text-primary hover:underline font-semibold">regístrate</Link> para dejar un comentario.
-            </p>
-          </div>
-        )}
-
-        {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="ml-2 text-muted-foreground">Cargando comentarios...</p>
-          </div>
-        ) : comments.length > 0 ? (
-          <div className="space-y-4">
-            {comments.map(comment => (
-              <CommentItem key={comment.id} comment={comment} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-center py-6">
-            Aún no hay comentarios. ¡Sé el primero en comentar!
-          </p>
-        )}
-      </CardContent>
-    </Card>
+    <StyledCommentSystem
+      title="Comentarios de la Solicitud"
+      comments={comments}
+      isLoading={isLoading}
+      newCommentContent={newCommentContent}
+      onNewCommentChange={setNewCommentContent}
+      onSubmitComment={handleAddComment}
+      isSubmittingComment={isSubmitting}
+      loggedInUser={loggedInUser}
+      targetTypeForLink="requests"
+      targetSlugForLink={requestSlug}
+      targetIdForLink={requestId}
+    />
   );
 }
