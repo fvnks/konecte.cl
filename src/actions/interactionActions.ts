@@ -3,7 +3,7 @@
 'use server';
 
 import { query } from '@/lib/db';
-import type { RecordInteractionValues, UserListingInteraction, ListingType, RecordInteractionResult, InteractionTypeEnum } from '@/lib/types';
+import type { RecordInteractionValues, UserListingInteraction, ListingType, RecordInteractionResult, InteractionTypeEnum, ListingInteractionDetails } from '@/lib/types';
 import { recordInteractionSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { getOrCreateConversationAction, sendMessageAction } from './chatActions'; // Import sendMessageAction
@@ -28,7 +28,7 @@ export async function getListingInteractionDetailsAction(
   listingId: string,
   listingType: ListingType,
   userId?: string
-): Promise<{ totalLikes: number; currentUserInteraction: InteractionTypeEnum | null }> {
+): Promise<ListingInteractionDetails> {
   if (!listingId || !listingType) {
     throw new Error("listingId and listingType are required.");
   }
@@ -37,7 +37,7 @@ export async function getListingInteractionDetailsAction(
   let currentUserInteraction: InteractionTypeEnum | null = null;
 
   try {
-    // Get total likes
+    // Get total likes from the respective table's upvotes column
     const tableName = listingType === 'property' ? 'properties' : 'property_requests';
     const countResult: any[] = await query(`SELECT upvotes FROM ${tableName} WHERE id = ?`, [listingId]);
     if (countResult.length > 0) {
@@ -108,7 +108,7 @@ export async function recordUserListingInteractionAction(
     newTotalLikes = Number(currentLikesResult[0]?.upvotes) || 0;
 
     if (newInteractionType === 'like') {
-      if (previousInteractionType !== 'like') { // If it wasn't liked before (or no prev interaction)
+      if (previousInteractionType !== 'like') { // If it wasn't liked before (or no prev interaction, or disliked/skipped)
         newTotalLikes++;
       }
     } else { // If the new interaction is 'dislike' or 'skip'
@@ -195,4 +195,7 @@ export async function recordUserListingInteractionAction(
     return { success: false, message: `Error al registrar interacción: ${error.message}` };
   }
 }
+    
+
+
     

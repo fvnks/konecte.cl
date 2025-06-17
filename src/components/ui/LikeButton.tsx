@@ -56,12 +56,12 @@ const StyledWrapper = styled.div`
 
   .button:hover svg#likeimg {
     stroke: hsl(var(--primary-foreground)); 
-    transform: scale(1.5) translateX(100%); /* Desaparece el texto, icono se mueve */
+    transform: scale(1.5) translateX(100%); 
   }
 
   .button:hover #fontlikebutton {
-    transform: translateX(200%); /* Desliza el texto fuera */
-    opacity: 0; /* Lo hace desaparecer */
+    transform: translateX(200%); 
+    opacity: 0;
   }
 
   .button:active {
@@ -293,11 +293,12 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
           });
           window.dispatchEvent(new CustomEvent('messagesUpdated'));
         } else {
-          toast({
-            title: newInteractionType === 'like' ? "'Me Gusta' Registrado" : "Preferencia Actualizada",
-            description: result.message || `Tu preferencia ha sido registrada.`,
-            duration: 3000,
-          });
+          // No toast for simple like/unlike to avoid being too noisy
+          // toast({
+          //   title: newInteractionType === 'like' ? "'Me Gusta' Registrado" : "Preferencia Actualizada",
+          //   description: result.message || `Tu preferencia ha sido registrada.`,
+          //   duration: 3000,
+          // });
         }
       } else {
          toast({
@@ -358,7 +359,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
             )}
           </div>
           <div id="rightpart">
-            <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={2.5} fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={3} fill="none" viewBox="0 0 24 24" height={20} width={20} xmlns="http://www.w3.org/2000/svg">
               <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
             </svg>
             <div id="fontlikebutton">Me Gusta</div>
@@ -369,3 +370,6 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
   );
 }
 
+
+
+    

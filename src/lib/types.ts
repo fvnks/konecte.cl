@@ -566,8 +566,8 @@ export type RecordInteractionValues = z.infer<typeof recordInteractionSchema>;
 export interface RecordInteractionResult {
   success: boolean;
   message?: string;
-  newTotalLikes?: number;
-  newInteractionType?: InteractionTypeEnum;
+  newTotalLikes?: number; // Updated for real count
+  newInteractionType?: InteractionTypeEnum; // Updated for real state
   matchDetails?: {
     matchFound: boolean;
     conversationId?: string;
@@ -577,6 +577,13 @@ export interface RecordInteractionResult {
     reciprocalListingTitle?: string;
   }
 }
+
+// For getListingInteractionDetailsAction
+export interface ListingInteractionDetails {
+  totalLikes: number;
+  currentUserInteraction: InteractionTypeEnum | null;
+}
+
 
 export interface SubmitPropertyResult {
   success: boolean;
@@ -664,9 +671,6 @@ export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema
 
 // End of Broker Collaboration Types
 
-// For LikeButton initial data
-export interface ListingInteractionDetails {
-  totalLikes: number;
-  currentUserInteraction: InteractionTypeEnum | null;
-}
 
+
+    

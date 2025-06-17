@@ -114,6 +114,8 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_properties_city ON properties(city);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_property_type ON properties(property_type);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_category ON properties(category);`,
+  `CREATE INDEX IF NOT EXISTS idx_properties_upvotes ON properties(upvotes);`,
+
 
   // property_requests
   `CREATE TABLE IF NOT EXISTS property_requests (
@@ -137,6 +139,7 @@ const SQL_STATEMENTS: string[] = [
     budget_max DECIMAL(15,2) DEFAULT NULL,
     open_for_broker_collaboration BOOLEAN DEFAULT FALSE,
     comments_count INT DEFAULT 0,
+    upvotes INT DEFAULT 0, -- Nueva columna para upvotes
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -146,6 +149,8 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_property_requests_user_id ON property_requests(user_id);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_city ON property_requests(desired_location_city);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_broker_collab ON property_requests(open_for_broker_collaboration);`,
+  `CREATE INDEX IF NOT EXISTS idx_property_requests_upvotes ON property_requests(upvotes);`,
+
 
   // comments
   `CREATE TABLE IF NOT EXISTS comments (
@@ -616,3 +621,6 @@ async function setupDatabase() {
 
 setupDatabase();
 
+
+
+    

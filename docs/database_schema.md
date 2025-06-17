@@ -49,17 +49,18 @@ CREATE TABLE plans (
     max_properties_allowed INT DEFAULT NULL,         -- NULL para ilimitado
     max_requests_allowed INT DEFAULT NULL,           -- NULL para ilimitado
     max_ai_searches_monthly INT DEFAULT NULL,        -- Límite de búsquedas IA por mes (NULL o 0 para sin límite/base, >0 para límite específico)
+    whatsapp_bot_enabled BOOLEAN DEFAULT FALSE,      -- NUEVO: Permite al usuario usar el chat con el bot de WhatsApp
     can_feature_properties BOOLEAN DEFAULT FALSE,
     property_listing_duration_days INT DEFAULT NULL, -- NULL para indefinido
     is_active BOOLEAN DEFAULT TRUE,
-    is_publicly_visible BOOLEAN DEFAULT TRUE,        -- NUEVO: Controla si el plan aparece en la página pública de planes
+    is_publicly_visible BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Insertar plan gratuito por defecto (opcional, puede ser gestionado desde la app)
-INSERT INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly, is_publicly_visible) VALUES
-(UUID(), 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30, 5, TRUE); -- Ejemplo: 5 búsquedas IA para el plan gratuito, visible públicamente
+INSERT INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly, whatsapp_bot_enabled, is_publicly_visible) VALUES
+(UUID(), 'Gratuito', 'Plan básico con funcionalidades limitadas.', 0.00, 1, 1, 30, 5, FALSE, TRUE);
 ```
 
 ---
@@ -151,6 +152,7 @@ CREATE INDEX idx_properties_user_id ON properties(user_id);
 CREATE INDEX idx_properties_city ON properties(city);
 CREATE INDEX idx_properties_property_type ON properties(property_type);
 CREATE INDEX idx_properties_category ON properties(category);
+CREATE INDEX idx_properties_upvotes ON properties(upvotes);
 ```
 
 ---
@@ -187,6 +189,7 @@ CREATE TABLE property_requests (
     -- budget_currency VARCHAR(3) DEFAULT 'CLP', -- Considerar si el presupuesto puede ser en diferentes monedas
     open_for_broker_collaboration BOOLEAN DEFAULT FALSE,
     comments_count INT DEFAULT 0,
+    upvotes INT DEFAULT 0, -- Nueva columna para upvotes
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -199,6 +202,7 @@ CREATE INDEX idx_property_requests_slug ON property_requests(slug);
 CREATE INDEX idx_property_requests_user_id ON property_requests(user_id);
 CREATE INDEX idx_property_requests_city ON property_requests(desired_location_city);
 CREATE INDEX idx_property_requests_broker_collab ON property_requests(open_for_broker_collaboration);
+CREATE INDEX idx_property_requests_upvotes ON property_requests(upvotes);
 ```
 
 ---
@@ -669,3 +673,6 @@ CREATE TABLE user_ai_search_usage (
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
 
+
+
+    

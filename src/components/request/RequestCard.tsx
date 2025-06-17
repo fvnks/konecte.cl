@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, UserCircle as UserIcon, Handshake, Eye } from 'lucide-react';
+import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, UserCircle as UserIcon, Handshake, Eye, BedDouble, Bath } from 'lucide-react'; // Added BedDouble, Bath
 import LikeButton from '@/components/ui/LikeButton';
 
 interface RequestCardProps {
@@ -46,7 +46,9 @@ export default function RequestCard({ request }: RequestCardProps) {
     createdAt,
     description,
     open_for_broker_collaboration,
-    upvotes, // upvotes will be passed but LikeButton fetches its own initial state
+    minBedrooms, // Added
+    minBathrooms, // Added
+    // upvotes, // REMOVED - LikeButton will fetch its own state
   } = request;
 
   const locationCity = desiredLocation?.city || 'N/A';
@@ -90,6 +92,12 @@ export default function RequestCard({ request }: RequestCardProps) {
                 <Tag className="mr-1.5 h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
                 <span className="truncate">Para: {desiredPropertyType.map(translatePropertyTypeBadge).join(' / ')}</span>
              </div>
+          )}
+          {(minBedrooms !== undefined || minBathrooms !== undefined) && (
+            <div className="flex flex-wrap gap-x-3">
+              {minBedrooms !== undefined && <span className="flex items-center"><BedDouble className="mr-1 h-3.5 w-3.5 text-primary/80" /> {minBedrooms}+ dorms.</span>}
+              {minBathrooms !== undefined && <span className="flex items-center"><Bath className="mr-1 h-3.5 w-3.5 text-primary/80" /> {minBathrooms}+ baños</span>}
+            </div>
           )}
         </div>
         <div className="mt-2.5 flex flex-wrap gap-1.5">

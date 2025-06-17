@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays } from 'lucide-react';
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
-import LikeButton from '@/components/ui/LikeButton'; // Import LikeButton
+import LikeButton from '@/components/ui/LikeButton'; 
 
 interface PropertyListItemProps {
   property: PropertyListing;
@@ -46,7 +46,7 @@ const formatPrice = (price: number, currency: string) => {
 
 export default function PropertyListItem({ property }: PropertyListItemProps) {
   const {
-    id, // Added id for LikeButton
+    id, 
     title,
     slug,
     images,
@@ -60,9 +60,9 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     commentsCount,
     propertyType,
     areaSqMeters,
-    description,
+    description, 
     createdAt,
-    // upvotes, // Removed, LikeButton fetches its own state
+    // upvotes, // Removed
   } = property;
 
   const mainImage = images && images.length > 0 ? images[0] : 'https://placehold.co/320x240.png?text=Propiedad';
@@ -152,3 +152,6 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     </Card>
   );
 }
+
+
+    
