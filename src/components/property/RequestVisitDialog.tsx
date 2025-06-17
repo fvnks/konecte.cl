@@ -2,7 +2,7 @@
 // src/components/property/RequestVisitDialog.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { requestVisitFormSchema, type RequestVisitFormValues, type User as StoredUserType, type PropertyVisit } from '@/lib/types';
@@ -22,14 +22,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription as ShadcnFormDescription, // Renamed to avoid conflict with DialogDescription
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/hooks/use-toast';
-import { requestVisitAction } from '@/actions/visitActions';
+import { requestVisitAction, getBookedTimeSlotsForPropertyOnDateAction } from '@/actions/visitActions'; // Importar nueva acción
 import { Loader2, CalendarPlus, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns'; // Importar format
 
 interface RequestVisitDialogProps {
   open: boolean;
@@ -63,14 +63,34 @@ export default function RequestVisitDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDatePart, setSelectedDatePart] = useState<Date | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
+  const [isLoadingBookedSlots, setIsLoadingBookedSlots] = useState(false);
+
 
   const form = useForm<RequestVisitFormValues>({
     resolver: zodResolver(requestVisitFormSchema),
     defaultValues: {
-      proposed_datetime: '', // Will be set once date and time are picked
+      proposed_datetime: '', 
       visitor_notes: '',
     },
   });
+
+  const fetchBookedSlots = useCallback(async (date: Date) => {
+    if (!propertyId) return;
+    setIsLoadingBookedSlots(true);
+    try {
+      const dateString = format(date, 'yyyy-MM-dd');
+      const slots = await getBookedTimeSlotsForPropertyOnDateAction(propertyId, dateString);
+      setBookedTimeSlots(slots);
+    } catch (error) {
+      console.error("Error fetching booked slots:", error);
+      toast({ title: "Error", description: "No se pudieron cargar los horarios ocupados.", variant: "destructive" });
+      setBookedTimeSlots([]);
+    } finally {
+      setIsLoadingBookedSlots(false);
+    }
+  }, [propertyId, toast]);
+
 
   useEffect(() => {
     if (open) {
@@ -78,28 +98,30 @@ export default function RequestVisitDialog({
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(10, 0, 0, 0);
 
-      setSelectedDatePart(tomorrow); // Set a default date to show time slots for
-      setSelectedTimeSlot(null);     // Clear any previously selected time slot
+      setSelectedDatePart(tomorrow);
+      fetchBookedSlots(tomorrow); // Fetch slots for default date
+      setSelectedTimeSlot(null);    
       form.reset({
-        proposed_datetime: '', // Clear the form field value
+        proposed_datetime: '',
         visitor_notes: `Hola, estoy interesado/a en visitar la propiedad "${propertyTitle}".`,
       });
     } else {
-      // Reset states when dialog closes
       setSelectedDatePart(null);
       setSelectedTimeSlot(null);
+      setBookedTimeSlots([]);
       form.reset({
         proposed_datetime: '',
         visitor_notes: '',
       });
     }
-  }, [open, form, propertyTitle]);
+  }, [open, form, propertyTitle, fetchBookedSlots]);
 
   const handleDateSelect = (date?: Date) => {
     if (date) {
       setSelectedDatePart(date);
-      setSelectedTimeSlot(null); // Reset time slot when date changes
-      form.setValue('proposed_datetime', '', { shouldValidate: true }); // Clear full datetime in form
+      setSelectedTimeSlot(null); 
+      form.setValue('proposed_datetime', '', { shouldValidate: true }); 
+      fetchBookedSlots(date); // Fetch slots for the new date
     }
   };
 
@@ -165,15 +187,13 @@ export default function RequestVisitDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-2">
-            {/* DatePicker remains, but its onChange is handled by handleDateSelect */}
             <FormItem>
               <FormLabel>1. Selecciona el Día</FormLabel>
               <DatePicker
-                value={selectedDatePart} // Controlled by selectedDatePart
+                value={selectedDatePart} 
                 onChange={handleDateSelect}
                 placeholder="Elige un día"
               />
-              {/* This FormField is just to ensure validation messages for proposed_datetime appear if needed */}
               <FormField
                 control={form.control}
                 name="proposed_datetime"
@@ -187,19 +207,35 @@ export default function RequestVisitDialog({
                   <Clock className="mr-2 h-4 w-4 text-primary" />
                   2. Selecciona la Hora (para el {selectedDatePart.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long'})})
                 </FormLabel>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
-                  {availableTimeSlots.map(slot => (
-                    <Button
-                      key={slot}
-                      type="button"
-                      variant={selectedTimeSlot === slot ? "default" : "outline"}
-                      onClick={() => handleTimeSlotSelect(slot)}
-                      className={cn("w-full text-xs h-9", selectedTimeSlot === slot && "ring-2 ring-primary ring-offset-1")}
-                    >
-                      {slot}
-                    </Button>
-                  ))}
-                </div>
+                {isLoadingBookedSlots ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span className="ml-2 text-sm text-muted-foreground">Cargando horarios...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                    {availableTimeSlots.map(slot => {
+                      const isBooked = bookedTimeSlots.includes(slot);
+                      return (
+                        <Button
+                          key={slot}
+                          type="button"
+                          variant={selectedTimeSlot === slot ? "default" : "outline"}
+                          onClick={() => handleTimeSlotSelect(slot)}
+                          className={cn(
+                            "w-full text-xs h-9", 
+                            selectedTimeSlot === slot && "ring-2 ring-primary ring-offset-1",
+                            isBooked && "bg-destructive/10 border-destructive/30 text-destructive/70 cursor-not-allowed hover:bg-destructive/10 hover:text-destructive/70"
+                          )}
+                          disabled={isBooked}
+                          title={isBooked ? "No disponible" : undefined}
+                        >
+                          {slot} {isBooked && " (X)"}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
               </FormItem>
             )}
 
@@ -224,7 +260,7 @@ export default function RequestVisitDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting || !form.getValues('proposed_datetime')}>
+              <Button type="submit" disabled={isSubmitting || !form.getValues('proposed_datetime') || isLoadingBookedSlots}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
                 Enviar Solicitud
               </Button>

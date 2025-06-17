@@ -7,6 +7,7 @@ import type { PropertyVisit, RequestVisitFormValues, UpdateVisitStatusFormValues
 import { requestVisitFormSchema, updateVisitStatusFormSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
+import { format as formatDateFns } from 'date-fns'; // Renombrar para evitar conflicto con format de util
 
 // Helper function to map DB row to PropertyVisit object
 function mapDbRowToPropertyVisit(row: any): PropertyVisit {
@@ -263,12 +264,7 @@ export async function getVisitByIdAction(
     }
     const visit = mapDbRowToPropertyVisit(rows[0]);
 
-    // For non-admin access, ensure user is part of the visit
-    // This check is relevant for when a user tries to access a visit detail page directly
     if (visit.visitor_user_id !== currentUserId && visit.property_owner_user_id !== currentUserId) {
-      // If an admin needs to fetch a specific visit, a different action or parameter might be needed,
-      // or rely on getAllVisitsForAdminAction and filter client-side for a specific one.
-      // For now, this action is user-centric.
       console.warn(`[VisitAction] Unauthorized attempt to access visit ${visitId} by user ${currentUserId}`);
       return null; 
     }
@@ -343,7 +339,6 @@ export async function getAllVisitsForAdminAction(options: GetAllVisitsForAdminOp
   }
 }
 
-// Helper for the admin page to get counts per status
 export async function getVisitCountsByStatusForAdmin(): Promise<Record<PropertyVisitStatus, number>> {
   const counts: Record<PropertyVisitStatus, number> = {
     pending_confirmation: 0,
@@ -367,5 +362,40 @@ export async function getVisitCountsByStatusForAdmin(): Promise<Record<PropertyV
   } catch (error) {
     console.error(`[VisitAction Admin] Error fetching visit counts by status:`, error);
     return counts; // Return default counts on error
+  }
+}
+
+export async function getBookedTimeSlotsForPropertyOnDateAction(
+  propertyId: string,
+  date: string // Expected format YYYY-MM-DD
+): Promise<string[]> {
+  if (!propertyId || !date) {
+    console.warn("[VisitAction WARN] getBookedTimeSlots: propertyId o date no proporcionados.");
+    return [];
+  }
+  try {
+    const sql = `
+      SELECT 
+        CASE 
+          WHEN status = 'confirmed' AND confirmed_datetime IS NOT NULL THEN TIME_FORMAT(confirmed_datetime, '%H:%i')
+          WHEN status = 'pending_confirmation' THEN TIME_FORMAT(proposed_datetime, '%H:%i')
+          ELSE NULL 
+        END as booked_slot
+      FROM property_visits
+      WHERE property_id = ?
+        AND status IN ('pending_confirmation', 'confirmed')
+        AND DATE(
+          CASE 
+            WHEN status = 'confirmed' AND confirmed_datetime IS NOT NULL THEN confirmed_datetime
+            ELSE proposed_datetime 
+          END
+        ) = ?
+      HAVING booked_slot IS NOT NULL;
+    `;
+    const rows: any[] = await query(sql, [propertyId, date]);
+    return rows.map(row => row.booked_slot);
+  } catch (error: any) {
+    console.error(`[VisitAction ERROR] Error fetching booked time slots for property ${propertyId} on ${date}:`, error.message);
+    return []; // Devuelve un array vacío en caso de error para no romper la UI
   }
 }
