@@ -43,76 +43,61 @@ interface StoredUser {
 
 const DEFAULT_NAVBAR_TITLE = "konecte";
 
-const StyledNavContainer = styled.div`
-  position: relative;
-  display: inline-flex; /* So it wraps its content */
-  align-items: center;
-  height: 50px; /* Overall height of the nav bar area */
-  padding: 5px; /* Padding around the links inside */
-  background: rgba(16, 16, 16, 0.05);
-  border-radius: 25px; /* Rounded corners for the container */
-  
-  .dark & {
-    background: rgba(220, 220, 220, 0.08);
-  }
-
-  &:hover .animated-rect {
-    stroke-dasharray: 1; /* Draw full line on container hover */
-    stroke-dashoffset: 0;
-  }
-`;
-
 const StyledNavLink = styled(Link)`
   display: flex;
   align-items: center;
   gap: 0.5em;
-  padding: 8px 12px; /* Padding inside each link */
-  margin: 0 2px; /* Small margin between links */
+  padding: 10px 12px; /* Padding for space around text/icon */
+  margin: 0 2px; 
   color: hsl(var(--foreground));
   font-weight: 500;
   font-size: 0.9rem;
   text-decoration: none;
-  border-radius: 20px; /* Rounded corners for link hover effect */
-  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
-  z-index: 1; /* Links above the SVG */
+  border-radius: 8px; /* Slight rounding for aesthetics */
+  transition: color 0.2s ease-in-out;
+  position: relative; /* For pseudo-elements */
+  z-index: 1; 
 
   .dark & {
     color: hsl(var(--foreground));
   }
 
-  &:hover {
-    background-color: #49A7F3;
-    color: white !important;
-  }
-
-  &:hover svg {
-    color: white !important;
-    stroke: white !important;
-  }
-
   & svg {
     color: hsl(var(--muted-foreground));
-    transition: color 0.2s, stroke 0.2s;
+    transition: color 0.2s;
   }
-`;
 
-const AnimatedRectSVG = styled.svg`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none; /* So it doesn't interfere with link clicks */
-  z-index: 0; /* Behind the links */
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 0%;
+    height: 2px; /* Thickness of the line */
+    background-color: #49A7F3; /* Hover line color */
+    transition: width 0.3s ease-out;
+  }
 
-  .animated-rect {
-    stroke: #49A7F3;
-    stroke-width: 2px; /* Thinner stroke */
-    fill: transparent;
-    stroke-dasharray: 0.02 0.98; /* Start with a very small dash, mostly gap */
-    stroke-dashoffset: 0.01;   /* Slightly offset to hide the initial dot better */
-    transition: stroke-dasharray 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), stroke-dashoffset 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
-    /* Use pathLength="1" on rect for fractional dasharray/dashoffset */
+  &::before {
+    top: 0;
+  }
+
+  &::after {
+    bottom: 0;
+  }
+
+  &:hover {
+    color: hsl(var(--primary)); /* Text color change on hover */
+  }
+  
+  &:hover svg {
+    color: hsl(var(--primary)); /* Icon color change on hover */
+    stroke: hsl(var(--primary));
+  }
+
+  &:hover::before,
+  &:hover::after {
+    width: 100%;
   }
 `;
 
@@ -219,7 +204,7 @@ export default function Navbar() {
   const isUserAdmin = loggedInUser?.role_id === 'admin';
 
   const commonNavLinksDesktop = (closeMenu?: () => void) => (
-    <>
+    <div className="flex items-center gap-0"> {/* Container for links */}
       {navItems.map((item) => (
         <StyledNavLink
           key={item.label}
@@ -230,7 +215,7 @@ export default function Navbar() {
           {item.label}
         </StyledNavLink>
       ))}
-    </>
+    </div>
   );
 
   const siteTitleForDisplay = siteSettings?.siteTitle || DEFAULT_NAVBAR_TITLE;
@@ -315,23 +300,8 @@ export default function Navbar() {
             {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-7 w-7 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
           </Link>
 
-          <nav className="hidden md:flex items-center gap-0 mx-auto"> {/* gap set by link margin */}
-             <StyledNavContainer>
-                {commonNavLinksDesktop()}
-                <AnimatedRectSVG 
-                    preserveAspectRatio="none" /* Stretches SVG content */
-                >
-                    <rect 
-                        className="animated-rect"
-                        x="1" y="1"  /* Offset by half stroke-width */
-                        width="calc(100% - 2px)" /* SVG width minus stroke-width */
-                        height="calc(100% - 2px)" /* SVG height minus stroke-width */
-                        rx="24" /* container radius - stroke-width/2 */
-                        ry="24"
-                        pathLength="1" /* Allows dasharray/offset to be fractions */
-                    />
-                </AnimatedRectSVG>
-             </StyledNavContainer>
+          <nav className="hidden md:flex items-center gap-0 mx-auto">
+            {commonNavLinksDesktop()}
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
