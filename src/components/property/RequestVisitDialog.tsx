@@ -12,7 +12,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription, // This is for the Dialog, not Form
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
@@ -22,13 +22,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription, // Added missing import
+  FormDescription as ShadcnFormDescription, // Renamed to avoid conflict with DialogDescription
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/hooks/use-toast';
 import { requestVisitAction } from '@/actions/visitActions';
-import { Loader2, CalendarPlus } from 'lucide-react';
+import { Loader2, CalendarPlus, Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface RequestVisitDialogProps {
   open: boolean;
@@ -36,9 +37,18 @@ interface RequestVisitDialogProps {
   propertyId: string;
   propertyOwnerId: string;
   propertyTitle: string;
-  visitorUser: StoredUserType | null; // El usuario que está solicitando la visita
+  visitorUser: StoredUserType | null;
   onVisitRequested?: (visit: PropertyVisit) => void;
 }
+
+const generateTimeSlots = (startHour: number, endHour: number): string[] => {
+  const slots: string[] = [];
+  for (let hour = startHour; hour < endHour; hour++) {
+    slots.push(`${String(hour).padStart(2, '0')}:00`);
+  }
+  return slots;
+};
+const availableTimeSlots = generateTimeSlots(8, 18); // 08:00 to 17:00
 
 export default function RequestVisitDialog({
   open,
@@ -51,29 +61,57 @@ export default function RequestVisitDialog({
 }: RequestVisitDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedDatePart, setSelectedDatePart] = useState<Date | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
 
   const form = useForm<RequestVisitFormValues>({
     resolver: zodResolver(requestVisitFormSchema),
     defaultValues: {
-      proposed_datetime: new Date().toISOString(), // Default to now, user will change
+      proposed_datetime: '', // Will be set once date and time are picked
       visitor_notes: '',
     },
   });
-  
+
   useEffect(() => {
     if (open) {
-        // Establecer una fecha por defecto razonable, ej. mañana a las 10 AM
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(10, 0, 0, 0);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(10, 0, 0, 0);
 
-        form.reset({
-            proposed_datetime: tomorrow.toISOString(),
-            visitor_notes: `Hola, estoy interesado/a en visitar la propiedad "${propertyTitle}".`,
-        });
+      setSelectedDatePart(tomorrow); // Set a default date to show time slots for
+      setSelectedTimeSlot(null);     // Clear any previously selected time slot
+      form.reset({
+        proposed_datetime: '', // Clear the form field value
+        visitor_notes: `Hola, estoy interesado/a en visitar la propiedad "${propertyTitle}".`,
+      });
+    } else {
+      // Reset states when dialog closes
+      setSelectedDatePart(null);
+      setSelectedTimeSlot(null);
+      form.reset({
+        proposed_datetime: '',
+        visitor_notes: '',
+      });
     }
   }, [open, form, propertyTitle]);
 
+  const handleDateSelect = (date?: Date) => {
+    if (date) {
+      setSelectedDatePart(date);
+      setSelectedTimeSlot(null); // Reset time slot when date changes
+      form.setValue('proposed_datetime', '', { shouldValidate: true }); // Clear full datetime in form
+    }
+  };
+
+  const handleTimeSlotSelect = (timeSlot: string) => {
+    setSelectedTimeSlot(timeSlot);
+    if (selectedDatePart) {
+      const [hours, minutes] = timeSlot.split(':').map(Number);
+      const combinedDateTime = new Date(selectedDatePart);
+      combinedDateTime.setHours(hours, minutes, 0, 0);
+      form.setValue('proposed_datetime', combinedDateTime.toISOString(), { shouldValidate: true, shouldDirty: true });
+    }
+  };
 
   async function onSubmit(values: RequestVisitFormValues) {
     if (!visitorUser?.id) {
@@ -83,6 +121,10 @@ export default function RequestVisitDialog({
     if (visitorUser.id === propertyOwnerId) {
       toast({ title: 'Acción no permitida', description: 'No puedes solicitar una visita a tu propia propiedad.', variant: 'destructive' });
       return;
+    }
+    if (!values.proposed_datetime) {
+        toast({ title: 'Información Faltante', description: 'Por favor, selecciona una fecha y una hora para la visita.', variant: 'warning' });
+        return;
     }
 
     setIsSubmitting(true);
@@ -105,7 +147,7 @@ export default function RequestVisitDialog({
     }
   }
 
-  if (!visitorUser) return null; // No mostrar el diálogo si no hay usuario
+  if (!visitorUser) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -117,34 +159,56 @@ export default function RequestVisitDialog({
           </DialogTitle>
           <DialogDescription className="pt-1">
             <span className="font-medium text-foreground">{propertyTitle}</span>
-            <br/>
-            Propón una fecha y hora para tu visita.
+            <br />
+            Elige un día y luego una hora para tu visita.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-2">
-            <FormField
-              control={form.control}
-              name="proposed_datetime"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Fecha y Hora Propuesta *</FormLabel>
-                  <DatePicker
-                    value={field.value ? new Date(field.value) : new Date()}
-                    onChange={(date) => field.onChange(date?.toISOString())}
-                    placeholder="Selecciona fecha y hora"
-                  />
-                  <FormDescription>Elige una fecha y hora tentativa para la visita.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-2">
+            {/* DatePicker remains, but its onChange is handled by handleDateSelect */}
+            <FormItem>
+              <FormLabel>1. Selecciona el Día</FormLabel>
+              <DatePicker
+                value={selectedDatePart} // Controlled by selectedDatePart
+                onChange={handleDateSelect}
+                placeholder="Elige un día"
+              />
+              {/* This FormField is just to ensure validation messages for proposed_datetime appear if needed */}
+              <FormField
+                control={form.control}
+                name="proposed_datetime"
+                render={() => <FormMessage />}
+              />
+            </FormItem>
+
+            {selectedDatePart && (
+              <FormItem>
+                <FormLabel className="flex items-center">
+                  <Clock className="mr-2 h-4 w-4 text-primary" />
+                  2. Selecciona la Hora (para el {selectedDatePart.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long'})})
+                </FormLabel>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                  {availableTimeSlots.map(slot => (
+                    <Button
+                      key={slot}
+                      type="button"
+                      variant={selectedTimeSlot === slot ? "default" : "outline"}
+                      onClick={() => handleTimeSlotSelect(slot)}
+                      className={cn("w-full text-xs h-9", selectedTimeSlot === slot && "ring-2 ring-primary ring-offset-1")}
+                    >
+                      {slot}
+                    </Button>
+                  ))}
+                </div>
+              </FormItem>
+            )}
+
             <FormField
               control={form.control}
               name="visitor_notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notas Adicionales (Opcional)</FormLabel>
+                  <FormLabel>3. Notas Adicionales (Opcional)</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Ej: Preferiblemente por la tarde, ¿Tiene mascotas el actual ocupante?, etc."
@@ -160,7 +224,7 @@ export default function RequestVisitDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || !form.getValues('proposed_datetime')}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
                 Enviar Solicitud
               </Button>
