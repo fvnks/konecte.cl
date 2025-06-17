@@ -26,7 +26,7 @@ const AnimatedLinkButton: React.FC<AnimatedLinkButtonProps> = ({
           inline-flex items-center justify-center text-center
           ${className || ''}
         `}
-        style={{ backgroundColor: '#369DF2' }} // Reemplazado bg-black
+        style={{ backgroundColor: '#369DF2' }} // Fondo base del botón
       >
         {/* Texto Normal - se oculta en hover */}
         <span className="transition-opacity duration-100 group-hover:opacity-0">
@@ -37,8 +37,7 @@ const AnimatedLinkButton: React.FC<AnimatedLinkButtonProps> = ({
         <span className="absolute w-[150%] h-[200%] -top-8 -left-4 bg-green-200 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform group-hover:duration-500 duration-1000 origin-bottom z-[-1]" />
         <span className="absolute w-[150%] h-[200%] -top-8 -left-4 bg-green-400 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform group-hover:duration-700 duration-700 origin-bottom z-[-1]" />
         <span 
-          className="absolute w-[150%] h-[200%] -top-8 -left-4 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform group-hover:duration-1000 duration-500 origin-bottom z-[-1]"
-          style={{ backgroundColor: '#369DF2' }} // Este es el color final del hover que ya ajustamos
+          className="absolute w-[150%] h-[200%] -top-8 -left-4 bg-green-600 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform group-hover:duration-1000 duration-500 origin-bottom z-[-1]"
         />
 
         {/* Texto Hover - se muestra en hover */}
