@@ -57,7 +57,7 @@ export default function FeaturedListingsClient({ featuredProperties, recentReque
           {featuredProperties.length > 0 && (
             <div className="mt-10 text-center">
               <AnimatedLinkButton href="/properties">
-                Ver Todas
+                Ver todas las propiedades
               </AnimatedLinkButton>
             </div>
           )}
