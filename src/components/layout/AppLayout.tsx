@@ -20,11 +20,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isDashboardRoute = pathname.startsWith('/dashboard');
   const isAuthRoute = pathname.startsWith('/auth');
   
-  const showNavbar = !isAdminRoute && !isDashboardRoute && !isAuthRoute;
+  // Navbar se muestra si NO es admin Y NO es dashboard. (Sí en Auth)
+  const showNavbar = !isAdminRoute && !isDashboardRoute;
+  // Footer se muestra si NO es admin Y NO es dashboard Y NO es auth.
   const showFooter = !isAdminRoute && !isDashboardRoute && !isAuthRoute;
-  const showFloatingAssistant = showNavbar; // Mostrar el asistente en las mismas páginas que el Navbar/Footer
+  // El asistente flotante sigue la lógica del Navbar
+  const showFloatingAssistant = showNavbar; 
   
-  const useSpecificLayoutPadding = isAdminRoute || isDashboardRoute || isAuthRoute;
+  // Rutas que manejan su propio padding o no lo necesitan (admin, dashboard)
+  const routeHasSpecificPadding = isAdminRoute || isDashboardRoute;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -32,10 +36,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       <main
         className={cn(
-          "flex-grow",
-          useSpecificLayoutPadding
-            ? "animate-fade-in" 
-            : "container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 animate-fade-in"
+          "flex-grow animate-fade-in", // animate-fade-in aplicado a todas las main
+          !routeHasSpecificPadding // Si NO es una ruta con padding específico (admin/dashboard)
+            ? "container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12" // Aplicar padding estándar
+            : "" // Admin/dashboard manejan su propio padding interno o no lo necesitan de AppLayout
         )}
       >
         {children}
