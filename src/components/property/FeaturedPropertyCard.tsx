@@ -6,14 +6,15 @@ import Image from 'next/image';
 import type { PropertyListing, User as StoredUser, InteractionTypeEnum } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Eye, DollarSign, CalendarDays, UserCircle as UserIcon, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
+import { MapPin, DollarSign, CalendarDays, UserCircle as UserIcon, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { recordUserListingInteractionAction } from '@/actions/interactionActions';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
-import { MessageSquareText, Building } from 'lucide-react';
+import { MessageSquareText, Building, MessagesSquare } from 'lucide-react';
+import CustomDetailButton from '@/components/ui/CustomDetailButton'; // Importar el nuevo botón
 
 interface FeaturedPropertyCardProps {
   property: PropertyListing;
@@ -205,11 +206,9 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
         )}
       </CardContent>
       <CardFooter className="p-4 sm:p-5 pt-0 mt-auto">
-        <Button size="default" asChild className="w-full text-sm sm:text-base rounded-lg shadow-md hover:shadow-lg transition-shadow h-11">
-          <Link href={`/properties/${slug}`} className="flex items-center gap-2">
-            <Eye className="h-5 w-5" /> Ver Detalles
-          </Link>
-        </Button>
+        <CustomDetailButton href={`/properties/${slug}`} className="w-full">
+          Ver Detalles
+        </CustomDetailButton>
       </CardFooter>
     </Card>
   );

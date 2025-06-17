@@ -1,4 +1,3 @@
-
 // src/components/property/PropertyListItem.tsx
 import Link from 'next/link';
 import Image from 'next/image';
@@ -7,7 +6,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowBigUp, MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, Eye, DollarSign, CalendarDays } from 'lucide-react'; // Added CalendarDays
+import { ArrowBigUp, MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays } from 'lucide-react'; // Added CalendarDays
+import CustomDetailButton from '@/components/ui/CustomDetailButton'; // Importar el nuevo botón
 
 interface PropertyListItemProps {
   property: PropertyListing;
@@ -143,11 +143,9 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
                 <span>{commentsCount}</span>
               </Button>
             </Link>
-             <Button size="sm" asChild className="text-xs sm:text-sm px-3 h-9 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <Link href={`/properties/${slug}`} className="flex items-center gap-1.5">
-                <Eye className="h-4 w-4" /> Ver Detalles
-              </Link>
-            </Button>
+             <CustomDetailButton href={`/properties/${slug}`} className="self-stretch sm:self-center">
+                Ver Detalles
+            </CustomDetailButton>
           </div>
         </CardFooter>
       </div>
