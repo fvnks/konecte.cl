@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import styled from 'styled-components';
-import React from 'react'; // Asegurarse de que React esté importado
+import React from 'react';
 
 interface CustomDetailButtonProps {
   href: string;
@@ -14,11 +14,9 @@ interface CustomDetailButtonProps {
 const CustomDetailButton: React.FC<CustomDetailButtonProps> = ({ href, children, className }) => {
   return (
     <StyledWrapper className={className}>
-      <Link href={href} passHref legacyBehavior>
-        <a className="btn-23">
-          <span className="text">{children}</span>
-          <span aria-hidden className="marquee">{children}</span>
-        </a>
+      <Link href={href} className="btn-23">
+        <span className="text">{children}</span>
+        <span aria-hidden className="marquee">{children}</span>
       </Link>
     </StyledWrapper>
   );
@@ -45,12 +43,12 @@ const StyledWrapper = styled.div`
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif,
       Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
-    font-size: 0.875rem; /* Ajustado para text-sm */
+    font-size: 0.875rem; /* text-sm */
     font-weight: 900;
-    line-height: 1.25rem; /* Ajustado para leading-5 */
+    line-height: 1.25rem; /* leading-5 */
     margin: 0;
     -webkit-mask-image: -webkit-radial-gradient(#000, #fff);
-    padding: 0;
+    padding: 0.6rem 1.5rem; /* Ajustado para un tamaño más compacto */
     text-transform: uppercase;
   }
 
@@ -74,9 +72,8 @@ const StyledWrapper = styled.div`
   .btn-23 {
     border-radius: 99rem;
     border-width: 2px;
-    border-color: transparent;
+    border-color: transparent; /* Usa el color base para el borde inicial */
     overflow: hidden;
-    padding: 0.6rem 1.5rem; /* Ajustado para un tamaño más compacto */
     position: relative;
   }
 
@@ -92,8 +89,8 @@ const StyledWrapper = styled.div`
     --spacing: 10em; /* Aumentado para más espacio */
     --start: 0em;
     --end: 10em; /* Aumentado para más espacio */
-    -webkit-animation: marquee 1.5s linear infinite; /* Duración ligeramente aumentada para texto más largo */
-    animation: marquee 1.5s linear infinite; /* Duración ligeramente aumentada */
+    -webkit-animation: marquee 1.5s linear infinite;
+    animation: marquee 1.5s linear infinite;
     -webkit-animation-play-state: paused;
     animation-play-state: paused;
     opacity: 0;
