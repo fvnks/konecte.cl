@@ -7,12 +7,13 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Form,
-  FormControl,
+  FormControl, // Keep this import as it might be used by other fields
   FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
+  useFormField, // Import useFormField
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,12 +21,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser } from "@/lib/types";
-import { propertyFormSchema, type PropertyFormValues } from "@/lib/types"; 
+import { propertyFormSchema, type PropertyFormValues } from "@/lib/types";
 import { Loader2, UserCircle, UploadCloud, Image as ImageIcon, Trash2, FileImage } from "lucide-react";
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image"; 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
@@ -53,8 +54,6 @@ export default function PropertyForm() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  // uploadedImageUrls no se usa directamente para el form.control, PropertyFormValues.images se actualiza
-  // pero lo mantenemos para el contador de subida.
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -82,7 +81,7 @@ export default function PropertyForm() {
       bedrooms: 0,
       bathrooms: 0,
       areaSqMeters: 0,
-      images: [], 
+      images: [],
       features: "",
     },
   });
@@ -116,7 +115,6 @@ export default function PropertyForm() {
       setImageFiles(prevFiles => [...prevFiles, ...validFiles]);
       const newPreviews = validFiles.map(file => URL.createObjectURL(file));
       setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
-       // Limpiar el input para permitir seleccionar los mismos archivos si se eliminan y se vuelven a añadir
       event.target.value = '';
     }
   };
@@ -125,7 +123,6 @@ export default function PropertyForm() {
     setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
     setImagePreviews(prevPreviews => {
       const newPreviews = prevPreviews.filter((_, index) => index !== indexToRemove);
-      // Revocar Object URL para liberar memoria
       if (prevPreviews[indexToRemove]) {
         URL.revokeObjectURL(prevPreviews[indexToRemove]);
       }
@@ -191,7 +188,6 @@ export default function PropertyForm() {
       form.reset();
       setImageFiles([]);
       setImagePreviews([]);
-      // No es necesario resetear uploadedImageUrls aquí.
       if (result.propertySlug) {
         router.push(`/properties/${result.propertySlug}`);
       } else {
@@ -203,12 +199,11 @@ export default function PropertyForm() {
   }
   
   useEffect(() => {
-    // Limpiar URLs de previsualización cuando el componente se desmonte para liberar memoria
     return () => {
       imagePreviews.forEach(url => URL.revokeObjectURL(url));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Solo se ejecuta al desmontar
+  }, []);
   
   if (isCheckingAuth) {
     return (
@@ -222,7 +217,6 @@ export default function PropertyForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* ... otros FormFields ... */}
         <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl> <Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /> </FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
         <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl> <Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -244,16 +238,20 @@ export default function PropertyForm() {
           <FormField control={form.control} name="areaSqMeters" render={({ field }) => ( <FormItem> <FormLabel>Superficie (m²)</FormLabel> <FormControl> <Input type="number" placeholder="Ej: 120" {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
         </div>
         
-        {/* Image Upload Section - Refined UI */}
         <FormField
           control={form.control}
-          name="images" // Este campo se actualizará programáticamente
-          render={() => ( // No usamos field directamente para el input de archivo
-            <FormItem>
-              <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES}, hasta {MAX_FILE_SIZE_MB}MB c/u)</FormLabel>
-              <FormControl>
+          name="images"
+          render={() => { // Removed 'field' as it's not directly used for value/onChange here
+            const { formItemId, formDescriptionId, formMessageId, error } = useFormField(); // Get context values
+            return (
+              <FormItem>
+                <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES}, hasta {MAX_FILE_SIZE_MB}MB c/u)</FormLabel>
+                {/* FormControl is removed, attributes applied to label */}
                 <label
-                  htmlFor="image-upload-input"
+                  htmlFor="image-upload-input" // Standard htmlFor for the actual file input
+                  id={formItemId} // The FormLabel will point to this clickable label
+                  aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
+                  aria-invalid={!!error}
                   className={cn(
                     "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors",
                     "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50",
@@ -272,8 +270,8 @@ export default function PropertyForm() {
                       Imágenes subidas: {imagePreviews.length} de {MAX_IMAGES}
                     </p>
                   </div>
-                  <Input
-                    id="image-upload-input"
+                  <Input // This is the actual file input, hidden
+                    id="image-upload-input" // This ID is for the label's own htmlFor
                     type="file"
                     className="hidden"
                     multiple
@@ -282,38 +280,38 @@ export default function PropertyForm() {
                     disabled={imagePreviews.length >= MAX_IMAGES || isUploading}
                   />
                 </label>
-              </FormControl>
-              {imagePreviews.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {imagePreviews.map((previewUrl, index) => (
-                    <div key={previewUrl} className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100">
-                      <Image src={previewUrl} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md"
-                        onClick={() => removeImage(index)}
-                        disabled={isUploading}
-                        aria-label="Eliminar imagen"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {isUploading && (
-                <div className="flex items-center mt-3 text-sm text-primary">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Subiendo imágenes... ({imageFiles.filter(f => !finalImageUrls.includes(f.name)).length} de {imageFiles.length} restantes)
-                </div>
-              )}
-              <FormMessage>{form.formState.errors.images?.message}</FormMessage>
-            </FormItem>
-          )}
+                {/* You can add a FormDescription here if needed, ensure it has id={formDescriptionId} if not using FormControl */}
+                {imagePreviews.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {imagePreviews.map((previewUrl, index) => (
+                      <div key={previewUrl} className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100">
+                        <Image src={previewUrl} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md"
+                          onClick={() => removeImage(index)}
+                          disabled={isUploading}
+                          aria-label="Eliminar imagen"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {isUploading && (
+                  <div className="flex items-center mt-3 text-sm text-primary">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Subiendo imágenes...
+                  </div>
+                )}
+                <FormMessage /> {/* This will still work correctly */}
+              </FormItem>
+            );
+          }}
         />
-
 
         <FormField
           control={form.control}
@@ -344,4 +342,3 @@ export default function PropertyForm() {
     </Form>
   );
 }
-
