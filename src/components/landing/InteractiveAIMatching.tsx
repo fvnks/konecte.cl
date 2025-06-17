@@ -1,4 +1,3 @@
-
 // src/components/landing/InteractiveAIMatching.tsx
 'use client';
 
@@ -6,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import Link from 'next/link';
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button"; // Reemplazado por GenerateAIButton
+import GenerateAIButton from '@/components/ui/GenerateAIButton'; // Importar el nuevo botón
 import {
   Form,
   FormControl,
@@ -25,10 +25,8 @@ import type { User as StoredUser, InteractionTypeEnum, PropertyListing, SearchRe
 import { useState, useEffect } from "react";
 import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, PlusCircle, ThumbsUp, ThumbsDown, UserCircle as UserIconLucide, MessagesSquare, HeartHandshake } from "lucide-react";
 import FeaturedPropertyCard from '@/components/property/FeaturedPropertyCard';
-import { Badge } from '@/components/ui/badge'; // Added missing import
-
-// RequestCard no se usará directamente aquí ya que solo mostraremos propiedades
-// import RequestCard from '@/components/request/RequestCard';
+import { Badge } from '@/components/ui/badge';
+import { Button } from "@/components/ui/button"; // Necesario para el botón de Iniciar Sesión
 
 const formSchema = z.object({
   userSearchDescription: z.string().min(10, "La descripción de tu búsqueda debe tener al menos 10 caracteres.").max(1000, "Máximo 1000 caracteres."),
@@ -192,19 +190,10 @@ export default function InteractiveAIMatching() {
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full sm:w-auto text-base py-2.5 h-auto" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Buscando con IA...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-2 h-5 w-5" />
-                Buscar Propiedades con IA
-              </>
-            )}
-          </Button>
+          <GenerateAIButton type="submit" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+            Buscar Propiedades con IA
+          </GenerateAIButton>
         </form>
       </Form>
 
@@ -315,5 +304,3 @@ export default function InteractiveAIMatching() {
     </div>
   );
 }
-
-    
