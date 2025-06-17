@@ -1,3 +1,4 @@
+
 // src/components/property/PropertyListItem.tsx
 import Link from 'next/link';
 import Image from 'next/image';
@@ -6,8 +7,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowBigUp, MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays } from 'lucide-react'; // Added CalendarDays
-import CustomDetailButton from '@/components/ui/CustomDetailButton'; // Importar el nuevo botón
+import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays } from 'lucide-react';
+import CustomDetailButton from '@/components/ui/CustomDetailButton';
+import LikeButton from '@/components/ui/LikeButton'; // Import LikeButton
 
 interface PropertyListItemProps {
   property: PropertyListing;
@@ -44,6 +46,7 @@ const formatPrice = (price: number, currency: string) => {
 
 export default function PropertyListItem({ property }: PropertyListItemProps) {
   const {
+    id, // Added id for LikeButton
     title,
     slug,
     images,
@@ -54,12 +57,12 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     bathrooms,
     category,
     author,
-    upvotes,
     commentsCount,
     propertyType,
     areaSqMeters,
     description,
     createdAt,
+    // upvotes, // Removed, LikeButton fetches its own state
   } = property;
 
   const mainImage = images && images.length > 0 ? images[0] : 'https://placehold.co/320x240.png?text=Propiedad';
@@ -133,10 +136,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
             </div>
           </div>
           <div className="flex items-center gap-1.5 self-end sm:self-center w-full sm:w-auto justify-end">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary p-1 h-auto text-xs">
-              <ArrowBigUp className="mr-0.5 h-3.5 w-3.5" />
-              <span>{upvotes}</span>
-            </Button>
+            <LikeButton listingId={id} listingType="property" />
             <Link href={`/properties/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary">
               <Button variant="ghost" size="sm" className="p-1 h-auto text-xs">
                 <MessageCircle className="mr-0.5 h-3.5 w-3.5" />

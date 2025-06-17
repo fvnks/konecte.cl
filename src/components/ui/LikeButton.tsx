@@ -1,9 +1,10 @@
+
 // src/components/ui/LikeButton.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { recordUserListingInteractionAction } from '@/actions/interactionActions';
+import { recordUserListingInteractionAction, getListingInteractionDetailsAction } from '@/actions/interactionActions';
 import type { User as StoredUser, InteractionTypeEnum, ListingType } from '@/lib/types';
 import Link from 'next/link';
 import { Button as ShadButton } from './button'; // For toast action
@@ -15,6 +16,7 @@ interface LikeButtonProps {
   listingId: string;
   listingType: ListingType;
   className?: string;
+  // initialTotalLikes and initialUserInteraction are no longer needed as props
 }
 
 const StyledWrapper = styled.div`
@@ -54,33 +56,31 @@ const StyledWrapper = styled.div`
 
   .button:hover svg#likeimg {
     stroke: hsl(var(--primary-foreground)); 
-    transform: scale(1.5) translateX(100%);
+    transform: scale(1.5) translateX(100%); /* Desaparece el texto, icono se mueve */
   }
 
   .button:hover #fontlikebutton {
-    color: hsl(var(--primary-foreground));
-    transform: translateX(200%); /* Slide out */
-    opacity: 0; /* Fade out */
+    transform: translateX(200%); /* Desliza el texto fuera */
+    opacity: 0; /* Lo hace desaparecer */
   }
 
   .button:active {
     transform: scale(0.95) translateY(2px); 
-    box-shadow: 0px 1px 0px 0px hsla(var(--primary), 0.5); 
+    box-shadow: 0px 1px 0px 0px hsla(var(--primary) / 0.5); 
   }
 
   .button:active svg#likeimg {
     stroke: hsl(var(--primary-foreground));
-    transform: scale(1.5) translateX(100%) rotate(-10deg); /* Keep transform for active state consistent with hover */
+    transform: scale(1.5) translateX(100%) rotate(-10deg);
   }
   
   .button:active #fontlikebutton {
-    color: hsl(var(--primary-foreground));
-    transform: translateX(200%); /* Keep it slid out */
+    transform: translateX(200%);
     opacity: 0;
   }
 
   svg#likeimg {
-    transition: transform 0.3s ease-out, stroke 0.2s ease; /* Changed transition timing */
+    transition: transform 0.3s ease-out, stroke 0.2s ease; 
     stroke: hsl(var(--primary)); 
     width: 20px;
     height: 20px;
@@ -97,7 +97,6 @@ const StyledWrapper = styled.div`
   }
 
   #leftpart {
-    color: hsl(var(--primary-foreground)); 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -106,6 +105,7 @@ const StyledWrapper = styled.div`
     font-weight: 600;
     font-size: 12px; 
     background-color: hsl(var(--primary)); 
+    color: hsl(var(--primary-foreground));
     width: 36px; 
     height: 100%;
     transition: all 0.2s ease;
@@ -118,26 +118,28 @@ const StyledWrapper = styled.div`
     border-right-color: hsl(var(--primary) / 0.3); 
   }
 
+  #currentnumber, #movenumber {
+    position: absolute; /* Allows them to overlap for the transition */
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  }
   #currentnumber {
-    transform: translateY(50%);
-    transition: all 0.2s ease;
+    transform: translateY(0%);
+    opacity: 1;
   }
-
   #movenumber {
-    transform: translateY(-200%); 
-    transition: all 0.2s ease;
+    transform: translateY(100%);
+    opacity: 0;
   }
 
-  /* Styles for when checkbox is checked (liked state) */
   input#checknumber:checked ~ .button #currentnumber {
-    transform: translateY(200%); 
+    transform: translateY(-100%);
+    opacity: 0;
   }
-
   input#checknumber:checked ~ .button #movenumber {
-    transform: translateY(-50%); 
+    transform: translateY(0%);
+    opacity: 1;
   }
   
-  /* Change appearance of left part when liked */
   input#checknumber:checked ~ .button #leftpart {
     background-color: hsl(var(--accent)); 
     color: hsl(var(--accent-foreground));
@@ -149,28 +151,23 @@ const StyledWrapper = styled.div`
     border-right-color: hsl(var(--accent) / 0.3);
   }
   
-  /* Change icon color when liked and button is not hovered */
   input#checknumber:checked ~ .button svg#likeimg {
     stroke: hsl(var(--accent)); 
   }
-  /* Keep font "Me Gusta" color consistent with icon in liked state */
   input#checknumber:checked ~ .button #fontlikebutton {
     color: hsl(var(--accent));
   }
 
-  /* Ensure hover overrides liked state colors for icon and text in rightpart when button background changes to primary */
   input#checknumber:checked ~ .button:hover svg#likeimg {
     stroke: hsl(var(--primary-foreground));
-    transform: scale(1.5) translateX(100%); /* Apply hover transform */
+    transform: scale(1.5) translateX(100%); 
   }
   input#checknumber:checked ~ .button:hover #fontlikebutton {
     color: hsl(var(--primary-foreground));
-    transform: translateX(200%); /* Apply hover transform (slide out) */
+    transform: translateX(200%); 
     opacity: 0;
   }
 
-
-  /* Disabled state */
   .button.disabled {
     cursor: not-allowed;
     opacity: 0.6;
@@ -217,11 +214,12 @@ const StyledWrapper = styled.div`
 export default function LikeButton({ listingId, listingType, className }: LikeButtonProps) {
   const { toast } = useToast();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
-  const [isInteracting, setIsInteracting] = useState(false);
-  const [isChecked, setIsChecked] = useState(false); 
+  const [isProcessingServerAction, setIsProcessingServerAction] = useState(false);
+  const [isLoadingInitialState, setIsLoadingInitialState] = useState(true);
 
-  const currentLikes = 24; 
-  const nextLikes = currentLikes + 1;
+  // State for the button's appearance and count
+  const [currentTotalLikes, setCurrentTotalLikes] = useState(0);
+  const [currentUserHasLiked, setCurrentUserHasLiked] = useState(false);
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -234,7 +232,27 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
     }
   }, []);
 
-  const handleLike = async () => {
+  // Fetch initial like state
+  useEffect(() => {
+    async function fetchInitialState() {
+      if (!listingId || !listingType) return;
+      setIsLoadingInitialState(true);
+      try {
+        const details = await getListingInteractionDetailsAction(listingId, listingType, loggedInUser?.id);
+        setCurrentTotalLikes(details.totalLikes);
+        setCurrentUserHasLiked(details.currentUserInteraction === 'like');
+      } catch (error) {
+        console.error("Error fetching initial like state:", error);
+        // Potentially show a toast or error state for the button itself
+      } finally {
+        setIsLoadingInitialState(false);
+      }
+    }
+    fetchInitialState();
+  }, [listingId, listingType, loggedInUser?.id]);
+
+
+  const handleLikeToggle = async () => {
     if (!loggedInUser) {
       toast({
         title: "Acción Requerida",
@@ -244,21 +262,23 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
       return;
     }
 
-    if (isInteracting) return;
-    setIsInteracting(true);
+    if (isProcessingServerAction || isLoadingInitialState) return;
+    setIsProcessingServerAction(true);
 
-    const newCheckedState = !isChecked;
+    const newInteractionType = currentUserHasLiked ? 'skip' : 'like'; // Toggle 'like' or set to 'skip' if unliking
 
     try {
       const result = await recordUserListingInteractionAction(loggedInUser.id, {
         listingId,
         listingType,
-        interactionType: newCheckedState ? 'like' : 'skip', 
+        interactionType: newInteractionType,
       });
 
       if (result.success) {
-        setIsChecked(newCheckedState); 
-        if (newCheckedState && result.matchDetails?.matchFound && result.matchDetails.conversationId) {
+        setCurrentTotalLikes(result.newTotalLikes ?? currentTotalLikes);
+        setCurrentUserHasLiked(result.newInteractionType === 'like');
+        
+        if (newInteractionType === 'like' && result.matchDetails?.matchFound && result.matchDetails.conversationId) {
           toast({
             title: "¡Es un Match Mutuo!",
             description: `${result.message} Revisa tus mensajes.`,
@@ -274,7 +294,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
           window.dispatchEvent(new CustomEvent('messagesUpdated'));
         } else {
           toast({
-            title: newCheckedState ? "'Me Gusta' Registrado" : "Preferencia Actualizada",
+            title: newInteractionType === 'like' ? "'Me Gusta' Registrado" : "Preferencia Actualizada",
             description: result.message || `Tu preferencia ha sido registrada.`,
             duration: 3000,
           });
@@ -293,11 +313,14 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
         variant: "destructive",
       });
     } finally {
-      setIsInteracting(false);
+      setIsProcessingServerAction(false);
     }
   };
 
-  const buttonDisabled = isInteracting || !loggedInUser;
+  const buttonDisabled = isProcessingServerAction || isLoadingInitialState || !loggedInUser;
+  const displayLikes = currentTotalLikes;
+  const nextLikesNumber = currentUserHasLiked ? displayLikes -1 : displayLikes + 1;
+
 
   return (
     <StyledWrapper className={cn(className)}>
@@ -306,36 +329,36 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
           hidden 
           id={`checknumber-${listingId}-${listingType}`} 
           type="checkbox" 
-          checked={isChecked} 
+          checked={currentUserHasLiked} 
           onChange={() => { /* Logic handled by label's onClick */ }}
           disabled={buttonDisabled}
         />
         <label 
           htmlFor={`checknumber-${listingId}-${listingType}`}
           className={cn("button", buttonDisabled && "disabled")}
-          onClick={(e) => { if(buttonDisabled) e.preventDefault(); else handleLike(); }}
-          title={!loggedInUser ? "Inicia sesión para dar Me Gusta" : (isChecked ? "Quitar Me Gusta" : "Me Gusta")}
-          aria-pressed={isChecked}
+          onClick={(e) => { if(buttonDisabled) e.preventDefault(); else handleLikeToggle(); }}
+          title={!loggedInUser ? "Inicia sesión para dar Me Gusta" : (currentUserHasLiked ? "Quitar Me Gusta" : "Me Gusta")}
+          aria-pressed={currentUserHasLiked}
           tabIndex={buttonDisabled ? -1 : 0}
           onKeyDown={(e) => {
             if (!buttonDisabled && (e.key === 'Enter' || e.key === ' ')) {
               e.preventDefault();
-              handleLike();
+              handleLikeToggle();
             }
           }}
         >
           <div id="leftpart">
-            {isInteracting ? (
+            {isProcessingServerAction || isLoadingInitialState ? (
                  <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <p id="currentnumber">{currentLikes}</p>
-                <p id="movenumber">{nextLikes}</p>
+                <p id="currentnumber">{displayLikes}</p>
+                <p id="movenumber">{nextLikesNumber < 0 ? 0 : nextLikesNumber}</p>
               </>
             )}
           </div>
           <div id="rightpart">
-            <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={2.5} /* stroke color via CSS */ fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={2.5} fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
             </svg>
             <div id="fontlikebutton">Me Gusta</div>
@@ -345,3 +368,4 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
     </StyledWrapper>
   );
 }
+

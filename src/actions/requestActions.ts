@@ -57,6 +57,7 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
     budgetMax: row.budget_max !== null ? Number(row.budget_max) : undefined,
     open_for_broker_collaboration: Boolean(row.open_for_broker_collaboration),
     commentsCount: Number(row.comments_count),
+    upvotes: Number(row.upvotes || 0), // Ensure upvotes is a number
     isActive: Boolean(row.is_active),
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
@@ -84,9 +85,10 @@ export async function submitRequestAction(
     const placeholders: string[] = [];
 
     // Campos obligatorios o que siempre se establecen
-    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city', 'is_active', 'created_at', 'updated_at', 'comments_count');
-    values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity, true, new Date(), new Date(), 0);
-    placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
+    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city', 'is_active', 'created_at', 'updated_at', 'comments_count', 'upvotes');
+    values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity, true, new Date(), new Date(), 0, 0); // upvotes defaults to 0
+    placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
+
 
     // Campos booleanos para tipos de transacción y categorías
     // Para cada uno, si es true en `data`, se añade la columna y TRUE, sino se añade y FALSE
@@ -184,7 +186,7 @@ export async function submitRequestAction(
       successMessage = `Solicitud publicada. ¡Encontramos ${autoMatchesFoundCount} propiedad(es) que podrían coincidir! Se han iniciado chats.`;
     }
 
-    return { success: true, message: successMessage, requestId, requestSlug, autoMatchesCount: autoMatchesFoundCount };
+    return { success: true, message: successMessage, requestId, requestSlug: slug, autoMatchesCount: autoMatchesFoundCount };
 
   } catch (error: any) {
     console.error("[RequestAction] Error submitting request:", error);
@@ -296,13 +298,21 @@ export async function adminDeleteRequestAction(requestId: string): Promise<{ suc
   }
 
   try {
+    // Primero eliminar comentarios asociados
+    await query('DELETE FROM comments WHERE request_id = ?', [requestId]);
+    // Luego eliminar interacciones de usuario asociadas
+    await query('DELETE FROM user_listing_interactions WHERE listing_id = ? AND listing_type = "request"', [requestId]);
+    // Luego eliminar colaboraciones de broker asociadas
+    await query('DELETE FROM broker_collaborations WHERE property_request_id = ?', [requestId]);
+    // Finalmente, eliminar la solicitud
     const result: any = await query('DELETE FROM property_requests WHERE id = ?', [requestId]);
+
     if (result.affectedRows > 0) {
       revalidatePath('/admin/requests');
       revalidatePath('/requests');
       revalidatePath('/'); 
       revalidatePath(`/requests/[slug]`, 'layout');
-      return { success: true, message: "Solicitud eliminada exitosamente." };
+      return { success: true, message: "Solicitud y datos asociados eliminados exitosamente." };
     } else {
       return { success: false, message: "La solicitud no fue encontrada o no se pudo eliminar." };
     }

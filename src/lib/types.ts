@@ -61,7 +61,7 @@ export interface PropertyListing {
   bedrooms: number;
   bathrooms: number;
   areaSqMeters: number;
-  images: string[]; // Cambiado a array de strings para URLs
+  images: string[];
   features?: string[];
   slug: string;
   upvotes: number;
@@ -91,6 +91,7 @@ export interface SearchRequest {
   budgetMax?: number;
   open_for_broker_collaboration?: boolean;
   commentsCount: number;
+  upvotes: number; // Added upvotes field
   slug: string;
   isActive: boolean;
   createdAt: string;
@@ -565,7 +566,8 @@ export type RecordInteractionValues = z.infer<typeof recordInteractionSchema>;
 export interface RecordInteractionResult {
   success: boolean;
   message?: string;
-  interaction?: UserListingInteraction;
+  newTotalLikes?: number;
+  newInteractionType?: InteractionTypeEnum;
   matchDetails?: {
     matchFound: boolean;
     conversationId?: string;
@@ -661,3 +663,10 @@ export const proposePropertyFormSchema = z.object({
 export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema>;
 
 // End of Broker Collaboration Types
+
+// For LikeButton initial data
+export interface ListingInteractionDetails {
+  totalLikes: number;
+  currentUserInteraction: InteractionTypeEnum | null;
+}
+

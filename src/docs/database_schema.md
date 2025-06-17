@@ -152,6 +152,7 @@ CREATE INDEX idx_properties_user_id ON properties(user_id);
 CREATE INDEX idx_properties_city ON properties(city);
 CREATE INDEX idx_properties_property_type ON properties(property_type);
 CREATE INDEX idx_properties_category ON properties(category);
+CREATE INDEX idx_properties_upvotes ON properties(upvotes);
 ```
 
 ---
@@ -188,6 +189,7 @@ CREATE TABLE property_requests (
     -- budget_currency VARCHAR(3) DEFAULT 'CLP', -- Considerar si el presupuesto puede ser en diferentes monedas
     open_for_broker_collaboration BOOLEAN DEFAULT FALSE,
     comments_count INT DEFAULT 0,
+    upvotes INT DEFAULT 0, -- Nueva columna
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -200,6 +202,7 @@ CREATE INDEX idx_property_requests_slug ON property_requests(slug);
 CREATE INDEX idx_property_requests_user_id ON property_requests(user_id);
 CREATE INDEX idx_property_requests_city ON property_requests(desired_location_city);
 CREATE INDEX idx_property_requests_broker_collab ON property_requests(open_for_broker_collaboration);
+CREATE INDEX idx_property_requests_upvotes ON property_requests(upvotes);
 ```
 
 ---

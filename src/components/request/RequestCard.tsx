@@ -46,6 +46,7 @@ export default function RequestCard({ request }: RequestCardProps) {
     createdAt,
     description,
     open_for_broker_collaboration,
+    upvotes, // upvotes will be passed but LikeButton fetches its own initial state
   } = request;
 
   const locationCity = desiredLocation?.city || 'N/A';
