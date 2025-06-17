@@ -7,7 +7,7 @@ import { query } from '@/lib/db';
 import { revalidatePath } from "next/cache";
 
 const DEFAULT_SITE_TITLE = 'PropSpot - Encuentra Tu Próxima Propiedad';
-const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "ai_matching", "google_sheet"];
+const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "ai_matching", "analisis_whatsbot"];
 const DEFAULT_ANNOUNCEMENT_BG_COLOR = '#FFB74D'; // Accent
 const DEFAULT_ANNOUNCEMENT_TEXT_COLOR = '#18181b'; // Dark foreground
 
@@ -18,7 +18,7 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
         logoUrl,
         show_featured_listings_section,
         show_ai_matching_section,
-        show_google_sheet_section,
+        show_google_sheet_section, // This field name in DB remains for now
         landing_sections_order,
         announcement_bar_text,
         announcement_bar_link_url,
@@ -107,7 +107,7 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
   if (dbSettings && dbSettings.landing_sections_order) {
     try {
       const parsed = JSON.parse(dbSettings.landing_sections_order);
-      if (Array.isArray(parsed) && parsed.every(s => ["featured_list_requests", "ai_matching", "google_sheet"].includes(s)) && parsed.length > 0) {
+      if (Array.isArray(parsed) && parsed.every(s => ["featured_list_requests", "ai_matching", "analisis_whatsbot"].includes(s)) && parsed.length > 0) {
         parsedSectionsOrder = parsed;
       } else {
         console.warn("landing_sections_order desde BD es inválido o vacío, usando orden por defecto. Valor:", dbSettings.landing_sections_order);
@@ -137,3 +137,4 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     updated_at: dbSettings?.updatedAt ? new Date(dbSettings.updatedAt).toISOString() : undefined,
   };
 }
+

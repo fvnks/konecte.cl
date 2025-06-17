@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, DatabaseZap, ArrowRight, Link as LinkIcon } from "lucide-react";
+import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, Bot, ArrowRight, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
 import type { PropertyListing, SearchRequest, LandingSectionKey } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
@@ -65,7 +65,7 @@ function AIMatchingSection() {
   );
 }
 
-async function GoogleSheetDataSection() {
+async function AnalisisWhatsBotSection() { // Renamed from GoogleSheetDataSection
   const config = await getGoogleSheetConfigAction();
   
   if (!config || !config.isConfigured) {
@@ -74,12 +74,12 @@ async function GoogleSheetDataSection() {
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-2xl md:text-3xl flex items-center text-muted-foreground">
             <AlertTriangle className="h-7 w-7 mr-3 text-yellow-500" /> 
-            Datos Externos (Google Sheets)
+            Análisis WhatsBot
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 md:p-8">
           <p className="text-base text-muted-foreground">
-            Esta sección mostrará datos de una hoja de cálculo de Google, pero aún no ha sido configurada.
+            Esta sección mostrará datos para el Análisis WhatsBot, pero aún no ha sido configurada.
             Un administrador puede habilitarla desde el <Link href="/admin/settings" className="text-primary hover:underline font-medium">panel de configuración</Link>.
           </p>
         </CardContent>
@@ -94,10 +94,10 @@ async function GoogleSheetDataSection() {
        <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
-            <DatabaseZap className="h-8 w-8 mr-3 text-primary" />
-            Datos Externos
+            <Bot className="h-8 w-8 mr-3 text-primary" /> {/* Icon updated */}
+            Análisis WhatsBot
           </CardTitle>
-           <CardDescription className="text-lg text-muted-foreground mt-2">No se pudieron cargar los datos de la hoja de cálculo. Verifica la configuración y la consola del servidor para más detalles.</CardDescription>
+           <CardDescription className="text-lg text-muted-foreground mt-2">No se pudieron cargar los datos. Verifica la configuración y la consola del servidor para más detalles.</CardDescription>
         </CardHeader>
          <CardContent className="p-6 md:p-8">
            <p className="text-base text-muted-foreground">Asegúrate de que el ID de la hoja, el nombre de la pestaña y las columnas sean correctos, y que la hoja esté compartida públicamente.</p>
@@ -111,10 +111,10 @@ async function GoogleSheetDataSection() {
        <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
-             <DatabaseZap className="h-8 w-8 mr-3 text-primary" />
-            Datos Externos
+            <Bot className="h-8 w-8 mr-3 text-primary" /> {/* Icon updated */}
+            Análisis WhatsBot
           </CardTitle>
-           <CardDescription className="text-lg text-muted-foreground mt-2">La hoja de cálculo está configurada pero no contiene filas de datos (solo encabezados).</CardDescription>
+           <CardDescription className="text-lg text-muted-foreground mt-2">La fuente de datos está configurada pero no contiene filas de datos (solo encabezados).</CardDescription>
         </CardHeader>
         <CardContent className="p-6 md:p-8">
             <PaginatedSheetTable headers={sheetData.headers} rows={sheetData.rows} />
@@ -128,10 +128,10 @@ async function GoogleSheetDataSection() {
        <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
-             <DatabaseZap className="h-8 w-8 mr-3 text-primary" />
-            Datos Externos
+            <Bot className="h-8 w-8 mr-3 text-primary" /> {/* Icon updated */}
+            Análisis WhatsBot
           </CardTitle>
-           <CardDescription className="text-lg text-muted-foreground mt-2">No se encontraron encabezados en la hoja de cálculo. Verifica los nombres de las columnas en la configuración y en la hoja.</CardDescription>
+           <CardDescription className="text-lg text-muted-foreground mt-2">No se encontraron encabezados en la fuente de datos. Verifica la configuración.</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -141,10 +141,10 @@ async function GoogleSheetDataSection() {
     <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
-            <DatabaseZap className="h-8 w-8 mr-3 text-primary" />
-            Datos Externos de Google Sheets
+            <Bot className="h-8 w-8 mr-3 text-primary" /> {/* Icon updated */}
+            Análisis WhatsBot
         </CardTitle>
-        <CardDescription className="text-lg text-muted-foreground mt-2">Información adicional obtenida directamente desde nuestra hoja de cálculo configurada.</CardDescription>
+        <CardDescription className="text-lg text-muted-foreground mt-2">Información relevante para el análisis de interacciones del bot.</CardDescription>
       </CardHeader>
       <CardContent className="p-6 md:p-8">
         <PaginatedSheetTable headers={sheetData.headers} rows={sheetData.rows} />
@@ -155,7 +155,7 @@ async function GoogleSheetDataSection() {
 
 
 // --- HomePage Component ---
-const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "ai_matching", "google_sheet"];
+const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "ai_matching", "analisis_whatsbot"];
 const DEFAULT_HERO_TITLE = "Encuentra Tu Espacio Ideal en konecte";
 const DEFAULT_HERO_SUBTITLE = "Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!";
 const DEFAULT_SEARCH_PLACEHOLDER = "Buscar por ubicación, tipo, características...";
@@ -176,7 +176,7 @@ export default async function HomePage() {
 
   const showFeaturedListings = siteSettings?.show_featured_listings_section === undefined ? true : siteSettings.show_featured_listings_section;
   const showAiMatching = siteSettings?.show_ai_matching_section === undefined ? true : siteSettings.show_ai_matching_section;
-  const showGoogleSheet = siteSettings?.show_google_sheet_section === undefined ? true : siteSettings.show_google_sheet_section;
+  const showAnalisisWhatsBot = siteSettings?.show_google_sheet_section === undefined ? true : siteSettings.show_google_sheet_section; // Name of DB field still show_google_sheet_section
   
   const sectionsOrder = siteSettings?.landing_sections_order || DEFAULT_SECTIONS_ORDER;
 
@@ -201,7 +201,7 @@ export default async function HomePage() {
       </Card>
     ) : null,
     ai_matching: () => showAiMatching ? <AIMatchingSection /> : null,
-    google_sheet: () => showGoogleSheet ? <GoogleSheetDataSection /> : null,
+    analisis_whatsbot: () => showAnalisisWhatsBot ? <AnalisisWhatsBotSection /> : null,
   };
 
   return (
@@ -253,3 +253,4 @@ export default async function HomePage() {
   );
 }
     
+

@@ -1,8 +1,9 @@
+
 // src/app/admin/page.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper, MailQuestion, CalendarClock, MailWarning, MessageSquare } from "lucide-react"; // Added MessageSquare
+import { Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper, MailQuestion, CalendarClock, MailWarning, MessageSquare, Bot } from "lucide-react";
 import type { ReactNode } from 'react';
 import { getUnreadContactSubmissionsCountAction } from "@/actions/contactFormActions";
 
@@ -79,7 +80,7 @@ export default async function AdminDashboardPage() {
     badgeContent: unreadContactMessages > 0 ? unreadContactMessages : null,
   },
   {
-    title: "Visor Chat WhatsApp", // Nuevo Card
+    title: "Visor Chat WhatsApp", 
     description: "Visualiza las conversaciones del bot de WhatsApp con los usuarios.",
     href: "/admin/whatsapp-viewer",
     icon: <MessageSquare className="h-8 w-8 text-primary" />,
@@ -127,11 +128,11 @@ export default async function AdminDashboardPage() {
     colorClass: "from-rose-500/10 to-rose-500/5 text-rose-600 dark:text-rose-400",
   },
   {
-    title: "Integración Google Sheets",
-    description: "Configura la integración con Google Sheets para mostrar datos en la página de inicio.",
+    title: "Análisis WhatsBot", // Renamed
+    description: "Configura la fuente de datos para el análisis del WhatsBot.", // Updated description
     href: "/admin/settings",
-    icon: <Settings className="h-8 w-8 text-primary" />,
-    cta: "Configurar Google Sheets",
+    icon: <Bot className="h-8 w-8 text-primary" />, // Updated icon
+    cta: "Configurar Análisis", // Updated CTA
     colorClass: "from-gray-500/10 to-gray-500/5 text-gray-600 dark:text-gray-400",
   },
   {
@@ -189,3 +190,4 @@ export default async function AdminDashboardPage() {
     </div>
   );
 }
+

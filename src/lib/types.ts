@@ -141,7 +141,7 @@ export interface GoogleSheetConfig {
   isConfigured: boolean;
 }
 
-export type LandingSectionKey = "featured_list_requests" | "ai_matching" | "google_sheet";
+export type LandingSectionKey = "featured_list_requests" | "ai_matching" | "analisis_whatsbot";
 
 export interface SiteSettings {
   id?: number;
@@ -149,7 +149,7 @@ export interface SiteSettings {
   logoUrl: string | null;
   show_featured_listings_section?: boolean;
   show_ai_matching_section?: boolean;
-  show_google_sheet_section?: boolean;
+  show_google_sheet_section?: boolean; // This DB field name remains, but its label in UI changes
   landing_sections_order?: LandingSectionKey[] | null;
   announcement_bar_text?: string | null;
   announcement_bar_link_url?: string | null;
@@ -683,3 +683,4 @@ export const proposePropertyFormSchema = z.object({
 export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema>;
 
 // End of Broker Collaboration Types
+

@@ -139,7 +139,7 @@ const SQL_STATEMENTS: string[] = [
     budget_max DECIMAL(15,2) DEFAULT NULL,
     open_for_broker_collaboration BOOLEAN DEFAULT FALSE,
     comments_count INT DEFAULT 0,
-    upvotes INT DEFAULT 0, -- Nueva columna para upvotes
+    upvotes INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -176,6 +176,21 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_comments_property_id ON comments(property_id);`,
   `CREATE INDEX IF NOT EXISTS idx_comments_request_id ON comments(request_id);`,
   `CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON comments(parent_id);`,
+
+  // user_comment_interactions
+  `CREATE TABLE IF NOT EXISTS user_comment_interactions (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    comment_id VARCHAR(36) NOT NULL,
+    interaction_type ENUM('like') NOT NULL DEFAULT 'like',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_user_comment_interaction (user_id, comment_id, interaction_type)
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_user_comment_interactions_user_comment ON user_comment_interactions(user_id, comment_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_user_comment_interactions_comment ON user_comment_interactions(comment_id);`,
+
 
   // google_sheet_configs
   `CREATE TABLE IF NOT EXISTS google_sheet_configs (
@@ -221,7 +236,7 @@ const SQL_STATEMENTS: string[] = [
     TRUE,
     TRUE,
     TRUE,
-    '["featured_list_requests", "ai_matching", "google_sheet"]',
+    '["featured_list_requests", "ai_matching", "analisis_whatsbot"]',
     FALSE,
     '#FFB74D',
     '#18181b'
@@ -241,7 +256,7 @@ const SQL_STATEMENTS: string[] = [
     announcement_bar_text_color = VALUES(announcement_bar_text_color),
     updated_at = CURRENT_TIMESTAMP;`,
   `UPDATE site_settings
-   SET landing_sections_order = '["featured_list_requests", "ai_matching", "google_sheet"]'
+   SET landing_sections_order = '["featured_list_requests", "ai_matching", "analisis_whatsbot"]'
    WHERE id = 1 AND landing_sections_order IS NULL;`,
 
   // contacts (CRM)
@@ -623,4 +638,3 @@ setupDatabase();
 
 
 
-    

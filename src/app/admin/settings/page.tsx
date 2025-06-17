@@ -1,3 +1,4 @@
+
 // src/app/admin/settings/page.tsx
 'use client';
 
@@ -20,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { saveGoogleSheetConfigAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import type { GoogleSheetConfig } from "@/lib/types";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Bot } from "lucide-react"; // Changed Settings icon to Bot
 
 const formSchema = z.object({
   sheetId: z.string().min(1, "El ID de la Hoja de Cálculo es requerido."),
@@ -50,9 +51,9 @@ export default function AdminSettingsPage() {
       const config = await getGoogleSheetConfigAction();
       if (config && config.isConfigured) {
         form.reset({
-          sheetId: config.sheetId,
-          sheetName: config.sheetName,
-          columnsToDisplay: config.columnsToDisplay,
+          sheetId: config.sheetId || "", // Ensure fallback for null
+          sheetName: config.sheetName || "",
+          columnsToDisplay: config.columnsToDisplay || "",
         });
         setInitialConfig(config);
       } else if (config) {
@@ -73,7 +74,7 @@ export default function AdminSettingsPage() {
     if (result.success) {
       toast({
         title: "Configuración Guardada",
-        description: "La configuración de Google Sheets se ha guardado correctamente.",
+        description: "La configuración para Análisis WhatsBot se ha guardado correctamente.",
       });
       setInitialConfig({...values, isConfigured: true});
     } else {
@@ -97,9 +98,11 @@ export default function AdminSettingsPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl font-headline">Configuración de Google Sheets</CardTitle>
+        <CardTitle className="text-2xl font-headline flex items-center">
+            <Bot className="h-6 w-6 mr-2 text-primary" /> Configuración de Análisis WhatsBot
+        </CardTitle>
         <CardDescription>
-          Configura el ID de la Hoja de Cálculo de Google, el nombre de la hoja (pestaña) y las columnas que deseas mostrar.
+          Configura la Hoja de Cálculo de Google que se usará como fuente de datos para la sección "Análisis WhatsBot" en la página de inicio.
           La hoja de cálculo debe estar compartida como "Cualquier persona con el enlace puede ver".
         </CardDescription>
       </CardHeader>
@@ -129,7 +132,7 @@ export default function AdminSettingsPage() {
                 <FormItem>
                   <FormLabel>Nombre de la Hoja (Pestaña)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: Hoja1 o Clientes" {...field} />
+                    <Input placeholder="Ej: Hoja1 o InteraccionesBot" {...field} />
                   </FormControl>
                   <FormDescription>
                     El nombre exacto de la pestaña dentro de tu Hoja de Cálculo.
@@ -145,7 +148,7 @@ export default function AdminSettingsPage() {
                 <FormItem>
                   <FormLabel>Columnas a Mostrar (Nombres de Encabezado)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: Nombre,Email,Teléfono" {...field} />
+                    <Input placeholder="Ej: Fecha,Usuario,Mensaje,RespuestaBot" {...field} />
                   </FormControl>
                   <FormDescription>
                     Escribe los nombres exactos de los encabezados de las columnas de tu hoja (separados por comas) que deseas mostrar. El orden se respetará. La primera fila de tu hoja se considerará como los encabezados.
@@ -164,7 +167,7 @@ export default function AdminSettingsPage() {
         </Form>
         {initialConfig.isConfigured && (
           <div className="mt-8 p-4 border rounded-md bg-secondary/30">
-            <h4 className="font-semibold">Configuración Actual:</h4>
+            <h4 className="font-semibold">Configuración Actual para Análisis WhatsBot:</h4>
             <p className="text-sm"><strong>Sheet ID:</strong> {initialConfig.sheetId}</p>
             <p className="text-sm"><strong>Nombre de Hoja:</strong> {initialConfig.sheetName}</p>
             <p className="text-sm"><strong>Columnas:</strong> {initialConfig.columnsToDisplay}</p>
@@ -190,3 +193,4 @@ export default function AdminSettingsPage() {
     </Card>
   );
 }
+

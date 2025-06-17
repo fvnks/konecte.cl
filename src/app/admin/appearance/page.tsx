@@ -27,7 +27,7 @@ import Image from "next/image";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
-const landingSectionKeySchema = z.enum(["featured_list_requests", "ai_matching", "google_sheet"]);
+const landingSectionKeySchema = z.enum(["featured_list_requests", "ai_matching", "analisis_whatsbot"]);
 export type LandingSectionKeyType = z.infer<typeof landingSectionKeySchema>;
 
 const hexColorRegex = /^#([0-9a-f]{3}){1,2}$/i;
@@ -37,8 +37,8 @@ const formSchema = z.object({
   logoUrl: z.string().url("Debe ser una URL válida para el logo.").or(z.literal('')).optional(),
   show_featured_listings_section: z.boolean().default(true).optional(),
   show_ai_matching_section: z.boolean().default(true).optional(),
-  show_google_sheet_section: z.boolean().default(true).optional(),
-  landing_sections_order: z.array(landingSectionKeySchema).min(1, "Debe haber al menos una sección en el orden.").default(["featured_list_requests", "ai_matching", "google_sheet"]),
+  show_google_sheet_section: z.boolean().default(true).optional(), // Field name in DB remains
+  landing_sections_order: z.array(landingSectionKeySchema).min(1, "Debe haber al menos una sección en el orden.").default(["featured_list_requests", "ai_matching", "analisis_whatsbot"]),
   // Nuevos campos para la barra de anuncios
   announcement_bar_is_active: z.boolean().default(false).optional(),
   announcement_bar_text: z.string().max(250, "El texto del anuncio no puede exceder los 250 caracteres.").optional().or(z.literal('')),
@@ -65,7 +65,7 @@ const formSchema = z.object({
 type SiteSettingsFormValues = z.infer<typeof formSchema>;
 
 const DEFAULT_FALLBACK_TITLE = 'konecte - Encuentra Tu Próxima Propiedad';
-const DEFAULT_SECTIONS_ORDER: LandingSectionKeyType[] = ["featured_list_requests", "ai_matching", "google_sheet"];
+const DEFAULT_SECTIONS_ORDER: LandingSectionKeyType[] = ["featured_list_requests", "ai_matching", "analisis_whatsbot"];
 const DEFAULT_ANNOUNCEMENT_BG_COLOR = '#FFB74D';
 const DEFAULT_ANNOUNCEMENT_TEXT_COLOR = '#18181b';
 
@@ -73,7 +73,7 @@ const DEFAULT_ANNOUNCEMENT_TEXT_COLOR = '#18181b';
 const sectionNames: Record<LandingSectionKeyType, string> = {
   featured_list_requests: "Listados Destacados y Solicitudes Recientes",
   ai_matching: "Búsqueda Inteligente (IA)",
-  google_sheet: "Datos de Google Sheets",
+  analisis_whatsbot: "Análisis WhatsBot", // Updated label
 };
 
 export default function AdminAppearancePage() {
@@ -173,6 +173,7 @@ export default function AdminAppearancePage() {
       });
       const updatedSettings = await getSiteSettingsAction();
       resetFormAndState(updatedSettings); 
+      window.dispatchEvent(new CustomEvent('siteSettingsUpdated')); // Para Navbar
     } else {
       toast({
         title: "Error",
@@ -378,7 +379,6 @@ export default function AdminAppearancePage() {
             <div>
                 <h3 className="text-lg font-medium mb-2">Visibilidad de Secciones en la Landing Page</h3>
                  <div className="space-y-4 p-4 border rounded-md">
-                    {/* ... campos de show_featured_listings_section, show_ai_matching_section, show_google_sheet_section existentes ... */}
                     <FormField
                     control={form.control}
                     name="show_featured_listings_section"
@@ -427,16 +427,16 @@ export default function AdminAppearancePage() {
                     />
                     <FormField
                     control={form.control}
-                    name="show_google_sheet_section"
+                    name="show_google_sheet_section" 
                     render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                         <div className="space-y-0.5">
                             <FormLabel className="flex items-center">
                                 {field.value ? <Eye className="h-4 w-4 mr-2 text-green-600"/> : <EyeOff className="h-4 w-4 mr-2 text-red-600"/>}
-                                Sección de Datos de Google Sheets
+                                Sección de Análisis WhatsBot
                             </FormLabel>
                             <FormDescription>
-                            Muestra/Oculta la sección que carga datos desde Google Sheets.
+                            Muestra/Oculta la sección de "Análisis WhatsBot" (datos de Google Sheets).
                             </FormDescription>
                         </div>
                         <FormControl>
@@ -558,7 +558,7 @@ export default function AdminAppearancePage() {
                  <p className="text-sm font-medium mb-1">Visibilidad de Secciones:</p>
                  <p className="text-sm text-muted-foreground"><strong>Listados Destacados:</strong> {currentSettings.show_featured_listings_section ? "Visible" : "Oculta"}</p>
                  <p className="text-sm text-muted-foreground"><strong>Búsqueda IA:</strong> {currentSettings.show_ai_matching_section ? "Visible" : "Oculta"}</p>
-                 <p className="text-sm text-muted-foreground"><strong>Google Sheets:</strong> {currentSettings.show_google_sheet_section ? "Visible" : "Oculta"}</p>
+                 <p className="text-sm text-muted-foreground"><strong>Análisis WhatsBot:</strong> {currentSettings.show_google_sheet_section ? "Visible" : "Oculta"}</p>
             </div>
              <Separator/>
              <div>
@@ -582,3 +582,4 @@ export default function AdminAppearancePage() {
     </Card>
   );
 }
+
