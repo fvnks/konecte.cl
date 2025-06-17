@@ -151,7 +151,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <header className="bg-background border-b p-4 shadow-sm md:hidden">
                     <div className="flex items-center justify-between"> <Skeleton className="h-7 w-28 rounded-md" /></div>
                 </header>
-                <main className="flex-grow p-6 sm:p-8 md:p-10 bg-muted/30 flex flex-col items-center justify-center">
+                <main className="flex-1 flex flex-col items-center justify-center bg-muted/30">
                     <CustomPageLoader />
                     <p className="mt-4 text-muted-foreground">Cargando panel de administración...</p>
                 </main>

@@ -1,3 +1,4 @@
+
 // src/app/dashboard/layout.tsx
 'use client';
 
@@ -89,224 +90,327 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         if (parsedUser.plan_id && !hasWhatsAppItem) {
           try {
             const planDetails: Plan | null = await getPlanByIdAction(parsedUser.plan_id);
-            if (planDetails && planDetails.whatsapp_bot_enabled === true) {
-                // Intentar insertar después de "Canje Clientes" o "Mensajes"
-                let insertAtIndex = newNavItemsList.findIndex(item => item.href === brokerItem.href);
-                if (insertAtIndex === -1) insertAtIndex = newNavItemsList.findIndex(item => item.href === '/dashboard/messages');
-                
-                if (insertAtIndex !== -1) {
-                    newNavItemsList.splice(insertAtIndex + 1, 0, chatWhatsAppItem);
-                } else { // Si ninguno de los anteriores existe, añadir después de "Mis Visitas"
-                     insertAtIndex = newNavItemsList.findIndex(item => item.href === '/dashboard/visits');
-                     if (insertAtIndex !== -1) {
-                        newNavItemsList.splice(insertAtIndex + 1, 0, chatWhatsAppItem);
-                     } else { // Como último recurso, antes de Perfil
-                         newNavItemsList.splice(newNavItemsList.length - 1, 0, chatWhatsAppItem);
-                     }
-                }
+            if (active) {
+              if (planDetails && planDetails.whatsapp_bot_enabled === true) {
+                setHasPermission(true);
+                setLoadingStep('loadingInitialConversation'); // Ready to load data
+              } else {
+                setHasPermission(false);
+                toast({ title: "Función no Habilitada", description: "El chat con el bot no está incluido en tu plan actual.", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
+                setLoadingStep('idle');
+              }
             }
-          } catch (planError: any) {
-            console.error("[DashboardLayout DEBUG] CRITICAL ERROR fetching plan details:", planError.message);
-            toast({ title: "Error de Plan", description: "No se pudo verificar tu plan para el chat de WhatsApp. Contacta a soporte.", variant: "destructive" });
+          } catch (err) {
+            if (active) {
+              console.error("[WhatsAppChatPage DEBUG] Error checking plan permission:", err);
+              toast({ title: "Error de Plan", description: "No se pudo verificar el permiso de tu plan.", variant: "destructive" });
+              setHasPermission(false); setLoadingStep('idle');
+            }
+          }
+        } else { // No plan_id
+          if (active) {
+            setHasPermission(false);
+            toast({ title: "Función no Habilitada", description: "El chat con el bot no está incluido en tu plan (sin plan asignado).", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
+            setLoadingStep('idle');
           }
         }
-        
-        if (parsedUser.id) {
-          const count = await getTotalUnreadMessagesCountAction(parsedUser.id);
-          tempTotalUnreadCount = count;
-        }
-
-      } catch (e: any) {
-        localStorage.removeItem('loggedInUser');
-        tempCurrentUser = null;
-        newNavItemsList = [...baseNavItemsDefinition]; 
-        if (!pathname.startsWith('/auth')) {
-            router.push('/auth/signin');
+      } catch (error) { // Error parsing userJson
+        if (active) {
+          console.error("[WhatsAppChatPage DEBUG] Error parsing user from localStorage", error);
+          localStorage.removeItem('loggedInUser');
+          setLoggedInUser(null); setHasPermission(false); setLoadingStep('idle');
         }
       }
-    } else {
-      tempCurrentUser = null;
-      newNavItemsList = [...baseNavItemsDefinition]; 
-      if (!pathname.startsWith('/auth')) {
-        router.push('/auth/signin');
+    };
+
+    processUser();
+    return () => { active = false; };
+  }, [toast, isClient]);
+
+
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    } else if (scrollAreaRef.current) {
+      const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+      if (scrollViewport) {
+        scrollViewport.scrollTop = scrollViewport.scrollHeight;
       }
     }
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  const transformWhatsAppMessageToUIChatMessage = useCallback((msg: WhatsAppMessage, currentUserId: string, currentUserDetails: StoredUser | null): ChatMessage => {
+    const isFromCurrentUser = msg.sender_id_override === currentUserId;
+    let senderName: string;
+    let senderAvatar: string | undefined | null = null;
+    let finalSenderId: string;
+
+    if (isFromCurrentUser) {
+        senderName = currentUserDetails?.name || "Tú";
+        senderAvatar = currentUserDetails?.avatarUrl;
+        finalSenderId = currentUserId;
+    } else { 
+        senderName = BOT_DISPLAY_NAME;
+        senderAvatar = BOT_AVATAR_URL;
+        finalSenderId = BOT_SENDER_ID;
+    }
     
-    setCurrentUser(tempCurrentUser);
-    setTotalUnreadCount(tempTotalUnreadCount);
-    setNavItems(newNavItemsList);
-    setIsLoadingSession(false);
-  }, [isClient, pathname, router, toast]);
+    return {
+      id: msg.id,
+      conversation_id: msg.telefono, 
+      sender_id: finalSenderId,
+      receiver_id: isFromCurrentUser ? BOT_SENDER_ID : currentUserId,
+      content: msg.text,
+      created_at: new Date(msg.timestamp).toISOString(),
+      sender: {
+        id: finalSenderId,
+        name: senderName,
+        avatarUrl: senderAvatar,
+      },
+    };
+  }, []);
+
+  const fetchConversation = useCallback(async (isInitialFetch: boolean) => {
+    if (!loggedInUser?.phone_number || !loggedInUser?.id || !hasPermission) {
+      if (isInitialFetch) setLoadingStep('idle');
+      return;
+    }
+
+    if (isInitialFetch) {
+        // setLoadingStep('loadingInitialConversation') is already set by the permission effect
+    } else {
+        setIsLoadingConversationPoll(true);
+    }
+
+    try {
+      const response = await fetch(`/api/whatsapp-bot/conversation/${encodeURIComponent(loggedInUser.phone_number)}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[WhatsAppChatPage DEBUG] Failed to fetch conversation. Status: ${response.status}. Body: ${errorText}`);
+        if (isInitialFetch) toast({ title: "Error de Carga", description: "No se pudo cargar la conversación inicial.", variant: "destructive" });
+        return; 
+      }
+      const fetchedWhatsAppMessages: WhatsAppMessage[] = await response.json();
+      const transformedMessages = fetchedWhatsAppMessages.map(msg => transformWhatsAppMessageToUIChatMessage(msg, loggedInUser.id, loggedInUser));
+      setMessages(transformedMessages);
+    } catch (error: any) {
+      console.error("[WhatsAppChatPage DEBUG] Error in fetchConversation:", error.message);
+       if (isInitialFetch) toast({ title: "Error de Carga", description: "Ocurrió un error al cargar la conversación.", variant: "destructive" });
+    } finally {
+      if (isInitialFetch) {
+        setLoadingStep('idle');
+      } else {
+        setIsLoadingConversationPoll(false);
+      }
+    }
+  }, [loggedInUser, hasPermission, transformWhatsAppMessageToUIChatMessage, toast]);
 
 
   useEffect(() => {
-    if (isClient) {
-      updateSessionAndNav(); 
-
-      const handleSessionOrMessagesUpdate = (event: Event) => {
-        updateSessionAndNav();
-      };
-      
-      const handleStorageEvent = (event: StorageEvent) => {
-          if (event.key === 'loggedInUser') {
-              updateSessionAndNav();
-          }
-      };
-
-      window.addEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
-      window.addEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
-      window.addEventListener('storage', handleStorageEvent);
-
-      return () => {
-        window.removeEventListener('userSessionChanged', handleSessionOrMessagesUpdate);
-        window.removeEventListener('messagesUpdated', handleSessionOrMessagesUpdate);
-        window.removeEventListener('storage', handleStorageEvent);
-      };
+    let isMounted = true;
+    if (isClient && loadingStep === 'loadingInitialConversation' && hasPermission && loggedInUser?.phone_number) {
+      fetchConversation(true); // Initial fetch
     }
-  }, [isClient, updateSessionAndNav]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('loggedInUser');
-    setCurrentUser(null);
-    setTotalUnreadCount(0);
-    setNavItems([...baseNavItemsDefinition]);
-    toast({
-      title: "Sesión Cerrada",
-      description: "Has cerrado sesión de tu panel.",
-    });
-    window.dispatchEvent(new CustomEvent('userSessionChanged'));
-    router.push('/');
+    // Setup polling if conditions are met and we are idle (meaning initial load attempt is done)
+    if (isClient && loadingStep === 'idle' && hasPermission && loggedInUser?.phone_number && !intervalRef.current) {
+        intervalRef.current = setInterval(async () => {
+            if (isMounted && loggedInUser?.phone_number && hasPermission) {
+                await fetchConversation(false); // Subsequent poll
+            }
+        }, 7000);
+    } else if (loadingStep !== 'loadingInitialConversation' || !hasPermission || !loggedInUser?.phone_number) {
+      // Clear interval if conditions are no longer met
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+    
+    return () => {
+      isMounted = false;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isClient, loadingStep, hasPermission, loggedInUser, fetchConversation]);
+
+
+  const handleSendMessage = async (e: FormEvent) => {
+    e.preventDefault();
+    const localWhatsAppBotNumber = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER;
+    const WHATSAPP_BOT_NUMBER_FALLBACK = "+56946725640"; 
+    let finalBotNumber = localWhatsAppBotNumber || WHATSAPP_BOT_NUMBER_FALLBACK;
+    
+    if (!loggedInUser?.id || !loggedInUser.phone_number || !finalBotNumber || !hasPermission || !newMessage.trim()) {
+      toast({ title: "No se puede enviar", description: "Asegúrate de haber iniciado sesión, tener un teléfono y permiso para usar el bot.", variant: "warning" });
+      return;
+    }
+
+    setIsSending(true);
+    const userMessageContent = newMessage;
+    setNewMessage('');
+    
+    const optimisticMessageForUI: ChatMessage = transformWhatsAppMessageToUIChatMessage({
+        id: `temp-user-${Date.now()}`,
+        telefono: loggedInUser.phone_number, 
+        text: userMessageContent,
+        sender: 'user',
+        timestamp: Date.now(),
+        status: 'pending_to_whatsapp',
+        sender_id_override: loggedInUser.id,
+      }, loggedInUser.id, loggedInUser);
+
+    setMessages(prev => [...prev, optimisticMessageForUI]);
+    
+    try {
+      const payloadForApi = {
+        telefonoReceptorBot: finalBotNumber,
+        text: userMessageContent,
+        telefonoRemitenteUsuarioWeb: loggedInUser.phone_number,
+        userId: loggedInUser.id,
+      };
+      const response = await fetch('/api/whatsapp-bot/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadForApi),
+      });
+      
+      const result = await response.json();
+      if (!result.success) throw new Error(result.message || 'El sistema no pudo procesar el mensaje para el bot.');
+    } catch (error: any) {
+      console.error("[WhatsAppChatPage DEBUG] Error sending message via API:", error.message);
+      toast({ title: 'Error de Envío', description: error.message || 'No se pudo enviar tu mensaje al bot.', variant: 'destructive' });
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticMessageForUI.id));
+      setNewMessage(userMessageContent); 
+    } finally {
+      setIsSending(false);
+    }
   };
-
-  const userName = currentUser?.name || 'Usuario';
-  const userAvatarUrl = currentUser?.avatarUrl || `https://placehold.co/40x40.png?text=${userName.substring(0,1)}`;
-  const userAvatarFallback = userName.substring(0,1).toUpperCase();
   
-  if (isLoadingSession && isClient) {
-     return (
-        <div className="flex min-h-screen flex-col bg-muted/40">
-            <aside className="w-64 bg-background border-r p-5 space-y-6 hidden md:flex flex-col shadow-sm">
-                <div className="flex items-center gap-3 px-2 py-1">
-                    <Skeleton className="h-8 w-8 rounded-lg" />
-                    <Skeleton className="h-7 w-32 rounded-md" />
-                </div>
-                <Separator/>
-                <div className="flex-grow space-y-1.5">
-                    {[...Array(baseNavItemsDefinition.length + 2)].map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-md"/>)}
-                </div>
-                <Separator/>
-                <div className="mt-auto space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
-                        <Skeleton className="h-9 w-9 rounded-full"/>
-                        <div className="space-y-1.5"><Skeleton className="h-3 w-20 rounded"/><Skeleton className="h-3 w-16 rounded"/></div>
-                    </div>
-                    <Skeleton className="h-9 w-full rounded-md"/>
-                </div>
-            </aside>
-            <div className="flex-1 flex flex-col">
-                <header className="bg-background border-b p-4 shadow-sm md:hidden">
-                    <div className="flex items-center justify-between">
-                        <Skeleton className="h-7 w-24 rounded-md" />
-                    </div>
-                </header>
-                <main className="flex-grow p-4 sm:p-6 md:p-8 bg-muted/30 flex flex-col items-center justify-center">
-                    <CustomPageLoader />
-                    <p className="mt-4 text-muted-foreground">Cargando panel...</p>
-                </main>
-            </div>
-        </div>
-     );
-  }
-  
-  if (!currentUser && isClient && !pathname.startsWith('/auth')) {
+  if (loadingStep === 'checkingPermissions') { 
     return (
-       <div className="flex flex-col items-center justify-center min-h-screen">
-         <CustomPageLoader />
-         <p className="mt-4 text-muted-foreground">Verificando sesión...</p>
-       </div>
+      <div className="flex flex-col h-full items-center justify-center p-6">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="mt-3 text-muted-foreground">Verificando permisos...</p>
+      </div>
     );
   }
   
-  return (
-    <div className="flex min-h-screen bg-muted/40">
-      <aside className="w-64 bg-background border-r p-5 space-y-6 hidden md:flex flex-col shadow-sm">
-        <div className="flex items-center gap-3 px-2 py-1">
-          <Link href="/" className="flex items-center gap-3 text-primary group">
-            <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
-                <Home className="h-6 w-6 text-primary" />
-            </div>
-            <span className="text-lg font-bold font-headline text-foreground group-hover:text-primary transition-colors">konecte</span>
-          </Link>
-        </div>
-        
-        <Separator />
+  if (loadingStep === 'loadingInitialConversation' && messages.length === 0) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center p-6">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="mt-3 text-muted-foreground">Cargando conversación...</p>
+      </div>
+    );
+  }
 
-        <nav className="flex-grow space-y-1">
-          {navItems.map((item) => (
-            <Button
-              key={item.href} 
-              variant={pathname === item.href ? "secondary" : "ghost"}
-              asChild
-              className="w-full justify-start text-sm py-2.5 h-auto rounded-md hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
-            >
-              <Link href={item.href} className="flex items-center gap-3 px-3">
-                {React.cloneElement(item.icon as React.ReactElement, { className: "h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" })}
-                <span className="font-medium flex-1">{item.label}</span>
-                {item.id === 'messagesLink' && totalUnreadCount > 0 && (
-                  <Badge variant="destructive" className="h-5 px-1.5 text-xs">
-                    {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
-                  </Badge>
-                )}
-              </Link>
-            </Button>
+
+  if (!loggedInUser) { 
+    return (
+      <Card className="shadow-lg">
+        <CardHeader className="text-center">
+          <UserCircle className="mx-auto h-12 w-12 text-muted-foreground" />
+          <CardTitle>Acceso Requerido</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center">
+          <p className="mb-4">Debes iniciar sesión para usar el chat con nuestro bot.</p>
+          <Button asChild>
+            <Link href={`/auth/signin?redirect=${encodeURIComponent('/dashboard/whatsapp-chat')}`}>Iniciar Sesión</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (!hasPermission) {
+     return (
+      <Card className="shadow-lg">
+        <CardHeader className="text-center">
+          <AlertTriangle className="mx-auto h-12 w-12 text-amber-500" />
+          <CardTitle>Función No Disponible</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center">
+          <p className="mb-1">El chat con el bot de WhatsApp no está habilitado para tu cuenta o falta tu número de teléfono.</p>
+          {!loggedInUser.phone_number && <p className="text-sm text-muted-foreground mb-3">Por favor, <Link href="/profile" className="underline text-primary">añade un número de teléfono a tu perfil</Link>.</p>}
+          {loggedInUser.phone_number && !hasPermission && <p className="text-sm text-muted-foreground mb-3">Considera mejorar tu plan para acceder a esta función.</p>}
+          <Button asChild>
+            <Link href="/plans">Ver Planes</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  const botNumberForDisplay = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER || "+56946725640 (Fallback)";
+
+  return (
+    <Card className="flex flex-col h-full max-h-[calc(100vh-var(--header-height,6rem)-var(--dashboard-padding-y,3rem)-2rem)] shadow-xl rounded-xl border overflow-hidden">
+      <CardHeader className="p-3 sm:p-4 border-b bg-card sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+             <Avatar className="h-10 w-10">
+                <AvatarImage src={BOT_AVATAR_URL} alt={BOT_DISPLAY_NAME} data-ai-hint="robot bot"/>
+                <AvatarFallback><Bot className="text-primary"/></AvatarFallback>
+             </Avatar>
+          </div>
+          <div>
+            <CardTitle className="text-base sm:text-lg">{BOT_DISPLAY_NAME}</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Interactuando con el bot en {botNumberForDisplay}</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <ScrollArea className="flex-1 p-3 sm:p-4" ref={scrollAreaRef}>
+        <div className="space-y-4">
+          {(isLoadingConversationPoll && messages.length === 0 && loadingStep === 'idle') && (
+             <div className="text-center py-10 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                Actualizando conversación...
+            </div>
+          )}
+          {messages.length === 0 && !isLoadingConversationPoll && loadingStep === 'idle' && (
+              <div className="text-center py-10 text-muted-foreground">
+                <MessageSquareIconLucide className="h-12 w-12 mx-auto mb-3 text-gray-400"/>
+                <p>Hola {loggedInUser.name.split(' ')[0]}, envía un mensaje para iniciar la conversación con el bot.</p>
+              </div>
+          )}
+          {messages.map((msg) => (
+            <ChatMessageItem key={msg.id} message={msg} currentUserId={loggedInUser!.id} />
           ))}
-           <Separator className="my-2"/>
-             <Button
-              variant={pathname === "/profile" ? "secondary" : "ghost"}
-              asChild
-              className="w-full justify-start text-sm py-2.5 h-auto rounded-md hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
+      <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t bg-card">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Input
+            type="text"
+            placeholder="Escribe tu mensaje para el bot..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            disabled={isSending}
+            className="flex-1 h-10 sm:h-11 text-sm sm:text-base"
+            autoComplete="off"
+          />
+          <Button type="submit" size="icon" className="h-10 w-10 sm:h-11 sm:w-11 rounded-lg" 
+            disabled={isSending || !newMessage.trim() || !loggedInUser?.phone_number || !hasPermission}
+            title={
+              !loggedInUser?.phone_number ? "Añade un teléfono a tu perfil" :
+              !hasPermission ? "Tu plan no incluye esta función" :
+              "Enviar mensaje"
+            }
             >
-              <Link href="/profile" className="flex items-center gap-3 px-3">
-                 <UserCircle className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                <span className="font-medium flex-1">Mi Perfil</span>
-              </Link>
-            </Button>
-        </nav>
-        
-        <Separator />
-        
-        <div className="mt-auto space-y-3">
-            {currentUser && (
-                <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg border">
-                    <Avatar className="h-9 w-9">
-                    <AvatarImage src={userAvatarUrl} alt={userName} data-ai-hint="usuario perfil"/>
-                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">{userAvatarFallback}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                    <p className="text-xs font-semibold text-foreground">{userName}</p>
-                    <p className="text-xs text-muted-foreground">Usuario</p>
-                    </div>
-                </div>
-            )}
-          <Button variant="outline" onClick={handleLogout} className="w-full text-sm py-2.5 h-auto rounded-md border-destructive/50 text-destructive hover:bg-destructive/5 hover:text-destructive">
-            <LogOutIcon className="mr-2 h-4 w-4" /> Cerrar Sesión
+            {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            <span className="sr-only">Enviar Mensaje</span>
           </Button>
         </div>
-      </aside>
-      
-      <div className="flex-1 flex flex-col">
-        <header className="bg-background border-b p-4 shadow-sm md:hidden">
-            <div className="flex items-center justify-between">
-                 <Link href="/dashboard" className="flex items-center gap-2 text-primary">
-                    <LayoutDashboard className="h-5 w-5" />
-                    <span className="text-md font-bold font-headline">Mi Panel</span>
-                </Link>
-            </div>
-        </header>
-        <main className="flex-grow p-4 sm:p-6 md:p-8 bg-muted/30">
-          {children}
-        </main>
-      </div>
-    </div>
+      </form>
+    </Card>
   );
 }
+
