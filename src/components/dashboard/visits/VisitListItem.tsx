@@ -102,14 +102,14 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
           <>
             <Button size="sm" variant="default" onClick={() => onManageVisit(visit, 'confirm_original_proposal')}>Confirmar Hora</Button>
             <Button size="sm" variant="outline" onClick={() => onManageVisit(visit, 'reschedule_proposal')}>Reagendar</Button>
-            <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_pending_request')}>Rechazar</Button>
+            <StyledRejectButton onClick={() => onManageVisit(visit, 'cancel_pending_request')}>Rechazar Solicitud</StyledRejectButton>
           </>
         )}
         {isOwner && visit.status === 'confirmed' && (
            <>
             <Button size="sm" variant="outline" onClick={() => onManageVisit(visit, 'mark_completed')}>Marcar Completada</Button>
             <Button size="sm" variant="outline" onClick={() => onManageVisit(visit, 'mark_visitor_no_show')}>Visitante No Asistió</Button>
-            <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_confirmed_visit')}>Cancelar Confirmada</Button>
+            <StyledRejectButton onClick={() => onManageVisit(visit, 'cancel_confirmed_visit')}>Cancelar Confirmada</StyledRejectButton>
            </>
         )}
         {isOwner && visit.status === 'rescheduled_by_owner' && (
@@ -121,9 +121,9 @@ export default function VisitListItem({ visit, currentUserId, onManageVisit }: V
 
         {/* --- Acciones para el Visitante --- */}
         {isVisitor && (visit.status === 'pending_confirmation' || visit.status === 'confirmed') && (
-          <Button size="sm" variant="destructive" onClick={() => onManageVisit(visit, 'cancel_own_request')}>
+          <StyledRejectButton onClick={() => onManageVisit(visit, 'cancel_own_request')}>
             {visit.status === 'pending_confirmation' ? 'Cancelar Solicitud' : 'Cancelar Visita Confirmada'}
-          </Button>
+          </StyledRejectButton>
         )}
         {isVisitor && visit.status === 'rescheduled_by_owner' && (
           <>
