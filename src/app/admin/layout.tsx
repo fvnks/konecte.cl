@@ -4,13 +4,13 @@
 import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper, BarChart3, CalendarClock, MailWarning, MessageSquare } from 'lucide-react'; // Added MessageSquare
+import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, LogOut as LogOutIcon, Newspaper, BarChart3, CalendarClock, MailWarning, MessageSquare } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2 } from 'lucide-react';
+import CustomPageLoader from '@/components/ui/CustomPageLoader'; // Importar el nuevo loader
 import { Badge } from '@/components/ui/badge';
 import { getUnreadContactSubmissionsCountAction } from '@/actions/contactFormActions';
 
@@ -24,7 +24,7 @@ const adminNavItems = [
   { href: '/admin/appearance', label: 'Apariencia', icon: <Brush className="h-5 w-5" /> },
   { href: '/admin/content', label: 'Contenido del Sitio', icon: <Newspaper className="h-5 w-5" /> },
   { href: '/admin/contact-submissions', label: 'Mensajes de Contacto', icon: <MailWarning className="h-5 w-5" />, id: 'contactSubmissionsLink' },
-  { href: '/admin/whatsapp-viewer', label: 'Visor Chat WhatsApp', icon: <MessageSquare className="h-5 w-5" /> }, // Nuevo item
+  { href: '/admin/whatsapp-viewer', label: 'Visor Chat WhatsApp', icon: <MessageSquare className="h-5 w-5" /> }, 
   { href: '/admin/settings', label: 'Google Sheets', icon: <Settings className="h-5 w-5" /> },
   { href: '/admin/users', label: 'Usuarios', icon: <Users className="h-5 w-5" /> },
   { href: '/admin/roles', label: 'Roles', icon: <ShieldAlert className="h-5 w-5" /> },
@@ -150,9 +150,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <header className="bg-background border-b p-4 shadow-sm md:hidden">
                     <div className="flex items-center justify-between"> <Skeleton className="h-7 w-28 rounded-md" /></div>
                 </header>
-                <main className="flex-grow p-6 sm:p-8 md:p-10 bg-muted/30 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="ml-2">Cargando panel de administración...</p>
+                <main className="flex-grow p-6 sm:p-8 md:p-10 bg-muted/30 flex flex-col items-center justify-center">
+                    <CustomPageLoader />
+                    <p className="mt-4 text-muted-foreground">Cargando panel de administración...</p>
                 </main>
             </div>
         </div>
@@ -161,9 +161,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   if (!adminUser && isClient) {
       return (
-       <div className="flex items-center justify-center min-h-screen">
-         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-         <p className="ml-2">Verificando permisos de administrador...</p>
+       <div className="flex flex-col items-center justify-center min-h-screen">
+         <CustomPageLoader />
+         <p className="mt-4 text-muted-foreground">Verificando permisos de administrador...</p>
        </div>
     );
   }

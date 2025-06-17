@@ -1,4 +1,3 @@
-
 // src/app/dashboard/layout.tsx
 'use client';
 
@@ -15,7 +14,7 @@ import { getPlanByIdAction } from '@/actions/planActions';
 import type { Plan } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2 } from 'lucide-react';
+import CustomPageLoader from '@/components/ui/CustomPageLoader'; // Importar el nuevo loader
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -54,13 +53,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const updateSessionAndNav = useCallback(async () => {
     if (!isClient) {
         console.log('[DashboardLayout DEBUG] updateSessionAndNav: isClient is false. Aborting.');
-        if (isLoadingSession) setIsLoadingSession(false); // Ensure loading stops if aborted early
+        if (isLoadingSession) setIsLoadingSession(false); 
         return;
     }
     console.log('[DashboardLayout DEBUG] updateSessionAndNav START. Pathname:', pathname);
 
-    // Siempre comenzar con isLoadingSession en true al inicio de esta función
-    // para reflejar que estamos procesando la sesión y los items de navegación.
     setIsLoadingSession(true); 
     
     let tempCurrentUser: StoredUser | null = null;
@@ -69,10 +66,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
-      console.log('[DashboardLayout DEBUG] userJson found in localStorage:', userJson.substring(0, 100) + '...'); // Log solo una parte por si es muy largo
+      console.log('[DashboardLayout DEBUG] userJson found in localStorage:', userJson.substring(0, 100) + '...'); 
       try {
         const parsedUser: StoredUser = JSON.parse(userJson);
-        tempCurrentUser = parsedUser; // Establecer temporalmente para usar en esta ejecución
+        tempCurrentUser = parsedUser; 
         console.log('[DashboardLayout DEBUG] Parsed user from localStorage:', {id: parsedUser.id, name: parsedUser.name, role_id: parsedUser.role_id, plan_id: parsedUser.plan_id});
 
         if (parsedUser.role_id === 'broker') {
@@ -88,8 +85,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           console.log(`[DashboardLayout DEBUG] User has plan_id: "${parsedUser.plan_id}". Fetching plan details...`);
           try {
             const planDetails: Plan | null = await getPlanByIdAction(parsedUser.plan_id);
-            console.log('[DashboardLayout DEBUG] Fetched plan details:', planDetails); // Log completo del plan
-            if (planDetails && planDetails.whatsapp_bot_enabled === true) { // Comprobación estricta de true
+            console.log('[DashboardLayout DEBUG] Fetched plan details:', planDetails); 
+            if (planDetails && planDetails.whatsapp_bot_enabled === true) { 
               if (!newNavItemsList.find(item => item.href === '/dashboard/whatsapp-chat')) {
                 console.log('[DashboardLayout DEBUG] Plan has whatsapp_bot_enabled=true. ADDING "Chat WhatsApp" link.');
                 newNavItemsList.push({ href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> });
@@ -137,7 +134,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }
     }
     
-    // Actualizar estados de React
     setCurrentUser(tempCurrentUser);
     setTotalUnreadCount(tempTotalUnreadCount);
     setNavItems(newNavItemsList);
@@ -231,9 +227,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <Skeleton className="h-7 w-24 rounded-md" />
                     </div>
                 </header>
-                <main className="flex-grow p-4 sm:p-6 md:p-8 bg-muted/30 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="ml-2">Cargando panel...</p>
+                <main className="flex-grow p-4 sm:p-6 md:p-8 bg-muted/30 flex flex-col items-center justify-center">
+                    <CustomPageLoader />
+                    <p className="mt-4 text-muted-foreground">Cargando panel...</p>
                 </main>
             </div>
         </div>
@@ -242,9 +238,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   
   if (!currentUser && isClient && !pathname.startsWith('/auth')) {
     return (
-       <div className="flex items-center justify-center min-h-screen">
-         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-         <p className="ml-2">Verificando sesión...</p>
+       <div className="flex flex-col items-center justify-center min-h-screen">
+         <CustomPageLoader />
+         <p className="mt-4 text-muted-foreground">Verificando sesión...</p>
        </div>
     );
   }
@@ -332,4 +328,3 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </div>
   );
 }
-
