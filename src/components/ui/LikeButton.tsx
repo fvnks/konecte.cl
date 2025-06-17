@@ -20,100 +20,102 @@ interface LikeButtonProps {
 const StyledWrapper = styled.div`
   .button-container {
     position: relative;
-    display: inline-block; /* Ensures the wrapper fits the button */
+    display: inline-block; 
   }
 
   .button {
     cursor: pointer;
-    width: auto; /* Auto width based on content */
-    min-width: 130px; /* Ensure enough space for "Me Gusta" */
-    height: 40px; /* Fixed height */
+    width: auto; 
+    min-width: 130px; 
+    height: 40px; 
     display: flex;
     align-items: center;
-    background-color: hsl(var(--card)); /* Right part background normal */
+    background-color: hsl(var(--card)); 
     border: 1px solid hsl(var(--border));
     box-shadow: 0px 3px 0px rgba(45, 45, 45, 0.1);
     overflow: hidden;
     border-radius: 0.5em;
     transition: all 0.2s ease;
-    padding: 0; /* Remove padding from button itself, handle in parts */
+    padding: 0; 
   }
 
   #fontlikebutton {
     font-family: "Trebuchet MS", sans-serif;
     font-weight: 600;
-    font-size: 14px; /* Adjusted font size */
-    color: hsl(var(--primary)); /* Themed primary color for text */
-    margin-left: 0.3em; /* Space between icon and text */
-    transition: transform 0.2s ease, color 0.2s ease;
+    font-size: 14px; 
+    color: hsl(var(--primary)); 
+    margin-left: 0.3em; 
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out, color 0.2s ease;
   }
 
   .button:hover {
-    background-color: hsl(var(--primary)); /* Entire button background changes on hover */
+    background-color: hsl(var(--primary)); 
   }
 
   .button:hover svg#likeimg {
-    stroke: hsl(var(--primary-foreground)); /* White/contrasting icon on hover */
-    transform: scale(1.2) translateX(15%); /* Icon moves right and scales a bit */
+    stroke: hsl(var(--primary-foreground)); 
+    transform: scale(1.5) translateX(100%);
   }
 
   .button:hover #fontlikebutton {
-    color: hsl(var(--primary-foreground)); /* White/contrasting text on hover */
-    transform: translateX(30%); /* Text moves right */
+    color: hsl(var(--primary-foreground));
+    transform: translateX(200%); /* Slide out */
+    opacity: 0; /* Fade out */
   }
 
   .button:active {
-    transform: scale(0.95) translateY(2px); /* Press effect */
-    box-shadow: 0px 1px 0px 0px hsla(var(--primary), 0.5); /* Adjusted active shadow */
+    transform: scale(0.95) translateY(2px); 
+    box-shadow: 0px 1px 0px 0px hsla(var(--primary), 0.5); 
   }
 
   .button:active svg#likeimg {
     stroke: hsl(var(--primary-foreground));
-    transform: scale(1.2) translateX(10%) rotate(-10deg); /* Active icon transform */
+    transform: scale(1.5) translateX(100%) rotate(-10deg); /* Keep transform for active state consistent with hover */
   }
   
   .button:active #fontlikebutton {
     color: hsl(var(--primary-foreground));
-    transform: translateX(30%); /* Keep text position same as hover during active */
+    transform: translateX(200%); /* Keep it slid out */
+    opacity: 0;
   }
 
   svg#likeimg {
-    transition: all 0.2s ease;
-    stroke: hsl(var(--primary)); /* Initial themed stroke for icon */
+    transition: transform 0.3s ease-out, stroke 0.2s ease; /* Changed transition timing */
+    stroke: hsl(var(--primary)); 
     width: 20px;
     height: 20px;
   }
 
   #rightpart {
-    flex-grow: 1; /* Takes remaining space */
+    flex-grow: 1; 
     height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0 10px; /* Padding for icon and text area */
+    padding: 0 10px; 
     transition: background-color 0.2s ease;
   }
 
   #leftpart {
-    color: hsl(var(--primary-foreground)); /* White/contrasting text for numbers */
+    color: hsl(var(--primary-foreground)); 
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
     font-family: "Trebuchet MS", sans-serif;
     font-weight: 600;
-    font-size: 12px; /* Font size for numbers */
-    background-color: hsl(var(--primary)); /* Themed primary background */
-    width: 36px; /* Fixed width for number part */
+    font-size: 12px; 
+    background-color: hsl(var(--primary)); 
+    width: 36px; 
     height: 100%;
     transition: all 0.2s ease;
     border-right: 1px solid hsla(var(--primary) / 0.2); 
   }
 
   .button:hover #leftpart {
-    color: hsl(var(--primary)); /* Text color primary on hover */
-    background: hsl(var(--card)); /* Card background on hover */
-    border-right-color: hsl(var(--primary) / 0.3); /* Border color primary on hover */
+    color: hsl(var(--primary)); 
+    background: hsl(var(--card)); 
+    border-right-color: hsl(var(--primary) / 0.3); 
   }
 
   #currentnumber {
@@ -122,17 +124,17 @@ const StyledWrapper = styled.div`
   }
 
   #movenumber {
-    transform: translateY(-200%); /* Start off-screen */
+    transform: translateY(-200%); 
     transition: all 0.2s ease;
   }
 
   /* Styles for when checkbox is checked (liked state) */
   input#checknumber:checked ~ .button #currentnumber {
-    transform: translateY(200%); /* Move current number off-screen */
+    transform: translateY(200%); 
   }
 
   input#checknumber:checked ~ .button #movenumber {
-    transform: translateY(-50%); /* Move new number into view */
+    transform: translateY(-50%); 
   }
   
   /* Change appearance of left part when liked */
@@ -147,10 +149,11 @@ const StyledWrapper = styled.div`
     border-right-color: hsl(var(--accent) / 0.3);
   }
   
-  /* Change icon and text color when liked and button is not hovered */
+  /* Change icon color when liked and button is not hovered */
   input#checknumber:checked ~ .button svg#likeimg {
     stroke: hsl(var(--accent)); 
   }
+  /* Keep font "Me Gusta" color consistent with icon in liked state */
   input#checknumber:checked ~ .button #fontlikebutton {
     color: hsl(var(--accent));
   }
@@ -158,9 +161,12 @@ const StyledWrapper = styled.div`
   /* Ensure hover overrides liked state colors for icon and text in rightpart when button background changes to primary */
   input#checknumber:checked ~ .button:hover svg#likeimg {
     stroke: hsl(var(--primary-foreground));
+    transform: scale(1.5) translateX(100%); /* Apply hover transform */
   }
   input#checknumber:checked ~ .button:hover #fontlikebutton {
     color: hsl(var(--primary-foreground));
+    transform: translateX(200%); /* Apply hover transform (slide out) */
+    opacity: 0;
   }
 
 
@@ -168,7 +174,7 @@ const StyledWrapper = styled.div`
   .button.disabled {
     cursor: not-allowed;
     opacity: 0.6;
-    background-color: hsl(var(--muted)); /* Muted background for disabled */
+    background-color: hsl(var(--muted)); 
     border-color: hsl(var(--border));
     box-shadow: none;
   }
@@ -184,6 +190,7 @@ const StyledWrapper = styled.div`
   .button.disabled:hover #fontlikebutton {
     color: hsl(var(--muted-foreground));
     transform: none;
+    opacity: 1;
   }
   .button.disabled #leftpart,
   .button.disabled:hover #leftpart {
@@ -198,6 +205,7 @@ const StyledWrapper = styled.div`
    input#checknumber:checked ~ .button.disabled #fontlikebutton,
    input#checknumber:checked ~ .button.disabled:hover #fontlikebutton {
     color: hsl(var(--muted-foreground));
+    opacity: 1;
   }
   input#checknumber:checked ~ .button.disabled #leftpart,
   input#checknumber:checked ~ .button.disabled:hover #leftpart {
@@ -212,7 +220,6 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
   const [isInteracting, setIsInteracting] = useState(false);
   const [isChecked, setIsChecked] = useState(false); 
 
-  // Static like numbers for demo animation
   const currentLikes = 24; 
   const nextLikes = currentLikes + 1;
 
@@ -246,7 +253,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
       const result = await recordUserListingInteractionAction(loggedInUser.id, {
         listingId,
         listingType,
-        interactionType: newCheckedState ? 'like' : 'skip', // 'skip' or 'unlike' if you had a specific action for unliking
+        interactionType: newCheckedState ? 'like' : 'skip', 
       });
 
       if (result.success) {
@@ -297,7 +304,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
       <div className="button-container">
         <input 
           hidden 
-          id={`checknumber-${listingId}-${listingType}`} // More unique ID
+          id={`checknumber-${listingId}-${listingType}`} 
           type="checkbox" 
           checked={isChecked} 
           onChange={() => { /* Logic handled by label's onClick */ }}
@@ -318,7 +325,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
           }}
         >
           <div id="leftpart">
-            {isInteracting && isChecked && !newCheckedState ? ( // Show loader when unliking
+            {isInteracting ? (
                  <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
@@ -328,16 +335,10 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
             )}
           </div>
           <div id="rightpart">
-            {isInteracting && !isChecked && newCheckedState ? ( // Show loader when liking
-                <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <>
-                <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={2.5} /* stroke color via CSS */ fill="none" viewBox="0 0 24 24" height={24} width={24} xmlns="http://www.w3.org/2000/svg">
-                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-                </svg>
-                <div id="fontlikebutton">Me Gusta</div>
-              </>
-            )}
+            <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={2.5} /* stroke color via CSS */ fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+            </svg>
+            <div id="fontlikebutton">Me Gusta</div>
           </div>
         </label>
       </div>
