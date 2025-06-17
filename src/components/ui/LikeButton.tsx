@@ -19,24 +19,24 @@ interface LikeButtonProps {
 
 const StyledWrapper = styled.div`
   button {
-    padding: 0 20px 0 10px;
-    border-radius: 10px;
-    box-shadow: 0px 0px 5px 7px #e7413373;
-    background-color: #e74133; // Color rojo por defecto del diseño original
+    padding: 0 12px 0 8px; /* Reducido padding */
+    border-radius: 8px; /* Ligeramente más pequeño */
+    box-shadow: 0px 0px 4px 5px #e7413373; /* Sombra ajustada */
+    background-color: #e74133;
     color: white;
-    font-size: 17px;
+    font-size: 14px; /* Fuente más pequeña */
     border: none;
     display: flex;
     align-items: center;
     transition: all .5s ease-in-out;
-    letter-spacing: 2px;
-    height: 50px; // Altura fija para consistencia
+    letter-spacing: 1px; /* Espaciado de letras reducido */
+    height: 40px; /* Altura del botón más pequeña */
   }
 
   button:hover {
     background-color: #f54d3e;
     transition: all .5s ease-in-out;
-    box-shadow: 0px 0px 5px 3px #e7413373;
+    box-shadow: 0px 0px 4px 2px #e7413373; /* Sombra ajustada */
   }
 
   button::before {
@@ -46,10 +46,10 @@ const StyledWrapper = styled.div`
     background-repeat: no-repeat;
     color: transparent;
     position: relative;
-    width: 50px;
-    height: 50px;
+    width: 30px; /* Icono más pequeño */
+    height: 30px; /* Icono más pequeño */
     display: block;
-    margin-right: 5px;
+    margin-right: 4px; /* Margen ajustado */
     transition: all .9s ease-in-out;
   }
 
@@ -60,8 +60,8 @@ const StyledWrapper = styled.div`
   }
 
   button.liked {
-    background-color: #f54d3e; /* Color cuando está "liked" */
-    box-shadow: 0px 0px 5px 3px #e7413373;
+    background-color: #f54d3e;
+    box-shadow: 0px 0px 4px 2px #e7413373;
   }
 
   button.liked::before {
@@ -73,7 +73,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
   const { toast } = useToast();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
-  const [isChecked, setIsChecked] = useState(false); // Para el estado visual del like
+  const [isChecked, setIsChecked] = useState(false);
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -109,7 +109,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
       });
 
       if (result.success) {
-        setIsChecked(newCheckedState); // Actualizar el estado visual solo si la acción fue exitosa
+        setIsChecked(newCheckedState);
         if (newCheckedState && result.matchDetails?.matchFound && result.matchDetails.conversationId) {
           toast({
             title: "¡Es un Match Mutuo!",
@@ -137,8 +137,6 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
           description: result.message || `No se pudo registrar tu preferencia.`,
           variant: "destructive",
         });
-        // No revertimos isChecked aquí, ya que el backend es la fuente de verdad.
-        // Considerar re-sincronizar el estado `isChecked` desde la base de datos si es necesario.
       }
     } catch (error: any) {
       toast({
