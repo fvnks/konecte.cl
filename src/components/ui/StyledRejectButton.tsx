@@ -15,7 +15,7 @@ const StyledWrapper = styled.div`
   display: inline-block; 
 
   .custom-reject-button {
-    width: 190px; /* Increased width for longer text */
+    width: 190px; 
     height: 36px; /* Reduced height to match ShadCN sm button (h-9) */
     cursor: pointer;
     display: flex;
@@ -34,17 +34,17 @@ const StyledWrapper = styled.div`
   }
 
   .custom-reject-button .text {
-    transform: translateX(15px); /* Adjusted from 35px to show more text from left */
+    transform: translateX(15px); /* Adjusted to show more text from left */
     color: hsl(var(--destructive-foreground));
     font-weight: bold;
-    font-size: 0.875rem; /* text-sm, approx 14px */
+    font-size: 0.8125rem; /* Reduced font size (approx 13px) */
     white-space: nowrap; /* Prevent text from wrapping */
   }
 
   .custom-reject-button .icon {
     position: absolute;
     border-left: 1px solid hsl(var(--destructive) / 0.8); /* Darker separator */
-    transform: translateX(150px); /* New width (190) - icon width (40) = 150px */
+    transform: translateX(150px); /* button width (190) - icon width (40) = 150px */
     height: 100%; /* Make icon part take full height of button */
     width: 40px; /* Icon part width */
     display: flex;
