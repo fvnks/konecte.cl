@@ -26,11 +26,12 @@ const StyledWrapper = styled.div`
   .button {
     cursor: pointer;
     width: auto; /* Auto width based on content */
+    min-width: 130px; /* Ensure enough space for "Me Gusta" */
     height: 40px; /* Fixed height */
     display: flex;
     align-items: center;
-    background-color: hsl(var(--card)); /* Themed card background */
-    border: 1px solid hsl(var(--border)); /* Themed border */
+    background-color: hsl(var(--card)); /* Right part background normal */
+    border: 1px solid hsl(var(--border));
     box-shadow: 0px 3px 0px rgba(45, 45, 45, 0.1);
     overflow: hidden;
     border-radius: 0.5em;
@@ -48,17 +49,17 @@ const StyledWrapper = styled.div`
   }
 
   .button:hover {
-    background-color: hsl(var(--primary)); /* Themed primary on hover */
+    background-color: hsl(var(--primary)); /* Entire button background changes on hover */
   }
 
   .button:hover svg#likeimg {
     stroke: hsl(var(--primary-foreground)); /* White/contrasting icon on hover */
-    transform: scale(1.3) translateX(30%); /* Icon moves right and scales */
+    transform: scale(1.2) translateX(15%); /* Icon moves right and scales a bit */
   }
 
   .button:hover #fontlikebutton {
     color: hsl(var(--primary-foreground)); /* White/contrasting text on hover */
-    transform: translateX(60%); /* Text moves right */
+    transform: translateX(30%); /* Text moves right */
   }
 
   .button:active {
@@ -68,12 +69,12 @@ const StyledWrapper = styled.div`
 
   .button:active svg#likeimg {
     stroke: hsl(var(--primary-foreground));
-    transform: scale(1.3) translateX(25%) rotate(-15deg); /* Active icon transform */
+    transform: scale(1.2) translateX(10%) rotate(-10deg); /* Active icon transform */
   }
   
   .button:active #fontlikebutton {
     color: hsl(var(--primary-foreground));
-    transform: translateX(60%); /* Keep text position same as hover during active */
+    transform: translateX(30%); /* Keep text position same as hover during active */
   }
 
   svg#likeimg {
@@ -84,13 +85,13 @@ const StyledWrapper = styled.div`
   }
 
   #rightpart {
-    /* width: 70%; /* Let it be flexible */
-    flex-grow: 1;
+    flex-grow: 1; /* Takes remaining space */
     height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 0 10px; /* Padding for icon and text area */
+    transition: background-color 0.2s ease;
   }
 
   #leftpart {
@@ -106,13 +107,13 @@ const StyledWrapper = styled.div`
     width: 36px; /* Fixed width for number part */
     height: 100%;
     transition: all 0.2s ease;
-    border-right: 1px solid hsla(var(--primary-foreground), 0.2); /* Separator */
+    border-right: 1px solid hsla(var(--primary) / 0.2); 
   }
 
   .button:hover #leftpart {
     color: hsl(var(--primary)); /* Text color primary on hover */
     background: hsl(var(--card)); /* Card background on hover */
-    border-right-color: hsl(var(--primary)); /* Border color primary on hover */
+    border-right-color: hsl(var(--primary) / 0.3); /* Border color primary on hover */
   }
 
   #currentnumber {
@@ -136,14 +137,14 @@ const StyledWrapper = styled.div`
   
   /* Change appearance of left part when liked */
   input#checknumber:checked ~ .button #leftpart {
-    background-color: hsl(var(--accent)); /* Example: use accent color when liked */
+    background-color: hsl(var(--accent)); 
     color: hsl(var(--accent-foreground));
-    border-right-color: hsla(var(--accent-foreground), 0.2);
+    border-right-color: hsla(var(--accent-foreground) / 0.2);
   }
   input#checknumber:checked ~ .button:hover #leftpart {
-    background-color: hsl(var(--card)); /* Card background on hover when liked */
-    color: hsl(var(--accent)); /* Accent text color on hover when liked */
-    border-right-color: hsl(var(--accent));
+    background-color: hsl(var(--card)); 
+    color: hsl(var(--accent)); 
+    border-right-color: hsl(var(--accent) / 0.3);
   }
   
   /* Change icon and text color when liked and button is not hovered */
@@ -154,12 +155,12 @@ const StyledWrapper = styled.div`
     color: hsl(var(--accent));
   }
 
-  /* Ensure hover overrides liked state colors for icon and text in rightpart */
+  /* Ensure hover overrides liked state colors for icon and text in rightpart when button background changes to primary */
   input#checknumber:checked ~ .button:hover svg#likeimg {
-    stroke: hsl(var(--primary-foreground)); /* Back to white on primary bg */
+    stroke: hsl(var(--primary-foreground));
   }
   input#checknumber:checked ~ .button:hover #fontlikebutton {
-    color: hsl(var(--primary-foreground)); /* Back to white on primary bg */
+    color: hsl(var(--primary-foreground));
   }
 
 
@@ -200,7 +201,7 @@ const StyledWrapper = styled.div`
   }
   input#checknumber:checked ~ .button.disabled #leftpart,
   input#checknumber:checked ~ .button.disabled:hover #leftpart {
-    background: hsl(var(--muted) / 0.5); /* Muted accent color when liked and disabled */
+    background: hsl(var(--muted) / 0.5); 
     color: hsl(var(--muted-foreground));
   }
 `;
@@ -245,7 +246,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
       const result = await recordUserListingInteractionAction(loggedInUser.id, {
         listingId,
         listingType,
-        interactionType: newCheckedState ? 'like' : 'skip', 
+        interactionType: newCheckedState ? 'like' : 'skip', // 'skip' or 'unlike' if you had a specific action for unliking
       });
 
       if (result.success) {
@@ -299,12 +300,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
           id={`checknumber-${listingId}-${listingType}`} // More unique ID
           type="checkbox" 
           checked={isChecked} 
-          onChange={() => {
-            // This onChange is primarily for semantic correctness of the checkbox,
-            // the main logic is in the label's onClick.
-            // We could call handleLike here too, but to avoid double calls,
-            // it's better to rely on the label's click handler.
-          }}
+          onChange={() => { /* Logic handled by label's onClick */ }}
           disabled={buttonDisabled}
         />
         <label 
@@ -322,7 +318,7 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
           }}
         >
           <div id="leftpart">
-            {isInteracting && isChecked ? ( 
+            {isInteracting && isChecked && !newCheckedState ? ( // Show loader when unliking
                  <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
@@ -332,11 +328,11 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
             )}
           </div>
           <div id="rightpart">
-            {isInteracting && !isChecked ? ( 
+            {isInteracting && !isChecked && newCheckedState ? ( // Show loader when liking
                 <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
               <>
-                <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={2.5} fill="none" viewBox="0 0 24 24" height={24} width={24} xmlns="http://www.w3.org/2000/svg">
+                <svg id="likeimg" strokeLinejoin="round" strokeLinecap="round" strokeWidth={2.5} /* stroke color via CSS */ fill="none" viewBox="0 0 24 24" height={24} width={24} xmlns="http://www.w3.org/2000/svg">
                   <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
                 </svg>
                 <div id="fontlikebutton">Me Gusta</div>
@@ -348,4 +344,3 @@ export default function LikeButton({ listingId, listingType, className }: LikeBu
     </StyledWrapper>
   );
 }
-
