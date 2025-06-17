@@ -1,3 +1,4 @@
+
 // src/app/dashboard/my-listings/page.tsx
 'use client';
 
@@ -14,7 +15,7 @@ import { getUserPropertiesAction, updatePropertyStatusAction } from '@/actions/p
 import { getUserRequestsAction, updateRequestStatusAction } from '@/actions/requestActions';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch'; // Import Switch
+import { Switch } from '@/components/ui/switch'; 
 
 export default function MyListingsPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUserType | null>(null);
@@ -166,7 +167,7 @@ export default function MyListingsPage() {
                            </Badge>
                         </div>
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/admin/properties/${property.id}/edit`}> {/* TODO: Usar /properties/${id}/edit cuando esté */}
+                          <Link href={`/dashboard/my-listings/property/${property.id}/edit`}> 
                             <Edit3 className="mr-1.5 h-3.5 w-3.5"/> Editar
                           </Link>
                         </Button>
@@ -206,7 +207,7 @@ export default function MyListingsPage() {
                            </Badge>
                         </div>
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/admin/requests/${request.id}/edit`}> {/* TODO: Usar /requests/${id}/edit cuando esté */}
+                          <Link href={`/admin/requests/${request.id}/edit`}> {/* TODO: Usar /dashboard/my-listings/request/${request.id}/edit cuando esté */}
                             <Edit3 className="mr-1.5 h-3.5 w-3.5"/> Editar
                           </Link>
                         </Button>
@@ -230,3 +231,4 @@ export default function MyListingsPage() {
     </div>
   );
 }
+

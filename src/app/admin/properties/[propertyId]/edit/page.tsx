@@ -4,9 +4,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation'; // useRouter for back navigation
-import { getPropertyByIdForAdminAction } from '@/actions/propertyActions';
-import type { PropertyListing } from '@/lib/types';
-import AdminEditPropertyForm from '@/components/admin/properties/AdminEditPropertyForm';
+import { getPropertyByIdForAdminAction, adminUpdatePropertyAction } from '@/actions/propertyActions';
+import type { PropertyListing, PropertyFormValues, SubmitPropertyResult } from '@/lib/types';
+import EditPropertyForm from '@/components/property/EditPropertyForm'; // Actualizado
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
@@ -30,7 +30,7 @@ export default function AdminEditPropertyPage() {
           if (data) {
             setProperty(data);
           } else {
-            setError('No se encontró la propiedad especificada o no tienes permiso para editarla.');
+            setError('No se encontró la propiedad especificada.');
           }
         })
         .catch((err) => {
@@ -45,6 +45,15 @@ export default function AdminEditPropertyPage() {
       setIsLoading(false);
     }
   }, [propertyId]);
+
+  // La acción de submit para el contexto de admin
+  const handleAdminSubmit = async (
+    id: string, 
+    data: PropertyFormValues
+  ): Promise<SubmitPropertyResult> => {
+    // La acción adminUpdatePropertyAction no necesita userId
+    return adminUpdatePropertyAction(id, data);
+  };
 
   if (isLoading) {
     return (
@@ -71,7 +80,6 @@ export default function AdminEditPropertyPage() {
   }
 
   if (!property) {
-    // Should be caught by error state, but as a fallback
     return <p>Propiedad no encontrada.</p>;
   }
 
@@ -83,14 +91,18 @@ export default function AdminEditPropertyPage() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl md:text-3xl font-headline">
-            Editar Propiedad: <span className="text-primary">{property.title}</span>
+            Editar Propiedad (Admin): <span className="text-primary">{property.title}</span>
           </CardTitle>
           <CardDescription>
             Modifica los detalles de la propiedad. El slug ({property.slug}) no se puede cambiar desde aquí.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <AdminEditPropertyForm property={property} />
+          <EditPropertyForm 
+            property={property} 
+            onSubmitAction={handleAdminSubmit}
+            isAdminContext={true}
+          />
         </CardContent>
       </Card>
     </div>

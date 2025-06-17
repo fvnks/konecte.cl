@@ -62,6 +62,7 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
       name: row.author_name,
       avatarUrl: row.author_avatar_url || undefined,
       role_id: row.author_role_id || '',
+      role_name: row.author_role_name || undefined,
     } : undefined,
   };
 }
@@ -117,7 +118,7 @@ export async function submitPropertyAction(
     await query(sql, params);
     console.log(`[PropertyAction] Property submitted successfully. ID: ${propertyId}, Slug: ${slug}`);
 
-    const userRows: any[] = await query('SELECT id, name FROM users WHERE id = ?', [userId]);
+    const userRows: any[] = await query('SELECT id, name, role_id FROM users WHERE id = ?', [userId]);
     if (userRows.length > 0) {
       propertyPublisherDetails = userRows[0];
     }
@@ -231,9 +232,11 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
         p.*,
         u.name as author_name,
         u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id
+        u.role_id as author_role_id,
+        r.name as author_role_name
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
     `;
     const queryParams: any[] = [];
     const whereClauses: string[] = [];
@@ -338,9 +341,11 @@ export async function getPropertyBySlugAction(slug: string): Promise<PropertyLis
         p.*,
         u.name as author_name,
         u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id
+        u.role_id as author_role_id,
+        r.name as author_role_name
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
       WHERE p.slug = ?
         AND p.is_active = TRUE
     `; 
@@ -363,9 +368,11 @@ export async function getUserPropertiesAction(userId: string): Promise<PropertyL
         p.*,
         u.name as author_name,
         u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id
+        u.role_id as author_role_id,
+        r.name as author_role_name
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
       WHERE p.user_id = ?
       ORDER BY p.created_at DESC
     `;
@@ -390,6 +397,7 @@ export async function updatePropertyStatusAction(propertyId: string, isActive: b
     revalidatePath('/admin/properties');
     revalidatePath('/properties');
     revalidatePath(`/properties/[slug]`, 'layout');
+    revalidatePath('/dashboard/my-listings');
     return { success: true, message: `Propiedad ${isActive ? 'activada' : 'desactivada'} correctamente.` };
   } catch (error: any) {
     console.error("Error al cambiar estado de la propiedad:", error);
@@ -430,9 +438,11 @@ export async function getPropertyByIdForAdminAction(propertyId: string): Promise
         p.*,
         u.name as author_name,
         u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id
+        u.role_id as author_role_id,
+        r.name as author_role_name
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
       WHERE p.id = ?
     `; 
     const rows = await query(sql, [propertyId]);
@@ -446,11 +456,10 @@ export async function getPropertyByIdForAdminAction(propertyId: string): Promise
   }
 }
 
-// El tipo de `data` para adminUpdatePropertyAction debe coincidir con PropertyFormValues de types.ts
 export async function adminUpdatePropertyAction(
   propertyId: string,
-  data: Omit<PropertyFormValues, 'images'> & { images: string[] } // Asegurar que images es array de strings
-): Promise<{ success: boolean; message?: string; propertySlug?: string }> {
+  data: PropertyFormValues // PropertyFormValues ya tiene images: string[]
+): Promise<SubmitPropertyResult> { // Re-usando SubmitPropertyResult
   console.log("[PropertyAction Admin] Property update data received on server:", data, "PropertyID:", propertyId);
 
   if (!propertyId) {
@@ -458,7 +467,6 @@ export async function adminUpdatePropertyAction(
   }
 
   try {
-    // data.images ya es un array de URLs, así que solo stringify si no está vacío
     const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
     const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
 
@@ -510,7 +518,7 @@ export async function adminUpdatePropertyAction(
     }
     revalidatePath('/'); 
 
-    return { success: true, message: "Propiedad actualizada exitosamente.", propertySlug: currentSlug };
+    return { success: true, message: "Propiedad actualizada exitosamente.", propertyId, propertySlug: currentSlug };
 
   } catch (error: any) {
     console.error(`[PropertyAction Admin] Error updating property ${propertyId}:`, error);
@@ -523,6 +531,79 @@ export async function adminUpdatePropertyAction(
     return { success: false, message: `Error al actualizar propiedad: ${message}` };
   }
 }
+
+// Nueva acción para usuarios editando sus propias propiedades
+export async function userUpdatePropertyAction(
+  userId: string, 
+  propertyId: string,
+  data: PropertyFormValues 
+): Promise<SubmitPropertyResult> {
+  console.log("[PropertyAction User] Update request for property:", propertyId, "by user:", userId, "Data:", data);
+
+  if (!userId) {
+    return { success: false, message: "Usuario no autenticado." };
+  }
+  if (!propertyId) {
+    return { success: false, message: "ID de propiedad no proporcionado." };
+  }
+
+  try {
+    const propertyCheckSql = 'SELECT user_id, slug FROM properties WHERE id = ?';
+    const propertyRows: any[] = await query(propertyCheckSql, [propertyId]);
+
+    if (propertyRows.length === 0) {
+      return { success: false, message: "Propiedad no encontrada." };
+    }
+    if (propertyRows[0].user_id !== userId) {
+      console.warn(`[PropertyAction User] User ${userId} attempted to edit property ${propertyId} owned by ${propertyRows[0].user_id}. Denied.`);
+      return { success: false, message: "No tienes permiso para editar esta propiedad." };
+    }
+    
+    const currentSlug = propertyRows[0].slug;
+
+    const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
+    const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
+
+    const updateSql = `
+      UPDATE properties SET
+        title = ?, description = ?, property_type = ?, category = ?,
+        price = ?, currency = ?, address = ?, city = ?, country = ?,
+        bedrooms = ?, bathrooms = ?, area_sq_meters = ?,
+        images = ?, features = ?,
+        updated_at = NOW()
+      WHERE id = ? AND user_id = ? 
+    `;
+
+    const params = [
+      data.title, data.description, data.propertyType, data.category,
+      data.price, data.currency, data.address, data.city, data.country,
+      data.bedrooms, data.bathrooms, data.areaSqMeters,
+      imagesJson, featuresJson,
+      propertyId, userId
+    ];
+
+    const result: any = await query(updateSql, params);
+
+    if (result.affectedRows === 0) {
+      return { success: false, message: "No se realizaron cambios en la propiedad o no se pudo actualizar." };
+    }
+
+    console.log(`[PropertyAction User] Property ${propertyId} updated successfully by user ${userId}.`);
+
+    revalidatePath('/dashboard/my-listings');
+    revalidatePath('/properties');
+    if (currentSlug) {
+      revalidatePath(`/properties/${currentSlug}`);
+    }
+    
+    return { success: true, message: "Propiedad actualizada exitosamente.", propertyId, propertySlug: currentSlug };
+
+  } catch (error: any) {
+    console.error(`[PropertyAction User] Error updating property ${propertyId} for user ${userId}:`, error);
+    return { success: false, message: `Error al actualizar propiedad: ${error.message}` };
+  }
+}
+
 
 export async function getPropertiesCountAction(activeOnly: boolean = false): Promise<number> {
   try {
