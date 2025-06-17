@@ -35,7 +35,7 @@ export interface User {
   rut_tin?: string | null;
   phone_number?: string | null;
   role_id: string;
-  role_name?: string;
+  role_name?: string; // Añadido para facilitar la visualización
   plan_id?: string | null;
   plan_name?: string | null;
   plan_expires_at?: string | null;
@@ -71,7 +71,7 @@ export interface PropertyListing {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  author?: User;
+  author?: User; // Ya incluye role_id y role_name
 }
 
 
@@ -96,7 +96,7 @@ export interface SearchRequest {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  author?: User;
+  author?: User; // Ya incluye role_id y role_name
 }
 
 
@@ -683,5 +683,3 @@ export const proposePropertyFormSchema = z.object({
 export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema>;
 
 // End of Broker Collaboration Types
-
-

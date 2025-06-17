@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays } from 'lucide-react';
+import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays, ShieldCheck } from 'lucide-react';
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
 import LikeButton from '@/components/ui/LikeButton'; 
 
@@ -44,6 +44,14 @@ const formatPrice = (price: number, currency: string) => {
   }
 };
 
+const getRoleDisplayName = (roleId?: string, roleName?: string): string | null => {
+  if (roleName) return roleName;
+  if (roleId === 'user') return 'Usuario';
+  if (roleId === 'broker') return 'Corredor';
+  if (roleId === 'admin') return 'Admin';
+  return roleId || null;
+};
+
 export default function PropertyListItem({ property }: PropertyListItemProps) {
   const {
     id, 
@@ -62,13 +70,13 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     areaSqMeters,
     description, 
     createdAt,
-    // upvotes, // Removed
   } = property;
 
   const mainImage = images && images.length > 0 ? images[0] : 'https://placehold.co/320x240.png?text=Propiedad';
   const authorName = author?.name || "Anunciante";
   const authorAvatar = author?.avatarUrl;
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+  const authorRoleDisplay = getRoleDisplayName(author?.role_id, author?.role_name);
 
   return (
     <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full flex flex-col md:flex-row group border border-border hover:border-primary/30">
@@ -129,7 +137,13 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
             </Avatar>
             <div className="text-xs">
               <span className="text-muted-foreground line-clamp-1">Por {authorName}</span>
-              <p className="text-muted-foreground/70 flex items-center">
+              {authorRoleDisplay && (
+                <p className="text-muted-foreground/80 flex items-center capitalize">
+                  <ShieldCheck className="h-3 w-3 mr-1 text-primary/70"/>
+                  {authorRoleDisplay}
+                </p>
+              )}
+              <p className="text-muted-foreground/70 flex items-center mt-0.5">
                 <CalendarDays className="h-3 w-3 mr-1" />
                 {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}
               </p>
@@ -152,6 +166,3 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     </Card>
   );
 }
-
-
-    
