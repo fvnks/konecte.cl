@@ -10,10 +10,10 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription, // This is for the Dialog, not Form
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -22,6 +22,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription, // Added missing import
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
