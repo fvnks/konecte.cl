@@ -15,52 +15,52 @@ const StyledWrapper = styled.div`
   display: inline-block; 
 
   .custom-reject-button {
-    /* Dimensions from user CSS */
-    width: 150px; 
-    height: 50px; 
+    width: 180px; /* Increased width for longer text */
+    height: 40px; /* Reduced height to be thinner */
     cursor: pointer;
     display: flex;
     align-items: center;
     /* Theme colors */
     background: hsl(var(--destructive));
-    border: 1px solid hsl(var(--destructive) / 0.9); /* Slightly darker border for depth */
-    border-radius: 5px;
+    border: 1px solid hsl(var(--destructive) / 0.9); /* Matching border like in original CSS */
+    border-radius: 0.375rem; /* Corresponds to rounded-md (5px is close to this) */
     box-shadow: 1px 1px 3px rgba(0,0,0,0.15);
     overflow: hidden; /* Important for the icon slide effect */
+    position: relative; /* Needed if icon is absolute within it */
   }
 
-  .custom-reject-button, .custom-reject-button span {
-    transition: all 200ms ease-in-out; /* Standardized transition */
+  .custom-reject-button, .custom-reject-button span { /* .text and .icon are spans */
+    transition: all 200ms ease-in-out;
   }
 
   .custom-reject-button .text {
-    transform: translateX(35px);
+    transform: translateX(15px); /* Adjusted from 35px to show more text from left */
     color: hsl(var(--destructive-foreground));
     font-weight: bold;
-    font-size: 0.875rem; /* text-sm */
-    white-space: nowrap; /* Prevent text wrapping */
+    font-size: 0.875rem; /* text-sm, approx 14px */
+    white-space: nowrap; /* Prevent text from wrapping */
   }
 
   .custom-reject-button .icon {
     position: absolute;
     border-left: 1px solid hsl(var(--destructive) / 0.8); /* Darker separator */
-    transform: translateX(110px); /* (150px button width - 40px icon width) */
-    height: 40px; /* Inner height for icon area */
-    width: 40px;  /* Width of icon area */
+    transform: translateX(140px); /* New width (180) - icon width (40) = 140px */
+    height: 100%; /* Make icon part take full height of button */
+    width: 40px; /* Icon part width */
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
   .custom-reject-button svg {
-    width: 15px; /* SVG specific size */
+    width: 15px; /* SVG size */
     height: 15px;
     fill: hsl(var(--destructive-foreground));
   }
 
   .custom-reject-button:hover:not(:disabled) {
     background: hsl(var(--destructive) / 0.9); /* Slightly lighter/darker on hover */
-    border-color: hsl(var(--destructive) / 0.8);
+    border-color: hsl(var(--destructive) / 0.8); /* Sync border color on hover */
   }
 
   .custom-reject-button:hover:not(:disabled) .text {
@@ -68,12 +68,12 @@ const StyledWrapper = styled.div`
   }
 
   .custom-reject-button:hover:not(:disabled) .icon {
-    width: 150px; /* Full width of the button */
+    width: 180px; /* Expand to full button width */
     border-left: none;
     transform: translateX(0);
   }
   
-  .custom-reject-button:focus-visible {
+  .custom-reject-button:focus-visible { /* Added for accessibility */
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
@@ -83,7 +83,7 @@ const StyledWrapper = styled.div`
   }
   .custom-reject-button:active:not(:disabled) {
     background-color: hsl(var(--destructive) / 0.8);
-    border-color: hsl(var(--destructive) / 0.7);
+    border-color: hsl(var(--destructive) / 0.7); /* Sync border color on active */
   }
 
   /* Disabled state */
@@ -96,17 +96,19 @@ const StyledWrapper = styled.div`
   }
   .custom-reject-button:disabled .text {
     color: hsl(var(--muted-foreground));
-    transform: translateX(35px); /* Keep text visible */
+    transform: translateX(15px); /* Keep text visible and correctly positioned */
   }
   .custom-reject-button:disabled .icon {
     border-left: 1px solid hsl(var(--muted-foreground) / 0.5);
+    transform: translateX(140px); /* Keep icon position for disabled */
+    background-color: hsl(var(--muted) / 0.5); /* Slightly different bg for icon part when disabled */
   }
   .custom-reject-button:disabled svg {
     fill: hsl(var(--muted-foreground));
   }
-  .custom-reject-button:disabled:hover .icon {
-     width: 40px; /* Keep icon part width */
-     transform: translateX(110px); /* Keep icon part position */
+  .custom-reject-button:disabled:hover .icon { /* Prevent icon expansion on hover when disabled */
+     width: 40px;
+     transform: translateX(140px);
   }
 `;
 
