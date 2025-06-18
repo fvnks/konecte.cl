@@ -15,17 +15,17 @@ interface CustomToastCardProps {
 const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
   .card {
     width: 330px;
-    min-height: 80px; /* Cambiado de height a min-height */
-    height: auto; /* Permitir que la altura crezca con el contenido */
+    min-height: 80px;
+    height: auto; 
     border-radius: 8px;
     box-sizing: border-box;
     padding: 10px 15px;
     background-color: hsl(var(--card));
-    box-shadow: 0px 8px 24px hsl(var(--foreground) / 0.1); /* Adjusted shadow color */
+    box-shadow: 0px 8px 24px hsl(var(--foreground) / 0.1);
     position: relative;
-    overflow: hidden;
+    overflow: hidden; /* Keep this for the wave, but ensure children can expand */
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* Changed from center to flex-start */
     justify-content: space-around;
     gap: 15px;
     border: 1px solid hsl(var(--border));
@@ -33,11 +33,11 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
   .wave {
     position: absolute;
     transform: rotate(90deg);
-    left: -31px; /* Adjusted for desired position */
-    top: 50%; /* Center vertically */
-    transform: translateY(-50%) rotate(90deg); /* Precise centering and rotation */
-    width: 80px; /* Wave width */
-    height: 100%; /* Wave height to match card */
+    left: -31px; 
+    top: 50%; 
+    transform: translateY(-50%) rotate(90deg); 
+    width: 80px; 
+    height: 100%; 
     fill: ${({ variant }) =>
       variant === 'destructive'
         ? 'hsl(var(--destructive) / 0.2)'
@@ -54,9 +54,10 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
         ? 'hsl(var(--destructive) / 0.1)'
         : 'hsl(var(--primary) / 0.1)'};
     border-radius: 50%;
-    margin-left: 8px; /* Keep some margin */
-    z-index: 1; /* Ensure icon is above wave */
-    flex-shrink: 0; /* Evitar que el icono se encoja */
+    margin-left: 8px; 
+    margin-top: 2px; /* Align icon better with top-aligned text */
+    z-index: 1; 
+    flex-shrink: 0; 
   }
   .icon {
     width: 17px;
@@ -69,21 +70,21 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
   .message-text-container {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: center; 
     align-items: flex-start;
     flex-grow: 1;
-    z-index: 1; /* Ensure text is above wave */
-    overflow: hidden; /* Prevenir que el texto empuje el botón de cierre */
+    z-index: 1; 
+    /* Removed overflow: hidden; */
   }
   .message-text,
   .sub-text {
     margin: 0;
     cursor: default;
-    word-wrap: break-word; /* Permitir que el texto largo se ajuste */
-    white-space: pre-wrap; /* Respetar saltos de línea y espacios */
+    word-wrap: break-word; 
+    white-space: pre-wrap; 
   }
   .message-text {
-    color: hsl(var(--chart-1)); /* Usando --chart-1 para el título default */
+    color: hsl(var(--chart-1)); /* Using a theme-based blue that contrasts with white */
     font-size: 16px; 
     font-weight: 600;
     ${({ variant }) =>
@@ -95,22 +96,22 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
   .sub-text {
     font-size: 13px;
     color: hsl(var(--muted-foreground));
-    line-height: 1.4; /* Mejorar legibilidad para descripciones largas */
+    line-height: 1.4; 
   }
   .cross-icon-wrapper {
-    /* This wrapper will be the ToastPrimitives.Close */
     color: hsl(var(--muted-foreground));
     cursor: pointer;
-    width: 24px; /* Increased hit area slightly */
+    width: 24px; 
     height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     transition: background-color 0.2s;
-    z-index: 1; /* Ensure icon is above wave */
-    margin-left: auto; /* Push to the right */
-    flex-shrink: 0; /* Evitar que el botón de cierre se encoja */
+    z-index: 1; 
+    margin-left: auto; 
+    margin-top: 0px; /* Align better with top-aligned text */
+    flex-shrink: 0; 
   }
   .cross-icon-wrapper:hover {
     background-color: hsl(var(--muted) / 0.5);
@@ -126,7 +127,6 @@ const CustomToastCard: React.FC<CustomToastCardProps> = ({ title, description, v
     <StyledWrapper variant={variant}>
       <div className="card">
         <svg className="wave" viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg">
-          {/* Simplified wave, original path was complex and might not fit all contexts */}
           <path d="M0,160 C150,200 200,80 300,160 S450,120 600,160 S750,200 900,160 S1050,120 1200,160 S1350,200 1440,160 L1440,320 L0,320 Z" />
         </svg>
         <div className="icon-container">
