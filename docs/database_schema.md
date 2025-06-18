@@ -23,15 +23,16 @@ CREATE TABLE roles (
     id VARCHAR(36) PRIMARY KEY,                          -- Identificador único para el rol (ej: 'admin', 'user', 'editor')
     name VARCHAR(255) NOT NULL UNIQUE,                   -- Nombre legible del rol (ej: 'Administrador', 'Usuario Estándar')
     description TEXT,                                    -- Descripción opcional del rol
+    permissions TEXT DEFAULT NULL,                       -- JSON array de strings de permisos (ej: '["user:create", "property:edit_any"]')
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Insertar roles iniciales
-INSERT INTO roles (id, name, description) VALUES
-('admin', 'Administrador', 'Acceso total a todas las funcionalidades y configuraciones del sistema.'),
-('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.'),
-('broker', 'Corredor', 'Usuario corredor de propiedades con acceso a funcionalidades de colaboración y planes pagos.');
+INSERT INTO roles (id, name, description, permissions) VALUES
+('admin', 'Administrador', 'Acceso total a todas las funcionalidades y configuraciones del sistema.', '["*"]'), -- "*" podría significar todos los permisos
+('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.', '["property:create", "property:edit_own", "property:delete_own", "request:create", "request:edit_own", "request:delete_own", "comment:create", "comment:delete_own", "chat:initiate", "visit:request"]'),
+('broker', 'Corredor', 'Usuario corredor de propiedades con acceso a funcionalidades de colaboración y planes pagos.', '["property:create", "property:edit_own", "property:delete_own", "request:create", "request:edit_own", "request:delete_own", "comment:create", "comment:delete_own", "chat:initiate", "visit:request", "crm:access_own", "collaboration:propose", "collaboration:manage", "visit:manage_own_property_visits"]');
 ```
 
 ---
@@ -253,7 +254,6 @@ CREATE TABLE google_sheet_configs (
 -- Insert inicial se mantiene
 ```
 ---
-
 ## Tabla: `site_settings` (Configuración del Sitio)
 (Actualizar comentario para `landing_sections_order` para reflejar `analisis_whatsbot`)
 ```sql
@@ -455,3 +455,5 @@ CREATE TABLE user_action_logs (
 ```
 ---
 Este es un esquema inicial. Lo podemos refinar a medida que construimos las funcionalidades. Por ejemplo, las `features` e `images` en la tabla `properties` podrían moverse a tablas separadas para una relación muchos-a-muchos si se vuelve más complejo (ej: `property_features` y `property_images`). Lo mismo para `desired_categories` y `desired_property_type` en `property_requests` que actualmente usan campos booleanos individuales.
+
+```

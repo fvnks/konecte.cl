@@ -1,11 +1,13 @@
 
 // src/lib/types.ts
 import { z } from 'zod';
+import type { AppPermission } from './permissions'; // Import AppPermission
 
 export interface Role {
   id: string; // ej: admin, editor_contenido
   name: string; // ej: Administrador, Editor de Contenido
   description?: string;
+  permissions?: AppPermission[] | null; // Changed from string[] to AppPermission[]
 }
 
 export interface Plan {
@@ -16,22 +18,20 @@ export interface Plan {
   price_currency: string;
   max_properties_allowed: number | null;
   max_requests_allowed: number | null;
-  max_ai_searches_monthly: number | null; // Ya estaba
+  max_ai_searches_monthly: number | null; 
   property_listing_duration_days: number | null;
   can_feature_properties: boolean;
   
-  // --- Campos de Permisos y Límites del Plan ---
-  can_view_contact_data?: boolean;         // Nuevo: Permite ver datos de contacto según reglas.
-  manual_searches_daily_limit?: number | null; // Nuevo: Límite diario de búsquedas manuales.
-  automated_alerts_enabled?: boolean;     // Reemplaza whatsapp_bot_enabled: Para alertas IA + WhatsApp.
-  advanced_dashboard_access?: boolean;    // Nuevo: Acceso a dashboard avanzado con filtros.
-  daily_profile_views_limit?: number | null;   // Nuevo: Límite de visualizaciones de perfiles/propiedades por día.
-  weekly_matches_reveal_limit?: number | null; // Nuevo: Límite de "revelaciones de coincidencias" (contactos) por semana.
+  can_view_contact_data?: boolean;         
+  manual_searches_daily_limit?: number | null; 
+  automated_alerts_enabled?: boolean;     
+  advanced_dashboard_access?: boolean;    
+  daily_profile_views_limit?: number | null;   
+  weekly_matches_reveal_limit?: number | null; 
   
-  // --- Flags del Plan ---
   is_active: boolean;
   is_publicly_visible: boolean;
-  is_enterprise_plan?: boolean;           // Nuevo: Para planes corporativos especiales.
+  is_enterprise_plan?: boolean;           
 
   created_at?: string;
   updated_at?: string;
@@ -48,13 +48,14 @@ export interface User {
   phone_number?: string | null;
   role_id: string;
   role_name?: string;
+  role_permissions?: AppPermission[] | null; // Added to store resolved permissions for the current user
   plan_id?: string | null;
-  plan_name?: string | null; // Name of the plan
+  plan_name?: string | null; 
   plan_expires_at?: string | null;
-  // Derived plan permissions for easier client-side checks
+  
   plan_is_pro_or_premium?: boolean;
-  plan_allows_contact_view?: boolean; // From plan.can_view_contact_data
-  plan_is_premium_broker?: boolean; // Specific check for rule 3
+  plan_allows_contact_view?: boolean; 
+  plan_is_premium_broker?: boolean; 
   plan_automated_alerts_enabled?: boolean;
   plan_advanced_dashboard_access?: boolean;
 
@@ -90,7 +91,7 @@ export interface PropertyListing {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  author?: User; // Author object now includes plan permission flags
+  author?: User; 
 }
 
 
@@ -115,7 +116,7 @@ export interface SearchRequest {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  author?: User; // Author object now includes plan permission flags
+  author?: User; 
 }
 
 
@@ -142,7 +143,7 @@ export interface UserCommentInteraction {
   id: string;
   user_id: string;
   comment_id: string;
-  interaction_type: 'like'; // Can be extended later
+  interaction_type: 'like'; 
   created_at: string;
 }
 
@@ -350,7 +351,6 @@ export const signUpSchema = z.object({
 });
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
 
-// Schema para el formulario de creación de propiedades
 export const propertyFormSchema = z.object({
   title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
   description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
@@ -390,7 +390,7 @@ export interface ChatMessage {
   sender_id: string; 
   receiver_id: string;
   content: string;
-  created_at: string; // ISO String date
+  created_at: string; 
   read_at?: string | null;
   sender?: {
     id: string;
@@ -526,18 +526,17 @@ export const requestVisitFormSchema = z.object({
 });
 export type RequestVisitFormValues = z.infer<typeof requestVisitFormSchema>;
 
-// Tipo de acciones posibles para gestionar una visita
 export type PropertyVisitAction =
-  | 'confirm_original_proposal' // Propietario confirma propuesta original del visitante
-  | 'reschedule_proposal'       // Propietario propone nueva fecha/hora
-  | 'cancel_pending_request'    // Propietario rechaza solicitud pendiente
-  | 'cancel_confirmed_visit'    // Propietario cancela visita ya confirmada
-  | 'mark_completed'            // Propietario marca como completada
-  | 'mark_visitor_no_show'      // Propietario marca que el visitante no asistió
-  | 'mark_owner_no_show'        // Visitante marca que el propietario no asistió
-  | 'accept_owner_reschedule'   // Visitante acepta nueva fecha/hora propuesta por propietario
-  | 'reject_owner_reschedule'   // Visitante rechaza nueva propuesta del propietario
-  | 'cancel_own_request';       // Visitante cancela su propia solicitud (pendiente o confirmada)
+  | 'confirm_original_proposal' 
+  | 'reschedule_proposal'       
+  | 'cancel_pending_request'    
+  | 'cancel_confirmed_visit'    
+  | 'mark_completed'            
+  | 'mark_visitor_no_show'      
+  | 'mark_owner_no_show'        
+  | 'accept_owner_reschedule'   
+  | 'reject_owner_reschedule'   
+  | 'cancel_own_request';       
 
 export const updateVisitStatusFormSchema = z.object({
   new_status: z.enum(propertyVisitStatusValues, { required_error: "El nuevo estado es requerido." }),
@@ -610,7 +609,6 @@ export interface RecordInteractionResult {
   }
 }
 
-// For getListingInteractionDetails
 export interface ListingInteractionDetails {
   totalLikes: number;
   currentUserInteraction: InteractionTypeEnum | null;
@@ -633,60 +631,55 @@ export interface SubmitRequestResult {
   autoMatchesCount?: number;
 }
 
-// Types for WhatsApp Bot Integration
 export type WhatsAppMessageSender = 'user' | 'bot';
 
 export interface WhatsAppMessage {
   id: string;
-  telefono: string; // Para el store: este es el userPhoneNumber. Para pendingOutbound: es el botPhoneNumber.
+  telefono: string; 
   text: string;
   sender: WhatsAppMessageSender; 
-  timestamp: number; // Unix timestamp
+  timestamp: number; 
   status?: 'pending_to_whatsapp' | 'sent_to_whatsapp' | 'delivered_to_user' | 'failed'; 
-  sender_id_override?: string; // ID real del usuario (si sender es 'user') o BOT_SENDER_ID (si sender es 'bot')
-  // Campo específico para mensajes salientes hacia el bot externo:
-  telefono_remitente_konecte?: string; // Número de teléfono del usuario web que envía el mensaje
+  sender_id_override?: string; 
+  telefono_remitente_konecte?: string; 
 }
 
 export interface SendMessageToBotPayload {
-  telefonoReceptorBot: string; // Número del bot de WhatsApp externo.
+  telefonoReceptorBot: string; 
   text: string;
-  telefonoRemitenteUsuarioWeb: string; // Número del usuario web que origina el mensaje (para asociar la conversación)
-  userId: string; // El ID del usuario web que envía el mensaje (para sender_id_override)
+  telefonoRemitenteUsuarioWeb: string; 
+  userId: string; 
 }
 
-export type ReceiveReplyPayload = { // Renombrado para evitar conflicto con arriba
-  telefono: string; // El número de teléfono del usuario web al que el bot está respondiendo
-  text: string; // Mensaje del bot externo (recibido de WhatsApp y enviado aquí)
+export type ReceiveReplyPayload = { 
+  telefono: string; 
+  text: string; 
 }
 
 export interface PendingMessageForExternalBot {
   id: string;
-  telefonoReceptorEnWhatsapp: string; // El número al que el bot externo debe enviar el mensaje (el propio número del bot)
-  textoOriginal: string; // El texto que el usuario web envió
-  telefonoRemitenteParaRespuestaKonecte: string; // El número del usuario web (para que la API sepa dónde guardar la respuesta del bot)
-  userId: string; // El ID del usuario web (para sender_id_override si es necesario)
+  telefonoReceptorEnWhatsapp: string; 
+  textoOriginal: string; 
+  telefonoRemitenteParaRespuestaKonecte: string; 
+  userId: string; 
 }
-// End of WhatsApp Bot Integration Types
 
-// Broker Collaboration Types
 export type BrokerCollaborationStatus = 'pending' | 'accepted' | 'rejected' | 'deal_in_progress' | 'deal_closed_success' | 'deal_failed';
 
 export interface BrokerCollaboration {
     id: string;
     property_request_id: string;
-    requesting_broker_id: string; // User who owns the property_request_id
+    requesting_broker_id: string; 
     property_id: string;
-    offering_broker_id: string; // User who owns the property_id and is making the proposal
+    offering_broker_id: string; 
     status: BrokerCollaborationStatus;
-    commission_terms?: string | null; // JSON or text
+    commission_terms?: string | null; 
     chat_conversation_id?: string | null;
     proposed_at: string;
     accepted_at?: string | null;
     closed_at?: string | null;
     updated_at: string;
 
-    // Optional hydrated fields for display
     property_request_title?: string;
     property_request_slug?: string;
     requesting_broker_name?: string;
@@ -700,9 +693,7 @@ export const proposePropertyFormSchema = z.object({
   commission_terms: z.string().max(500, "Los términos de comisión no pueden exceder los 500 caracteres.").optional().or(z.literal('')),
 });
 export type ProposePropertyFormValues = z.infer<typeof proposePropertyFormSchema>;
-// End of Broker Collaboration Types
 
-// Bug Report Form Types
 export const bugReportFormSchema = z.object({
   name: z.string().max(100, "El nombre no puede exceder los 100 caracteres.").optional().or(z.literal('')),
   email: z.string().email("Correo electrónico inválido.").max(100).optional().or(z.literal('')),
@@ -712,9 +703,7 @@ export const bugReportFormSchema = z.object({
   browserDevice: z.string().max(500, "La información del navegador/dispositivo no puede exceder los 500 caracteres.").optional().or(z.literal('')),
 });
 export type BugReportFormValues = z.infer<typeof bugReportFormSchema>;
-// End of Bug Report Form Types
 
-// Usage Metrics and Action Logs
 export type UserMetricType = 'profile_view' | 'match_reveal' | 'ai_search' | 'manual_search_executed';
 
 export type UserActionLogType =
