@@ -4,16 +4,16 @@ import type { PropertyListing, ListingCategory, User as StoredUserType } from "@
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, Eye, CalendarPlus, Share2, ShieldCheck } from "lucide-react";
+import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, ShieldCheck, Eye, CalendarPlus, Share2 } from "lucide-react";
 import PropertyComments from "@/components/comments/PropertyComments"; 
 import Link from "next/link";
 import RecordView from '@/components/lead-tracking/RecordView';
 import PropertyInquiryForm from "@/components/property/PropertyInquiryForm";
-import RequestVisitButtonClient from "@/components/property/RequestVisitButtonClient";
+// import RequestVisitButtonClient from "@/components/property/RequestVisitButtonClient"; // Replaced by PropertyAuthorContactInfoClient
 import SocialShareButtons from '@/components/ui/SocialShareButtons'; 
 import { headers } from 'next/headers'; 
+import PropertyAuthorContactInfoClient from "@/components/property/PropertyAuthorContactInfoClient"; // Import the new client component
 
 const translatePropertyType = (type: 'rent' | 'sale'): string => {
   if (type === 'rent') return 'En Arriendo';
@@ -44,15 +44,6 @@ const formatPrice = (price: number, currency: string) => {
   }
 };
 
-const getRoleDisplayName = (roleId?: string, roleName?: string): string | null => {
-  if (roleName) return roleName;
-  if (roleId === 'user') return 'Usuario';
-  if (roleId === 'broker') return 'Corredor';
-  if (roleId === 'admin') return 'Admin';
-  return roleId || null; // Retorna el ID si no hay nombre y no es uno de los mapeados
-};
-
-
 export default async function PropertyDetailPage({ params }: { params: { slug: string } }) {
   const property = await getPropertyBySlugAction(params.slug);
 
@@ -75,11 +66,6 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
   }
   
   const mainImage = property.images && property.images.length > 0 ? property.images[0] : 'https://placehold.co/1200x675.png?text=Propiedad+Sin+Imagen';
-  const authorName = property.author?.name || "Anunciante";
-  const authorAvatar = property.author?.avatarUrl;
-  const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
-  const authorRoleDisplay = getRoleDisplayName(property.author?.role_id, property.author?.role_name);
-
 
   const featureIcons: Record<string, React.ElementType> = {
     "Estacionamiento": ParkingCircle,
@@ -117,7 +103,6 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
               {formatPrice(property.price, property.currency)}
               {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground">/mes</span>}
             </div>
-            {/* Grid de características (dormitorios, baños, etc.) */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center mt-3">
               {[
                 { icon: BedDouble, label: `${property.bedrooms} Dorms` },
@@ -158,30 +143,13 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             )}
             
             {property.author && (
-              <div className="border-t pt-6 mt-6"> 
-                <h3 className="text-xl lg:text-2xl font-semibold mb-3 font-headline">Información del Anunciante</h3>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 bg-secondary/30 p-4 rounded-lg">
-                  <Avatar className="h-16 w-16">
-                    <AvatarImage src={authorAvatar} alt={authorName} data-ai-hint="agente inmobiliario"/>
-                    <AvatarFallback className="text-xl">{authorInitials || <UserCircle className="h-8 w-8"/>}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-grow">
-                    <p className="font-semibold text-lg">{authorName}</p>
-                    {authorRoleDisplay && (
-                        <Badge variant="outline" className="text-xs capitalize mt-0.5 border-primary/40 text-primary/90">
-                            <ShieldCheck className="h-3 w-3 mr-1"/> {authorRoleDisplay}
-                        </Badge>
-                    )}
-                    {property.author.created_at && <p className="text-sm text-muted-foreground flex items-center mt-1"><CalendarDays className="h-4 w-4 mr-1.5"/>Miembro desde {new Date(property.author.created_at).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })}</p>}
-                    <p className="text-xs text-muted-foreground mt-0.5">Propiedad publicada el {new Date(property.createdAt).toLocaleDateString('es-CL')} </p>
-                  </div>
-                  <RequestVisitButtonClient 
-                    propertyId={property.id}
-                    propertyOwnerId={property.user_id}
-                    propertyTitle={property.title}
-                  />
-                </div>
-              </div>
+              <PropertyAuthorContactInfoClient 
+                author={property.author} 
+                contactEmail={property.author.email} 
+                contactPhone={property.author.phone_number}
+                propertyId={property.id}
+                propertyTitle={property.title}
+              />
             )}
           </CardContent>
         </Card>
@@ -199,3 +167,4 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
   );
 }
 
+    

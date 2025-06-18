@@ -2,7 +2,7 @@
 // src/actions/propertyActions.ts
 'use server';
 
-import type { PropertyFormValues } from "@/lib/types"; // Usaremos el schema de types
+import type { PropertyFormValues } from "@/lib/types"; 
 import { query } from "@/lib/db";
 import type { PropertyListing, User, PropertyType, ListingCategory, SubmitPropertyResult } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -14,10 +14,10 @@ import { getOrCreateConversationAction, sendMessageAction } from './chatActions'
 const generateSlug = (title: string): string => {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/[^a-z0-9\s-]/g, '') 
     .trim()
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-'); // Replace multiple hyphens with a single one
+    .replace(/\s+/g, '-') 
+    .replace(/-+/g, '-'); 
 };
 
 function mapDbRowToPropertyListing(row: any): PropertyListing {
@@ -31,6 +31,9 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
       return [];
     }
   };
+  
+  const authorPlanName = row.author_plan_name_from_db; // Assuming this alias is used in all queries now
+  const authorIsBroker = row.author_role_id === 'broker';
 
   return {
     id: row.id,
@@ -48,7 +51,7 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     bedrooms: Number(row.bedrooms),
     bathrooms: Number(row.bathrooms),
     areaSqMeters: Number(row.area_sq_meters),
-    images: parseJsonString(row.images), // Esto ya espera un JSON de array de strings
+    images: parseJsonString(row.images), 
     features: parseJsonString(row.features),
     upvotes: Number(row.upvotes),
     commentsCount: Number(row.comments_count),
@@ -58,11 +61,20 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
     author: row.author_name ? {
-      id: row.user_id,
+      id: row.user_id, // author_id is user_id from properties table
       name: row.author_name,
       avatarUrl: row.author_avatar_url || undefined,
+      email: row.author_email, // Make sure author_email is selected in queries
+      phone_number: row.author_phone_number, // Make sure author_phone_number is selected
       role_id: row.author_role_id || '',
       role_name: row.author_role_name || undefined,
+      plan_id: row.author_plan_id,
+      plan_name: authorPlanName,
+      plan_is_pro_or_premium: authorIsBroker && (authorPlanName?.toLowerCase().includes('pro') || authorPlanName?.toLowerCase().includes('premium')),
+      plan_allows_contact_view: !!row.author_plan_can_view_contact_data, // Direct from plan for author
+      plan_is_premium_broker: authorIsBroker && authorPlanName?.toLowerCase().includes('premium'),
+      plan_automated_alerts_enabled: !!row.author_plan_automated_alerts_enabled,
+      plan_advanced_dashboard_access: !!row.author_plan_advanced_dashboard_access,
     } : undefined,
   };
 }
@@ -80,10 +92,9 @@ export async function submitPropertyAction(
 
   const propertyId = randomUUID();
   const slug = generateSlug(data.title);
-  let propertyPublisherDetails: User | null = null;
+  // let propertyPublisherDetails: User | null = null; // No longer directly used for response
 
   try {
-    // data.images ahora es un array de URLs, así que lo convertimos a JSON string
     const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
     const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
 
@@ -111,18 +122,12 @@ export async function submitPropertyAction(
       data.bedrooms,
       data.bathrooms,
       data.areaSqMeters,
-      imagesJson, // Guardar el JSON string de URLs de imágenes
+      imagesJson, 
       featuresJson
     ];
 
     await query(sql, params);
     console.log(`[PropertyAction] Property submitted successfully. ID: ${propertyId}, Slug: ${slug}`);
-
-    const userRows: any[] = await query('SELECT id, name, role_id FROM users WHERE id = ?', [userId]);
-    if (userRows.length > 0) {
-      propertyPublisherDetails = userRows[0];
-    }
-
 
     revalidatePath('/');
     revalidatePath('/properties');
@@ -181,7 +186,7 @@ export async function submitPropertyAction(
         successMessage = `Propiedad publicada. ¡Encontramos ${autoMatchesFoundCount} solicitud(es) que podrían coincidir! Se han iniciado chats.`;
     }
     
-    return { success: true, message: successMessage, propertyId, propertySlug: slug, autoMatchesCount: autoMatchesFoundCount }; // Devuelve el slug
+    return { success: true, message: successMessage, propertyId, propertySlug: slug, autoMatchesCount: autoMatchesFoundCount };
 
   } catch (error: any) {
     console.error("[PropertyAction] Error submitting property:", error);
@@ -232,11 +237,19 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
         p.*,
         u.name as author_name,
         u.avatar_url as author_avatar_url,
+        u.email as author_email,
+        u.phone_number as author_phone_number,
         u.role_id as author_role_id,
-        r.name as author_role_name
+        r.name as author_role_name,
+        plan_author.name AS author_plan_name_from_db,
+        plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
+        plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
+        plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
+        u.plan_id as author_plan_id
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN plans plan_author ON u.plan_id = plan_author.id
     `;
     const queryParams: any[] = [];
     const whereClauses: string[] = [];
@@ -341,11 +354,19 @@ export async function getPropertyBySlugAction(slug: string): Promise<PropertyLis
         p.*,
         u.name as author_name,
         u.avatar_url as author_avatar_url,
+        u.email as author_email,
+        u.phone_number as author_phone_number,
         u.role_id as author_role_id,
-        r.name as author_role_name
+        r.name as author_role_name,
+        plan_author.name AS author_plan_name_from_db,
+        plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
+        plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
+        plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
+        u.plan_id as author_plan_id
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN plans plan_author ON u.plan_id = plan_author.id
       WHERE p.slug = ?
         AND p.is_active = TRUE
     `; 
@@ -368,11 +389,19 @@ export async function getUserPropertiesAction(userId: string): Promise<PropertyL
         p.*,
         u.name as author_name,
         u.avatar_url as author_avatar_url,
+        u.email as author_email,
+        u.phone_number as author_phone_number,
         u.role_id as author_role_id,
-        r.name as author_role_name
+        r.name as author_role_name,
+        plan_author.name AS author_plan_name_from_db,
+        plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
+        plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
+        plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
+        u.plan_id as author_plan_id
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN plans plan_author ON u.plan_id = plan_author.id
       WHERE p.user_id = ?
       ORDER BY p.created_at DESC
     `;
@@ -438,11 +467,19 @@ export async function getPropertyByIdForAdminAction(propertyId: string): Promise
         p.*,
         u.name as author_name,
         u.avatar_url as author_avatar_url,
+        u.email as author_email,
+        u.phone_number as author_phone_number,
         u.role_id as author_role_id,
-        r.name as author_role_name
+        r.name as author_role_name,
+        plan_author.name AS author_plan_name_from_db,
+        plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
+        plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
+        plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
+        u.plan_id as author_plan_id
       FROM properties p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN plans plan_author ON u.plan_id = plan_author.id
       WHERE p.id = ?
     `; 
     const rows = await query(sql, [propertyId]);
@@ -458,8 +495,8 @@ export async function getPropertyByIdForAdminAction(propertyId: string): Promise
 
 export async function adminUpdatePropertyAction(
   propertyId: string,
-  data: PropertyFormValues // PropertyFormValues ya tiene images: string[]
-): Promise<SubmitPropertyResult> { // Re-usando SubmitPropertyResult
+  data: PropertyFormValues 
+): Promise<SubmitPropertyResult> { 
   console.log("[PropertyAction Admin] Property update data received on server:", data, "PropertyID:", propertyId);
 
   if (!propertyId) {
@@ -532,7 +569,6 @@ export async function adminUpdatePropertyAction(
   }
 }
 
-// Nueva acción para usuarios editando sus propias propiedades
 export async function userUpdatePropertyAction(
   userId: string, 
   propertyId: string,
@@ -619,3 +655,4 @@ export async function getPropertiesCountAction(activeOnly: boolean = false): Pro
   }
 }
 
+    

@@ -14,14 +14,22 @@ export interface Plan {
   description?: string | null;
   price_monthly: number;
   price_currency: string;
-  max_properties_allowed: number | null; // null para ilimitado
-  max_requests_allowed: number | null;   // null para ilimitado
+  max_properties_allowed: number | null;
+  max_requests_allowed: number | null;
   max_ai_searches_monthly: number | null;
   can_feature_properties: boolean;
-  property_listing_duration_days: number | null; // null para indefinido
+  property_listing_duration_days: number | null;
   is_active: boolean;
   is_publicly_visible: boolean;
-  whatsapp_bot_enabled?: boolean;
+  // New fields from business model
+  automated_alerts_enabled?: boolean; // Was whatsapp_bot_enabled
+  can_view_contact_data?: boolean;
+  manual_searches_daily_limit?: number | null;
+  advanced_dashboard_access?: boolean;
+  daily_profile_views_limit?: number | null;
+  weekly_matches_reveal_limit?: number | null;
+  is_enterprise_plan?: boolean;
+
   created_at?: string;
   updated_at?: string;
 }
@@ -35,10 +43,17 @@ export interface User {
   rut_tin?: string | null;
   phone_number?: string | null;
   role_id: string;
-  role_name?: string; // Añadido para facilitar la visualización
+  role_name?: string;
   plan_id?: string | null;
-  plan_name?: string | null;
+  plan_name?: string | null; // Name of the plan
   plan_expires_at?: string | null;
+  // Derived plan permissions for easier client-side checks
+  plan_is_pro_or_premium?: boolean;
+  plan_allows_contact_view?: boolean; // From plan.can_view_contact_data
+  plan_is_premium_broker?: boolean; // Specific check for rule 3
+  plan_automated_alerts_enabled?: boolean;
+  plan_advanced_dashboard_access?: boolean;
+
   created_at?: string;
   updated_at?: string;
 }
@@ -71,7 +86,7 @@ export interface PropertyListing {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  author?: User; // Ya incluye role_id y role_name
+  author?: User; // Author object now includes plan permission flags
 }
 
 
@@ -96,7 +111,7 @@ export interface SearchRequest {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  author?: User; // Ya incluye role_id y role_name
+  author?: User; // Author object now includes plan permission flags
 }
 
 
@@ -149,7 +164,7 @@ export interface SiteSettings {
   logoUrl: string | null;
   show_featured_listings_section?: boolean;
   show_ai_matching_section?: boolean;
-  show_google_sheet_section?: boolean; // This DB field name remains, but its label in UI changes
+  show_google_sheet_section?: boolean;
   landing_sections_order?: LandingSectionKey[] | null;
   announcement_bar_text?: string | null;
   announcement_bar_link_url?: string | null;
@@ -694,3 +709,18 @@ export const bugReportFormSchema = z.object({
 });
 export type BugReportFormValues = z.infer<typeof bugReportFormSchema>;
 // End of Bug Report Form Types
+
+// Usage Metrics and Action Logs
+export type UserMetricType = 'profile_view' | 'match_reveal' | 'ai_search' | 'manual_search_executed';
+
+export type UserActionLogType =
+  | 'view_property_details' | 'view_request_details' | 'view_user_profile' | 'view_contact_info_property' | 'view_contact_info_request'
+  | 'execute_manual_property_search' | 'execute_manual_request_search' | 'execute_ai_match_search' | 'execute_ai_find_requests_for_property' | 'execute_ai_find_properties_for_request'
+  | 'create_property' | 'update_property' | 'delete_property' | 'create_request' | 'update_request' | 'delete_request'
+  | 'create_comment' | 'update_comment' | 'delete_comment' | 'create_crm_contact' | 'update_crm_contact' | 'log_crm_interaction'
+  | 'user_login_success' | 'user_login_fail' | 'user_logout' | 'user_registration' | 'password_reset_request' | 'password_reset_success'
+  | 'listing_like' | 'listing_dislike' | 'listing_skip' | 'comment_like'
+  | 'plan_subscription_change'
+  | 'unusual_activity_detected' | 'account_locked_temporarily' | 'admin_action';
+
+    

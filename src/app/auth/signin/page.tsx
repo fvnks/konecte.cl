@@ -16,6 +16,7 @@ import { getEditableTextsByGroupAction } from '@/actions/editableTextActions';
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import type { User } from '@/lib/types'; // Import User type
 
 const signInSchema = z.object({
   email: z.string().email("Correo electrónico inválido."),
@@ -68,19 +69,28 @@ export default function SignInPage() {
         title: "Inicio de Sesión Exitoso",
         description: `¡Bienvenido de nuevo, ${result.user.name}!`,
       });
-      // Corregir las claves para plan_id y plan_name
-      localStorage.setItem('loggedInUser', JSON.stringify({
+      
+      // Store the full user object, including new plan permission flags
+      const userToStore: User = {
         id: result.user.id,
         name: result.user.name,
         email: result.user.email,
-        role_id: result.user.role_id,
-        roleName: result.user.role_name, // Asumiendo que signInAction lo devuelve
-        plan_id: result.user.plan_id,     // Correcto: snake_case
-        plan_name: result.user.plan_name,   // Correcto: snake_case
         avatarUrl: result.user.avatarUrl,
-        phone_number: result.user.phone_number // Asegurarse que se guarda si existe
-      }));
-      // Use a specific custom event for same-tab updates
+        phone_number: result.user.phone_number,
+        role_id: result.user.role_id,
+        role_name: result.user.role_name,
+        plan_id: result.user.plan_id,
+        plan_name: result.user.plan_name,
+        plan_expires_at: result.user.plan_expires_at,
+        // New plan permission flags
+        plan_is_pro_or_premium: result.user.plan_is_pro_or_premium,
+        plan_allows_contact_view: result.user.plan_allows_contact_view,
+        plan_is_premium_broker: result.user.plan_is_premium_broker,
+        plan_automated_alerts_enabled: result.user.plan_automated_alerts_enabled,
+        plan_advanced_dashboard_access: result.user.plan_advanced_dashboard_access,
+      };
+      localStorage.setItem('loggedInUser', JSON.stringify(userToStore));
+      
       window.dispatchEvent(new CustomEvent('userSessionChanged'));
 
       if (result.user.role_id === 'admin') {
@@ -182,3 +192,5 @@ export default function SignInPage() {
     </div>
   );
 }
+
+    

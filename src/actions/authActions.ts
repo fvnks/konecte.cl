@@ -6,11 +6,10 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import type { User } from '@/lib/types';
-import { signUpSchema } from '@/lib/types'; // Importar el schema actualizado
+import { signUpSchema } from '@/lib/types'; 
 import { randomUUID } from 'crypto';
 
 // --- Sign Up ---
-// El signUpSchema se importa ahora desde types.ts
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 export async function signUpAction(values: SignUpFormValues): Promise<{ success: boolean; message?: string; user?: Omit<User, 'password_hash'> }> {
@@ -19,7 +18,7 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
     return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const { name, email, password, rut, phone } = validation.data; // acceptTerms se valida pero no se guarda directamente aquí
+  const { name, email, password, rut, phone } = validation.data;
   console.log(`[AuthAction] Attempting sign-up for email: ${email}`);
 
   try {
@@ -31,15 +30,13 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = randomUUID();
-    const defaultUserRoleId = 'user'; // Make sure 'user' role exists in your 'roles' table
+    const defaultUserRoleId = 'user'; 
 
-    // Verify default role exists
     const userRoleRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [defaultUserRoleId]);
     if (userRoleRows.length === 0) {
-        console.error(`[AuthAction] CRITICAL Sign-up Error: Default role '${defaultUserRoleId}' not found in DB. Please ensure the 'roles' table is populated, for example with: INSERT INTO roles (id, name) VALUES ('user', 'Usuario'), ('admin', 'Administrador');`);
+        console.error(`[AuthAction] CRITICAL Sign-up Error: Default role '${defaultUserRoleId}' not found in DB.`);
         return { success: false, message: "Error de configuración del sistema: No se pudo asignar el rol por defecto. Contacte al administrador."};
     }
-
 
     await query(
       'INSERT INTO users (id, name, email, password_hash, rut_tin, phone_number, role_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -90,9 +87,12 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
             u.id, u.name, u.email, u.password_hash, 
             u.rut_tin, u.phone_number, u.avatar_url, 
             u.role_id, r.name as role_name,
-            u.plan_id, p.name as plan_name, u.plan_expires_at
+            u.plan_id, p.name as plan_name_from_db, u.plan_expires_at,
+            p.can_view_contact_data AS plan_can_view_contact_data_from_db,
+            p.automated_alerts_enabled AS plan_automated_alerts_enabled_from_db,
+            p.advanced_dashboard_access AS plan_advanced_dashboard_access_from_db
          FROM users u
-         LEFT JOIN roles r ON u.role_id = r.id
+         JOIN roles r ON u.role_id = r.id
          LEFT JOIN plans p ON u.plan_id = p.id
          WHERE u.email = ?`,
         [email]
@@ -103,30 +103,61 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
       return { success: false, message: "Credenciales inválidas." };
     }
 
-    const user = usersFound[0] as User & { password_hash: string }; 
-    console.log(`[AuthAction] User found: ${user.email}. Stored hash: ${user.password_hash ? user.password_hash.substring(0, 10) + "..." : "NOT FOUND"}, Length: ${user.password_hash?.length}`);
+    const userFromDb = usersFound[0] as User & { 
+        password_hash: string; 
+        plan_name_from_db?: string | null;
+        plan_can_view_contact_data_from_db?: boolean | null;
+        plan_automated_alerts_enabled_from_db?: boolean | null;
+        plan_advanced_dashboard_access_from_db?: boolean | null;
+    }; 
+    console.log(`[AuthAction] User found: ${userFromDb.email}. Stored hash: ${userFromDb.password_hash ? userFromDb.password_hash.substring(0, 10) + "..." : "NOT FOUND"}, Length: ${userFromDb.password_hash?.length}`);
 
 
-    if (!user.password_hash) {
-        console.error(`[AuthAction] CRITICAL Sign-in Error: password_hash is missing for user ${user.email}.`);
+    if (!userFromDb.password_hash) {
+        console.error(`[AuthAction] CRITICAL Sign-in Error: password_hash is missing for user ${userFromDb.email}.`);
         return { success: false, message: "Error de cuenta de usuario. Contacte al administrador." };
     }
     
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
-    console.log(`[AuthAction] Password match result for ${user.email}: ${passwordMatch}`);
+    const passwordMatch = await bcrypt.compare(password, userFromDb.password_hash);
+    console.log(`[AuthAction] Password match result for ${userFromDb.email}: ${passwordMatch}`);
 
     if (!passwordMatch) {
-      console.log(`[AuthAction] Sign-in failed: Password mismatch for ${user.email}`);
+      console.log(`[AuthAction] Sign-in failed: Password mismatch for ${userFromDb.email}`);
       return { success: false, message: "Credenciales inválidas." };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password_hash, ...userWithoutPasswordHash } = user;
-    console.log(`[AuthAction] Sign-in successful for ${user.email}`);
+    const { 
+        password_hash, 
+        plan_name_from_db, 
+        plan_can_view_contact_data_from_db,
+        plan_automated_alerts_enabled_from_db,
+        plan_advanced_dashboard_access_from_db,
+        ...userToReturn 
+    } = userFromDb;
 
-    return { success: true, user: userWithoutPasswordHash };
+    const finalUser: User = {
+      ...userToReturn,
+      plan_name: plan_name_from_db || null, // Assign the plan name
+      plan_is_pro_or_premium: (plan_name_from_db?.toLowerCase().includes('pro') || plan_name_from_db?.toLowerCase().includes('premium')) && userFromDb.role_id === 'broker',
+      plan_allows_contact_view: !!plan_can_view_contact_data_from_db,
+      plan_is_premium_broker: plan_name_from_db?.toLowerCase().includes('premium') && userFromDb.role_id === 'broker',
+      plan_automated_alerts_enabled: !!plan_automated_alerts_enabled_from_db,
+      plan_advanced_dashboard_access: !!plan_advanced_dashboard_access_from_db,
+    };
+
+    console.log(`[AuthAction] Sign-in successful for ${finalUser.email}. Derived plan flags:`, {
+        is_pro_or_premium: finalUser.plan_is_pro_or_premium,
+        allows_contact_view: finalUser.plan_allows_contact_view,
+        is_premium_broker: finalUser.plan_is_premium_broker,
+        automated_alerts: finalUser.plan_automated_alerts_enabled,
+        advanced_dashboard: finalUser.plan_advanced_dashboard_access,
+    });
+
+    return { success: true, user: finalUser };
   } catch (error: any) {
     console.error("[AuthAction] Error in signInAction:", error);
     return { success: false, message: `Error al iniciar sesión: ${error.message}` };
   }
 }
+
+    
