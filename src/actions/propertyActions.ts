@@ -71,10 +71,10 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
       plan_id: row.author_plan_id,
       plan_name: authorPlanName,
       plan_is_pro_or_premium: authorIsBroker && (authorPlanName?.toLowerCase().includes('pro') || authorPlanName?.toLowerCase().includes('premium')),
-      plan_allows_contact_view: !!row.author_plan_can_view_contact_data,
+      plan_allows_contact_view: !!row.author_plan_can_view_contact_data, // From alias plan_author.can_view_contact_data
       plan_is_premium_broker: authorIsBroker && authorPlanName?.toLowerCase().includes('premium'),
-      plan_automated_alerts_enabled: !!row.author_plan_automated_alerts_enabled,
-      plan_advanced_dashboard_access: !!row.author_plan_advanced_dashboard_access,
+      plan_automated_alerts_enabled: !!row.author_plan_automated_alerts_enabled, // From alias plan_author.automated_alerts_enabled
+      plan_advanced_dashboard_access: !!row.author_plan_advanced_dashboard_access, // From alias plan_author.advanced_dashboard_access
     } : undefined,
   };
 }
@@ -214,6 +214,26 @@ export interface GetPropertiesActionOptions {
   orderBy?: 'createdAt_desc' | 'price_asc' | 'price_desc' | 'popularity_desc';
 }
 
+const BASE_PROPERTY_SELECT_SQL = `
+  SELECT
+    p.*,
+    u.name as author_name,
+    u.avatar_url as author_avatar_url,
+    u.email as author_email,
+    u.phone_number as author_phone_number,
+    u.role_id as author_role_id,
+    r.name as author_role_name,
+    plan_author.name AS author_plan_name_from_db,
+    plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
+    plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
+    plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
+    u.plan_id as author_plan_id
+  FROM properties p
+  LEFT JOIN users u ON p.user_id = u.id
+  LEFT JOIN roles r ON u.role_id = r.id
+  LEFT JOIN plans plan_author ON u.plan_id = plan_author.id
+`;
+
 export async function getPropertiesAction(options: GetPropertiesActionOptions = {}): Promise<PropertyListing[]> {
   const {
     includeInactive = false,
@@ -231,25 +251,7 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
   } = options;
 
   try {
-    let sql = `
-      SELECT
-        p.*,
-        u.name as author_name,
-        u.avatar_url as author_avatar_url,
-        u.email as author_email,
-        u.phone_number as author_phone_number,
-        u.role_id as author_role_id,
-        r.name as author_role_name,
-        plan_author.name AS author_plan_name_from_db,
-        plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
-        plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
-        plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
-        u.plan_id as author_plan_id
-      FROM properties p
-      LEFT JOIN users u ON p.user_id = u.id
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN plans plan_author ON u.plan_id = plan_author.id
-    `;
+    let sql = BASE_PROPERTY_SELECT_SQL;
     const queryParams: any[] = [];
     const whereClauses: string[] = [];
 
@@ -333,7 +335,7 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
         }
       }
     }
-
+    
     const rows = await query(sql, queryParams);
     if (!Array.isArray(rows)) {
         console.error("[PropertyAction] Expected array from query, got:", typeof rows);
@@ -348,27 +350,9 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
 
 export async function getPropertyBySlugAction(slug: string): Promise<PropertyListing | null> {
   try {
-    const sql = `
-      SELECT
-        p.*,
-        u.name as author_name,
-        u.avatar_url as author_avatar_url,
-        u.email as author_email,
-        u.phone_number as author_phone_number,
-        u.role_id as author_role_id,
-        r.name as author_role_name,
-        plan_author.name AS author_plan_name_from_db,
-        plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
-        plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
-        plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
-        u.plan_id as author_plan_id
-      FROM properties p
-      LEFT JOIN users u ON p.user_id = u.id
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN plans plan_author ON u.plan_id = plan_author.id
-      WHERE p.slug = ?
-        AND p.is_active = TRUE
-    `; 
+    let sql = BASE_PROPERTY_SELECT_SQL;
+    sql += ' WHERE p.slug = ? AND p.is_active = TRUE'; 
+    
     const rows = await query(sql, [slug]);
     if (!Array.isArray(rows) || rows.length === 0) {
       return null;
@@ -383,27 +367,9 @@ export async function getPropertyBySlugAction(slug: string): Promise<PropertyLis
 export async function getUserPropertiesAction(userId: string): Promise<PropertyListing[]> {
   if (!userId) return [];
   try {
-    const sql = `
-      SELECT
-        p.*,
-        u.name as author_name,
-        u.avatar_url as author_avatar_url,
-        u.email as author_email,
-        u.phone_number as author_phone_number,
-        u.role_id as author_role_id,
-        r.name as author_role_name,
-        plan_author.name AS author_plan_name_from_db,
-        plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
-        plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
-        plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
-        u.plan_id as author_plan_id
-      FROM properties p
-      LEFT JOIN users u ON p.user_id = u.id
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN plans plan_author ON u.plan_id = plan_author.id
-      WHERE p.user_id = ?
-      ORDER BY p.created_at DESC
-    `;
+    let sql = BASE_PROPERTY_SELECT_SQL;
+    sql += ' WHERE p.user_id = ? ORDER BY p.created_at DESC';
+    
     const rows = await query(sql, [userId]);
     if (!Array.isArray(rows)) {
         console.error("[PropertyAction] Expected array from getUserPropertiesAction, got:", typeof rows);
@@ -461,26 +427,9 @@ export async function deletePropertyByAdminAction(propertyId: string): Promise<{
 export async function getPropertyByIdForAdminAction(propertyId: string): Promise<PropertyListing | null> {
   if (!propertyId) return null;
   try {
-    const sql = `
-      SELECT
-        p.*,
-        u.name as author_name,
-        u.avatar_url as author_avatar_url,
-        u.email as author_email,
-        u.phone_number as author_phone_number,
-        u.role_id as author_role_id,
-        r.name as author_role_name,
-        plan_author.name AS author_plan_name_from_db,
-        plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
-        plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
-        plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
-        u.plan_id as author_plan_id
-      FROM properties p
-      LEFT JOIN users u ON p.user_id = u.id
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN plans plan_author ON u.plan_id = plan_author.id
-      WHERE p.id = ?
-    `; 
+    let sql = BASE_PROPERTY_SELECT_SQL;
+    sql += ' WHERE p.id = ?'; 
+    
     const rows = await query(sql, [propertyId]);
     if (!Array.isArray(rows) || rows.length === 0) {
       return null;
