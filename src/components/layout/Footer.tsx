@@ -1,4 +1,3 @@
-
 // src/components/layout/Footer.tsx
 import Link from 'next/link'; 
 import BugReportButton from '@/components/ui/BugReportButton'; // Import the new button
@@ -11,8 +10,8 @@ export default function Footer() {
           © {new Date().getFullYear()} konecte. Todos los derechos reservados.
         </p>
         <div className="flex items-center gap-4 sm:gap-5"> {/* Changed gap for better spacing with icon button */}
+          <BugReportButton /> {/* Moved BugReportButton here */}
           <Link href="/legal/terms" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-150">Términos de Servicio</Link>
-          <BugReportButton /> {/* Add the bug report button here */}
           <Link href="/legal/privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors duration-150">Política de Privacidad</Link>
         </div>
       </div>
