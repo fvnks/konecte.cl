@@ -1,12 +1,13 @@
+// src/components/ui/toaster.tsx
 "use client"
 
 import { useToast } from "@/hooks/use-toast"
 import {
   Toast,
-  ToastClose,
-  ToastDescription,
+  // ToastClose, // No longer needed here
+  // ToastDescription, // No longer needed here
   ToastProvider,
-  ToastTitle,
+  // ToastTitle, // No longer needed here
   ToastViewport,
 } from "@/components/ui/toast"
 
@@ -16,17 +17,15 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, ...props }) {
+        // Ahora pasamos title y description explícitamente a Toast
         return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
+          <Toast 
+            key={id} 
+            title={title} 
+            description={description} 
+            action={action} // action se pasa, aunque CustomToastCard no lo use actualmente
+            {...props} 
+          />
         )
       })}
       <ToastViewport />
