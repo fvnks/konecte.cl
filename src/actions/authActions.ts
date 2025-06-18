@@ -52,6 +52,7 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
       rut_tin: rut || null,
       phone_number: phone || null,
       role_id: defaultUserRoleId,
+      // Las propiedades del plan se cargarán al iniciar sesión, no en el registro.
     };
 
     return { success: true, message: "Usuario registrado exitosamente.", user: userWithoutPasswordHash };
@@ -88,9 +89,9 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
             u.rut_tin, u.phone_number, u.avatar_url, 
             u.role_id, r.name as role_name,
             u.plan_id, p.name as plan_name_from_db, u.plan_expires_at,
-            p.can_view_contact_data AS plan_can_view_contact_data_from_db,
-            p.automated_alerts_enabled AS plan_automated_alerts_enabled_from_db,
-            p.advanced_dashboard_access AS plan_advanced_dashboard_access_from_db
+            p.can_view_contact_data,
+            p.automated_alerts_enabled,
+            p.advanced_dashboard_access
          FROM users u
          JOIN roles r ON u.role_id = r.id
          LEFT JOIN plans p ON u.plan_id = p.id
@@ -106,9 +107,9 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
     const userFromDb = usersFound[0] as User & { 
         password_hash: string; 
         plan_name_from_db?: string | null;
-        plan_can_view_contact_data_from_db?: boolean | null;
-        plan_automated_alerts_enabled_from_db?: boolean | null;
-        plan_advanced_dashboard_access_from_db?: boolean | null;
+        can_view_contact_data?: boolean | null; // Directamente del plan
+        automated_alerts_enabled?: boolean | null; // Directamente del plan
+        advanced_dashboard_access?: boolean | null; // Directamente del plan
     }; 
     console.log(`[AuthAction] User found: ${userFromDb.email}. Stored hash: ${userFromDb.password_hash ? userFromDb.password_hash.substring(0, 10) + "..." : "NOT FOUND"}, Length: ${userFromDb.password_hash?.length}`);
 
@@ -126,23 +127,19 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
       return { success: false, message: "Credenciales inválidas." };
     }
 
-    const { 
-        password_hash, 
-        plan_name_from_db, 
-        plan_can_view_contact_data_from_db,
-        plan_automated_alerts_enabled_from_db,
-        plan_advanced_dashboard_access_from_db,
-        ...userToReturn 
-    } = userFromDb;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password_hash, plan_name_from_db, ...userToReturnBase } = userFromDb;
 
     const finalUser: User = {
-      ...userToReturn,
-      plan_name: plan_name_from_db || null, // Assign the plan name
+      ...userToReturnBase,
+      plan_name: plan_name_from_db || null,
+      // Derivaciones de permisos basadas en el rol y el nombre del plan
       plan_is_pro_or_premium: (plan_name_from_db?.toLowerCase().includes('pro') || plan_name_from_db?.toLowerCase().includes('premium')) && userFromDb.role_id === 'broker',
-      plan_allows_contact_view: !!plan_can_view_contact_data_from_db,
       plan_is_premium_broker: plan_name_from_db?.toLowerCase().includes('premium') && userFromDb.role_id === 'broker',
-      plan_automated_alerts_enabled: !!plan_automated_alerts_enabled_from_db,
-      plan_advanced_dashboard_access: !!plan_advanced_dashboard_access_from_db,
+      // Permisos directos del plan
+      plan_allows_contact_view: !!userFromDb.can_view_contact_data, // Convertir a booleano
+      plan_automated_alerts_enabled: !!userFromDb.automated_alerts_enabled, // Convertir a booleano
+      plan_advanced_dashboard_access: !!userFromDb.advanced_dashboard_access, // Convertir a booleano
     };
 
     console.log(`[AuthAction] Sign-in successful for ${finalUser.email}. Derived plan flags:`, {
@@ -159,5 +156,4 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
     return { success: false, message: `Error al iniciar sesión: ${error.message}` };
   }
 }
-
     
