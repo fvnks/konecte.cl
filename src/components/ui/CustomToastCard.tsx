@@ -23,21 +23,19 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
     background-color: hsl(var(--card));
     box-shadow: 0px 8px 24px hsl(var(--foreground) / 0.1);
     position: relative;
-    overflow: hidden; /* Keep this for the wave, but ensure children can expand */
+    overflow: hidden; /* For wave clipping */
     display: flex;
-    align-items: flex-start; /* Changed from center to flex-start */
-    justify-content: space-around;
-    gap: 15px;
+    align-items: flex-start; /* Align items to the top */
+    gap: 10px; /* Gap between icon, text, and close button */
     border: 1px solid hsl(var(--border));
   }
   .wave {
     position: absolute;
-    transform: rotate(90deg);
     left: -31px; 
     top: 50%; 
     transform: translateY(-50%) rotate(90deg); 
     width: 80px; 
-    height: 100%; 
+    height: 100%; /* Spans full height of the card */
     fill: ${({ variant }) =>
       variant === 'destructive'
         ? 'hsl(var(--destructive) / 0.2)'
@@ -54,8 +52,8 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
         ? 'hsl(var(--destructive) / 0.1)'
         : 'hsl(var(--primary) / 0.1)'};
     border-radius: 50%;
-    margin-left: 8px; 
-    margin-top: 2px; /* Align icon better with top-aligned text */
+    margin-left: 0; 
+    margin-top: 2px; 
     z-index: 1; 
     flex-shrink: 0; 
   }
@@ -70,18 +68,18 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
   .message-text-container {
     display: flex;
     flex-direction: column;
-    justify-content: center; 
-    align-items: flex-start;
-    flex-grow: 1;
+    /* justify-content: flex-start; No longer needed due to parent's align-items: flex-start */
+    align-items: flex-start; /* Text within container should be left-aligned */
+    flex-grow: 1; /* Crucial to take available space */
+    min-width: 0; /* Allows text to wrap correctly in flex context */
     z-index: 1; 
-    /* Removed overflow: hidden; */
+    word-wrap: break-word; 
+    white-space: pre-wrap; 
   }
   .message-text,
   .sub-text {
     margin: 0;
     cursor: default;
-    word-wrap: break-word; 
-    white-space: pre-wrap; 
   }
   .message-text {
     color: hsl(var(--chart-1)); /* Using a theme-based blue that contrasts with white */
@@ -109,8 +107,7 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
     border-radius: 50%;
     transition: background-color 0.2s;
     z-index: 1; 
-    margin-left: auto; 
-    margin-top: 0px; /* Align better with top-aligned text */
+    margin-top: 0px; 
     flex-shrink: 0; 
   }
   .cross-icon-wrapper:hover {
@@ -155,3 +152,4 @@ const CustomToastCard: React.FC<CustomToastCardProps> = ({ title, description, v
 };
 
 export default CustomToastCard;
+
