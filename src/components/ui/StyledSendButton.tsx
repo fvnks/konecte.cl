@@ -92,15 +92,15 @@ const StyledWrapper = styled.div`
       border-right: hsl(var(--primary-foreground)) 0 solid;
     }
 
-    20% { /* Forming the paper plane shape */
-      border-top: hsl(var(--primary-foreground)) 14px solid;
-      border-bottom: hsl(var(--primary-foreground)) 14px solid;
+    20% { /* Forming the paper plane shape with themed colors */
+      border-top: hsl(var(--muted)) 14px solid; /* Using muted for a light gray top border */
+      border-bottom: hsl(var(--primary-foreground)) 14px solid; /* White for other borders */
       border-left: hsl(var(--primary-foreground)) 20px solid;
       border-right: hsl(var(--primary-foreground)) 20px solid;
     }
 
-    25% { /* Slight adjustment for visual effect */
-      border-top: hsl(var(--primary-foreground)) 12px solid;
+    25% { /* Slight adjustment for visual effect with themed colors */
+      border-top: hsl(var(--muted)) 12px solid;
       border-bottom: hsl(var(--primary-foreground)) 12px solid;
       border-left: hsl(var(--primary-foreground)) 18px solid;
       border-right: hsl(var(--primary-foreground)) 18px solid;
