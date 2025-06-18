@@ -15,7 +15,8 @@ interface CustomToastCardProps {
 const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
   .card {
     width: 330px;
-    height: 80px;
+    min-height: 80px; /* Cambiado de height a min-height */
+    height: auto; /* Permitir que la altura crezca con el contenido */
     border-radius: 8px;
     box-sizing: border-box;
     padding: 10px 15px;
@@ -55,6 +56,7 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
     border-radius: 50%;
     margin-left: 8px; /* Keep some margin */
     z-index: 1; /* Ensure icon is above wave */
+    flex-shrink: 0; /* Evitar que el icono se encoja */
   }
   .icon {
     width: 17px;
@@ -71,23 +73,29 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
     align-items: flex-start;
     flex-grow: 1;
     z-index: 1; /* Ensure text is above wave */
+    overflow: hidden; /* Prevenir que el texto empuje el botón de cierre */
   }
   .message-text,
   .sub-text {
     margin: 0;
     cursor: default;
+    word-wrap: break-word; /* Permitir que el texto largo se ajuste */
+    white-space: pre-wrap; /* Respetar saltos de línea y espacios */
   }
   .message-text {
-    color: ${({ variant }) =>
-      variant === 'destructive'
-        ? 'hsl(var(--destructive))' /* Destructive color for destructive variant title */
-        : 'hsl(var(--chart-1))'};   /* Using --chart-1 for default variant title for better contrast */
+    color: hsl(var(--chart-1)); /* Usando --chart-1 para el título default */
     font-size: 16px; 
     font-weight: 600;
+    ${({ variant }) =>
+      variant === 'destructive' &&
+      `
+      color: hsl(var(--destructive));
+    `}
   }
   .sub-text {
     font-size: 13px;
     color: hsl(var(--muted-foreground));
+    line-height: 1.4; /* Mejorar legibilidad para descripciones largas */
   }
   .cross-icon-wrapper {
     /* This wrapper will be the ToastPrimitives.Close */
@@ -102,6 +110,7 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
     transition: background-color 0.2s;
     z-index: 1; /* Ensure icon is above wave */
     margin-left: auto; /* Push to the right */
+    flex-shrink: 0; /* Evitar que el botón de cierre se encoja */
   }
   .cross-icon-wrapper:hover {
     background-color: hsl(var(--muted) / 0.5);
