@@ -29,6 +29,8 @@ interface StoredUser {
   role_id: string;
   plan_id?: string | null;
   phone_number?: string | null;
+  // Permissions derived at login
+  plan_automated_alerts_enabled?: boolean;
 }
 
 const baseNavItemsDefinition = [
@@ -74,6 +76,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           tempTotalUnreadCount = await getTotalUnreadMessagesCountAction(parsedUser.id);
         }
 
+        // Broker "Canje Clientes" link
         const brokerItem = { href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> };
         const hasBrokerItem = newNavItemsList.some(item => item.href === brokerItem.href);
         if (parsedUser.role_id === 'broker' && !hasBrokerItem) {
@@ -90,18 +93,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           }
         }
 
+        // WhatsApp Chat link based on plan_automated_alerts_enabled
         const chatWhatsAppItem = { href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> };
         let hasWhatsAppItem = newNavItemsList.some(item => item.href === chatWhatsAppItem.href);
-        let userHasWhatsAppPermission = false;
-
-        if (parsedUser.plan_id && parsedUser.phone_number) { 
+        
+        // Use the flag from the user object if available, otherwise fetch plan details
+        // This is because plan_automated_alerts_enabled is now part of the StoredUser type and set at login
+        let userHasWhatsAppPermission = parsedUser.plan_automated_alerts_enabled === true;
+        
+        // Fallback if flag is not on user object (e.g., older session data before the type change)
+        if (parsedUser.plan_automated_alerts_enabled === undefined && parsedUser.plan_id && parsedUser.phone_number) {
           try {
             const planDetails: Plan | null = await getPlanByIdAction(parsedUser.plan_id);
-            if (planDetails && planDetails.whatsapp_bot_enabled === true) {
+            if (planDetails && planDetails.automated_alerts_enabled === true) { // Check the correct field
               userHasWhatsAppPermission = true;
             }
           } catch (err) {
-            console.error("[DashboardLayout] Error checking plan permission:", err);
+            console.error("[DashboardLayout] Error checking plan permission for WhatsApp (fallback):", err);
           }
         }
         

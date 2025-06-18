@@ -1,4 +1,3 @@
-
 // src/app/dashboard/whatsapp-chat/page.tsx
 'use client';
 
@@ -8,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Send, UserCircle, AlertTriangle, Bot, MessageSquare as MessageSquareIconLucide } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import type { User as StoredUser, Plan, ChatMessage, WhatsAppMessage } from '@/lib/types';
+import type { User as StoredUser, ChatMessage, WhatsAppMessage } from '@/lib/types';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { getPlanByIdAction } from '@/actions/planActions';
+// getPlanByIdAction is no longer needed here as permission comes from StoredUser
 import ChatMessageItem from '@/components/chat/ChatMessageItem';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { BOT_SENDER_ID } from '@/lib/whatsappBotStore';
@@ -27,11 +26,10 @@ export default function WhatsAppChatPage() {
   const [newMessage, setNewMessage] = useState('');
   
   const [loadingStep, setLoadingStep] = useState<LoadingStep>('checkingPermissions');
-  const [isLoadingConversationPoll, setIsLoadingConversationPoll] = useState(false); // For subsequent polls
+  const [isLoadingConversationPoll, setIsLoadingConversationPoll] = useState(false); 
   
   const [isSending, setIsSending] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
-  // isCheckingPermission is effectively replaced by loadingStep === 'checkingPermissions'
 
   const { toast } = useToast();
 
@@ -45,7 +43,6 @@ export default function WhatsAppChatPage() {
   }, []);
 
   useEffect(() => {
-    // This effect handles permission checking and initial user setup
     let active = true;
     if (!isClient) return;
 
@@ -72,34 +69,22 @@ export default function WhatsAppChatPage() {
           return;
         }
 
-        if (user.plan_id) {
-          try {
-            const plan = await getPlanByIdAction(user.plan_id);
+        // Directly use the permission flag from the user object
+        if (user.plan_automated_alerts_enabled === true) {
             if (active) {
-              if (plan?.whatsapp_bot_enabled === true) {
                 setHasPermission(true);
-                setLoadingStep('loadingInitialConversation'); // Ready to load data
-              } else {
-                setHasPermission(false);
-                toast({ title: "Función no Habilitada", description: "El chat con el bot no está incluido en tu plan actual.", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
-                setLoadingStep('idle');
-              }
+                setLoadingStep('loadingInitialConversation');
             }
-          } catch (err) {
+        } else {
+            // Handle case where flag might be undefined (older session data) or false
             if (active) {
-              console.error("[WhatsAppChatPage DEBUG] Error checking plan permission:", err);
-              toast({ title: "Error de Plan", description: "No se pudo verificar el permiso de tu plan.", variant: "destructive" });
-              setHasPermission(false); setLoadingStep('idle');
+                // Determine if we need to show a specific "no plan" message or "plan doesn't include"
+                const reason = user.plan_id ? "El chat con el bot no está incluido en tu plan actual." : "El chat con el bot no está incluido en tu plan (sin plan asignado).";
+                toast({ title: "Función No Habilitada", description: reason, variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
+                setHasPermission(false); setLoadingStep('idle');
             }
-          }
-        } else { // No plan_id
-          if (active) {
-            setHasPermission(false);
-            toast({ title: "Función no Habilitada", description: "El chat con el bot no está incluido en tu plan (sin plan asignado).", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
-            setLoadingStep('idle');
-          }
         }
-      } catch (error) { // Error parsing userJson
+      } catch (error) { 
         if (active) {
           console.error("[WhatsAppChatPage DEBUG] Error parsing user from localStorage", error);
           localStorage.removeItem('loggedInUser');
