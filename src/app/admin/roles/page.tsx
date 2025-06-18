@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import type { Role } from '@/lib/types';
 import { addRoleAction, deleteRoleAction, getRolesAction } from '@/actions/roleActions';
-import { Loader2, PlusCircle, ShieldAlert, Trash2 } from 'lucide-react';
+import { Loader2, PlusCircle, ShieldAlert, Trash2, Edit } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +22,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import Link from 'next/link'; // Import Link
+import StyledEditButton from '@/components/ui/StyledEditButton'; // Import StyledEditButton
 
 export default function AdminRolesPage() {
   const { toast } = useToast();
@@ -47,6 +49,7 @@ export default function AdminRolesPage() {
 
   useEffect(() => {
     fetchRoles();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAddRole = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -63,6 +66,9 @@ export default function AdminRolesPage() {
       if (newRoleDescription.trim()) {
         formData.append('description', newRoleDescription.trim());
       }
+      // Se pasa un array vacío como string JSON para los permisos iniciales
+      formData.append('permissions', JSON.stringify([]));
+
 
       const result = await addRoleAction(formData);
       if (result.success) {
@@ -70,7 +76,7 @@ export default function AdminRolesPage() {
         setNewRoleId('');
         setNewRoleName('');
         setNewRoleDescription('');
-        await fetchRoles(); // Recargar roles
+        await fetchRoles(); 
       } else {
         toast({ title: "Error al Añadir Rol", description: result.message, variant: "destructive" });
       }
@@ -82,14 +88,14 @@ export default function AdminRolesPage() {
       const result = await deleteRoleAction(roleId);
       if (result.success) {
         toast({ title: "Rol Eliminado", description: result.message });
-        await fetchRoles(); // Recargar roles
+        await fetchRoles(); 
       } else {
         toast({ title: "Error al Eliminar Rol", description: result.message, variant: "destructive" });
       }
     });
   };
   
-  if (isLoading && roles.length === 0) { // Muestra el loader solo en la carga inicial
+  if (isLoading && roles.length === 0) { 
     return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -105,7 +111,7 @@ export default function AdminRolesPage() {
           <CardTitle className="text-2xl font-headline flex items-center">
             <ShieldAlert className="h-6 w-6 mr-2 text-primary" /> Gestión de Roles
           </CardTitle>
-          <CardDescription>Crea, visualiza y elimina roles de usuario en el sistema.</CardDescription>
+          <CardDescription>Crea, visualiza, edita permisos y elimina roles de usuario en el sistema.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAddRole} className="space-y-4 mb-8 p-4 border rounded-lg bg-secondary/30">
@@ -160,6 +166,7 @@ export default function AdminRolesPage() {
                   <TableHead>ID</TableHead>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Descripción</TableHead>
+                  <TableHead>Permisos Asignados</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -169,11 +176,24 @@ export default function AdminRolesPage() {
                     <TableCell className="font-mono">{role.id}</TableCell>
                     <TableCell className="font-medium">{role.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{role.description || '-'}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-xs text-muted-foreground">
+                        {role.permissions && role.permissions.length > 0 
+                            ? role.permissions.includes('*') 
+                                ? 'Todos los permisos (Superadmin)' 
+                                : `${role.permissions.length} permiso(s)`
+                            : 'Ninguno'
+                        }
+                    </TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button variant="outline" size="sm" asChild className="h-8 px-2.5 text-xs">
+                        <Link href={`/admin/roles/${role.id}/edit`}>
+                            <Edit className="h-3.5 w-3.5 mr-1" /> Editar Permisos
+                        </Link>
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm" disabled={isPending || role.id === 'admin' || role.id === 'user'}>
-                            <Trash2 className="h-4 w-4 mr-1" /> Eliminar
+                          <Button variant="destructive" size="icon" className="h-8 w-8" disabled={isPending || role.id === 'admin' || role.id === 'user' || role.id === 'broker'}>
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -208,11 +228,13 @@ export default function AdminRolesPage() {
             <CardTitle className="text-xl">Notas Importantes</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>Los roles con ID <strong>admin</strong> y <strong>user</strong> son considerados roles base del sistema. Si existen, no podrán ser eliminados desde esta interfaz para prevenir problemas.</p>
+            <p>Los roles con ID <strong>admin</strong>, <strong>user</strong> y <strong>broker</strong> son considerados roles base del sistema. Si existen, no podrán ser eliminados desde esta interfaz para prevenir problemas.</p>
             <p>Antes de eliminar un rol, asegúrate de reasignar los usuarios que lo tengan a otro rol válido.</p>
             <p>Los ID de los roles deben ser únicos y solo pueden contener letras, números y guiones bajos (ej: `editor_principal`).</p>
+            <p>Los permisos se asignan como un conjunto de identificadores (ej: "property:create"). El permiso "*" otorga acceso total.</p>
         </CardContent>
       </Card>
     </div>
   );
 }
+
