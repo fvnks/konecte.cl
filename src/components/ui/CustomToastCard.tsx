@@ -81,7 +81,7 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
     color: ${({ variant }) =>
       variant === 'destructive'
         ? 'hsl(var(--destructive))'
-        : 'hsl(var(--primary))'};
+        : 'hsl(var(--card-foreground))'}; /* CHANGED: Use card-foreground for default variant */
     font-size: 16px; /* Adjusted from 17px */
     font-weight: 600; /* Adjusted from 700 */
   }
