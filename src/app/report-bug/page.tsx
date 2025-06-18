@@ -9,15 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription as ShadFormDescription } from "@/components/ui/form"; // Added FormDescription
 import { Loader2, AlertOctagon, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { submitBugReportAction } from '@/actions/bugReportActions';
 import { bugReportFormSchema, type BugReportFormValues, type User as StoredUser } from '@/lib/types';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 export default function ReportBugPage() {
   const { toast } = useToast();
+  const router = useRouter(); // Initialize router
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [browserInfo, setBrowserInfo] = useState('');
@@ -133,7 +135,7 @@ export default function ReportBugPage() {
                   <FormItem>
                     <FormLabel>URL de la Página (Opcional)</FormLabel>
                     <FormControl><Input type="url" placeholder="https://propspot.app/ruta/con/error" {...field} /></FormControl>
-                    <FormDescription>Si el error ocurrió en una página específica, pégala aquí.</FormDescription>
+                    <ShadFormDescription>Si el error ocurrió en una página específica, pégala aquí.</ShadFormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -156,7 +158,7 @@ export default function ReportBugPage() {
                   <FormItem>
                     <FormLabel>Pasos para Reproducir (Opcional)</FormLabel>
                     <FormControl><Textarea placeholder="1. Fui a...\n2. Hice clic en...\n3. Ocurrió el error..." className="min-h-[100px]" {...field} /></FormControl>
-                    <FormDescription>Si sabes cómo reproducir el error, descríbelo aquí.</FormDescription>
+                    <ShadFormDescription>Si sabes cómo reproducir el error, descríbelo aquí.</ShadFormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -168,7 +170,7 @@ export default function ReportBugPage() {
                   <FormItem>
                     <FormLabel>Navegador y Dispositivo (Opcional)</FormLabel>
                     <FormControl><Textarea placeholder="Ej: Chrome 123 en Windows 10, Safari en iPhone 15 Pro" className="min-h-[60px]" {...field} /></FormControl>
-                    <FormDescription>Esta información nos ayuda a diagnosticar el problema.</FormDescription>
+                    <ShadFormDescription>Esta información nos ayuda a diagnosticar el problema.</ShadFormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
