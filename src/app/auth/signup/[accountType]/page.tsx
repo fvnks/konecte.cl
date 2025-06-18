@@ -19,6 +19,7 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Keep if Persona Natural has options
+import { Label } from "@/components/ui/label"; // Added missing import
 import { Separator } from "@/components/ui/separator";
 
 const defaultTexts = {
