@@ -18,8 +18,19 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
     return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const { name, email, password, rut, phone } = validation.data;
-  console.log(`[AuthAction] Attempting sign-up for email: ${email}`);
+  const { 
+    accountType, name, email, password, phone_number, rut_tin,
+    experience_selling_properties, company_name, main_operating_region,
+    main_operating_commune, properties_in_portfolio_count, website_social_media_link
+  } = validation.data;
+
+  console.log(`[AuthAction] Attempting sign-up for email: ${email}, type: ${accountType}`);
+
+  // Server-side validation for conditionally required fields
+  if (accountType === 'broker' && !rut_tin) {
+    return { success: false, message: "El RUT es requerido para corredores/inmobiliarias." };
+  }
+  // Could add more checks, e.g., company_name if not independent (but no such flag yet)
 
   try {
     const existingUserRows: any[] = await query('SELECT id FROM users WHERE email = ?', [email]);
@@ -30,30 +41,62 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = randomUUID();
-    const defaultUserRoleId = 'user'; 
+    const roleId = accountType === 'broker' ? 'broker' : 'user';
 
-    const userRoleRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [defaultUserRoleId]);
+    const userRoleRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [roleId]);
     if (userRoleRows.length === 0) {
-        console.error(`[AuthAction] CRITICAL Sign-up Error: Default role '${defaultUserRoleId}' not found in DB.`);
-        return { success: false, message: "Error de configuración del sistema: No se pudo asignar el rol por defecto. Contacte al administrador."};
+        console.error(`[AuthAction] CRITICAL Sign-up Error: Role '${roleId}' not found in DB.`);
+        return { success: false, message: "Error de configuración del sistema: No se pudo asignar el rol. Contacte al administrador."};
     }
 
-    await query(
-      'INSERT INTO users (id, name, email, password_hash, rut_tin, phone_number, role_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [userId, name, email, hashedPassword, rut || null, phone || null, defaultUserRoleId]
-    );
-    console.log(`[AuthAction] Sign-up successful for email: ${email}, userID: ${userId}`);
+    const insertSql = `
+      INSERT INTO users (
+        id, name, email, password_hash, role_id, 
+        phone_number, rut_tin, experience_selling_properties, 
+        company_name, main_operating_region, main_operating_commune, 
+        properties_in_portfolio_count, website_social_media_link
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    const experienceValue = accountType === 'natural' 
+      ? (experience_selling_properties === 'yes' ? true : (experience_selling_properties === 'no' ? false : null)) 
+      : null;
+
+    const params = [
+      userId, name, email, hashedPassword, roleId,
+      phone_number || null,
+      rut_tin || null,
+      experienceValue,
+      accountType === 'broker' ? (company_name || null) : null,
+      accountType === 'broker' ? (main_operating_region || null) : null,
+      accountType === 'broker' ? (main_operating_commune || null) : null,
+      accountType === 'broker' ? (properties_in_portfolio_count !== undefined && properties_in_portfolio_count !== null ? properties_in_portfolio_count : null) : null,
+      accountType === 'broker' ? (website_social_media_link || null) : null,
+    ];
+    
+    await query(insertSql, params);
+    console.log(`[AuthAction] Sign-up successful for email: ${email}, userID: ${userId}, roleId: ${roleId}`);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password_hash, ...userWithoutPasswordHash } = {
+    const { password_hash, ...userWithoutPasswordHashBase } = {
       id: userId,
       name,
       email,
-      rut_tin: rut || null,
-      phone_number: phone || null,
-      role_id: defaultUserRoleId,
-      // Las propiedades del plan se cargarán al iniciar sesión, no en el registro.
+      role_id: roleId,
+      phone_number: phone_number || null,
+      rut_tin: rut_tin || null,
     };
+    
+    const userWithoutPasswordHash: User = {
+      ...userWithoutPasswordHashBase,
+      experience_selling_properties: experienceValue,
+      company_name: accountType === 'broker' ? (company_name || null) : null,
+      main_operating_region: accountType === 'broker' ? (main_operating_region || null) : null,
+      main_operating_commune: accountType === 'broker' ? (main_operating_commune || null) : null,
+      properties_in_portfolio_count: accountType === 'broker' ? (properties_in_portfolio_count !== undefined && properties_in_portfolio_count !== null ? properties_in_portfolio_count : null) : null,
+      website_social_media_link: accountType === 'broker' ? (website_social_media_link || null) : null,
+    };
+
 
     return { success: true, message: "Usuario registrado exitosamente.", user: userWithoutPasswordHash };
   } catch (error: any) {
@@ -91,7 +134,9 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
             u.plan_id, p.name as plan_name_from_db, u.plan_expires_at,
             p.can_view_contact_data,
             p.automated_alerts_enabled,
-            p.advanced_dashboard_access
+            p.advanced_dashboard_access,
+            u.experience_selling_properties, u.company_name, u.main_operating_region,
+            u.main_operating_commune, u.properties_in_portfolio_count, u.website_social_media_link
          FROM users u
          JOIN roles r ON u.role_id = r.id
          LEFT JOIN plans p ON u.plan_id = p.id
@@ -107,9 +152,9 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
     const userFromDb = usersFound[0] as User & { 
         password_hash: string; 
         plan_name_from_db?: string | null;
-        can_view_contact_data?: boolean | null; // Directamente del plan
-        automated_alerts_enabled?: boolean | null; // Directamente del plan
-        advanced_dashboard_access?: boolean | null; // Directamente del plan
+        can_view_contact_data?: boolean | null;
+        automated_alerts_enabled?: boolean | null;
+        advanced_dashboard_access?: boolean | null;
     }; 
     console.log(`[AuthAction] User found: ${userFromDb.email}. Stored hash: ${userFromDb.password_hash ? userFromDb.password_hash.substring(0, 10) + "..." : "NOT FOUND"}, Length: ${userFromDb.password_hash?.length}`);
 
@@ -133,13 +178,11 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
     const finalUser: User = {
       ...userToReturnBase,
       plan_name: plan_name_from_db || null,
-      // Derivaciones de permisos basadas en el rol y el nombre del plan
       plan_is_pro_or_premium: (plan_name_from_db?.toLowerCase().includes('pro') || plan_name_from_db?.toLowerCase().includes('premium')) && userFromDb.role_id === 'broker',
       plan_is_premium_broker: plan_name_from_db?.toLowerCase().includes('premium') && userFromDb.role_id === 'broker',
-      // Permisos directos del plan
-      plan_allows_contact_view: !!userFromDb.can_view_contact_data, // Convertir a booleano
-      plan_automated_alerts_enabled: !!userFromDb.automated_alerts_enabled, // Convertir a booleano
-      plan_advanced_dashboard_access: !!userFromDb.advanced_dashboard_access, // Convertir a booleano
+      plan_allows_contact_view: !!userFromDb.can_view_contact_data,
+      plan_automated_alerts_enabled: !!userFromDb.automated_alerts_enabled,
+      plan_advanced_dashboard_access: !!userFromDb.advanced_dashboard_access,
     };
 
     console.log(`[AuthAction] Sign-in successful for ${finalUser.email}. Derived plan flags:`, {

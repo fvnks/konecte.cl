@@ -7,7 +7,7 @@ export interface Role {
   id: string; // ej: admin, editor_contenido
   name: string; // ej: Administrador, Editor de Contenido
   description?: string;
-  permissions?: AppPermission[] | null; // Changed from string[] to AppPermission[]
+  permissions?: AppPermission[] | null;
 }
 
 export interface Plan {
@@ -18,7 +18,7 @@ export interface Plan {
   price_currency: string;
   max_properties_allowed: number | null;
   max_requests_allowed: number | null;
-  max_ai_searches_monthly: number | null; 
+  max_ai_searches_monthly: number | null;
   property_listing_duration_days: number | null;
   can_feature_properties: boolean;
   
@@ -43,12 +43,12 @@ export interface User {
   name: string;
   avatarUrl?: string;
   email?: string;
-  password_hash?: string;
+  password_hash?: string; // Should ideally not be sent to client
   rut_tin?: string | null;
   phone_number?: string | null;
   role_id: string;
   role_name?: string;
-  role_permissions?: AppPermission[] | null; // Added to store resolved permissions for the current user
+  role_permissions?: AppPermission[] | null;
   plan_id?: string | null;
   plan_name?: string | null; 
   plan_expires_at?: string | null;
@@ -58,6 +58,14 @@ export interface User {
   plan_is_premium_broker?: boolean; 
   plan_automated_alerts_enabled?: boolean;
   plan_advanced_dashboard_access?: boolean;
+
+  // New fields for different account types
+  experience_selling_properties?: boolean | null;
+  company_name?: string | null;
+  main_operating_region?: string | null;
+  main_operating_commune?: string | null;
+  properties_in_portfolio_count?: number | null;
+  website_social_media_link?: string | null;
 
   created_at?: string;
   updated_at?: string;
@@ -336,15 +344,28 @@ export const editInteractionFormSchema = baseInteractionFormSchema;
 export type EditInteractionFormValues = z.infer<typeof editInteractionFormSchema>;
 
 export const signUpSchema = z.object({
+  accountType: z.enum(['natural', 'broker'], { required_error: "Debes seleccionar un tipo de cuenta."}),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
   email: z.string().email("Correo electrónico inválido.").max(255),
-  rut: z.string().min(8, "El RUT/DNI debe tener al menos 8 caracteres.").max(20, "El RUT/DNI no puede exceder los 20 caracteres.").optional().or(z.literal('')),
-  phone: z.string().min(7, "El teléfono debe tener al menos 7 dígitos.").max(20, "El teléfono no puede exceder los 20 caracteres.").optional().or(z.literal('')),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").max(100),
   confirmPassword: z.string().min(6, "La confirmación de contraseña debe tener al menos 6 caracteres."),
   acceptTerms: z.boolean().refine(val => val === true, {
     message: "Debes aceptar los términos y condiciones.",
   }),
+
+  // Common fields for both, made optional here, validated in action
+  phone_number: z.string().max(50, "El teléfono no puede exceder los 50 caracteres.").optional().or(z.literal('')),
+  rut_tin: z.string().max(20, "El RUT/Tax ID no puede exceder los 20 caracteres.").optional().or(z.literal('')),
+
+  // Persona natural specific (optional)
+  experience_selling_properties: z.enum(['yes', 'no'], { invalid_type_error: "Selecciona sí o no."}).optional(),
+
+  // Broker/Inmobiliaria specific (optional at schema level)
+  company_name: z.string().max(255, "El nombre de la empresa no puede exceder los 255 caracteres.").optional().or(z.literal('')),
+  main_operating_region: z.string().max(100, "La región no puede exceder los 100 caracteres.").optional().or(z.literal('')),
+  main_operating_commune: z.string().max(100, "La comuna no puede exceder los 100 caracteres.").optional().or(z.literal('')),
+  properties_in_portfolio_count: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().nullable(),
+  website_social_media_link: z.string().url("Debe ser una URL válida para el sitio web/RRSS.").max(2048).optional().or(z.literal('')),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Las contraseñas no coinciden.",
   path: ["confirmPassword"],

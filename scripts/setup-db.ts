@@ -35,8 +35,8 @@ const SQL_STATEMENTS: string[] = [
   );`,
   `INSERT IGNORE INTO roles (id, name, description, permissions) VALUES
     ('admin', 'Administrador', 'Acceso total a todas las funcionalidades y configuraciones del sistema.', '["*"]'),
-    ('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.', '["property:create", "property:edit_own", "property:delete_own", "request:create", "request:edit_own", "request:delete_own", "comment:create", "comment:delete_own", "chat:initiate", "visit:request"]'),
-    ('broker', 'Corredor', 'Usuario corredor de propiedades con acceso a funcionalidades de colaboración y planes pagos.', '["property:create", "property:edit_own", "property:delete_own", "request:create", "request:edit_own", "request:delete_own", "comment:create", "comment:delete_own", "chat:initiate", "visit:request", "crm:access_own", "collaboration:propose", "collaboration:manage", "visit:manage_own_property_visits", "ai:use_matching_tools"]');`,
+    ('user', 'Usuario', 'Usuario estándar con capacidad para publicar y comentar.', '["property:create", "property:edit_own", "property:delete_own", "request:create", "request:edit_own", "request:delete_own", "comment:create", "comment:delete_own", "chat:initiate", "visit:request", "user:edit_profile_own"]'),
+    ('broker', 'Corredor', 'Usuario corredor de propiedades con acceso a funcionalidades de colaboración y planes pagos.', '["property:create", "property:edit_own", "property:delete_own", "request:create", "request:edit_own", "request:delete_own", "comment:create", "comment:delete_own", "chat:initiate", "visit:request", "crm:access_own", "collaboration:propose", "collaboration:manage", "visit:manage_own_property_visits", "ai:use_matching_tools", "user:edit_profile_own"]');`,
 
   // plans
   `CREATE TABLE IF NOT EXISTS plans (
@@ -73,14 +73,22 @@ const SQL_STATEMENTS: string[] = [
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    rut_tin VARCHAR(20) DEFAULT NULL,
-    phone_number VARCHAR(50) DEFAULT NULL,
     avatar_url VARCHAR(2048) DEFAULT NULL,
-    role_id VARCHAR(36) NOT NULL,                        -- 'user' para persona natural, 'broker' para corredor
-    plan_id VARCHAR(36) DEFAULT NULL,                    -- FK a plans.id (NULL si es persona natural o corredor en plan gratuito implícito)
+    role_id VARCHAR(36) NOT NULL,
+    plan_id VARCHAR(36) DEFAULT NULL,
     plan_expires_at TIMESTAMP DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    phone_number VARCHAR(50) DEFAULT NULL COMMENT 'Teléfono de contacto general.',
+    rut_tin VARCHAR(20) DEFAULT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido para Corredor/Inmobiliaria.',
+    experience_selling_properties BOOLEAN DEFAULT NULL COMMENT 'Persona natural: ¿Tiene experiencia vendiendo propiedades?',
+    company_name VARCHAR(255) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Nombre de la empresa',
+    main_operating_region VARCHAR(100) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Región principal de operación',
+    main_operating_commune VARCHAR(100) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Comuna principal de operación',
+    properties_in_portfolio_count INT DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Cantidad de propiedades en cartera',
+    website_social_media_link VARCHAR(2048) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Enlace a sitio web o red social',
+                        
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT,
     FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE SET NULL
   );`,
@@ -89,6 +97,9 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_users_plan_id ON users(plan_id);`,
   `CREATE INDEX IF NOT EXISTS idx_users_rut_tin ON users(rut_tin);`,
   `CREATE INDEX IF NOT EXISTS idx_users_phone_number ON users(phone_number);`,
+  `CREATE INDEX IF NOT EXISTS idx_users_company_name ON users(company_name);`,
+  `CREATE INDEX IF NOT EXISTS idx_users_main_operating_region ON users(main_operating_region);`,
+
 
   // properties
   `CREATE TABLE IF NOT EXISTS properties (
@@ -191,8 +202,8 @@ const SQL_STATEMENTS: string[] = [
     ('auth_signin_button_text', 'auth_signin', 'Texto del botón de inicio de sesión', 'Iniciar Sesión', 'Iniciar Sesión'),
     ('auth_signin_signup_prompt', 'auth_signin', 'Texto del prompt para registrarse', '¿No tienes una cuenta?', '¿No tienes una cuenta?'),
     ('auth_signin_signup_link_text', 'auth_signin', 'Texto del enlace para registrarse', 'Regístrate', 'Regístrate'),
-    ('auth_signup_page_title', 'auth_signup', 'Título de la página de registro', 'Crear una Cuenta', 'Crear una Cuenta'),
-    ('auth_signup_page_description', 'auth_signup', 'Descripción de la página de registro', 'Únete a konecte para listar, encontrar y discutir propiedades.', 'Únete a konecte para listar, encontrar y discutir propiedades.'),
+    ('auth_signup_page_title', 'auth_signup', 'Título de la página de registro', 'Crear una Cuenta en konecte', 'Crear una Cuenta en konecte'),
+    ('auth_signup_page_description', 'auth_signup', 'Descripción de la página de registro', 'Únete para listar, encontrar y discutir propiedades.', 'Únete para listar, encontrar y discutir propiedades.'),
     ('auth_signup_name_label', 'auth_signup', 'Etiqueta para el campo de nombre en registro', 'Nombre Completo *', 'Nombre Completo *'),
     ('auth_signup_email_label', 'auth_signup', 'Etiqueta para el campo de email en registro', 'Correo Electrónico *', 'Correo Electrónico *'),
     ('auth_signup_rut_label', 'auth_signup', 'Etiqueta para el campo de RUT en registro', 'RUT (Empresa o Persona)', 'RUT (Empresa o Persona)'),
@@ -415,5 +426,6 @@ async function setupDatabase() {
 }
 
 setupDatabase();
+
 
 
