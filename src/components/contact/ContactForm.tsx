@@ -1,11 +1,10 @@
-
 // src/components/contact/ContactForm.tsx
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { contactFormPublicSchema, type ContactFormPublicValues } from '@/lib/types';
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button"; // Replaced
 import {
   Form,
   FormControl,
@@ -18,8 +17,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { submitContactFormAction } from '@/actions/contactFormActions';
-import { Loader2, Send } from "lucide-react";
+// import { Loader2, Send } from "lucide-react"; // Send icon no longer needed
 import { useState } from "react";
+import StyledSendButton from '@/components/ui/StyledSendButton'; // Import the new button
 
 export default function ContactForm() {
   const { toast } = useToast();
@@ -132,10 +132,9 @@ export default function ContactForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
-          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+        <StyledSendButton type="submit" isLoading={isSubmitting} disabled={isSubmitting}>
           Enviar Mensaje
-        </Button>
+        </StyledSendButton>
       </form>
     </Form>
   );
