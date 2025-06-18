@@ -32,7 +32,7 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     }
   };
   
-  const authorPlanName = row.author_plan_name_from_db; // Assuming this alias is used in all queries now
+  const authorPlanName = row.author_plan_name_from_db;
   const authorIsBroker = row.author_role_id === 'broker';
 
   return {
@@ -61,17 +61,17 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
     author: row.author_name ? {
-      id: row.user_id, // author_id is user_id from properties table
+      id: row.user_id, 
       name: row.author_name,
       avatarUrl: row.author_avatar_url || undefined,
-      email: row.author_email, // Make sure author_email is selected in queries
-      phone_number: row.author_phone_number, // Make sure author_phone_number is selected
+      email: row.author_email, 
+      phone_number: row.author_phone_number, 
       role_id: row.author_role_id || '',
       role_name: row.author_role_name || undefined,
       plan_id: row.author_plan_id,
       plan_name: authorPlanName,
       plan_is_pro_or_premium: authorIsBroker && (authorPlanName?.toLowerCase().includes('pro') || authorPlanName?.toLowerCase().includes('premium')),
-      plan_allows_contact_view: !!row.author_plan_can_view_contact_data, // Direct from plan for author
+      plan_allows_contact_view: !!row.author_plan_can_view_contact_data,
       plan_is_premium_broker: authorIsBroker && authorPlanName?.toLowerCase().includes('premium'),
       plan_automated_alerts_enabled: !!row.author_plan_automated_alerts_enabled,
       plan_advanced_dashboard_access: !!row.author_plan_advanced_dashboard_access,
@@ -92,7 +92,6 @@ export async function submitPropertyAction(
 
   const propertyId = randomUUID();
   const slug = generateSlug(data.title);
-  // let propertyPublisherDetails: User | null = null; // No longer directly used for response
 
   try {
     const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
