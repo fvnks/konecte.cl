@@ -238,32 +238,43 @@ export default function Navbar() {
         <Image
           src={siteSettings.logoUrl}
           alt={siteTitleForDisplay}
-          width={150} 
-          height={40} 
-          style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }}
+          width={173} 
+          height={46} 
+          style={{ objectFit: 'contain', maxHeight: '46px', maxWidth: '172.5px' }}
           priority
           data-ai-hint="logo empresa"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             const parent = target.parentElement;
             if (parent) {
+              // Fallback to text logo if image fails
               const textNode = document.createTextNode(siteTitleForDisplay);
               const span = document.createElement('span');
-              span.className = "text-2xl font-bold font-headline text-primary";
+              span.className = "text-2xl font-bold font-headline text-primary"; // Keep text size consistent for fallback for now
+              
               const homeIconContainer = document.createElement('span');
-              homeIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-7 w-7 text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
-              parent.insertBefore(homeIconContainer.firstChild || homeIconContainer, target);
+              // Fallback icon size increased
+              homeIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-8 w-8 text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
+              
+              // Clear parent before inserting new elements if it's the Link itself
+              while (parent.firstChild && parent.firstChild !== target) {
+                parent.removeChild(parent.firstChild);
+              }
+              if (homeIconContainer.firstChild) {
+                parent.insertBefore(homeIconContainer.firstChild, target);
+              }
               parent.insertBefore(span, target);
               span.appendChild(textNode);
             }
-            target.style.display = 'none';
+            target.style.display = 'none'; // Hide broken image
           }}
         />
       );
     }
+    // Default text logo (if no siteSettings.logoUrl) - size remains original
     return (
       <>
-        <Home className="h-7 w-7 text-primary" />
+        <Home className="h-7 w-7 text-primary" /> 
         <span className="text-2xl font-bold font-headline text-primary">{siteTitleForDisplay}</span>
       </>
     );
