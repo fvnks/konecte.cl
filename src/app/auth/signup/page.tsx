@@ -3,13 +3,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added CardFooter
+// import { Button } from "@/components/ui/button"; // Original button replaced
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, User, Briefcase } from "lucide-react";
+import { User, Briefcase } from "lucide-react"; // Removed ArrowRight
 import Link from "next/link";
 import Image from "next/image";
+import AnimatedContinueButton from "@/components/ui/AnimatedContinueButton"; // Import the new button
 
 export default function SignUpStep1Page() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function SignUpStep1Page() {
     <div className="min-h-[calc(100vh-5rem)] w-full lg:grid lg:grid-cols-2">
       <div className="hidden lg:flex relative h-full bg-primary/10">
         <Image
-          src="https://bukmy.cl/img/register_step1.jpg" // Consider different image for step 1
+          src="https://bukmy.cl/img/register_step1.jpg"
           alt="Ilustración de selección de tipo de cuenta"
           fill
           style={{objectFit: "cover", objectPosition: "center"}}
@@ -75,14 +76,14 @@ export default function SignUpStep1Page() {
                 </div>
               </Label>
             </RadioGroup>
-            <Button
+            <AnimatedContinueButton
               type="button"
-              className="w-full flex items-center gap-2"
+              className="w-full mt-4" // Ensure full width for the wrapper
               onClick={handleContinue}
               disabled={!accountType}
             >
-              Continuar al Paso 2 <ArrowRight className="h-4 w-4" />
-            </Button>
+              Continuar al Paso 2
+            </AnimatedContinueButton>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 text-center pt-4 px-0 sm:px-2">
             <p className="mt-4 text-sm text-muted-foreground">
