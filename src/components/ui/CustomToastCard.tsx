@@ -81,12 +81,12 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
     color: ${({ variant }) =>
       variant === 'destructive'
         ? 'hsl(var(--destructive))'
-        : 'hsl(var(--card-foreground))'}; /* CHANGED: Use card-foreground for default variant */
-    font-size: 16px; /* Adjusted from 17px */
-    font-weight: 600; /* Adjusted from 700 */
+        : 'hsl(var(--primary))'}; /* Use primary blue for default title */
+    font-size: 16px; 
+    font-weight: 600;
   }
   .sub-text {
-    font-size: 13px; /* Adjusted from 14px */
+    font-size: 13px;
     color: hsl(var(--muted-foreground));
   }
   .cross-icon-wrapper {
