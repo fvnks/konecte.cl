@@ -8,34 +8,34 @@ body {
 
 @layer base {
   :root {
-    --background: 220 20% 96.5%; /* #F5F7FA Ligeramente más claro que el gris original */
-    --foreground: 220 10% 20%; /* #2D333A Texto oscuro con buen contraste */
+    --background: 0 0% 93.3%; /* #EEEEEE Light gray */
+    --foreground: 220 10% 20%; 
     
-    --card: 0 0% 100%; /* #FFFFFF Cartas blancas puras */
-    --card-foreground: 220 10% 18%; /* #262B31 Texto en cartas */
+    --card: 0 0% 100%; 
+    --card-foreground: 220 10% 18%; 
     
     --popover: 0 0% 100%;
     --popover-foreground: 220 10% 18%;
     
-    --primary: 207 88% 58%; /* #4A90E2 Un azul primario más vibrante */
-    --primary-foreground: 0 0% 100%; /* Texto blanco para el azul primario */
+    --primary: 207 88% 67.8%; /* #64B5F6 Soft blue */
+    --primary-foreground: 0 0% 100%; 
     
-    --secondary: 220 15% 92%; /* #EAEFF4 Gris secundario más claro */
-    --secondary-foreground: 220 8% 35%; /* #525A66 Texto para secundario */
+    --secondary: 220 15% 92%; 
+    --secondary-foreground: 220 8% 35%; 
     
-    --muted: 220 15% 88%; /* #DFE3E8 Gris apagado */
-    --muted-foreground: 220 5% 45%; /* #6C727B Texto para apagado */
+    --muted: 220 15% 88%; 
+    --muted-foreground: 220 5% 45%; 
     
-    --accent: 35 100% 65%; /* #FFB74D Naranja de acento más vibrante */
-    --accent-foreground: 20 25% 10%; /* Texto oscuro para acento */
+    --accent: 35 100% 65.1%; /* #FFB74D Warm orange */
+    --accent-foreground: 20 25% 10%; 
     
-    --destructive: 0 75% 55%; /* #D93434 Rojo destructivo */
-    --destructive-foreground: 0 0% 100%; /* Texto blanco para destructivo */
+    --destructive: 0 75% 55%; 
+    --destructive-foreground: 0 0% 100%; 
     
-    --border: 220 15% 88%; /* #DFE3E8 Borde */
-    --input: 0 0% 100%; /* #FFFFFF Fondo de inputs */
-    --input-border: 220 15% 85%; /* #D8DDE2 Borde de inputs */
-    --ring: 207 88% 50%; /* #357ABD Anillo de foco, primario un poco más oscuro */
+    --border: 220 15% 88%; 
+    --input: 0 0% 100%; 
+    --input-border: 220 15% 85%; 
+    --ring: 207 88% 58%; /* Primary (slightly darker for focus) */
 
     --chart-1: 207 80% 55%;
     --chart-2: 35 85% 55%;
@@ -43,15 +43,15 @@ body {
     --chart-4: 280 65% 60%;
     --chart-5: 50 75% 50%;
     
-    --radius: 0.75rem; /* Radio de borde base - tarjetas usarán rounded-xl */
+    --radius: 0.75rem; 
 
     /* Sidebar specific colors */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 10% 25%;
     --sidebar-primary: hsl(var(--primary));
     --sidebar-primary-foreground: hsl(var(--primary-foreground));
-    --sidebar-accent: hsl(var(--secondary)); /* Usar el secundario del tema principal */
-    --sidebar-accent-foreground: hsl(var(--secondary-foreground)); /* Usar el foreground secundario del tema principal */
+    --sidebar-accent: hsl(var(--secondary)); 
+    --sidebar-accent-foreground: hsl(var(--secondary-foreground)); 
     --sidebar-border: hsl(var(--border));
     --sidebar-ring: hsl(var(--ring));
   }
@@ -63,28 +63,28 @@ body {
     --card: 220 15% 16%;
     --card-foreground: 220 20% 93%;
     
-    --popover: 220 15% 14%; /* Un poco más oscuro que card para popovers */
+    --popover: 220 15% 14%; 
     --popover-foreground: 220 20% 95%;
     
-    --primary: 207 88% 65%; /* PropSpot Blue: #64B5F6 */
-    --primary-foreground: 220 25% 10%; /* Texto oscuro para botones primarios claros */
+    --primary: 207 88% 67.8%; /* #64B5F6 Soft blue (matching light theme primary for dark mode) */
+    --primary-foreground: 220 25% 10%; 
     
-    --secondary: 220 15% 25%; /* Gris oscuro para elementos secundarios */
-    --secondary-foreground: 220 15% 80%; /* Texto más claro para secundario */
+    --secondary: 220 15% 25%; 
+    --secondary-foreground: 220 15% 80%; 
     
-    --muted: 220 15% 20%; /* Gris aún más oscuro para fondos sutiles */
-    --muted-foreground: 220 10% 55%; /* Texto para muted, contraste adecuado */
+    --muted: 220 15% 20%; 
+    --muted-foreground: 220 10% 55%; 
     
-    --accent: 35 100% 65%; /* PropSpot Orange: #FFB74D */
-    --accent-foreground: 20 25% 10%; /* Texto oscuro para botones de acento claros */
+    --accent: 35 100% 65.1%; /* #FFB74D Warm orange (matching light theme accent for dark mode) */
+    --accent-foreground: 20 25% 10%; 
     
-    --destructive: 0 70% 58%; /* Rojo para errores, no demasiado brillante */
-    --destructive-foreground: 0 0% 100%; /* Texto blanco para destructivo */
+    --destructive: 0 70% 58%; 
+    --destructive-foreground: 0 0% 100%; 
     
-    --border: 220 15% 28%; /* Bordes sutiles pero visibles */
-    --input: 220 15% 13%; /* Fondo de input, más oscuro que card */
-    --input-border: 220 15% 30%; /* Borde para inputs */
-    --ring: 207 88% 60%; /* Primario ligeramente más oscuro para focus ring */
+    --border: 220 15% 28%; 
+    --input: 220 15% 13%; 
+    --input-border: 220 15% 30%; 
+    --ring: 207 88% 62.8%; /* Primary (slightly lighter for focus in dark mode) */
 
     --chart-1: 207 80% 60%;
     --chart-2: 35 90% 60%;
@@ -93,14 +93,14 @@ body {
     --chart-5: 50 75% 58%;
 
     /* Sidebar dark theme colors */
-    --sidebar-background: 220 15% 12%; /* Ligeramente diferente al fondo principal para flotar o mismo */
-    --sidebar-foreground: 220 15% 90%; /* Texto claro para sidebar */
-    --sidebar-primary: hsl(var(--primary)); /* Usa el primario global */
-    --sidebar-primary-foreground: hsl(var(--primary-foreground)); /* Usa el foreground primario global */
-    --sidebar-accent: 220 15% 20%; /* Color de fondo para hover/activo */
-    --sidebar-accent-foreground: hsl(var(--primary)); /* Color de texto para hover/activo */
-    --sidebar-border: 220 15% 25%; /* Borde para elementos de sidebar */
-    --sidebar-ring: hsl(var(--ring)); /* Anillo de foco global */
+    --sidebar-background: 220 15% 12%; 
+    --sidebar-foreground: 220 15% 90%; 
+    --sidebar-primary: hsl(var(--primary)); 
+    --sidebar-primary-foreground: hsl(var(--primary-foreground)); 
+    --sidebar-accent: 220 15% 20%; 
+    --sidebar-accent-foreground: hsl(var(--primary)); 
+    --sidebar-border: 220 15% 25%; 
+    --sidebar-ring: hsl(var(--ring)); 
   }
 }
 
@@ -109,21 +109,19 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased; /* Added antialiased */
-    font-feature-settings: "rlig" 1, "calt" 1; /* Common OpenType features for better typography */
+    @apply bg-background text-foreground antialiased; 
+    font-feature-settings: "rlig" 1, "calt" 1; 
   }
-  /* More prominent focus states */
+  
   *:focus-visible {
     @apply ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
 
-/* Additional custom base styles for a more "radical" feel */
 h1, h2, h3, h4, h5, h6 {
   @apply font-headline;
 }
 
-/* Scrollbar styling for a more modern look */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
