@@ -25,9 +25,17 @@ function mapDbRowToPlan(row: any): Plan {
     max_properties_allowed: parseNullableIntFromDb(row.max_properties_allowed),
     max_requests_allowed: parseNullableIntFromDb(row.max_requests_allowed),
     max_ai_searches_monthly: parseNullableIntFromDb(row.max_ai_searches_monthly),
-    whatsapp_bot_enabled: Boolean(row.whatsapp_bot_enabled), // Mapear nuevo campo
-    can_feature_properties: Boolean(row.can_feature_properties),
     property_listing_duration_days: parseNullableIntFromDb(row.property_listing_duration_days),
+    can_feature_properties: Boolean(row.can_feature_properties),
+    // Nuevos campos mapeados
+    can_view_contact_data: Boolean(row.can_view_contact_data),
+    manual_searches_daily_limit: parseNullableIntFromDb(row.manual_searches_daily_limit),
+    automated_alerts_enabled: Boolean(row.automated_alerts_enabled), // Reemplaza whatsapp_bot_enabled
+    advanced_dashboard_access: Boolean(row.advanced_dashboard_access),
+    daily_profile_views_limit: parseNullableIntFromDb(row.daily_profile_views_limit),
+    weekly_matches_reveal_limit: parseNullableIntFromDb(row.weekly_matches_reveal_limit),
+    is_enterprise_plan: Boolean(row.is_enterprise_plan),
+
     is_active: Boolean(row.is_active),
     is_publicly_visible: row.is_publicly_visible === null || row.is_publicly_visible === undefined ? true : Boolean(row.is_publicly_visible),
     created_at: row.created_at ? new Date(row.created_at).toISOString() : undefined,
@@ -85,36 +93,46 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
   
   const max_properties_allowed_str = formData.get('max_properties_allowed') as string | null;
   const max_requests_allowed_str = formData.get('max_requests_allowed') as string | null;
-  const max_ai_searches_monthly_str = formData.get('max_ai_searches_monthly') as string | null;
   const property_listing_duration_days_str = formData.get('property_listing_duration_days') as string | null;
+  const can_feature_properties = formData.get('can_feature_properties') === 'on';
   
-  const whatsapp_bot_enabled = formData.get('whatsapp_bot_enabled') === 'on'; // Nuevo campo
-  const can_feature_properties = formData.get('can_feature_properties') === 'on'; 
+  const can_view_contact_data = formData.get('can_view_contact_data') === 'on';
+  const manual_searches_daily_limit_str = formData.get('manual_searches_daily_limit') as string | null;
+  const automated_alerts_enabled = formData.get('automated_alerts_enabled') === 'on';
+  const max_ai_searches_monthly_str = formData.get('max_ai_searches_monthly') as string | null;
+  const advanced_dashboard_access = formData.get('advanced_dashboard_access') === 'on';
+  const daily_profile_views_limit_str = formData.get('daily_profile_views_limit') as string | null;
+  const weekly_matches_reveal_limit_str = formData.get('weekly_matches_reveal_limit') as string | null;
+
   const is_active = formData.get('is_active') === 'on';
   const is_publicly_visible = formData.get('is_publicly_visible') === 'on';
+  const is_enterprise_plan = formData.get('is_enterprise_plan') === 'on';
 
   if (!name) {
     return { success: false, message: "El nombre del plan es requerido." };
   }
-
   const price_monthly = parseFloat(price_monthly_str);
   if (isNaN(price_monthly) || price_monthly < 0) {
     return { success: false, message: "El precio mensual debe ser un número válido no negativo." };
   }
   
-  const max_properties_allowed = max_properties_allowed_str && max_properties_allowed_str.trim() !== '' ? parseInt(max_properties_allowed_str, 10) : null;
-  const max_requests_allowed = max_requests_allowed_str && max_requests_allowed_str.trim() !== '' ? parseInt(max_requests_allowed_str, 10) : null;
-  const max_ai_searches_monthly = max_ai_searches_monthly_str && max_ai_searches_monthly_str.trim() !== '' ? parseInt(max_ai_searches_monthly_str, 10) : null;
-  const property_listing_duration_days = property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '' ? parseInt(property_listing_duration_days_str, 10) : null;
+  const parseNullableInt = (valStr: string | null): number | null => valStr && valStr.trim() !== '' ? parseInt(valStr, 10) : null;
 
-  const limitsAndDurationAreValid = 
-    (!(max_properties_allowed_str && max_properties_allowed_str.trim() !== '') || (!isNaN(max_properties_allowed!) && max_properties_allowed! >= 0)) &&
-    (!(max_requests_allowed_str && max_requests_allowed_str.trim() !== '') || (!isNaN(max_requests_allowed!) && max_requests_allowed! >= 0)) &&
-    (!(max_ai_searches_monthly_str && max_ai_searches_monthly_str.trim() !== '') || (!isNaN(max_ai_searches_monthly!) && max_ai_searches_monthly! >= 0)) &&
-    (!(property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '') || (!isNaN(property_listing_duration_days!) && property_listing_duration_days! >= 0));
+  const max_properties_allowed = parseNullableInt(max_properties_allowed_str);
+  const max_requests_allowed = parseNullableInt(max_requests_allowed_str);
+  const property_listing_duration_days = parseNullableInt(property_listing_duration_days_str);
+  const manual_searches_daily_limit = parseNullableInt(manual_searches_daily_limit_str);
+  const max_ai_searches_monthly = parseNullableInt(max_ai_searches_monthly_str);
+  const daily_profile_views_limit = parseNullableInt(daily_profile_views_limit_str);
+  const weekly_matches_reveal_limit = parseNullableInt(weekly_matches_reveal_limit_str);
 
-  if (!limitsAndDurationAreValid) {
-    return { success: false, message: "Los límites y duración deben ser números válidos no negativos si se especifican, o dejados en blanco para ilimitado/indefinido." };
+  const allLimitsAreValid = [
+    max_properties_allowed, max_requests_allowed, property_listing_duration_days,
+    manual_searches_daily_limit, max_ai_searches_monthly, daily_profile_views_limit, weekly_matches_reveal_limit
+  ].every(limit => limit === null || (!isNaN(limit) && limit >= 0));
+
+  if (!allLimitsAreValid) {
+    return { success: false, message: "Los límites numéricos deben ser números válidos no negativos si se especifican, o dejados en blanco para ilimitado/indefinido." };
   }
 
   try {
@@ -122,16 +140,18 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
     const sql = `
       INSERT INTO plans (
         id, name, description, price_monthly, price_currency,
-        max_properties_allowed, max_requests_allowed, max_ai_searches_monthly, 
-        whatsapp_bot_enabled, can_feature_properties, property_listing_duration_days, 
-        is_active, is_publicly_visible
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        max_properties_allowed, max_requests_allowed, property_listing_duration_days, can_feature_properties,
+        can_view_contact_data, manual_searches_daily_limit, automated_alerts_enabled, max_ai_searches_monthly,
+        advanced_dashboard_access, daily_profile_views_limit, weekly_matches_reveal_limit,
+        is_active, is_publicly_visible, is_enterprise_plan
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     await query(sql, [
       planId, name, description || null, price_monthly, price_currency,
-      max_properties_allowed, max_requests_allowed, max_ai_searches_monthly,
-      whatsapp_bot_enabled, can_feature_properties, property_listing_duration_days, 
-      is_active, is_publicly_visible
+      max_properties_allowed, max_requests_allowed, property_listing_duration_days, can_feature_properties,
+      can_view_contact_data, manual_searches_daily_limit, automated_alerts_enabled, max_ai_searches_monthly,
+      advanced_dashboard_access, daily_profile_views_limit, weekly_matches_reveal_limit,
+      is_active, is_publicly_visible, is_enterprise_plan
     ]);
     
     revalidatePath('/admin/plans');
@@ -140,9 +160,10 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
 
     const newPlan: Plan = {
       id: planId, name, description, price_monthly, price_currency,
-      max_properties_allowed, max_requests_allowed, max_ai_searches_monthly,
-      whatsapp_bot_enabled, can_feature_properties, property_listing_duration_days, 
-      is_active, is_publicly_visible
+      max_properties_allowed, max_requests_allowed, property_listing_duration_days, can_feature_properties,
+      can_view_contact_data, manual_searches_daily_limit, automated_alerts_enabled, max_ai_searches_monthly,
+      advanced_dashboard_access, daily_profile_views_limit, weekly_matches_reveal_limit,
+      is_active, is_publicly_visible, is_enterprise_plan
     };
     return { success: true, message: "Plan añadido exitosamente.", plan: newPlan };
   } catch (error: any) {
@@ -162,13 +183,20 @@ export async function updatePlanAction(planId: string, formData: FormData): Prom
 
   const max_properties_allowed_str = formData.get('max_properties_allowed') as string | null;
   const max_requests_allowed_str = formData.get('max_requests_allowed') as string | null;
-  const max_ai_searches_monthly_str = formData.get('max_ai_searches_monthly') as string | null;
   const property_listing_duration_days_str = formData.get('property_listing_duration_days') as string | null;
-  
-  const whatsapp_bot_enabled = formData.get('whatsapp_bot_enabled') === 'on'; // Nuevo campo
   const can_feature_properties = formData.get('can_feature_properties') === 'on';
+
+  const can_view_contact_data = formData.get('can_view_contact_data') === 'on';
+  const manual_searches_daily_limit_str = formData.get('manual_searches_daily_limit') as string | null;
+  const automated_alerts_enabled = formData.get('automated_alerts_enabled') === 'on';
+  const max_ai_searches_monthly_str = formData.get('max_ai_searches_monthly') as string | null;
+  const advanced_dashboard_access = formData.get('advanced_dashboard_access') === 'on';
+  const daily_profile_views_limit_str = formData.get('daily_profile_views_limit') as string | null;
+  const weekly_matches_reveal_limit_str = formData.get('weekly_matches_reveal_limit') as string | null;
+
   const is_active = formData.get('is_active') === 'on';
   const is_publicly_visible = formData.get('is_publicly_visible') === 'on';
+  const is_enterprise_plan = formData.get('is_enterprise_plan') === 'on';
 
   if (!planId) {
     return { success: false, message: "ID de plan no proporcionado para la actualización." };
@@ -176,41 +204,46 @@ export async function updatePlanAction(planId: string, formData: FormData): Prom
   if (!name) {
     return { success: false, message: "El nombre del plan es requerido." };
   }
-
   const price_monthly = parseFloat(price_monthly_str);
   if (isNaN(price_monthly) || price_monthly < 0) {
     return { success: false, message: "El precio mensual debe ser un número válido no negativo." };
   }
+  
+  const parseNullableInt = (valStr: string | null): number | null => valStr && valStr.trim() !== '' ? parseInt(valStr, 10) : null;
 
-  const max_properties_allowed = max_properties_allowed_str && max_properties_allowed_str.trim() !== '' ? parseInt(max_properties_allowed_str, 10) : null;
-  const max_requests_allowed = max_requests_allowed_str && max_requests_allowed_str.trim() !== '' ? parseInt(max_requests_allowed_str, 10) : null;
-  const max_ai_searches_monthly = max_ai_searches_monthly_str && max_ai_searches_monthly_str.trim() !== '' ? parseInt(max_ai_searches_monthly_str, 10) : null;
-  const property_listing_duration_days = property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '' ? parseInt(property_listing_duration_days_str, 10) : null;
+  const max_properties_allowed = parseNullableInt(max_properties_allowed_str);
+  const max_requests_allowed = parseNullableInt(max_requests_allowed_str);
+  const property_listing_duration_days = parseNullableInt(property_listing_duration_days_str);
+  const manual_searches_daily_limit = parseNullableInt(manual_searches_daily_limit_str);
+  const max_ai_searches_monthly = parseNullableInt(max_ai_searches_monthly_str);
+  const daily_profile_views_limit = parseNullableInt(daily_profile_views_limit_str);
+  const weekly_matches_reveal_limit = parseNullableInt(weekly_matches_reveal_limit_str);
+  
+  const allLimitsAreValid = [
+    max_properties_allowed, max_requests_allowed, property_listing_duration_days,
+    manual_searches_daily_limit, max_ai_searches_monthly, daily_profile_views_limit, weekly_matches_reveal_limit
+  ].every(limit => limit === null || (!isNaN(limit) && limit >= 0));
 
-  const limitsAndDurationAreValid = 
-    (!(max_properties_allowed_str && max_properties_allowed_str.trim() !== '') || (!isNaN(max_properties_allowed!) && max_properties_allowed! >= 0)) &&
-    (!(max_requests_allowed_str && max_requests_allowed_str.trim() !== '') || (!isNaN(max_requests_allowed!) && max_requests_allowed! >= 0)) &&
-    (!(max_ai_searches_monthly_str && max_ai_searches_monthly_str.trim() !== '') || (!isNaN(max_ai_searches_monthly!) && max_ai_searches_monthly! >= 0)) &&
-    (!(property_listing_duration_days_str && property_listing_duration_days_str.trim() !== '') || (!isNaN(property_listing_duration_days!) && property_listing_duration_days! >= 0));
-
-  if (!limitsAndDurationAreValid) {
-    return { success: false, message: "Los límites y duración deben ser números válidos no negativos si se especifican, o dejados en blanco para ilimitado/indefinido." };
+  if (!allLimitsAreValid) {
+    return { success: false, message: "Los límites numéricos deben ser números válidos no negativos si se especifican, o dejados en blanco para ilimitado/indefinido." };
   }
   
   try {
     const sql = `
       UPDATE plans SET
         name = ?, description = ?, price_monthly = ?, price_currency = ?,
-        max_properties_allowed = ?, max_requests_allowed = ?, max_ai_searches_monthly = ?,
-        whatsapp_bot_enabled = ?, can_feature_properties = ?, property_listing_duration_days = ?, 
-        is_active = ?, is_publicly_visible = ?, updated_at = NOW()
+        max_properties_allowed = ?, max_requests_allowed = ?, property_listing_duration_days = ?, can_feature_properties = ?,
+        can_view_contact_data = ?, manual_searches_daily_limit = ?, automated_alerts_enabled = ?, max_ai_searches_monthly = ?,
+        advanced_dashboard_access = ?, daily_profile_views_limit = ?, weekly_matches_reveal_limit = ?,
+        is_active = ?, is_publicly_visible = ?, is_enterprise_plan = ?, updated_at = NOW()
       WHERE id = ?
     `;
     const result: any = await query(sql, [
       name, description || null, price_monthly, price_currency,
-      max_properties_allowed, max_requests_allowed, max_ai_searches_monthly,
-      whatsapp_bot_enabled, can_feature_properties, property_listing_duration_days, 
-      is_active, is_publicly_visible, planId
+      max_properties_allowed, max_requests_allowed, property_listing_duration_days, can_feature_properties,
+      can_view_contact_data, manual_searches_daily_limit, automated_alerts_enabled, max_ai_searches_monthly,
+      advanced_dashboard_access, daily_profile_views_limit, weekly_matches_reveal_limit,
+      is_active, is_publicly_visible, is_enterprise_plan, planId
     ]);
 
     if (result.affectedRows === 0) {
@@ -243,8 +276,10 @@ export async function deletePlanAction(planId: string): Promise<{ success: boole
   }
 
   try {
+    // Primero, desvincular usuarios del plan (establecer plan_id a NULL)
     await query('UPDATE users SET plan_id = NULL WHERE plan_id = ?', [planId]);
-    await query('UPDATE user_ai_search_usage SET plan_id_at_search = NULL WHERE plan_id_at_search = ?', [planId]);
+    // Luego, desvincular registros de uso del plan (establecer plan_id_at_usage a NULL)
+    await query('UPDATE user_usage_metrics SET plan_id_at_usage = NULL WHERE plan_id_at_usage = ?', [planId]);
 
     const result: any = await query('DELETE FROM plans WHERE id = ?', [planId]);
     if (result.affectedRows > 0) {
@@ -258,8 +293,11 @@ export async function deletePlanAction(planId: string): Promise<{ success: boole
   } catch (error: any)
 {
     console.error("Error al eliminar plan:", error);
-    if (error.code === 'ER_ROW_IS_REFERENCED_2' || (error.message && error.message.includes('foreign key constraint fails'))) { 
-        return { success: false, message: "Error de referencia: No se puede eliminar el plan porque aún está referenciado en alguna tabla. Contacte al administrador." };
+    // ER_ROW_IS_REFERENCED_2 es un código de error común para FK violations.
+    if (error.code === 'ER_ROW_IS_REFERENCED_2' || (error.sqlState === '23000' && error.message && error.message.includes('foreign key constraint fails'))) { 
+        // Este error puede ocurrir si todavía hay una FK en user_usage_metrics que no se pudo setear a NULL
+        // o si hay otras tablas que referencian `plans` y no se manejaron.
+        return { success: false, message: "Error de referencia: No se puede eliminar el plan porque aún está referenciado en alguna tabla (posiblemente user_usage_metrics). Contacte al administrador o asegúrese que todas las dependencias se hayan actualizado para permitir NULL." };
     }
     return { success: false, message: `Error al eliminar plan: ${error.message}` };
   }
@@ -294,3 +332,4 @@ export async function togglePlanVisibilityAction(planId: string, isVisible: bool
     return { success: false, message: `Error al cambiar visibilidad del plan: ${error.message}` };
   }
 }
+

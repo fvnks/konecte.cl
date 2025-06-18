@@ -16,23 +16,27 @@ export interface Plan {
   price_currency: string;
   max_properties_allowed: number | null;
   max_requests_allowed: number | null;
-  max_ai_searches_monthly: number | null;
-  can_feature_properties: boolean;
+  max_ai_searches_monthly: number | null; // Ya estaba
   property_listing_duration_days: number | null;
+  can_feature_properties: boolean;
+  
+  // --- Campos de Permisos y Límites del Plan ---
+  can_view_contact_data?: boolean;         // Nuevo: Permite ver datos de contacto según reglas.
+  manual_searches_daily_limit?: number | null; // Nuevo: Límite diario de búsquedas manuales.
+  automated_alerts_enabled?: boolean;     // Reemplaza whatsapp_bot_enabled: Para alertas IA + WhatsApp.
+  advanced_dashboard_access?: boolean;    // Nuevo: Acceso a dashboard avanzado con filtros.
+  daily_profile_views_limit?: number | null;   // Nuevo: Límite de visualizaciones de perfiles/propiedades por día.
+  weekly_matches_reveal_limit?: number | null; // Nuevo: Límite de "revelaciones de coincidencias" (contactos) por semana.
+  
+  // --- Flags del Plan ---
   is_active: boolean;
   is_publicly_visible: boolean;
-  // New fields from business model
-  automated_alerts_enabled?: boolean; // Was whatsapp_bot_enabled
-  can_view_contact_data?: boolean;
-  manual_searches_daily_limit?: number | null;
-  advanced_dashboard_access?: boolean;
-  daily_profile_views_limit?: number | null;
-  weekly_matches_reveal_limit?: number | null;
-  is_enterprise_plan?: boolean;
+  is_enterprise_plan?: boolean;           // Nuevo: Para planes corporativos especiales.
 
   created_at?: string;
   updated_at?: string;
 }
+
 
 export interface User {
   id: string;
