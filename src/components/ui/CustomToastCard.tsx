@@ -80,8 +80,8 @@ const StyledWrapper = styled.div<{ variant?: 'default' | 'destructive' }>`
   .message-text {
     color: ${({ variant }) =>
       variant === 'destructive'
-        ? 'hsl(var(--destructive))'
-        : 'hsl(var(--primary))'}; /* Use primary blue for default title */
+        ? 'hsl(var(--destructive))' /* Destructive color for destructive variant title */
+        : 'hsl(var(--chart-1))'};   /* Using --chart-1 for default variant title for better contrast */
     font-size: 16px; 
     font-weight: 600;
   }
