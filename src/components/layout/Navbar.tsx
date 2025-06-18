@@ -228,8 +228,8 @@ export default function Navbar() {
     if (isLoadingSettings) {
       return (
         <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-8 rounded-lg" />
-          <Skeleton className="h-7 w-32 rounded-md" />
+          <Skeleton className="h-9 w-9 rounded-lg" /> {/* Adjusted for ~30% increase from original h-7 w-7 */}
+          <Skeleton className="h-7 w-36 rounded-md" /> {/* Adjusted for potential text size increase */}
         </div>
       );
     }
@@ -238,9 +238,9 @@ export default function Navbar() {
         <Image
           src={siteSettings.logoUrl}
           alt={siteTitleForDisplay}
-          width={173} 
-          height={46} 
-          style={{ objectFit: 'contain', maxHeight: '46px', maxWidth: '172.5px' }}
+          width={195} 
+          height={52} 
+          style={{ objectFit: 'contain', maxHeight: '52px', maxWidth: '195px' }}
           priority
           data-ai-hint="logo empresa"
           onError={(e) => {
@@ -250,13 +250,11 @@ export default function Navbar() {
               // Fallback to text logo if image fails
               const textNode = document.createTextNode(siteTitleForDisplay);
               const span = document.createElement('span');
-              span.className = "text-2xl font-bold font-headline text-primary"; // Keep text size consistent for fallback for now
+              span.className = "text-2xl font-bold font-headline text-primary"; // Fallback text size
               
               const homeIconContainer = document.createElement('span');
-              // Fallback icon size increased
-              homeIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-8 w-8 text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
+              homeIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-9 w-9 text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
               
-              // Clear parent before inserting new elements if it's the Link itself
               while (parent.firstChild && parent.firstChild !== target) {
                 parent.removeChild(parent.firstChild);
               }
@@ -271,10 +269,10 @@ export default function Navbar() {
         />
       );
     }
-    // Default text logo (if no siteSettings.logoUrl) - size remains original
+    // Default text logo (if no siteSettings.logoUrl)
     return (
       <>
-        <Home className="h-7 w-7 text-primary" /> 
+        <Home className="h-9 w-9 text-primary" /> 
         <span className="text-2xl font-bold font-headline text-primary">{siteTitleForDisplay}</span>
       </>
     );
@@ -312,7 +310,7 @@ export default function Navbar() {
       <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
         <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5 shrink-0" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
-            {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-7 w-7 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
+            {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-9 w-9 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
           </Link>
 
           <nav className="hidden md:flex items-center gap-0 mx-auto">
@@ -473,7 +471,7 @@ export default function Navbar() {
                 <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 pt-5 bg-card border-l shadow-2xl">
                   <div className="px-5 pb-4 border-b">
                       <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
-                          {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-7 w-7 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
+                          {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-9 w-9 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
                       </Link>
                   </div>
                   <nav className="flex-grow flex flex-col gap-1.5 p-4 overflow-y-auto">
