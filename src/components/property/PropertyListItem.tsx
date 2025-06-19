@@ -148,7 +148,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 self-end sm:self-center w-full sm:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-1.5 self-end sm:self-center w-full sm:w-auto justify-end">
             <LikeButton listingId={id} listingType="property" />
             <Link href={`/properties/${slug}#comments`} aria-label={`${commentsCount} comentarios`} className="flex items-center">
               <Button variant="ghost" size="sm" className="h-9 px-2 py-1 text-xs text-muted-foreground hover:text-primary">
@@ -165,4 +165,3 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     </Card>
   );
 }
-

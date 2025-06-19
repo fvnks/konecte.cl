@@ -1,4 +1,3 @@
-
 // src/components/ui/LikeButton.tsx
 'use client';
 
@@ -27,7 +26,7 @@ const StyledWrapper = styled.div`
   .button {
     cursor: pointer;
     width: auto; 
-    min-width: 100px; 
+    min-width: 88px; /* Reduced min-width */
     height: 36px; /* Consistent height for sm-like button */
     display: flex;
     align-items: center;
@@ -56,7 +55,8 @@ const StyledWrapper = styled.div`
 
   .button:hover svg#likeimg {
     stroke: hsl(var(--primary-foreground)); 
-    transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)); 
+    /* Adjusted translateX for new min-width (88px) */
+    transform: scale(1.3) translateX(calc( (var(--min-width, 88px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)); 
   }
 
   .button:hover #fontlikebutton {
@@ -72,7 +72,8 @@ const StyledWrapper = styled.div`
 
   .button:active svg#likeimg {
     stroke: hsl(var(--primary-foreground));
-    transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)) rotate(-5deg); 
+    /* Adjusted translateX for new min-width (88px) */
+    transform: scale(1.3) translateX(calc( (var(--min-width, 88px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)) rotate(-5deg); 
   }
   
   .button:active #fontlikebutton {
@@ -96,7 +97,7 @@ const StyledWrapper = styled.div`
     padding: 0 8px; 
     transition: background-color 0.2s ease;
     /* Define CSS variables for dynamic calculation in hover transform */
-    --min-width: 100px;
+    --min-width: 88px; /* Updated min-width */
     --left-part-width: 28px;
     --icon-size: 15px;
   }
@@ -164,7 +165,8 @@ const StyledWrapper = styled.div`
 
   input#checknumber:checked ~ .button:hover svg#likeimg {
     stroke: hsl(var(--primary-foreground)); 
-    transform: scale(1.3) translateX(calc( (var(--min-width, 100px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)); 
+    /* Adjusted translateX for new min-width (88px) */
+    transform: scale(1.3) translateX(calc( (var(--min-width, 88px) - var(--left-part-width, 28px) - var(--icon-size, 15px) - 8px - 4px) / 2 + 100%)); 
   }
   input#checknumber:checked ~ .button:hover #fontlikebutton {
     color: hsl(var(--primary-foreground)); 

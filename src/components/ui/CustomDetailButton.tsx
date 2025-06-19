@@ -52,7 +52,7 @@ const StyledWrapper = styled.div`
     -webkit-mask-image: -webkit-radial-gradient(#000, #fff);
     padding: 0.5rem 1.2rem; /* py-2 (8px), px-4/5. Total height with line-height ~36px */
     text-transform: uppercase;
-    min-width: 110px; /* Ensuring a minimum width */
+    min-width: 100px; /* Reduced min-width */
     height: 36px; /* Explicit height to match size="sm" buttons */
     display: inline-flex; /* Added for centering content with flex properties */
     align-items: center; /* Center content vertically */
