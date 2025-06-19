@@ -62,17 +62,11 @@ CREATE TABLE plans (
     property_listing_duration_days INT DEFAULT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     is_publicly_visible BOOLEAN DEFAULT TRUE,
-    is_enterprise_plan BOOLEAN DEFAULT FALSE, -- NUEVO: Para marcar planes corporativos especiales
+    is_enterprise_plan BOOLEAN DEFAULT FALSE, 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Ejemplo de inserción de planes (serán añadidos por el script setup-db.ts)
--- INSERT INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, max_ai_searches_monthly, automated_alerts_enabled, is_publicly_visible) VALUES
--- (UUID(), 'Gratis Persona Natural', 'Plan básico para usuarios que publican sus propiedades.', 0.00, 2, 2, 30, 5, FALSE, TRUE);
--- (UUID(), 'Gratis Corredor', 'Publicación gratuita de propiedades y solicitudes. Sin acceso a datos de contacto de personas naturales.', 0.00, 5, 5, 30, FALSE, FALSE, 0, FALSE, 20, 5, TRUE, TRUE, FALSE),
--- (UUID(), 'PRO Corredor', 'Ideal para corredores que inician. Acceso limitado a datos y búsquedas.', 14900.00, 20, 20, 60, TRUE, TRUE, 50, FALSE, 10, FALSE, 100, 20, TRUE, TRUE, FALSE),
--- (UUID(), 'PREMIUM Corredor', 'Funcionalidad completa, alertas IA y panel avanzado para corredores activos.', 24900.00, NULL, NULL, 90, TRUE, TRUE, NULL, TRUE, 50, TRUE, NULL, 100, TRUE, TRUE, FALSE);
 ```
 
 ---
@@ -118,8 +112,8 @@ CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE INDEX idx_users_plan_id ON users(plan_id);
 CREATE INDEX idx_users_rut_tin ON users(rut_tin);
 CREATE INDEX idx_users_phone_number ON users(phone_number);
-CREATE INDEX idx_users_company_name ON users(company_name); -- Nuevo
-CREATE INDEX idx_users_main_operating_region ON users(main_operating_region); -- Nuevo
+CREATE INDEX idx_users_company_name ON users(company_name); 
+CREATE INDEX idx_users_main_operating_region ON users(main_operating_region); 
 ```
 
 ---
@@ -254,6 +248,7 @@ CREATE TABLE site_settings (
     site_title VARCHAR(255) DEFAULT 'konecte - Encuentra Tu Próxima Propiedad',
     logo_url VARCHAR(2048) DEFAULT NULL,
     show_featured_listings_section BOOLEAN DEFAULT TRUE,
+    show_featured_plans_section BOOLEAN DEFAULT TRUE, -- NUEVO
     show_ai_matching_section BOOLEAN DEFAULT TRUE,
     show_google_sheet_section BOOLEAN DEFAULT TRUE,
     landing_sections_order TEXT DEFAULT NULL,
@@ -306,7 +301,7 @@ CREATE TABLE site_settings (
 ## Sección Colaboración entre Corredores
 ```sql
 -- broker_collaborations
--- (Esta tabla se mantiene como estaba)
+-- (Esta tabla se mantiene como estaban)
 ```
 ---
 ## Tabla: `contact_form_submissions`
@@ -318,14 +313,54 @@ CREATE TABLE site_settings (
 ## Tabla: `user_listing_interactions`
 ```sql
 -- user_listing_interactions
--- (Esta tabla se mantiene como estaba)
+-- (Esta tabla se mantiene como estaban)
 ```
 ---
-## Tabla: `user_ai_search_usage`
+## Tabla: `user_ai_search_usage` (Reemplazada por user_usage_metrics)
 ```sql
--- user_ai_search_usage
--- (Esta tabla se mantiene como estaba)
+-- Se elimina user_ai_search_usage y se reemplaza por user_usage_metrics
 ```
 ---
-
+## Tabla: `user_usage_metrics`
+```sql
+CREATE TABLE user_usage_metrics (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    plan_id_at_usage VARCHAR(36) DEFAULT NULL,
+    metric_type ENUM('profile_view', 'match_reveal', 'ai_search', 'manual_search_executed') NOT NULL,
+    reference_id VARCHAR(36) DEFAULT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_id_at_usage) REFERENCES plans(id) ON DELETE SET NULL,
+    INDEX idx_user_usage_user_metric_time (user_id, metric_type, timestamp),
+    INDEX idx_user_usage_plan_id (plan_id_at_usage)
+);
 ```
+---
+## Tabla: `user_action_logs`
+```sql
+CREATE TABLE user_action_logs (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    action_type ENUM(
+        'view_property_details', 'view_request_details', 'view_user_profile', 'view_contact_info_property', 'view_contact_info_request',
+        'execute_manual_property_search', 'execute_manual_request_search', 'execute_ai_match_search', 'execute_ai_find_requests_for_property', 'execute_ai_find_properties_for_request',
+        'create_property', 'update_property', 'delete_property', 'create_request', 'update_request', 'delete_request',
+        'create_comment', 'update_comment', 'delete_comment', 'create_crm_contact', 'update_crm_contact', 'log_crm_interaction',
+        'user_login_success', 'user_login_fail', 'user_logout', 'user_registration', 'password_reset_request', 'password_reset_success',
+        'listing_like', 'listing_dislike', 'listing_skip', 'comment_like',
+        'plan_subscription_change',
+        'unusual_activity_detected', 'account_locked_temporarily', 'admin_action'
+    ) NOT NULL,
+    target_entity_id VARCHAR(36) DEFAULT NULL,
+    target_entity_type VARCHAR(50) DEFAULT NULL,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    user_agent TEXT DEFAULT NULL,
+    details JSON DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_action_logs_user_action_time (user_id, action_type, created_at),
+    INDEX idx_user_action_logs_target_entity (target_entity_type, target_entity_id)
+);
+```
+

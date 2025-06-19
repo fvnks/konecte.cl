@@ -22,12 +22,12 @@ import { useToast } from "@/hooks/use-toast";
 import { saveSiteSettingsAction, getSiteSettingsAction } from "@/actions/siteSettingsActions";
 import type { SiteSettings, LandingSectionKey } from "@/lib/types";
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Brush, EyeOff, Eye, ListOrdered, ArrowUp, ArrowDown, GripVertical, Megaphone, Palette } from "lucide-react";
+import { Loader2, Brush, EyeOff, Eye, ListOrdered, ArrowUp, ArrowDown, GripVertical, Megaphone, Palette, CreditCard } from "lucide-react"; // Added CreditCard
 import Image from "next/image";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
-const landingSectionKeySchema = z.enum(["featured_list_requests", "ai_matching", "analisis_whatsbot"]);
+const landingSectionKeySchema = z.enum(["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"]); // Added "featured_plans"
 export type LandingSectionKeyType = z.infer<typeof landingSectionKeySchema>;
 
 const hexColorRegex = /^#([0-9a-f]{3}){1,2}$/i;
@@ -36,10 +36,10 @@ const formSchema = z.object({
   siteTitle: z.string().min(5, "El título del sitio debe tener al menos 5 caracteres.").max(100, "El título no puede exceder los 100 caracteres."),
   logoUrl: z.string().url("Debe ser una URL válida para el logo.").or(z.literal('')).optional(),
   show_featured_listings_section: z.boolean().default(true).optional(),
+  show_featured_plans_section: z.boolean().default(true).optional(), // Nuevo
   show_ai_matching_section: z.boolean().default(true).optional(),
-  show_google_sheet_section: z.boolean().default(true).optional(), // Field name in DB remains
-  landing_sections_order: z.array(landingSectionKeySchema).min(1, "Debe haber al menos una sección en el orden.").default(["featured_list_requests", "ai_matching", "analisis_whatsbot"]),
-  // Nuevos campos para la barra de anuncios
+  show_google_sheet_section: z.boolean().default(true).optional(), 
+  landing_sections_order: z.array(landingSectionKeySchema).min(1, "Debe haber al menos una sección en el orden.").default(["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"]), // Actualizado
   announcement_bar_is_active: z.boolean().default(false).optional(),
   announcement_bar_text: z.string().max(250, "El texto del anuncio no puede exceder los 250 caracteres.").optional().or(z.literal('')),
   announcement_bar_link_text: z.string().max(50, "El texto del enlace no puede exceder los 50 caracteres.").optional().or(z.literal('')),
@@ -65,15 +65,16 @@ const formSchema = z.object({
 type SiteSettingsFormValues = z.infer<typeof formSchema>;
 
 const DEFAULT_FALLBACK_TITLE = 'konecte - Encuentra Tu Próxima Propiedad';
-const DEFAULT_SECTIONS_ORDER: LandingSectionKeyType[] = ["featured_list_requests", "ai_matching", "analisis_whatsbot"];
+const DEFAULT_SECTIONS_ORDER: LandingSectionKeyType[] = ["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"]; // Actualizado
 const DEFAULT_ANNOUNCEMENT_BG_COLOR = '#FFB74D';
 const DEFAULT_ANNOUNCEMENT_TEXT_COLOR = '#18181b';
 
 
 const sectionNames: Record<LandingSectionKeyType, string> = {
   featured_list_requests: "Listados Destacados y Solicitudes Recientes",
+  featured_plans: "Planes Destacados", // Nuevo
   ai_matching: "Búsqueda Inteligente (IA)",
-  analisis_whatsbot: "Análisis WhatsBot", // Updated label
+  analisis_whatsbot: "Análisis WhatsBot",
 };
 
 export default function AdminAppearancePage() {
@@ -88,6 +89,7 @@ export default function AdminAppearancePage() {
       siteTitle: DEFAULT_FALLBACK_TITLE,
       logoUrl: "",
       show_featured_listings_section: true,
+      show_featured_plans_section: true, // Nuevo
       show_ai_matching_section: true,
       show_google_sheet_section: true,
       landing_sections_order: DEFAULT_SECTIONS_ORDER,
@@ -115,6 +117,7 @@ export default function AdminAppearancePage() {
       siteTitle: settings.siteTitle || DEFAULT_FALLBACK_TITLE,
       logoUrl: settings.logoUrl || "",
       show_featured_listings_section: settings.show_featured_listings_section === undefined ? true : settings.show_featured_listings_section,
+      show_featured_plans_section: settings.show_featured_plans_section === undefined ? true : settings.show_featured_plans_section, // Nuevo
       show_ai_matching_section: settings.show_ai_matching_section === undefined ? true : settings.show_ai_matching_section,
       show_google_sheet_section: settings.show_google_sheet_section === undefined ? true : settings.show_google_sheet_section,
       landing_sections_order: validOrder,
@@ -162,7 +165,7 @@ export default function AdminAppearancePage() {
 
   async function onSubmit(values: SiteSettingsFormValues) {
     const result = await saveSiteSettingsAction({
-      ...values, // Incluye todos los valores del formulario validados
+      ...values, 
       landing_sections_order: orderedSections, 
     });
 
@@ -173,7 +176,7 @@ export default function AdminAppearancePage() {
       });
       const updatedSettings = await getSiteSettingsAction();
       resetFormAndState(updatedSettings); 
-      window.dispatchEvent(new CustomEvent('siteSettingsUpdated')); // Para Navbar
+      window.dispatchEvent(new CustomEvent('siteSettingsUpdated')); 
     } else {
       toast({
         title: "Error",
@@ -206,11 +209,10 @@ export default function AdminAppearancePage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* Identidad del Sitio */}
+            
             <div>
                 <h3 className="text-lg font-medium mb-2">Identidad del Sitio</h3>
                 <div className="space-y-6 p-4 border rounded-md">
-                    {/* ... campos de siteTitle y logoUrl existentes ... */}
                     <FormField
                     control={form.control}
                     name="siteTitle"
@@ -251,9 +253,9 @@ export default function AdminAppearancePage() {
                         <Image
                             src={form.watch("logoUrl")!}
                             alt="Vista previa del logo"
-                            width={150}
-                            height={40}
-                            style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }}
+                            width={195}
+                            height={54}
+                            style={{ objectFit: 'contain', maxHeight: '54px', maxWidth: '195px' }}
                             onError={(e) => (e.currentTarget.style.display = 'none')}
                             data-ai-hint="logo"
                         />
@@ -268,7 +270,6 @@ export default function AdminAppearancePage() {
 
             <Separator />
             
-            {/* Barra de Anuncios */}
             <div>
               <h3 className="text-lg font-medium mb-2 flex items-center"><Megaphone className="h-5 w-5 mr-2 text-primary"/>Barra de Anuncios</h3>
               <div className="space-y-6 p-4 border rounded-md">
@@ -358,12 +359,12 @@ export default function AdminAppearancePage() {
                         {form.watch("announcement_bar_text") || "Tu texto de anuncio aquí."}
                         {form.watch("announcement_bar_link_text") && form.watch("announcement_bar_link_url") && (
                             <a 
-                                href={form.watch("announcement_bar_link_url") || '#'} // Usar '#' como fallback para preview
+                                href={form.watch("announcement_bar_link_url") || '#'}
                                 target="_blank" 
                                 rel="noopener noreferrer" 
                                 className="underline ml-2 hover:opacity-80"
                                 style={{color: form.watch("announcement_bar_text_color") || DEFAULT_ANNOUNCEMENT_TEXT_COLOR}}
-                                onClick={(e) => e.preventDefault()} // Prevenir navegación en la preview
+                                onClick={(e) => e.preventDefault()}
                             >
                                 {form.watch("announcement_bar_link_text")}
                             </a>
@@ -375,7 +376,6 @@ export default function AdminAppearancePage() {
 
             <Separator />
 
-            {/* Visibilidad de Secciones */}
             <div>
                 <h3 className="text-lg font-medium mb-2">Visibilidad de Secciones en la Landing Page</h3>
                  <div className="space-y-4 p-4 border rounded-md">
@@ -391,6 +391,29 @@ export default function AdminAppearancePage() {
                             </FormLabel>
                             <FormDescription>
                             Muestra/Oculta las pestañas de "Propiedades Destacadas" y "Solicitudes Recientes".
+                            </FormDescription>
+                        </div>
+                        <FormControl>
+                            <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                    />
+                     <FormField
+                    control={form.control}
+                    name="show_featured_plans_section"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                            <FormLabel className="flex items-center">
+                                {field.value ? <Eye className="h-4 w-4 mr-2 text-green-600"/> : <EyeOff className="h-4 w-4 mr-2 text-red-600"/>}
+                                Sección de Planes Destacados
+                            </FormLabel>
+                            <FormDescription>
+                            Muestra/Oculta la sección de "Planes Destacados" en la página de inicio.
                             </FormDescription>
                         </div>
                         <FormControl>
@@ -453,7 +476,6 @@ export default function AdminAppearancePage() {
 
             <Separator />
 
-            {/* Orden de Secciones */}
             <div>
               <h3 className="text-lg font-medium mb-2">Orden de Secciones en la Landing Page</h3>
               <Controller
@@ -509,11 +531,9 @@ export default function AdminAppearancePage() {
           </form>
         </Form>
 
-        {/* Vista previa de la Configuración Actual */}
         {!isLoading && (
           <div className="mt-8 p-4 border rounded-md bg-secondary/30 space-y-3">
             <h4 className="font-semibold text-lg mb-2">Configuración Actual Guardada:</h4>
-            {/* ... Título y Logo ... */}
             <div>
                 <p className="text-sm font-medium">Título del Sitio:</p>
                 <p className="text-sm text-muted-foreground">{currentSettings.siteTitle || DEFAULT_FALLBACK_TITLE}</p>
@@ -522,14 +542,13 @@ export default function AdminAppearancePage() {
                 <p className="text-sm font-medium">Logo Actual:</p>
                 {currentSettings.logoUrl ? (
                 <div className="p-2 border rounded bg-card inline-block mt-1">
-                    <Image src={currentSettings.logoUrl} alt="Logo actual" width={150} height={40} style={{ objectFit: 'contain', maxHeight: '40px', maxWidth: '150px' }} data-ai-hint="logo"/>
+                    <Image src={currentSettings.logoUrl} alt="Logo actual" width={195} height={54} style={{ objectFit: 'contain', maxHeight: '54px', maxWidth: '195px' }} data-ai-hint="logo"/>
                 </div>
                 ) : (
                 <p className="text-sm text-muted-foreground">Usando logo por defecto.</p>
                 )}
             </div>
             <Separator/>
-            {/* Barra de Anuncios Actual */}
              <div>
                 <p className="text-sm font-medium mb-1 flex items-center"><Megaphone className="h-4 w-4 mr-1.5 text-primary"/>Barra de Anuncios:</p>
                  <p className="text-sm text-muted-foreground"><strong>Estado:</strong> {currentSettings.announcement_bar_is_active ? "Activa" : "Inactiva"}</p>
@@ -553,10 +572,10 @@ export default function AdminAppearancePage() {
                 )}
             </div>
             <Separator/>
-            {/* ... Visibilidad y Orden de Secciones ... */}
             <div>
                  <p className="text-sm font-medium mb-1">Visibilidad de Secciones:</p>
                  <p className="text-sm text-muted-foreground"><strong>Listados Destacados:</strong> {currentSettings.show_featured_listings_section ? "Visible" : "Oculta"}</p>
+                 <p className="text-sm text-muted-foreground"><strong>Planes Destacados:</strong> {currentSettings.show_featured_plans_section ? "Visible" : "Oculta"}</p> {/* Nuevo */}
                  <p className="text-sm text-muted-foreground"><strong>Búsqueda IA:</strong> {currentSettings.show_ai_matching_section ? "Visible" : "Oculta"}</p>
                  <p className="text-sm text-muted-foreground"><strong>Análisis WhatsBot:</strong> {currentSettings.show_google_sheet_section ? "Visible" : "Oculta"}</p>
             </div>

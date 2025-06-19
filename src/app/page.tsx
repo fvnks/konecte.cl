@@ -2,30 +2,37 @@
 import type { ReactNode } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, Bot, ArrowRight, Link as LinkIcon } from "lucide-react";
+import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, Bot, ArrowRight, Link as LinkIcon, CreditCard } from "lucide-react"; // Added CreditCard
 import Link from "next/link";
-import type { PropertyListing, SearchRequest, LandingSectionKey } from "@/lib/types";
+import type { PropertyListing, SearchRequest, LandingSectionKey, Plan } from "@/lib/types"; // Added Plan
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
 import { getPropertiesAction } from "@/actions/propertyActions";
 import { getRequestsAction } from "@/actions/requestActions";
 import { getSiteSettingsAction } from "@/actions/siteSettingsActions";
 import { getEditableTextsByGroupAction } from '@/actions/editableTextActions'; 
+import { getPlansAction } from '@/actions/planActions'; // Added getPlansAction
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable"; 
 import FeaturedListingsClient from '@/components/landing/FeaturedListingsClient';
 import InteractiveAIMatching from '@/components/landing/InteractiveAIMatching';
+import PlanDisplayCard from '@/components/plan/PlanDisplayCard'; // Added PlanDisplayCard
 
 export const dynamic = 'force-dynamic'; 
 
 // --- Section Data Fetching (remains on server) ---
 
 async function getFeaturedListingsAndRequestsData() {
-  const allProperties: PropertyListing[] = await getPropertiesAction({limit: 8, orderBy: 'popularity_desc'}); // Order by popularity
+  const allProperties: PropertyListing[] = await getPropertiesAction({limit: 8, orderBy: 'popularity_desc'}); 
   const featuredProperties = allProperties; 
   
   const allRequests: SearchRequest[] = await getRequestsAction({ includeInactive: false }); 
-  const recentRequests = allRequests.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8); // Sort by newest
+  const recentRequests = allRequests.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8); 
   return { featuredProperties, recentRequests };
+}
+
+async function getFeaturedPlansData(limit: number = 3) {
+  const plans = await getPlansAction({ showAllAdmin: false }); // Fetches active and publicly visible plans
+  return plans.slice(0, limit);
 }
 
 // --- Section Components (Server or Client as appropriate) ---
@@ -65,7 +72,7 @@ function AIMatchingSection() {
   );
 }
 
-async function AnalisisWhatsBotSection() { // Renamed from GoogleSheetDataSection
+async function AnalisisWhatsBotSection() { 
   const config = await getGoogleSheetConfigAction();
   
   if (!config || !config.isConfigured) {
@@ -94,7 +101,7 @@ async function AnalisisWhatsBotSection() { // Renamed from GoogleSheetDataSectio
        <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
-            <Bot className="h-8 w-8 mr-3 text-primary" /> {/* Icon updated */}
+            <Bot className="h-8 w-8 mr-3 text-primary" /> 
             Análisis WhatsBot
           </CardTitle>
            <CardDescription className="text-lg text-muted-foreground mt-2">No se pudieron cargar los datos. Verifica la configuración y la consola del servidor para más detalles.</CardDescription>
@@ -111,7 +118,7 @@ async function AnalisisWhatsBotSection() { // Renamed from GoogleSheetDataSectio
        <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
-            <Bot className="h-8 w-8 mr-3 text-primary" /> {/* Icon updated */}
+            <Bot className="h-8 w-8 mr-3 text-primary" /> 
             Análisis WhatsBot
           </CardTitle>
            <CardDescription className="text-lg text-muted-foreground mt-2">La fuente de datos está configurada pero no contiene filas de datos (solo encabezados).</CardDescription>
@@ -128,7 +135,7 @@ async function AnalisisWhatsBotSection() { // Renamed from GoogleSheetDataSectio
        <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
-            <Bot className="h-8 w-8 mr-3 text-primary" /> {/* Icon updated */}
+            <Bot className="h-8 w-8 mr-3 text-primary" /> 
             Análisis WhatsBot
           </CardTitle>
            <CardDescription className="text-lg text-muted-foreground mt-2">No se encontraron encabezados en la fuente de datos. Verifica la configuración.</CardDescription>
@@ -141,7 +148,7 @@ async function AnalisisWhatsBotSection() { // Renamed from GoogleSheetDataSectio
     <Card className="shadow-xl rounded-2xl border bg-card">
         <CardHeader className="p-6 md:p-8">
          <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
-            <Bot className="h-8 w-8 mr-3 text-primary" /> {/* Icon updated */}
+            <Bot className="h-8 w-8 mr-3 text-primary" /> 
             Análisis WhatsBot
         </CardTitle>
         <CardDescription className="text-lg text-muted-foreground mt-2">Información relevante para el análisis de interacciones del bot.</CardDescription>
@@ -153,9 +160,61 @@ async function AnalisisWhatsBotSection() { // Renamed from GoogleSheetDataSectio
   );
 }
 
+interface FeaturedPlansSectionProps {
+  plans: Plan[];
+}
+function FeaturedPlansSection({ plans }: FeaturedPlansSectionProps) {
+  if (!plans || plans.length === 0) {
+    return (
+      <Card className="bg-muted/30 shadow-lg rounded-2xl border border-dashed">
+        <CardHeader className="p-6 md:p-8">
+          <CardTitle className="text-2xl md:text-3xl flex items-center text-muted-foreground">
+            <CreditCard className="h-7 w-7 mr-3 text-yellow-500" />
+            Planes Destacados
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6 md:p-8">
+          <p className="text-base text-muted-foreground">
+            Actualmente no hay planes destacados para mostrar. Visita nuestra página de planes para más información.
+          </p>
+           <Button asChild variant="link" className="mt-3 px-0">
+            <Link href="/plans">Ver todos los planes</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="shadow-xl rounded-2xl overflow-hidden border bg-card">
+      <CardHeader className="p-6 md:p-8 bg-secondary/30">
+        <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
+          <CreditCard className="h-8 w-8 mr-3 text-primary" />
+          Planes Destacados
+        </CardTitle>
+        <CardDescription className="text-lg text-muted-foreground mt-2">
+          Descubre nuestros planes y elige el que mejor se adapte a tus necesidades.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-6 md:p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {plans.map((plan) => (
+            <PlanDisplayCard key={plan.id} plan={plan} />
+          ))}
+        </div>
+        <div className="mt-10 text-center">
+          <Button asChild size="lg" variant="outline" className="rounded-lg">
+            <Link href="/plans">Ver todos los planes <ArrowRight className="ml-2 h-4 w-4"/></Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 // --- HomePage Component ---
-const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "ai_matching", "analisis_whatsbot"];
+const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"];
 const DEFAULT_HERO_TITLE = "Encuentra Tu Espacio Ideal en konecte";
 const DEFAULT_HERO_SUBTITLE = "Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!";
 const DEFAULT_SEARCH_PLACEHOLDER = "Buscar por ubicación, tipo, características...";
@@ -175,12 +234,14 @@ export default async function HomePage() {
 
 
   const showFeaturedListings = siteSettings?.show_featured_listings_section === undefined ? true : siteSettings.show_featured_listings_section;
+  const showFeaturedPlans = siteSettings?.show_featured_plans_section === undefined ? true : siteSettings.show_featured_plans_section; // Nueva propiedad
   const showAiMatching = siteSettings?.show_ai_matching_section === undefined ? true : siteSettings.show_ai_matching_section;
-  const showAnalisisWhatsBot = siteSettings?.show_google_sheet_section === undefined ? true : siteSettings.show_google_sheet_section; // Name of DB field still show_google_sheet_section
+  const showAnalisisWhatsBot = siteSettings?.show_google_sheet_section === undefined ? true : siteSettings.show_google_sheet_section; 
   
   const sectionsOrder = siteSettings?.landing_sections_order || DEFAULT_SECTIONS_ORDER;
 
   const { featuredProperties, recentRequests } = await getFeaturedListingsAndRequestsData();
+  const featuredPlans = await getFeaturedPlansData(3); // Obtener hasta 3 planes
 
   const sectionComponentsRender: Record<LandingSectionKey, () => ReactNode | null> = {
     featured_list_requests: () => showFeaturedListings ? (
@@ -200,6 +261,7 @@ export default async function HomePage() {
         </CardContent>
       </Card>
     ) : null,
+    featured_plans: () => showFeaturedPlans ? <FeaturedPlansSection plans={featuredPlans} /> : null, // Nueva sección
     ai_matching: () => showAiMatching ? <AIMatchingSection /> : null,
     analisis_whatsbot: () => showAnalisisWhatsBot ? <AnalisisWhatsBotSection /> : null,
   };
@@ -253,4 +315,3 @@ export default async function HomePage() {
   );
 }
     
-

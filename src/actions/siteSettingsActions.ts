@@ -7,7 +7,7 @@ import { query } from '@/lib/db';
 import { revalidatePath } from "next/cache";
 
 const DEFAULT_SITE_TITLE = 'PropSpot - Encuentra Tu Próxima Propiedad';
-const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "ai_matching", "analisis_whatsbot"];
+const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"];
 const DEFAULT_ANNOUNCEMENT_BG_COLOR = '#FFB74D'; // Accent
 const DEFAULT_ANNOUNCEMENT_TEXT_COLOR = '#18181b'; // Dark foreground
 
@@ -17,8 +17,9 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
         siteTitle, 
         logoUrl,
         show_featured_listings_section,
+        show_featured_plans_section, // Nueva propiedad
         show_ai_matching_section,
-        show_google_sheet_section, // This field name in DB remains for now
+        show_google_sheet_section,
         landing_sections_order,
         announcement_bar_text,
         announcement_bar_link_url,
@@ -36,16 +37,17 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
     const sql = `
       INSERT INTO site_settings (
         id, site_title, logo_url, 
-        show_featured_listings_section, show_ai_matching_section, show_google_sheet_section,
+        show_featured_listings_section, show_featured_plans_section, show_ai_matching_section, show_google_sheet_section,
         landing_sections_order,
         announcement_bar_text, announcement_bar_link_url, announcement_bar_link_text,
         announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color
       )
-      VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         site_title = VALUES(site_title),
         logo_url = VALUES(logo_url),
         show_featured_listings_section = VALUES(show_featured_listings_section),
+        show_featured_plans_section = VALUES(show_featured_plans_section),
         show_ai_matching_section = VALUES(show_ai_matching_section),
         show_google_sheet_section = VALUES(show_google_sheet_section),
         landing_sections_order = VALUES(landing_sections_order),
@@ -61,6 +63,7 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
         siteTitle || DEFAULT_SITE_TITLE, 
         logoUrl || null,
         show_featured_listings_section === undefined ? true : Boolean(show_featured_listings_section),
+        show_featured_plans_section === undefined ? true : Boolean(show_featured_plans_section), // Nueva propiedad
         show_ai_matching_section === undefined ? true : Boolean(show_ai_matching_section),
         show_google_sheet_section === undefined ? true : Boolean(show_google_sheet_section),
         sectionsOrderJson,
@@ -88,7 +91,7 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     const result = await query(`
         SELECT 
             id, site_title as siteTitle, logo_url as logoUrl, 
-            show_featured_listings_section, show_ai_matching_section, show_google_sheet_section, 
+            show_featured_listings_section, show_featured_plans_section, show_ai_matching_section, show_google_sheet_section, 
             landing_sections_order,
             announcement_bar_text, announcement_bar_link_url, announcement_bar_link_text,
             announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color,
@@ -100,14 +103,14 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     }
   } catch (error) {
     console.error("Error al obtener la configuración del sitio desde la BD:", error);
-    // Continuar para devolver los valores por defecto
   }
 
   let parsedSectionsOrder: LandingSectionKey[] = DEFAULT_SECTIONS_ORDER;
+  const validKeys: LandingSectionKey[] = ["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"];
   if (dbSettings && dbSettings.landing_sections_order) {
     try {
       const parsed = JSON.parse(dbSettings.landing_sections_order);
-      if (Array.isArray(parsed) && parsed.every(s => ["featured_list_requests", "ai_matching", "analisis_whatsbot"].includes(s)) && parsed.length > 0) {
+      if (Array.isArray(parsed) && parsed.every(s => validKeys.includes(s)) && parsed.length > 0) {
         parsedSectionsOrder = parsed;
       } else {
         console.warn("landing_sections_order desde BD es inválido o vacío, usando orden por defecto. Valor:", dbSettings.landing_sections_order);
@@ -115,8 +118,6 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     } catch (e) {
       console.error("Error al parsear landing_sections_order desde la BD, usando orden por defecto:", e, "Valor:", dbSettings.landing_sections_order);
     }
-  } else if (!dbSettings) {
-    // No es necesario advertir si no hay config en BD, ya que es esperado
   }
 
   return {
@@ -124,10 +125,10 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     siteTitle: dbSettings?.siteTitle === null || dbSettings?.siteTitle === undefined ? DEFAULT_SITE_TITLE : dbSettings.siteTitle,
     logoUrl: dbSettings?.logoUrl === null || dbSettings?.logoUrl === undefined ? null : dbSettings.logoUrl,
     show_featured_listings_section: dbSettings?.show_featured_listings_section === null || dbSettings?.show_featured_listings_section === undefined ? true : Boolean(dbSettings.show_featured_listings_section),
+    show_featured_plans_section: dbSettings?.show_featured_plans_section === null || dbSettings?.show_featured_plans_section === undefined ? true : Boolean(dbSettings.show_featured_plans_section), // Nueva propiedad
     show_ai_matching_section: dbSettings?.show_ai_matching_section === null || dbSettings?.show_ai_matching_section === undefined ? true : Boolean(dbSettings.show_ai_matching_section),
     show_google_sheet_section: dbSettings?.show_google_sheet_section === null || dbSettings?.show_google_sheet_section === undefined ? true : Boolean(dbSettings.show_google_sheet_section),
     landing_sections_order: parsedSectionsOrder,
-    // Campos de la barra de anuncios con valores por defecto
     announcement_bar_text: dbSettings?.announcement_bar_text === null || dbSettings?.announcement_bar_text === undefined ? null : dbSettings.announcement_bar_text,
     announcement_bar_link_url: dbSettings?.announcement_bar_link_url === null || dbSettings?.announcement_bar_link_url === undefined ? null : dbSettings.announcement_bar_link_url,
     announcement_bar_link_text: dbSettings?.announcement_bar_link_text === null || dbSettings?.announcement_bar_link_text === undefined ? null : dbSettings.announcement_bar_link_text,

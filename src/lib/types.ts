@@ -169,7 +169,7 @@ export interface GoogleSheetConfig {
   isConfigured: boolean;
 }
 
-export type LandingSectionKey = "featured_list_requests" | "ai_matching" | "analisis_whatsbot";
+export type LandingSectionKey = "featured_list_requests" | "ai_matching" | "analisis_whatsbot" | "featured_plans";
 
 export interface SiteSettings {
   id?: number;
@@ -178,6 +178,7 @@ export interface SiteSettings {
   show_featured_listings_section?: boolean;
   show_ai_matching_section?: boolean;
   show_google_sheet_section?: boolean;
+  show_featured_plans_section?: boolean; // Nueva propiedad
   landing_sections_order?: LandingSectionKey[] | null;
   announcement_bar_text?: string | null;
   announcement_bar_link_url?: string | null;
@@ -738,3 +739,4 @@ export type UserActionLogType =
   | 'unusual_activity_detected' | 'account_locked_temporarily' | 'admin_action';
 
     
+
