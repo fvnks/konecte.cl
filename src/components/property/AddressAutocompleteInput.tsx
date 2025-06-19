@@ -1,3 +1,4 @@
+
 // src/components/property/AddressAutocompleteInput.tsx
 'use client';
 
@@ -48,13 +49,12 @@ export default function AddressAutocompleteInput({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const commandListRef = useRef<HTMLDivElement>(null); // Ref for CommandList
 
   useEffect(() => {
-    // Sync internal input value if the external value prop changes
     if (value !== inputValue) {
       setInputValue(value);
     }
-    // Only depend on `value` for this effect to avoid loops if `inputValue` is also in deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
@@ -68,45 +68,43 @@ export default function AddressAutocompleteInput({
 
     setIsLoading(true);
     setFetchError(null);
-    // setShowSuggestions(true); // showSuggestions is managed by input change/focus
 
-    console.log(`[AddressAutocompleteInput] Fetching for: ${query}`);
+    // console.log(`[AddressAutocompleteInput] Fetching for: ${query}`);
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&countrycodes=cl&limit=5&addressdetails=1`
       );
       
-      console.log(`[AddressAutocompleteInput] Nominatim API request for: "${query}" - Status: ${response.status}`);
+      // console.log(`[AddressAutocompleteInput] Nominatim API request for: "${query}" - Status: ${response.status}`);
 
       if (!response.ok) {
         let errorDetail = `Error ${response.status}: ${response.statusText}`;
         try {
             const errorDataText = await response.text();
-            console.error("[AddressAutocompleteInput] Nominatim API error response text:", errorDataText);
-            // Attempt to parse as JSON, but handle if it's not
+            // console.error("[AddressAutocompleteInput] Nominatim API error response text:", errorDataText);
             try {
                 const errorData = JSON.parse(errorDataText);
                 if (errorData && errorData.error && errorData.error.message) {
                     errorDetail += ` - ${errorData.error.message}`;
                 } else if (errorData && errorData.error) {
-                    errorDetail += ` - ${JSON.stringify(errorData.error)}`; // Fallback if message field missing
+                    errorDetail += ` - ${JSON.stringify(errorData.error)}`; 
                 } else {
                      errorDetail += ` - Respuesta: ${errorDataText.substring(0,100)}...`;
                 }
             } catch (parseErr) {
                  errorDetail += ` - Respuesta (no JSON): ${errorDataText.substring(0,100)}...`;
             }
-        } catch (e) { /* ignore if response.text() fails, main errorDetail is already set */ }
+        } catch (e) { /* ignore */ }
         throw new Error(errorDetail);
       }
       const data = await response.json();
-      console.log('[AddressAutocompleteInput] Nominatim API response data:', data);
+      // console.log('[AddressAutocompleteInput] Nominatim API response data:', data);
 
       if (Array.isArray(data)) {
         setSuggestions(data as NominatimSuggestion[]);
         setFetchError(null);
       } else {
-        console.warn('[AddressAutocompleteInput] Nominatim response was not an array as expected:', data);
+        // console.warn('[AddressAutocompleteInput] Nominatim response was not an array as expected:', data);
         setSuggestions([]);
         setFetchError("Respuesta inesperada del servicio de direcciones.");
       }
@@ -119,7 +117,7 @@ export default function AddressAutocompleteInput({
     } finally {
       setIsLoading(false);
     }
-  }, []); // Removed onChange from dependencies as it's only called in handleSelectSuggestion
+  }, []); 
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -127,9 +125,7 @@ export default function AddressAutocompleteInput({
         fetchSuggestions(inputValue);
       } else {
         setSuggestions([]);
-        if(isLoading){ // If a fetch was in progress and input cleared, stop loading
-            setIsLoading(false);
-        }
+        if(isLoading){ setIsLoading(false); }
         setFetchError(null);
       }
     }, 500); 
@@ -144,12 +140,13 @@ export default function AddressAutocompleteInput({
     setInputValue(newInputValue);
     onChange(newInputValue); 
     if (newInputValue.length >= 3) {
-      setFetchError(null);
+      setFetchError(null); 
       setShowSuggestions(true); 
     } else {
       setShowSuggestions(false);
       setSuggestions([]);
       setFetchError(null);
+      if(isLoading){ setIsLoading(false); }
     }
   };
 
@@ -166,14 +163,10 @@ export default function AddressAutocompleteInput({
     const lng = parseFloat(suggestion.lon);
 
     onChange(fullAddress, { city, country, lat, lng });
-    // console.log(`[AddressAutocompleteInput] Selected: ${fullAddress}`);
   };
 
-  // Diagnostic log for render phase
-  if (inputValue.length >= 3 && showSuggestions && !isLoading && !fetchError) {
-    console.log("[AddressAutocompleteInput RENDER] Conditions Met. Suggestions:", suggestions, "isLoading:", isLoading, "fetchError:", fetchError, "showSuggestions:", showSuggestions);
-  }
-
+  // Diagnostic log
+  // console.log("[AddressAutocompleteInput RENDER] Conditions Met. Suggestions:", suggestions, "isLoading:", isLoading, "fetchError:", fetchError, "showSuggestions:", showSuggestions);
 
   return (
     <Command shouldFilter={false} className={cn("relative", className)}>
@@ -186,7 +179,7 @@ export default function AddressAutocompleteInput({
           onFocus={() => {
             if (inputValue.length >= 3) {
               setShowSuggestions(true); 
-              // Optionally, re-fetch if suggestions are empty or stale
+              // If suggestions are empty and no error/loading, maybe re-fetch
               // if (suggestions.length === 0 && !fetchError && !isLoading) {
               //   fetchSuggestions(inputValue);
               // }
@@ -198,61 +191,59 @@ export default function AddressAutocompleteInput({
           aria-label="Dirección"
           autoComplete="off"
         />
-        {isLoading && inputValue.length >=3 && !fetchError && (
+        {isLoading && inputValue.length >=3 && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
         )}
-        {/* Show error icon only if not loading and error exists */}
         {fetchError && inputValue.length >=3 && !isLoading && (
             <AlertTriangle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" title={fetchError} />
         )}
       </div>
 
       {inputValue.length >= 3 && showSuggestions && (
-        <CommandList
-          className={cn(
-            "absolute z-[1001] top-full mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto"
-            // No longer using !showSuggestions && "hidden" here, controlled by parent conditional render
-          )}
-        >
-          {isLoading ? (
-            <div className="p-3 text-center text-sm text-muted-foreground flex items-center justify-center">
-              <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />
-              Buscando direcciones...
-            </div>
-          ) : fetchError ? (
-            <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive">
-                <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {fetchError}
-            </CommandEmpty>
-          ) : suggestions.length > 0 ? (
-            <CommandGroup>
-              {suggestions.map((suggestion) => (
-                <CommandItem
-                  key={suggestion.place_id}
-                  value={suggestion.display_name}
-                  onSelect={() => handleSelectSuggestion(suggestion)}
-                  className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
-                >
-                  <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                  <span className="flex-1">{suggestion.display_name}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          ) : ( 
-            <CommandEmpty className="py-3 px-2.5 text-center text-sm">
-                No se encontraron resultados para "{inputValue}" en Chile.
-            </CommandEmpty>
-          )}
-        </CommandList>
-      )}
-      {/* Click-outside-to-close overlay */}
-      {inputValue.length >= 3 && showSuggestions && (
-        <div
-            className="fixed inset-0 z-[1000]" // Must be lower than CommandList
-            onClick={() => {
-                setShowSuggestions(false);
-            }}
-            aria-hidden="true"
-        />
+        <>
+          <CommandList
+            ref={commandListRef}
+            className={cn(
+              "absolute z-[1001] top-full mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto"
+            )}
+          >
+            {isLoading && !fetchError ? (
+              <div className="p-3 text-center text-sm text-muted-foreground flex items-center justify-center">
+                <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />
+                Buscando direcciones...
+              </div>
+            ) : fetchError ? (
+              <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive">
+                  <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {fetchError}
+              </CommandEmpty>
+            ) : suggestions.length > 0 ? (
+              <CommandGroup>
+                {suggestions.map((suggestion) => (
+                  <CommandItem
+                    key={suggestion.place_id}
+                    value={suggestion.display_name} // cmdk uses this for internal filtering if enabled
+                    onSelect={() => handleSelectSuggestion(suggestion)}
+                    className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
+                  >
+                    <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                    <span className="flex-1">{suggestion.display_name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ) : ( 
+              <CommandEmpty className="py-3 px-2.5 text-center text-sm">
+                  No se encontraron resultados para "{inputValue}" en Chile.
+              </CommandEmpty>
+            )}
+          </CommandList>
+          <div
+              className="fixed inset-0 z-[1000]" 
+              onClick={() => {
+                  setShowSuggestions(false);
+              }}
+              aria-hidden="true"
+          />
+        </>
       )}
     </Command>
   );
