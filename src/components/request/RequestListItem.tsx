@@ -1,4 +1,3 @@
-
 // src/components/request/RequestListItem.tsx
 import Link from 'next/link';
 import type { SearchRequest, PropertyType, ListingCategory } from '@/lib/types';
@@ -111,7 +110,7 @@ export default function RequestListItem({ request }: RequestListItemProps) {
             </div>
           </CardContent>
         </div>
-        <CardFooter className="p-0 pt-2.5 sm:pt-3 border-t flex justify-between items-center">
+        <CardFooter className="p-0 pt-2.5 sm:pt-3 border-t flex flex-wrap justify-between items-center gap-2">
           <Link href={`/requests/${slug}#comments`} className="flex items-center text-muted-foreground hover:text-primary text-xs sm:text-sm">
             <MessageCircle className="mr-1.5 h-3.5 w-3.5" />
             {commentsCount} comentarios
