@@ -26,7 +26,7 @@ export default function SignUpStep1Page() {
     <div className="min-h-[calc(100vh-5rem)] w-full lg:grid lg:grid-cols-2">
       <div className="hidden lg:flex relative h-full bg-primary/10">
         <Image
-          src="https://bukmy.cl/img/register_step1.jpg"
+          src="https://bukmy.cl/img/register.png"
           alt="Ilustración de selección de tipo de cuenta"
           fill
           style={{objectFit: "cover", objectPosition: "center"}}
