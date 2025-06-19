@@ -66,52 +66,54 @@ export default function AddressAutocompleteInput({
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const commandListRef = useRef<HTMLDivElement>(null);
+  const commandRef = useRef<HTMLDivElement>(null); 
+  const abortControllerRef = useRef<AbortController | null>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!GEOAPIFY_API_KEY) {
-      const errorMsg = "Servicio de autocompletado no disponible. (Error de Configuración: GEOAPIFY_KEY)";
+      const errorMsg = "Servicio de autocompletado no disponible (Error GEO_KEY).";
       console.error("[AddressAutocompleteInput CRITICAL] Geoapify API Key (NEXT_PUBLIC_GEOAPIFY_API_KEY) no está configurada.");
       setApiKeyError(errorMsg);
+      setShowSuggestionsDropdown(true); // Show error immediately if key is missing
     } else {
       setApiKeyError(null);
     }
   }, []);
 
   useEffect(() => {
+    // Sync external value prop with internal inputValue state
+    // Only update if the external value is different from the internal one
+    // to avoid loops if onChange also updates the external value.
     if (value !== inputValue) {
       setInputValue(value);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value]); // Only depend on external value
 
-  const fetchSuggestions = useCallback(async (query: string) => {
+  const fetchSuggestions = useCallback(async (query: string, signal: AbortSignal) => {
     if (apiKeyError) {
-      setFetchError(apiKeyError);
+      setFetchError(apiKeyError); // Show API key error
       setIsLoading(false);
       setShowSuggestionsDropdown(true);
       return;
     }
-    if (!query || query.length < 3) {
-      setSuggestions([]);
-      setIsLoading(false);
-      setFetchError(null);
-      setShowSuggestionsDropdown(false);
-      return;
-    }
-
-    console.log(`[AddressAutocompleteInput] Fetching from Geoapify for: "${query}"`);
+    
     setIsLoading(true);
     setFetchError(null);
     setShowSuggestionsDropdown(true); // Show dropdown for loading/results/error
 
     const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&filter=countrycode:cl&limit=5&apiKey=${GEOAPIFY_API_KEY}`;
-    console.log(`[AddressAutocompleteInput] Fetch URL: ${url}`);
+    console.log(`[AddressAutocompleteInput] Fetching from Geoapify for: "${query}" URL: ${url}`);
 
     try {
-      const response = await fetch(url, { method: 'GET' });
-      const responseBodyText = await response.text();
+      const response = await fetch(url, { signal }); // Pass the abort signal
+      const responseBodyText = await response.text(); // Read body once
+
+      if (signal.aborted) {
+        console.log(`[AddressAutocompleteInput] Fetch aborted for: "${query}"`);
+        return; // Don't process if aborted
+      }
       console.log(`[AddressAutocompleteInput] Geoapify API response for "${query}" - Status: ${response.status}`);
 
       if (!response.ok) {
@@ -122,71 +124,91 @@ export default function AddressAutocompleteInput({
         } catch (parseErr) {
           errorDetail += `Respuesta no es JSON.`;
         }
-        console.error("[AddressAutocompleteInput ERROR] Geoapify API error:", errorDetail, "Raw Body:", responseBodyText.substring(0,200));
+        console.error("[AddressAutocompleteInput ERROR] Geoapify API error:", errorDetail, "Raw Body:", responseBodyText.substring(0, 200));
         throw new Error(errorDetail);
       }
 
       const data = JSON.parse(responseBodyText) as { features: GeoapifyFeature[] };
-      console.log(`[AddressAutocompleteInput] Geoapify response data for "${query}":`, data);
+      console.log(`[AddressAutocompleteInput] Geoapify response data for "${query}": `, data);
+
       if (data && Array.isArray(data.features)) {
         setSuggestions(data.features);
         console.log(`[AddressAutocompleteInput] Features count: ${data.features.length}`);
+        if (data.features.length === 0) {
+          setFetchError(null); // No error, just no results
+        }
       } else {
         console.warn('[AddressAutocompleteInput WARN] Geoapify response "features" not an array or data is null.');
         setSuggestions([]);
+        setFetchError("Respuesta inesperada del servicio de direcciones.");
       }
     } catch (error: any) {
-      console.error("[AddressAutocompleteInput ERROR] Error fetching/processing Geoapify:", error.message, error);
-      setSuggestions([]);
-      setFetchError(
-        error.message.includes("Failed to fetch")
-        ? "Error de red. No se pudo conectar al servicio de direcciones. Revisa tu conexión, VPN o extensiones del navegador."
-        : (error.message || "No se pudieron cargar las sugerencias.")
-      );
+      if (error.name === 'AbortError') {
+        console.log(`[AddressAutocompleteInput] Fetch request for "${query}" was aborted.`);
+        // Don't set error state for aborts as it's an intentional cancellation
+      } else {
+        console.error(`[AddressAutocompleteInput ERROR] Error fetching/processing Geoapify for "${query}":`, error.message, error);
+        setSuggestions([]);
+        setFetchError(
+          error.message.includes("Failed to fetch")
+          ? "Error de red. Verifica tu conexión, VPN, firewall o extensiones del navegador."
+          : (error.message || "No se pudieron cargar las sugerencias.")
+        );
+      }
     } finally {
-      setIsLoading(false);
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKeyError]); // fetchSuggestions solo se recrea si apiKeyError cambia (lo cual es raro)
+  }, [apiKeyError]); // fetchSuggestions is stable if apiKeyError is stable
 
   useEffect(() => {
+    // Clear previous timeout and abort controller
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-    
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+
     if (inputValue && inputValue.length >= 3 && !disabled && !apiKeyError) {
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
+      
       debounceTimeoutRef.current = setTimeout(() => {
-        fetchSuggestions(inputValue);
-      }, 500);
+        fetchSuggestions(inputValue, signal);
+      }, 500); // Debounce time
     } else {
-      setSuggestions([]); // Limpiar sugerencias si el input es muy corto o está deshabilitado
-      if (inputValue.length < 3) {
-         setShowSuggestionsDropdown(false); // Ocultar si el texto es muy corto
-         setFetchError(null); // Limpiar errores si el usuario borra el texto
+      setSuggestions([]);
+      setIsLoading(false); // Ensure loading is stopped
+      if (inputValue.length < 3 && !apiKeyError) {
+        setShowSuggestionsDropdown(false); // Hide if text is too short and no API key error
+        setFetchError(null); // Clear error message
+      } else if (apiKeyError) {
+        setShowSuggestionsDropdown(true); // Keep open to show API key error
+        setFetchError(apiKeyError);
+        setSuggestions([]);
+      } else {
+        setShowSuggestionsDropdown(false);
       }
-      if (isLoading) setIsLoading(false); // Asegurarse de que el loader se detenga
     }
-    return () => { if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current); };
-  }, [inputValue, fetchSuggestions, disabled, apiKeyError, isLoading]);
+    return () => {
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, [inputValue, fetchSuggestions, disabled, apiKeyError]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
     setInputValue(newInputValue);
-    onChange(newInputValue); // Propagar el valor crudo para RHF
-    if (newInputValue.length >= 3 && !apiKeyError) {
-      // No es necesario llamar a setShowSuggestionsDropdown(true) aquí,
-      // el useEffect de debounce lo manejará o ya estará abierto si el usuario está escribiendo.
-      // Limpiar errores si se empieza a escribir de nuevo.
-      setFetchError(null);
-    } else if (newInputValue.length < 3) {
-      // El useEffect de debounce manejará la limpieza de sugerencias y el ocultamiento del dropdown
-    }
+    onChange(newInputValue); // Propagate raw value for RHF
+    // setShowSuggestionsDropdown(newInputValue.length >= 3 || !!apiKeyError); // Show if typing or API key error
+    // setFetchError(null); // Clear previous errors on new input
   };
 
   const handleSelectSuggestion = (suggestion: GeoapifyFeature) => {
     const props = suggestion.properties;
     const fullAddress = props.formatted || props.address_line1 || props.name || '';
     console.log("[AddressAutocompleteInput] Suggestion selected:", fullAddress, "Details:", props);
-    setInputValue(fullAddress); 
-    onChange(fullAddress, { 
+    setInputValue(fullAddress);
+    onChange(fullAddress, {
       city: props.city || props.town || props.village || props.county || props.suburb || props.district || props.state || '',
       country: props.country || '',
       lat: props.lat ?? suggestion.geometry?.coordinates[1],
@@ -196,28 +218,27 @@ export default function AddressAutocompleteInput({
     setSuggestions([]);
     setFetchError(null);
   };
-
+  
   const handleFocus = () => {
-    if (inputValue.length >= 3 && !disabled && !apiKeyError) {
+    if (inputValue.length >= 3 || apiKeyError || fetchError) {
       setShowSuggestionsDropdown(true);
-    } else if (apiKeyError) {
-      setShowSuggestionsDropdown(true); // Mostrar para el error de API Key
     }
   };
-  
-  const handleBlur = () => {
+
+  const handleBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+    // Delay hiding to allow click on suggestion items
     setTimeout(() => {
-      if (commandListRef.current && !commandListRef.current.contains(document.activeElement)) {
-         setShowSuggestionsDropdown(false);
+      if (commandRef.current && !commandRef.current.contains(document.activeElement)) {
+        setShowSuggestionsDropdown(false);
       }
     }, 150);
   };
-  
-  const shouldRenderCommandList = showSuggestionsDropdown && !disabled;
+
   console.log(`[AddressAutocompleteInput RENDER] inputValue: "${inputValue}", isLoading: ${isLoading}, fetchError: "${fetchError}", suggestions: ${suggestions.length}, showSuggestionsDropdown: ${showSuggestionsDropdown}, apiKeyError: ${apiKeyError}`);
+  const shouldRenderCommandList = showSuggestionsDropdown && !disabled;
 
   return (
-    <Command shouldFilter={false} className={cn("relative", className)}>
+    <Command ref={commandRef} shouldFilter={false} onBlur={handleBlur} className={cn("relative", className)}>
       <div className="relative">
         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
         <Input
@@ -225,17 +246,16 @@ export default function AddressAutocompleteInput({
           value={inputValue}
           onChange={handleInputChange}
           onFocus={handleFocus}
-          onBlur={handleBlur}
           placeholder={placeholder}
           disabled={disabled || !!apiKeyError}
           className="pl-10"
           aria-label="Dirección"
           autoComplete="off"
         />
-        {(isLoading && !apiKeyError && !fetchError && inputValue.length >=3) && (
+        {(isLoading && inputValue.length >=3) && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
         )}
-        {(fetchError && !apiKeyError && !isLoading && inputValue.length >=3) && (
+        {(fetchError && !isLoading && inputValue.length >=3 && !apiKeyError) && (
             <AlertTriangle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" title={fetchError} />
         )}
         {(apiKeyError && !isLoading) && (
@@ -245,19 +265,18 @@ export default function AddressAutocompleteInput({
 
       {shouldRenderCommandList && (
         <CommandList
-          ref={commandListRef}
           className="absolute z-[51] top-full mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto"
-          tabIndex={-1}
+          style={{ display: showSuggestionsDropdown ? 'block' : 'none' }}
         >
-          {isLoading && !fetchError && !apiKeyError ? (
+          {apiKeyError ? (
+             <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive whitespace-normal">
+                <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {apiKeyError}
+            </CommandEmpty>
+          ) : isLoading ? (
             <div className="p-3 text-center text-sm text-muted-foreground flex items-center justify-center">
               <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />
               Buscando direcciones...
             </div>
-          ) : apiKeyError ? (
-             <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive whitespace-normal">
-                <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {apiKeyError}
-            </CommandEmpty>
           ) : fetchError ? (
             <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive whitespace-normal">
                 <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {fetchError}
@@ -266,7 +285,7 @@ export default function AddressAutocompleteInput({
             <CommandGroup heading={suggestions.length > 1 ? `${suggestions.length} sugerencias:` : `1 sugerencia:`}>
               {suggestions.map((feature, index) => (
                 <CommandItem
-                  key={feature.properties.place_id || `sugg-${index}`}
+                  key={feature.properties.place_id || `sugg-${index}-${Date.now()}`}
                   value={feature.properties.formatted || feature.properties.address_line1 || feature.properties.name || `value-${index}`}
                   onSelect={() => handleSelectSuggestion(feature)}
                   className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
@@ -278,20 +297,13 @@ export default function AddressAutocompleteInput({
                 </CommandItem>
               ))}
             </CommandGroup>
-          ) : (
+          ) : ( // inputValue.length >= 3 && !isLoading && !fetchError && suggestions.length === 0
             <CommandEmpty className="py-3 px-2.5 text-center text-sm">
                 {inputValue.length >=3 ? `No se encontraron resultados para "${inputValue}" en Chile.` : "Escribe al menos 3 caracteres para buscar."}
             </CommandEmpty>
           )}
         </CommandList>
       )}
-      {/* Error persistente de API Key si el dropdown está cerrado */}
-      {apiKeyError && !showSuggestionsDropdown && (
-        <p className="text-xs text-destructive mt-1 flex items-center">
-          <AlertTriangle className="h-3 w-3 mr-1"/> {apiKeyError}
-        </p>
-      )}
     </Command>
   );
 }
-
