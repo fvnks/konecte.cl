@@ -103,15 +103,18 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     }
   } catch (error) {
     console.error("Error al obtener la configuración del sitio desde la BD:", error);
+    // If the query fails (e.g., column not found), dbSettings will remain null
+    // and we'll fall back to defaults.
   }
 
   let parsedSectionsOrder: LandingSectionKey[] = DEFAULT_SECTIONS_ORDER;
+  // Use validKeys from types.ts or define locally if types.ts is not easily accessible here
   const validKeys: LandingSectionKey[] = ["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"];
   if (dbSettings && dbSettings.landing_sections_order) {
     try {
       const parsed = JSON.parse(dbSettings.landing_sections_order);
-      if (Array.isArray(parsed) && parsed.every(s => validKeys.includes(s)) && parsed.length > 0) {
-        parsedSectionsOrder = parsed;
+      if (Array.isArray(parsed) && parsed.every(s => validKeys.includes(s as LandingSectionKey)) && parsed.length > 0) {
+        parsedSectionsOrder = parsed as LandingSectionKey[];
       } else {
         console.warn("landing_sections_order desde BD es inválido o vacío, usando orden por defecto. Valor:", dbSettings.landing_sections_order);
       }
@@ -125,7 +128,7 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     siteTitle: dbSettings?.siteTitle === null || dbSettings?.siteTitle === undefined ? DEFAULT_SITE_TITLE : dbSettings.siteTitle,
     logoUrl: dbSettings?.logoUrl === null || dbSettings?.logoUrl === undefined ? null : dbSettings.logoUrl,
     show_featured_listings_section: dbSettings?.show_featured_listings_section === null || dbSettings?.show_featured_listings_section === undefined ? true : Boolean(dbSettings.show_featured_listings_section),
-    show_featured_plans_section: dbSettings?.show_featured_plans_section === null || dbSettings?.show_featured_plans_section === undefined ? true : Boolean(dbSettings.show_featured_plans_section), // Nueva propiedad
+    show_featured_plans_section: dbSettings?.show_featured_plans_section === null || dbSettings?.show_featured_plans_section === undefined ? true : Boolean(dbSettings.show_featured_plans_section),
     show_ai_matching_section: dbSettings?.show_ai_matching_section === null || dbSettings?.show_ai_matching_section === undefined ? true : Boolean(dbSettings.show_ai_matching_section),
     show_google_sheet_section: dbSettings?.show_google_sheet_section === null || dbSettings?.show_google_sheet_section === undefined ? true : Boolean(dbSettings.show_google_sheet_section),
     landing_sections_order: parsedSectionsOrder,
@@ -138,4 +141,21 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     updated_at: dbSettings?.updatedAt ? new Date(dbSettings.updatedAt).toISOString() : undefined,
   };
 }
+
+// Helper to get a specific setting, falling back to default if not configured
+// This is an example if you needed to fetch just one setting often, though getSiteSettingsAction gets all
+export async function getSpecificSiteSetting<K extends keyof SiteSettings>(
+  key: K,
+  defaultValue: SiteSettings[K]
+): Promise<SiteSettings[K]> {
+  const settings = await getSiteSettingsAction();
+  if (settings && settings[key] !== undefined && settings[key] !== null) {
+    return settings[key]!; // Non-null assertion because we checked undefined/null
+  }
+  return defaultValue;
+}
+
+// Example of use:
+// const shouldShowPlans = await getSpecificSiteSetting('show_featured_plans_section', true);
+// console.log("Should show plans section:", shouldShowPlans);
 
