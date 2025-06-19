@@ -16,24 +16,33 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      // Para bukmy.cl (URL original en el código)
       {
         protocol: 'https',
         hostname: 'bukmy.cl',
         port: '',
-        pathname: '/**',
+        pathname: '/img/**', // Patrón específico para la carpeta de imágenes
       },
       {
-        protocol: 'http',
+        protocol: 'https',
+        hostname: 'bukmy.cl',
+        port: '',
+        pathname: '/**',   // Patrón general de respaldo para bukmy.cl
+      },
+      // Para www.bukmy.cl (en caso de redirección y servicio final desde aquí)
+      {
+        protocol: 'https',
         hostname: 'www.bukmy.cl',
         port: '',
-        pathname: '/**',
+        pathname: '/img/**', // Patrón específico para la carpeta de imágenes
       },
       {
-        protocol: 'https', // Nueva regla añadida
+        protocol: 'https',
         hostname: 'www.bukmy.cl',
         port: '',
-        pathname: '/**',
+        pathname: '/**',   // Patrón general de respaldo para www.bukmy.cl
       }
+      // Se eliminó la entrada http://www.bukmy.cl
     ],
   },
   serverExternalPackages: [
@@ -48,4 +57,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
