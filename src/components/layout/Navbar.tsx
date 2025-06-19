@@ -1,3 +1,4 @@
+
 // src/components/layout/Navbar.tsx
 'use client';
 
@@ -5,7 +6,7 @@ import Link from 'next/link';
 import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus, MailQuestion, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'; // SheetDescription importada
 import React, { useState, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { useRouter } from 'next/navigation';
@@ -426,12 +427,16 @@ export default function Navbar() {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 bg-card border-l shadow-2xl">
                    <SheetHeader className="p-5 pb-3 border-b">
-                    <SheetTitle className="sr-only">Navegación Principal</SheetTitle>
-                    <SheetDescription className="sr-only">Menú de enlaces principales y acciones de cuenta.</SheetDescription>
-                    <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
-                        {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-[52px] w-[52px] text-primary" /><span className="text-4xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
-                    </Link>
-                  </SheetHeader>
+                     {/* Visually hidden title and description for accessibility */}
+                     <SheetTitle className="sr-only">Navegación Principal</SheetTitle>
+                     <SheetDescription className="sr-only">
+                       Enlaces principales del sitio y opciones de cuenta de usuario.
+                     </SheetDescription>
+                     {/* Actual visual header content */}
+                     <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
+                         {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-[52px] w-[52px] text-primary" /><span className="text-4xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
+                     </Link>
+                   </SheetHeader>
                   
                   <nav className="flex-grow flex flex-col gap-1.5 p-4 overflow-y-auto">
                     {navItems.map((item) => (
@@ -516,3 +521,4 @@ export default function Navbar() {
     </>
   );
 }
+
