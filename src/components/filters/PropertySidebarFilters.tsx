@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PropertyType, ListingCategory } from '@/lib/types';
-import { Home, Bath, Tag, Filter, Building as BuildingIcon } from 'lucide-react'; 
+import { Home, Bath, Tag, Filter, Building as BuildingIcon, MapPin } from 'lucide-react'; // Added MapPin
 
 interface PropertySidebarFiltersProps {
   minBedrooms: string;
@@ -127,4 +127,3 @@ export default function PropertySidebarFilters({
     </Card>
   );
 }
-
