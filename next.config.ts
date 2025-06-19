@@ -21,28 +21,34 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'bukmy.cl',
         port: '',
-        pathname: '/img/**', // Patrón específico para la carpeta de imágenes
+        pathname: '/img/**', 
       },
       {
         protocol: 'https',
         hostname: 'bukmy.cl',
         port: '',
-        pathname: '/**',   // Patrón general de respaldo para bukmy.cl
+        pathname: '/**',   
       },
       // Para www.bukmy.cl (en caso de redirección y servicio final desde aquí)
       {
         protocol: 'https',
         hostname: 'www.bukmy.cl',
         port: '',
-        pathname: '/img/**', // Patrón específico para la carpeta de imágenes
+        pathname: '/img/**', 
       },
       {
         protocol: 'https',
         hostname: 'www.bukmy.cl',
         port: '',
-        pathname: '/**',   // Patrón general de respaldo para www.bukmy.cl
+        pathname: '/**',   
+      },
+      // NUEVA REGLA: Permitir HTTP para www.bukmy.cl
+      {
+        protocol: 'http',
+        hostname: 'www.bukmy.cl',
+        port: '',
+        pathname: '/**', 
       }
-      // Se eliminó la entrada http://www.bukmy.cl
     ],
   },
   serverExternalPackages: [
@@ -54,6 +60,9 @@ const nextConfig: NextConfig = {
     'mysql2',
     'bcryptjs',
   ],
+  compiler: { // Add this section
+    styledComponents: true,
+  },
 };
 
 export default nextConfig;
