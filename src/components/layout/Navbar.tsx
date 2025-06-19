@@ -1,4 +1,3 @@
-
 // src/components/layout/Navbar.tsx
 'use client';
 
@@ -6,7 +5,7 @@ import Link from 'next/link';
 import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus, MailQuestion, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'; // SheetDescription importada
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { useRouter } from 'next/navigation';
@@ -59,7 +58,7 @@ export default function Navbar() {
 
   useEffect(() => {
     setIsClient(true);
-    setCurrentTheme(theme); 
+    setCurrentTheme(theme);
   }, [theme]);
 
 
@@ -112,7 +111,7 @@ export default function Navbar() {
         }
       };
 
-      updateState(); 
+      updateState();
 
       const handleStorageChange = (event: StorageEvent | CustomEvent) => {
         const isRelevantStorageEvent = event instanceof StorageEvent && event.key === 'loggedInUser';
@@ -187,8 +186,8 @@ export default function Navbar() {
         <Image
           src={siteSettings.logoUrl}
           alt={siteTitleForDisplay}
-          width={254} 
-          height={70} 
+          width={254}
+          height={70}
           style={{ objectFit: 'contain', maxHeight: '70px', maxWidth: '254px' }}
           priority
           data-ai-hint="logo empresa"
@@ -199,10 +198,10 @@ export default function Navbar() {
               const textNode = document.createTextNode(siteTitleForDisplay);
               const span = document.createElement('span');
               span.className = "text-4xl font-bold font-headline text-primary";
-              
+
               const homeIconContainer = document.createElement('span');
               homeIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-[52px] w-[52px] text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
-              
+
               while (parent.firstChild && parent.firstChild !== target) {
                 parent.removeChild(parent.firstChild);
               }
@@ -219,7 +218,7 @@ export default function Navbar() {
     }
     return (
       <>
-        <Home className="h-[52px] w-[52px] text-primary" /> 
+        <Home className="h-[52px] w-[52px] text-primary" />
         <span className="text-4xl font-bold font-headline text-primary">{siteTitleForDisplay}</span>
       </>
     );
@@ -251,7 +250,7 @@ export default function Navbar() {
         <AnnouncementBar settings={siteSettings} />
       )}
       {isClient && isLoadingSettings && (
-         <Skeleton className="h-10 w-full bg-muted/50" /> 
+         <Skeleton className="h-10 w-full bg-muted/50" />
       )}
 
       <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
@@ -317,7 +316,7 @@ export default function Navbar() {
                       </Avatar>
                       {showUnreadBadge && (
                           <Badge
-                            variant="destructive" 
+                            variant="destructive"
                             className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center leading-none z-10"
                           >
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
@@ -418,7 +417,7 @@ export default function Navbar() {
                   <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-primary/10 relative rounded-lg">
                     <Menu className="h-5 w-5 text-primary" />
                     <span className="sr-only">Alternar menú</span>
-                    {showUnreadBadge && ( 
+                    {showUnreadBadge && (
                           <Badge variant="destructive" className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1 text-[10px] rounded-full flex items-center justify-center leading-none">
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
@@ -427,25 +426,23 @@ export default function Navbar() {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 bg-card border-l shadow-2xl">
                    <SheetHeader className="p-5 pb-3 border-b">
-                     {/* Visually hidden title and description for accessibility */}
                      <SheetTitle className="sr-only">Navegación Principal</SheetTitle>
                      <SheetDescription className="sr-only">
                        Enlaces principales del sitio y opciones de cuenta de usuario.
                      </SheetDescription>
-                     {/* Actual visual header content */}
                      <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
                          {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-[52px] w-[52px] text-primary" /><span className="text-4xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
                      </Link>
                    </SheetHeader>
-                  
+
                   <nav className="flex-grow flex flex-col gap-1.5 p-4 overflow-y-auto">
                     {navItems.map((item) => (
-                      <MobileMenuLink 
+                      <MobileMenuLink
                         key={`mobile-${item.label}`}
-                        href={item.href} 
-                        icon={item.icon} 
-                        label={item.label} 
-                        closeMenu={() => setIsMobileMenuOpen(false)} 
+                        href={item.href}
+                        icon={item.icon}
+                        label={item.label}
+                        closeMenu={() => setIsMobileMenuOpen(false)}
                       />
                     ))}
 
@@ -483,7 +480,7 @@ export default function Navbar() {
                             {currentTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                             Cambiar Tema
                         </Button>
-                      )} 
+                      )}
                       {isClient && loggedInUser ? (
                           <Button variant="outline" onClick={handleLogout} className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5 cursor-pointer hover:border-destructive hover:text-destructive hover:bg-destructive/5 rounded-lg">
                               <LogOut className="h-5 w-5" /> Cerrar Sesión
@@ -521,4 +518,3 @@ export default function Navbar() {
     </>
   );
 }
-
