@@ -78,7 +78,7 @@ export default function PropertySidebarFilters({
             Tipo de Transacción
           </Label>
           <Select value={filterPropertyType} onValueChange={setFilterPropertyType}>
-            <SelectTrigger id="filter-property-type" className="h-9 text-sm">
+            <SelectTrigger id="filter-property-type" className="h-9 text-sm w-full">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -93,7 +93,7 @@ export default function PropertySidebarFilters({
             Categoría de Propiedad
           </Label>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger id="filter-category" className="h-9 text-sm">
+            <SelectTrigger id="filter-category" className="h-9 text-sm w-full">
               <SelectValue placeholder="Categoría" />
             </SelectTrigger>
             <SelectContent>
@@ -102,7 +102,7 @@ export default function PropertySidebarFilters({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"> {/* Precio Min y Max */}
           <div>
             <Label htmlFor="min-price" className="text-sm font-medium mb-1.5 flex items-center">
               <DollarSign className="h-4 w-4 mr-1 text-primary" />
@@ -115,7 +115,7 @@ export default function PropertySidebarFilters({
               placeholder="Ej: 5000"
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
-              className="h-9 text-sm"
+              className="h-9 text-sm w-full"
             />
           </div>
           <div>
@@ -130,12 +130,12 @@ export default function PropertySidebarFilters({
               placeholder="Ej: 10000"
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
-              className="h-9 text-sm"
+              className="h-9 text-sm w-full"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"> {/* Dorms y Baños */}
           <div>
             <Label htmlFor="min-bedrooms" className="text-sm font-medium mb-1.5 flex items-center">
               <Home className="h-4 w-4 mr-1 text-primary" />
@@ -148,7 +148,7 @@ export default function PropertySidebarFilters({
               placeholder="Ej: 2"
               value={minBedrooms}
               onChange={(e) => setMinBedrooms(e.target.value)}
-              className="h-9 text-sm"
+              className="h-9 text-sm w-full"
             />
           </div>
           <div>
@@ -163,7 +163,7 @@ export default function PropertySidebarFilters({
               placeholder="Ej: 1"
               value={minBathrooms}
               onChange={(e) => setMinBathrooms(e.target.value)}
-              className="h-9 text-sm"
+              className="h-9 text-sm w-full"
             />
           </div>
         </div>
