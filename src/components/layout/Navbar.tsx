@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus, MailQuestion, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet'; // Added SheetHeader, SheetTitle
 import React, { useState, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { useRouter } from 'next/navigation';
@@ -426,12 +426,18 @@ export default function Navbar() {
                       )}
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 pt-5 bg-card border-l shadow-2xl">
-                  <div className="px-5 pb-4 border-b">
+                <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 bg-card border-l shadow-2xl">
+                  <SheetHeader className="sr-only"> {/* Screen-reader only title */}
+                    <SheetTitle>Navegación Principal</SheetTitle>
+                  </SheetHeader>
+                  
+                  {/* Visual header for logo */}
+                  <div className="px-5 pt-5 pb-4 border-b">
                       <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
                           {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-[52px] w-[52px] text-primary" /><span className="text-4xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
                       </Link>
                   </div>
+                  
                   <nav className="flex-grow flex flex-col gap-1.5 p-4 overflow-y-auto">
                     {navItems.map((item) => (
                       <MobileMenuLink 
