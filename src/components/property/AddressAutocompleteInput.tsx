@@ -1,3 +1,4 @@
+
 // src/components/property/AddressAutocompleteInput.tsx
 'use client';
 
@@ -48,8 +49,6 @@ export default function AddressAutocompleteInput({
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
-    // Sincronizar inputValue con el 'value' externo solo si son diferentes
-    // para evitar bucles si 'onChange' actualiza 'value' inmediatamente.
     if (value !== inputValue) {
       setInputValue(value);
     }
@@ -59,7 +58,7 @@ export default function AddressAutocompleteInput({
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 3) {
       setSuggestions([]);
-      // setShowSuggestions(false); // No ocultar aquí necesariamente, handleInputChange lo maneja
+      // setShowSuggestions(false); // Ya se maneja en handleInputChange
       return;
     }
     setIsLoading(true);
@@ -72,6 +71,10 @@ export default function AddressAutocompleteInput({
       }
       const data: NominatimSuggestion[] = await response.json();
       setSuggestions(data);
+      // Si hay datos o aunque no los haya pero se buscó, y el input sigue teniendo texto, mantener abierto el panel
+      if (query.length >= 3) {
+          setShowSuggestions(true);
+      }
     } catch (error) {
       console.error("Error fetching Nominatim suggestions:", error);
       setSuggestions([]);
@@ -86,9 +89,10 @@ export default function AddressAutocompleteInput({
         fetchSuggestions(inputValue);
       } else {
         setSuggestions([]);
-        setShowSuggestions(false); // Ocultar si el input se vuelve corto
+        setShowSuggestions(false);
+        setIsLoading(false); // Resetear isLoading si el input es muy corto
       }
-    }, 500); // Debounce
+    }, 500); 
 
     return () => {
       clearTimeout(handler);
@@ -98,18 +102,18 @@ export default function AddressAutocompleteInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
     setInputValue(newInputValue);
-    onChange(newInputValue); // Notifica al formulario padre
+    onChange(newInputValue); 
     if (newInputValue.length >= 3) {
-       setShowSuggestions(true); // Intenta mostrar la lista
+       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);
-      setSuggestions([]); // Limpia sugerencias si el input es corto
+      setSuggestions([]);
     }
   };
 
   const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
     const fullAddress = suggestion.display_name;
-    setInputValue(fullAddress); // Actualiza el input localmente
+    setInputValue(fullAddress);
     setSuggestions([]);
     setShowSuggestions(false);
 
@@ -118,7 +122,7 @@ export default function AddressAutocompleteInput({
     const lat = parseFloat(suggestion.lat);
     const lng = parseFloat(suggestion.lon);
     
-    onChange(fullAddress, { city, country, lat, lng }); // Notifica al formulario padre con la dirección completa y detalles
+    onChange(fullAddress, { city, country, lat, lng });
   };
 
   return (
@@ -129,7 +133,6 @@ export default function AddressAutocompleteInput({
           value={inputValue}
           onChange={handleInputChange}
           onFocus={() => { 
-            // Mostrar sugerencias en foco si hay texto suficiente y (hay sugerencias o se estaba cargando)
             if (inputValue.length >=3 && (suggestions.length > 0 || isLoading)) {
               setShowSuggestions(true);
             }
@@ -157,7 +160,7 @@ export default function AddressAutocompleteInput({
               {suggestions.map((suggestion) => (
                 <CommandItem
                   key={suggestion.place_id}
-                  value={suggestion.display_name} // Importante para cmdk
+                  value={suggestion.display_name} 
                   onSelect={() => handleSelectSuggestion(suggestion)}
                   className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
                 >
@@ -167,11 +170,10 @@ export default function AddressAutocompleteInput({
               ))}
             </CommandGroup>
           ) : (
-            <CommandEmpty className="py-3 px-2 text-center">No se encontraron resultados para "{inputValue}" en Chile.</CommandEmpty>
+            <CommandEmpty className="py-3 px-2 text-center text-sm">No se encontraron resultados para "{inputValue}" en Chile.</CommandEmpty>
           )}
         </CommandList>
       )}
-      {/* Overlay para cerrar el desplegable al hacer clic fuera */}
       {showSuggestions && inputValue.length >=3 && (
         <div 
             className="fixed inset-0 z-40" 
@@ -182,4 +184,3 @@ export default function AddressAutocompleteInput({
     </Command>
   );
 }
-
