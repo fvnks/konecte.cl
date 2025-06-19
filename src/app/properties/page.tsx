@@ -49,12 +49,14 @@ export default function PropertiesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [orderBy, setOrderBy] = useState<GetPropertiesActionOptions['orderBy']>('createdAt_desc');
 
-  // Filtros laterales (ahora manejados aquí y pasados a PropertySidebarFilters)
+  // Filtros laterales
   const [filterPropertyType, setFilterPropertyType] = useState<PropertyType | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<ListingCategory | 'all'>('all');
   const [filterCity, setFilterCity] = useState('');
   const [minBedrooms, setMinBedrooms] = useState<string>('');
   const [minBathrooms, setMinBathrooms] = useState<string>('');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
 
   const fetchProperties = useCallback(async () => {
     setIsLoading(true);
@@ -67,6 +69,8 @@ export default function PropertiesPage() {
         orderBy: orderBy,
         minBedrooms: minBedrooms !== '' ? parseInt(minBedrooms, 10) : undefined,
         minBathrooms: minBathrooms !== '' ? parseInt(minBathrooms, 10) : undefined,
+        minPrice: minPrice !== '' ? parseFloat(minPrice) : undefined,
+        maxPrice: maxPrice !== '' ? parseFloat(maxPrice) : undefined,
       };
       const fetchedProperties = await getPropertiesAction(options);
       setProperties(fetchedProperties);
@@ -80,7 +84,7 @@ export default function PropertiesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, filterPropertyType, filterCategory, filterCity, orderBy, minBedrooms, minBathrooms, toast]);
+  }, [searchTerm, filterPropertyType, filterCategory, filterCity, orderBy, minBedrooms, minBathrooms, minPrice, maxPrice, toast]);
 
   useEffect(() => {
     fetchProperties();
@@ -101,6 +105,8 @@ export default function PropertiesPage() {
     setFilterCity('');
     setMinBedrooms('');
     setMinBathrooms('');
+    setMinPrice('');
+    setMaxPrice('');
     startTransition(() => {
       fetchProperties(); 
     });
@@ -136,6 +142,10 @@ export default function PropertiesPage() {
             categoryOptions={categoryOptions}
             filterCity={filterCity}
             setFilterCity={setFilterCity}
+            minPrice={minPrice}
+            setMinPrice={setMinPrice}
+            maxPrice={maxPrice}
+            setMaxPrice={setMaxPrice}
           />
         </aside>
 
@@ -218,4 +228,3 @@ export default function PropertiesPage() {
     </div>
   );
 }
-

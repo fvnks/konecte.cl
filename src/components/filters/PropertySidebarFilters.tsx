@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PropertyType, ListingCategory } from '@/lib/types';
-import { Home, Bath, Tag, Filter, Building as BuildingIcon, MapPin } from 'lucide-react'; // Added MapPin
+import { Home, Bath, Tag, Filter, Building as BuildingIcon, MapPin, DollarSign } from 'lucide-react';
 
 interface PropertySidebarFiltersProps {
   minBedrooms: string;
@@ -24,6 +24,11 @@ interface PropertySidebarFiltersProps {
   
   filterCity: string;
   setFilterCity: (value: string) => void;
+
+  minPrice: string;
+  setMinPrice: (value: string) => void;
+  maxPrice: string;
+  setMaxPrice: (value: string) => void;
 }
 
 export default function PropertySidebarFilters({
@@ -39,6 +44,10 @@ export default function PropertySidebarFilters({
   categoryOptions,
   filterCity,
   setFilterCity,
+  minPrice,
+  setMinPrice,
+  maxPrice,
+  setMaxPrice,
 }: PropertySidebarFiltersProps) {
   return (
     <Card className="shadow-lg rounded-xl sticky top-24">
@@ -93,35 +102,70 @@ export default function PropertySidebarFilters({
           </Select>
         </div>
 
-        <div>
-          <Label htmlFor="min-bedrooms" className="text-sm font-medium mb-1.5 flex items-center">
-            <Home className="h-4 w-4 mr-2 text-primary" />
-            Dormitorios (mín.)
-          </Label>
-          <Input
-            id="min-bedrooms"
-            type="number"
-            min="0"
-            placeholder="Ej: 2"
-            value={minBedrooms}
-            onChange={(e) => setMinBedrooms(e.target.value)}
-            className="h-9 text-sm"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="min-price" className="text-sm font-medium mb-1.5 flex items-center">
+              <DollarSign className="h-4 w-4 mr-1 text-primary" />
+              Precio Mín.
+            </Label>
+            <Input
+              id="min-price"
+              type="number"
+              min="0"
+              placeholder="Ej: 500000"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
+          <div>
+            <Label htmlFor="max-price" className="text-sm font-medium mb-1.5 flex items-center">
+              <DollarSign className="h-4 w-4 mr-1 text-primary" />
+              Precio Máx.
+            </Label>
+            <Input
+              id="max-price"
+              type="number"
+              min="0"
+              placeholder="Ej: 100000000"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
         </div>
-        <div>
-          <Label htmlFor="min-bathrooms" className="text-sm font-medium mb-1.5 flex items-center">
-            <Bath className="h-4 w-4 mr-2 text-primary" />
-            Baños (mín.)
-          </Label>
-          <Input
-            id="min-bathrooms"
-            type="number"
-            min="0"
-            placeholder="Ej: 1"
-            value={minBathrooms}
-            onChange={(e) => setMinBathrooms(e.target.value)}
-            className="h-9 text-sm"
-          />
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="min-bedrooms" className="text-sm font-medium mb-1.5 flex items-center">
+              <Home className="h-4 w-4 mr-1 text-primary" />
+              Dorms (mín.)
+            </Label>
+            <Input
+              id="min-bedrooms"
+              type="number"
+              min="0"
+              placeholder="Ej: 2"
+              value={minBedrooms}
+              onChange={(e) => setMinBedrooms(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
+          <div>
+            <Label htmlFor="min-bathrooms" className="text-sm font-medium mb-1.5 flex items-center">
+              <Bath className="h-4 w-4 mr-1 text-primary" />
+              Baños (mín.)
+            </Label>
+            <Input
+              id="min-bathrooms"
+              type="number"
+              min="0"
+              placeholder="Ej: 1"
+              value={minBathrooms}
+              onChange={(e) => setMinBathrooms(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
