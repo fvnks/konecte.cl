@@ -2,13 +2,6 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  compiler: {
-    styledComponents: {
-      ssr: true,
-      displayName: true,
-    },
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -30,7 +23,13 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'http', // Added for www.bukmy.cl as per the error
+        protocol: 'http',
+        hostname: 'www.bukmy.cl',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https', // Nueva regla añadida
         hostname: 'www.bukmy.cl',
         port: '',
         pathname: '/**',
@@ -49,3 +48,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
