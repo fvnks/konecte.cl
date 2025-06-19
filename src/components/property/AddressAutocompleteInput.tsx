@@ -71,10 +71,9 @@ export default function AddressAutocompleteInput({
 
   useEffect(() => {
     if (!GEOAPIFY_API_KEY) {
-      const errorMsg = "Servicio de direcciones no disponible (Error de Configuración API GEOAPIFY).";
+      const errorMsg = "Servicio de autocompletado no disponible. (Error de Configuración: GEOAPIFY_KEY)";
       console.error("[AddressAutocompleteInput CRITICAL] Geoapify API Key (NEXT_PUBLIC_GEOAPIFY_API_KEY) no está configurada.");
       setApiKeyError(errorMsg);
-      setFetchError(errorMsg); // Mostrarlo también en el desplegable si se intenta usar
     } else {
       setApiKeyError(null);
     }
@@ -84,29 +83,31 @@ export default function AddressAutocompleteInput({
     if (value !== inputValue) {
       setInputValue(value);
     }
-  }, [value, inputValue]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   const fetchSuggestions = useCallback(async (query: string) => {
-    if (!GEOAPIFY_API_KEY) {
-      // El error de API key ya se maneja en el useEffect inicial y se muestra.
-      // No es necesario setear fetchError aquí de nuevo para eso.
+    if (apiKeyError) {
+      setFetchError(apiKeyError);
       setIsLoading(false);
+      setShowSuggestionsDropdown(true);
       return;
     }
-    if (query.length < 3) {
+    if (!query || query.length < 3) {
       setSuggestions([]);
-      setShowSuggestionsDropdown(false);
       setIsLoading(false);
       setFetchError(null);
+      setShowSuggestionsDropdown(false);
       return;
     }
 
+    console.log(`[AddressAutocompleteInput] Fetching from Geoapify for: "${query}"`);
     setIsLoading(true);
     setFetchError(null);
-    setSuggestions([]); // Limpiar sugerencias anteriores antes de una nueva búsqueda
+    setShowSuggestionsDropdown(true); // Show dropdown for loading/results/error
 
     const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&filter=countrycode:cl&limit=5&apiKey=${GEOAPIFY_API_KEY}`;
-    console.log(`[AddressAutocompleteInput] Fetching from Geoapify for: "${query}" URL: ${url}`);
+    console.log(`[AddressAutocompleteInput] Fetch URL: ${url}`);
 
     try {
       const response = await fetch(url, { method: 'GET' });
@@ -119,24 +120,23 @@ export default function AddressAutocompleteInput({
           const errorData = JSON.parse(responseBodyText);
           errorDetail += errorData.message || errorData.error?.message || JSON.stringify(errorData.error) || response.statusText;
         } catch (parseErr) {
-          errorDetail += `Respuesta no es JSON: ${responseBodyText.substring(0, 100)}`;
+          errorDetail += `Respuesta no es JSON.`;
         }
-        console.error("[AddressAutocompleteInput ERROR] Geoapify API error details:", errorDetail);
+        console.error("[AddressAutocompleteInput ERROR] Geoapify API error:", errorDetail, "Raw Body:", responseBodyText.substring(0,200));
         throw new Error(errorDetail);
       }
+
       const data = JSON.parse(responseBodyText) as { features: GeoapifyFeature[] };
-      console.log(`[AddressAutocompleteInput] Geoapify response data.features count: ${data?.features?.length}`);
+      console.log(`[AddressAutocompleteInput] Geoapify response data for "${query}":`, data);
       if (data && Array.isArray(data.features)) {
         setSuggestions(data.features);
-        if (data.features.length === 0) {
-            console.log("[AddressAutocompleteInput] Geoapify returned 0 features for query:", query);
-        }
+        console.log(`[AddressAutocompleteInput] Features count: ${data.features.length}`);
       } else {
-        console.warn('[AddressAutocompleteInput WARN] Geoapify response "features" was not an array or data is null:', data);
+        console.warn('[AddressAutocompleteInput WARN] Geoapify response "features" not an array or data is null.');
         setSuggestions([]);
       }
     } catch (error: any) {
-      console.error("[AddressAutocompleteInput ERROR] Error fetching/processing Geoapify suggestions:", error.message, error);
+      console.error("[AddressAutocompleteInput ERROR] Error fetching/processing Geoapify:", error.message, error);
       setSuggestions([]);
       setFetchError(
         error.message.includes("Failed to fetch")
@@ -145,21 +145,24 @@ export default function AddressAutocompleteInput({
       );
     } finally {
       setIsLoading(false);
-      // Mantener el dropdown abierto si hay error o sugerencias (o si está cargando y luego da error)
-      setShowSuggestionsDropdown(true);
     }
-  }, []); // GEOAPIFY_API_KEY es constante de módulo, setters son estables.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKeyError]); // fetchSuggestions solo se recrea si apiKeyError cambia (lo cual es raro)
 
   useEffect(() => {
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+    
     if (inputValue && inputValue.length >= 3 && !disabled && !apiKeyError) {
-      debounceTimeoutRef.current = setTimeout(() => fetchSuggestions(inputValue), 500);
+      debounceTimeoutRef.current = setTimeout(() => {
+        fetchSuggestions(inputValue);
+      }, 500);
     } else {
-      setSuggestions([]);
-      if (inputValue.length < 3 && !apiKeyError) { // Solo ocultar si no hay error de API Key
-        setShowSuggestionsDropdown(false);
+      setSuggestions([]); // Limpiar sugerencias si el input es muy corto o está deshabilitado
+      if (inputValue.length < 3) {
+         setShowSuggestionsDropdown(false); // Ocultar si el texto es muy corto
+         setFetchError(null); // Limpiar errores si el usuario borra el texto
       }
-      if (isLoading) setIsLoading(false); // Detener carga si el input se acorta
+      if (isLoading) setIsLoading(false); // Asegurarse de que el loader se detenga
     }
     return () => { if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current); };
   }, [inputValue, fetchSuggestions, disabled, apiKeyError, isLoading]);
@@ -167,56 +170,51 @@ export default function AddressAutocompleteInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
     setInputValue(newInputValue);
-    onChange(newInputValue); // Propagar el valor sin procesar para la RHF y otros usos
-    
+    onChange(newInputValue); // Propagar el valor crudo para RHF
     if (newInputValue.length >= 3 && !apiKeyError) {
-      setFetchError(null); // Limpiar errores de fetch anteriores al empezar a escribir de nuevo
-      setShowSuggestionsDropdown(true);
-    } else if (newInputValue.length < 3) {
-      setShowSuggestionsDropdown(false);
-      setSuggestions([]);
+      // No es necesario llamar a setShowSuggestionsDropdown(true) aquí,
+      // el useEffect de debounce lo manejará o ya estará abierto si el usuario está escribiendo.
+      // Limpiar errores si se empieza a escribir de nuevo.
       setFetchError(null);
-      if (isLoading) setIsLoading(false);
+    } else if (newInputValue.length < 3) {
+      // El useEffect de debounce manejará la limpieza de sugerencias y el ocultamiento del dropdown
     }
   };
 
   const handleSelectSuggestion = (suggestion: GeoapifyFeature) => {
     const props = suggestion.properties;
     const fullAddress = props.formatted || props.address_line1 || props.name || '';
-    console.log("[AddressAutocompleteInput] Suggestion selected:", fullAddress, "Properties:", props);
-    setInputValue(fullAddress);
-    setSuggestions([]);
+    console.log("[AddressAutocompleteInput] Suggestion selected:", fullAddress, "Details:", props);
+    setInputValue(fullAddress); 
+    onChange(fullAddress, { 
+      city: props.city || props.town || props.village || props.county || props.suburb || props.district || props.state || '',
+      country: props.country || '',
+      lat: props.lat ?? suggestion.geometry?.coordinates[1],
+      lng: props.lon ?? suggestion.geometry?.coordinates[0]
+    });
     setShowSuggestionsDropdown(false);
+    setSuggestions([]);
     setFetchError(null);
-    const city = props.city || props.town || props.village || props.county || props.suburb || props.district || props.state || '';
-    const country = props.country || '';
-    const lat = props.lat ?? suggestion.geometry?.coordinates[1];
-    const lng = props.lon ?? suggestion.geometry?.coordinates[0];
-    onChange(fullAddress, { city, country, lat, lng });
   };
 
   const handleFocus = () => {
-    if (inputValue && inputValue.length >= 3 && !disabled && !apiKeyError) {
+    if (inputValue.length >= 3 && !disabled && !apiKeyError) {
       setShowSuggestionsDropdown(true);
-      if (!isLoading && suggestions.length === 0 && !fetchError) { // Si está vacío y sin error, intenta buscar
-        fetchSuggestions(inputValue);
-      }
     } else if (apiKeyError) {
-      setShowSuggestionsDropdown(true); // Mostrar el error de API Key si existe
+      setShowSuggestionsDropdown(true); // Mostrar para el error de API Key
     }
   };
-
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Retrasar el cierre para permitir clics en las sugerencias
+  
+  const handleBlur = () => {
     setTimeout(() => {
-      if (document.activeElement !== inputRef.current &&
-          (!commandListRef.current || !commandListRef.current.contains(document.activeElement))) {
-        setShowSuggestionsDropdown(false);
+      if (commandListRef.current && !commandListRef.current.contains(document.activeElement)) {
+         setShowSuggestionsDropdown(false);
       }
     }, 150);
   };
-
-  const shouldRenderCommandList = showSuggestionsDropdown && (inputValue.length >= 3 || fetchError || apiKeyError) && !disabled;
+  
+  const shouldRenderCommandList = showSuggestionsDropdown && !disabled;
+  console.log(`[AddressAutocompleteInput RENDER] inputValue: "${inputValue}", isLoading: ${isLoading}, fetchError: "${fetchError}", suggestions: ${suggestions.length}, showSuggestionsDropdown: ${showSuggestionsDropdown}, apiKeyError: ${apiKeyError}`);
 
   return (
     <Command shouldFilter={false} className={cn("relative", className)}>
@@ -234,11 +232,14 @@ export default function AddressAutocompleteInput({
           aria-label="Dirección"
           autoComplete="off"
         />
-        {(isLoading && inputValue.length >=3 && !apiKeyError && !fetchError) && (
+        {(isLoading && !apiKeyError && !fetchError && inputValue.length >=3) && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
         )}
-        {(fetchError && !isLoading && (apiKeyError || inputValue.length >=3)) && ( // Mostrar error si hay texto o error de API Key
+        {(fetchError && !apiKeyError && !isLoading && inputValue.length >=3) && (
             <AlertTriangle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" title={fetchError} />
+        )}
+        {(apiKeyError && !isLoading) && (
+            <AlertTriangle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" title={apiKeyError} />
         )}
       </div>
 
@@ -248,12 +249,16 @@ export default function AddressAutocompleteInput({
           className="absolute z-[51] top-full mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto"
           tabIndex={-1}
         >
-          {isLoading && !fetchError ? ( // Mostrar carga solo si no hay error de fetch aún
+          {isLoading && !fetchError && !apiKeyError ? (
             <div className="p-3 text-center text-sm text-muted-foreground flex items-center justify-center">
               <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />
-              Buscando...
+              Buscando direcciones...
             </div>
-          ) : fetchError ? ( // Mostrar error si existe (incluye apiKeyError)
+          ) : apiKeyError ? (
+             <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive whitespace-normal">
+                <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {apiKeyError}
+            </CommandEmpty>
+          ) : fetchError ? (
             <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive whitespace-normal">
                 <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {fetchError}
             </CommandEmpty>
@@ -265,7 +270,7 @@ export default function AddressAutocompleteInput({
                   value={feature.properties.formatted || feature.properties.address_line1 || feature.properties.name || `value-${index}`}
                   onSelect={() => handleSelectSuggestion(feature)}
                   className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
-                  tabIndex={0} // Hacerlo enfocable para teclado
+                  tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectSuggestion(feature); }}
                 >
                   <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
@@ -273,18 +278,20 @@ export default function AddressAutocompleteInput({
                 </CommandItem>
               ))}
             </CommandGroup>
-          ) : ( // No cargando, sin error, pero 0 sugerencias
+          ) : (
             <CommandEmpty className="py-3 px-2.5 text-center text-sm">
-                No se encontraron resultados para "{inputValue}" en Chile.
+                {inputValue.length >=3 ? `No se encontraron resultados para "${inputValue}" en Chile.` : "Escribe al menos 3 caracteres para buscar."}
             </CommandEmpty>
           )}
         </CommandList>
       )}
-      {apiKeyError && !fetchError && !showSuggestionsDropdown && ( // Mostrar error de API Key si no hay otro error y el dropdown está cerrado
-        <p className="text-xs text-destructive mt-1">
-          <AlertTriangle className="inline-block h-3 w-3 mr-1"/> {apiKeyError}
+      {/* Error persistente de API Key si el dropdown está cerrado */}
+      {apiKeyError && !showSuggestionsDropdown && (
+        <p className="text-xs text-destructive mt-1 flex items-center">
+          <AlertTriangle className="h-3 w-3 mr-1"/> {apiKeyError}
         </p>
       )}
     </Command>
   );
 }
+
