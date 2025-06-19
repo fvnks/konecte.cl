@@ -49,25 +49,25 @@ export default function AddressAutocompleteInput({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const commandListRef = useRef<HTMLDivElement>(null); // Ref for CommandList
+  const commandListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (value !== inputValue) {
       setInputValue(value);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]); // Only re-sync if the external value prop changes
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 3) {
       setSuggestions([]);
       setFetchError(null);
-      setIsLoading(false); 
+      setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
-    setFetchError(null);
+    setFetchError(null); // Clear previous errors before a new fetch
 
     // console.log(`[AddressAutocompleteInput] Fetching for: ${query}`);
     try {
@@ -87,14 +87,14 @@ export default function AddressAutocompleteInput({
                 if (errorData && errorData.error && errorData.error.message) {
                     errorDetail += ` - ${errorData.error.message}`;
                 } else if (errorData && errorData.error) {
-                    errorDetail += ` - ${JSON.stringify(errorData.error)}`; 
+                     errorDetail += ` - ${JSON.stringify(errorData.error)}`; 
                 } else {
                      errorDetail += ` - Respuesta: ${errorDataText.substring(0,100)}...`;
                 }
             } catch (parseErr) {
                  errorDetail += ` - Respuesta (no JSON): ${errorDataText.substring(0,100)}...`;
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) { /* ignore if response text cannot be read */ }
         throw new Error(errorDetail);
       }
       const data = await response.json();
@@ -102,7 +102,7 @@ export default function AddressAutocompleteInput({
 
       if (Array.isArray(data)) {
         setSuggestions(data as NominatimSuggestion[]);
-        setFetchError(null);
+        setFetchError(null); // Clear any previous fetch error
       } else {
         // console.warn('[AddressAutocompleteInput] Nominatim response was not an array as expected:', data);
         setSuggestions([]);
@@ -117,7 +117,8 @@ export default function AddressAutocompleteInput({
     } finally {
       setIsLoading(false);
     }
-  }, []); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Dependencies are minimal and stable
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -125,10 +126,10 @@ export default function AddressAutocompleteInput({
         fetchSuggestions(inputValue);
       } else {
         setSuggestions([]);
-        if(isLoading){ setIsLoading(false); }
+        if(isLoading){ setIsLoading(false); } // Stop loading if input becomes too short
         setFetchError(null);
       }
-    }, 500); 
+    }, 500); // Debounce time
 
     return () => {
       clearTimeout(handler);
@@ -138,10 +139,10 @@ export default function AddressAutocompleteInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
     setInputValue(newInputValue);
-    onChange(newInputValue); 
+    onChange(newInputValue); // Update form field immediately for control by RHF
     if (newInputValue.length >= 3) {
-      setFetchError(null); 
-      setShowSuggestions(true); 
+      setFetchError(null); // Clear error on new input
+      setShowSuggestions(true); // Show suggestions when user starts typing valid query
     } else {
       setShowSuggestions(false);
       setSuggestions([]);
@@ -152,7 +153,7 @@ export default function AddressAutocompleteInput({
 
   const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
     const fullAddress = suggestion.display_name;
-    setInputValue(fullAddress); 
+    setInputValue(fullAddress); // Update local input state
     setSuggestions([]);
     setShowSuggestions(false);
     setFetchError(null);
@@ -162,11 +163,10 @@ export default function AddressAutocompleteInput({
     const lat = parseFloat(suggestion.lat);
     const lng = parseFloat(suggestion.lon);
 
-    onChange(fullAddress, { city, country, lat, lng });
+    onChange(fullAddress, { city, country, lat, lng }); // Propagate to form
   };
 
-  // Diagnostic log
-  // console.log("[AddressAutocompleteInput RENDER] Conditions Met. Suggestions:", suggestions, "isLoading:", isLoading, "fetchError:", fetchError, "showSuggestions:", showSuggestions);
+  // console.log("[AddressAutocompleteInput RENDER] inputValue:", `"${inputValue}"`, "isLoading:", isLoading, "fetchError:", fetchError, "showSuggestions:", showSuggestions, "suggestions.length:", suggestions.length);
 
   return (
     <Command shouldFilter={false} className={cn("relative", className)}>
@@ -178,11 +178,11 @@ export default function AddressAutocompleteInput({
           onChange={handleInputChange}
           onFocus={() => {
             if (inputValue.length >= 3) {
-              setShowSuggestions(true); 
+              setShowSuggestions(true);
               // If suggestions are empty and no error/loading, maybe re-fetch
-              // if (suggestions.length === 0 && !fetchError && !isLoading) {
-              //   fetchSuggestions(inputValue);
-              // }
+              if (suggestions.length === 0 && !fetchError && !isLoading) {
+                fetchSuggestions(inputValue);
+              }
             }
           }}
           placeholder={placeholder}
@@ -207,21 +207,21 @@ export default function AddressAutocompleteInput({
               "absolute z-[1001] top-full mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto"
             )}
           >
-            {isLoading && !fetchError ? (
+            {fetchError && !isLoading ? (
+              <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive">
+                  <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {fetchError}
+              </CommandEmpty>
+            ) : isLoading ? (
               <div className="p-3 text-center text-sm text-muted-foreground flex items-center justify-center">
                 <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />
                 Buscando direcciones...
               </div>
-            ) : fetchError ? (
-              <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive">
-                  <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {fetchError}
-              </CommandEmpty>
             ) : suggestions.length > 0 ? (
-              <CommandGroup>
+              <CommandGroup heading={suggestions.length > 1 ? `${suggestions.length} sugerencias encontradas:` : `1 sugerencia encontrada:`} >
                 {suggestions.map((suggestion) => (
                   <CommandItem
                     key={suggestion.place_id}
-                    value={suggestion.display_name} // cmdk uses this for internal filtering if enabled
+                    value={suggestion.display_name}
                     onSelect={() => handleSelectSuggestion(suggestion)}
                     className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
                   >
@@ -236,6 +236,7 @@ export default function AddressAutocompleteInput({
               </CommandEmpty>
             )}
           </CommandList>
+          {/* Click outside detector */}
           <div
               className="fixed inset-0 z-[1000]" 
               onClick={() => {
@@ -248,3 +249,4 @@ export default function AddressAutocompleteInput({
     </Command>
   );
 }
+
