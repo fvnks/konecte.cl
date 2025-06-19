@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus, MailQuestion, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'; // Added SheetDescription
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { useRouter } from 'next/navigation';
@@ -516,4 +516,3 @@ export default function Navbar() {
     </>
   );
 }
-
