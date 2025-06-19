@@ -1,4 +1,3 @@
-
 // src/components/property/AddressAutocompleteInput.tsx
 'use client';
 
@@ -50,37 +49,38 @@ export default function AddressAutocompleteInput({
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Sync inputValue with external value prop, but only if it's different.
-    // This prevents resetting inputValue if onChange updates the parent state which then updates `value`.
     if (value !== inputValue) {
       setInputValue(value);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]); // Only depend on external value prop
+  }, [value]);
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 3) {
       setSuggestions([]);
-      setShowSuggestions(false);
+      // setShowSuggestions(false); // Don't hide if it was just opened by focus/typing
       setFetchError(null);
-      setIsLoading(false); // Ensure loader is off if query becomes too short
+      setIsLoading(false);
       return;
     }
+
     setIsLoading(true);
     setFetchError(null);
+    setShowSuggestions(true); // Show suggestions panel for loading state
+
+    // console.log(`[AddressAutocompleteInput] Fetching for: ${query}`);
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&countrycodes=cl&limit=5&addressdetails=1`
       );
       
-      console.log(`Nominatim API request for: "${query}" - Status: ${response.status}`);
+      // console.log(`Nominatim API request for: "${query}" - Status: ${response.status}`);
 
       if (!response.ok) {
         let errorDetail = `Error ${response.status}: ${response.statusText}`;
         try {
             const errorDataText = await response.text();
-            console.error("Nominatim API error response text:", errorDataText);
-            // Attempt to parse as JSON if possible, otherwise use text
+            // console.error("Nominatim API error response text:", errorDataText);
             try {
                 const errorData = JSON.parse(errorDataText);
                 if (errorData && errorData.error && errorData.error.message) {
@@ -88,38 +88,29 @@ export default function AddressAutocompleteInput({
                 } else if (errorData && errorData.error) {
                     errorDetail += ` - ${JSON.stringify(errorData.error)}`;
                 } else {
-                    errorDetail += ` - Respuesta: ${errorDataText.substring(0,100)}...`;
+                     errorDetail += ` - Respuesta: ${errorDataText.substring(0,100)}...`;
                 }
             } catch (parseErr) {
                  errorDetail += ` - Respuesta (no JSON): ${errorDataText.substring(0,100)}...`;
             }
-        } catch (e) {
-            // Fallback if .text() fails, though unlikely for !response.ok
-        }
+        } catch (e) { /* ignore */ }
         throw new Error(errorDetail);
       }
       const data = await response.json();
-      console.log('Nominatim API response data:', data);
+      // console.log('Nominatim API response data:', data);
 
       if (Array.isArray(data)) {
         setSuggestions(data as NominatimSuggestion[]);
       } else {
         console.warn('Nominatim response was not an array as expected:', data);
         setSuggestions([]);
-        // setFetchError("Respuesta inesperada del servicio de direcciones."); // Optionally set error
       }
-
-      if (query.length >= 3) { // Only show suggestions if query is still valid
-          setShowSuggestions(true);
-      }
-
     } catch (error: any) {
-      console.error("Error fetching/processing Nominatim suggestions:", error.message, error);
+      console.error("Error fetching/processing Nominatim suggestions:", error.message);
       setSuggestions([]);
-      setFetchError(error.message || "No se pudieron cargar las sugerencias. Verifica tu conexión o inténtalo más tarde.");
-      if (query.length >=3) { // Show error message in dropdown if applicable
-          setShowSuggestions(true);
-      }
+      setFetchError(error.message.includes("Failed to fetch") 
+        ? "Error de red. No se pudo conectar al servicio de direcciones." 
+        : (error.message || "No se pudieron cargar las sugerencias."));
     } finally {
       setIsLoading(false);
     }
@@ -133,23 +124,22 @@ export default function AddressAutocompleteInput({
         setSuggestions([]);
         setShowSuggestions(false);
         setFetchError(null);
-        setIsLoading(false); // Explicitly set loading to false here
+        setIsLoading(false);
       }
-    }, 500); // Debounce time
+    }, 500);
 
     return () => {
       clearTimeout(handler);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputValue, fetchSuggestions]); // Removed isLoading from here
+  }, [inputValue, fetchSuggestions]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
     setInputValue(newInputValue);
-    onChange(newInputValue); // Propagate change up immediately for uncontrolled behavior if needed
+    onChange(newInputValue); 
     if (newInputValue.length >= 3) {
-      setFetchError(null); // Clear previous errors when user types more
-      // setShowSuggestions(true); // Let useEffect handle showing suggestions via fetch
+      setFetchError(null); 
+      setShowSuggestions(true); // Keep suggestions open or open them if typing leads to valid length
     } else {
       setShowSuggestions(false);
       setSuggestions([]);
@@ -159,7 +149,7 @@ export default function AddressAutocompleteInput({
 
   const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
     const fullAddress = suggestion.display_name;
-    setInputValue(fullAddress);
+    setInputValue(fullAddress); // Update input field text
     setSuggestions([]);
     setShowSuggestions(false);
     setFetchError(null);
@@ -180,11 +170,10 @@ export default function AddressAutocompleteInput({
           value={inputValue}
           onChange={handleInputChange}
           onFocus={() => {
-            if (inputValue.length >= 3 && (suggestions.length > 0 || isLoading || fetchError)) {
+            if (inputValue.length >= 3) { // Only show if there's enough text to potentially have results/loading/error
               setShowSuggestions(true);
             }
           }}
-          // onBlur={() => setTimeout(() => setShowSuggestions(false), 150)} // Delay to allow click on suggestions
           placeholder={placeholder}
           disabled={disabled}
           className="pl-10"
@@ -200,7 +189,7 @@ export default function AddressAutocompleteInput({
       </div>
 
       {showSuggestions && inputValue.length >=3 && (
-        <CommandList className="absolute z-50 top-full mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto">
+        <CommandList className="absolute z-[9999] top-full mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto">
           {isLoading ? (
             <div className="p-3 text-center text-sm text-muted-foreground flex items-center justify-center">
               <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />
@@ -215,7 +204,7 @@ export default function AddressAutocompleteInput({
               {suggestions.map((suggestion) => (
                 <CommandItem
                   key={suggestion.place_id}
-                  value={suggestion.display_name}
+                  value={suggestion.display_name} // Used by CMDK for navigation/selection
                   onSelect={() => handleSelectSuggestion(suggestion)}
                   className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
                 >
@@ -231,7 +220,7 @@ export default function AddressAutocompleteInput({
       )}
       {showSuggestions && inputValue.length >=3 && (
         <div
-            className="fixed inset-0 z-40" // Lower z-index than CommandList
+            className="fixed inset-0 z-[9998]" // Lower z-index than CommandList
             onClick={() => setShowSuggestions(false)}
             aria-hidden="true"
         />
@@ -239,5 +228,3 @@ export default function AddressAutocompleteInput({
     </Command>
   );
 }
-
-    
