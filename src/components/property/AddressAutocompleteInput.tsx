@@ -42,23 +42,21 @@ export default function AddressAutocompleteInput({
   className,
   disabled = false,
 }: AddressAutocompleteInputProps) {
-  const [inputValue, setInputValue] = useState(value); // Estado local para el input
+  const [inputValue, setInputValue] = useState(value);
   const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false); // Control explícito de visibilidad
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Sincronizar inputValue con el value externo si cambia (ej. al resetear el formulario)
   useEffect(() => {
     if (value !== inputValue) {
       setInputValue(value);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]); // No incluir inputValue aquí para evitar bucles si onChange actualiza value inmediatamente
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 3) {
       setSuggestions([]);
-      setShowSuggestions(false); // Ocultar si la query es muy corta
+      setShowSuggestions(false);
       return;
     }
     setIsLoading(true);
@@ -71,9 +69,7 @@ export default function AddressAutocompleteInput({
       }
       const data: NominatimSuggestion[] = await response.json();
       setSuggestions(data);
-      // Mantener las sugerencias visibles si estamos cargando y ya había algunas,
-      // o si hemos recibido nuevas sugerencias.
-      setShowSuggestions(data.length > 0 || (isLoading && suggestions.length > 0));
+      setShowSuggestions(data.length > 0 || (isLoading && suggestions.length > 0 && inputValue.length >=3));
     } catch (error) {
       console.error("Error fetching Nominatim suggestions:", error);
       setSuggestions([]);
@@ -81,9 +77,8 @@ export default function AddressAutocompleteInput({
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, suggestions.length]); // dependencias para useCallback
+  }, [inputValue]); // Depender de inputValue para la lógica de fetch
 
-  // Debounce para la función fetchSuggestions
   useEffect(() => {
     const handler = setTimeout(() => {
       if (inputValue.length >= 3) {
@@ -92,20 +87,19 @@ export default function AddressAutocompleteInput({
         setSuggestions([]);
         setShowSuggestions(false);
       }
-    }, 500); // 500ms debounce
+    }, 500);
 
     return () => {
       clearTimeout(handler);
     };
-  }, [inputValue, fetchSuggestions]); // Depender de inputValue para activar el debounce
+  }, [inputValue, fetchSuggestions]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
-    setInputValue(newInputValue); // Actualizar estado local del input
-    onChange(newInputValue); // Propagar cambio al formulario principal para mantenerlo sincronizado
+    setInputValue(newInputValue);
+    onChange(newInputValue); 
     if (newInputValue.length >= 3) {
-      // fetchSuggestions se disparará por el useEffect que depende de inputValue
-       setShowSuggestions(true); // Asegurarse de que el panel sea visible
+       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);
       setSuggestions([]);
@@ -114,16 +108,15 @@ export default function AddressAutocompleteInput({
 
   const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
     const fullAddress = suggestion.display_name;
-    setInputValue(fullAddress); // Actualizar el input visualmente
-    setSuggestions([]); // Limpiar sugerencias
-    setShowSuggestions(false); // Ocultar panel
+    setInputValue(fullAddress);
+    setSuggestions([]);
+    setShowSuggestions(false);
 
     const city = suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.address?.county || '';
     const country = suggestion.address?.country || '';
     const lat = parseFloat(suggestion.lat);
     const lng = parseFloat(suggestion.lon);
     
-    // Llamar al onChange del formulario principal con la dirección completa y detalles
     onChange(fullAddress, { city, country, lat, lng });
   };
 
@@ -132,21 +125,20 @@ export default function AddressAutocompleteInput({
       <div className="relative">
         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <Input
-          value={inputValue} // Usar inputValue para el input visual
+          value={inputValue}
           onChange={handleInputChange}
           onFocus={() => { 
             if (inputValue.length >=3 && suggestions.length > 0) {
               setShowSuggestions(true);
             }
           }}
-          // onBlur es manejado por el div overlay de abajo para cerrar el CommandList
           placeholder={placeholder}
           disabled={disabled}
           className="pl-10"
           aria-label="Dirección"
-          autoComplete="off" // Desactivar autocompletado del navegador
+          autoComplete="off"
         />
-        {isLoading && inputValue.length >=3 && ( // Mostrar loader solo si se está buscando activamente
+        {isLoading && inputValue.length >=3 && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
         )}
       </div>
@@ -154,12 +146,12 @@ export default function AddressAutocompleteInput({
       {showSuggestions && (suggestions.length > 0 || (isLoading && inputValue.length >=3) ) && (
         <CommandList className="absolute z-50 top-full mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto">
           {isLoading && suggestions.length === 0 && inputValue.length >=3 ? ( 
-            <div className="p-2 text-center text-sm text-muted-foreground">
+            <div className="p-3 text-center text-sm text-muted-foreground flex items-center justify-center">
               <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />
               Buscando direcciones...
             </div>
           ) : !isLoading && suggestions.length === 0 && inputValue.length >=3 ? ( 
-            <CommandEmpty>No se encontraron resultados para "{inputValue}" en Chile.</CommandEmpty>
+            <CommandEmpty className="py-3 px-2 text-center">No se encontraron resultados para "{inputValue}" en Chile.</CommandEmpty>
           ) : (
             <CommandGroup>
               {suggestions.map((suggestion) => (
@@ -167,9 +159,9 @@ export default function AddressAutocompleteInput({
                   key={suggestion.place_id}
                   value={suggestion.display_name} 
                   onSelect={() => handleSelectSuggestion(suggestion)}
-                  className="cursor-pointer flex items-start gap-2 text-sm"
+                  className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
                 >
-                  <MapPin className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
+                  <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                   <span className="flex-1">{suggestion.display_name}</span>
                 </CommandItem>
               ))}
@@ -177,7 +169,6 @@ export default function AddressAutocompleteInput({
           )}
         </CommandList>
       )}
-      {/* Div para cerrar el dropdown si se hace clic afuera */}
       {showSuggestions && (suggestions.length > 0 || (isLoading && inputValue.length >=3)) && (
         <div 
             className="fixed inset-0 z-40" 
