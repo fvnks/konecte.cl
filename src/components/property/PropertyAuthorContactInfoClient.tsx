@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import type { User as StoredUser } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Phone, UserCircle, ShieldCheck, CalendarDays, Eye, Lock, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Mail, Phone, UserCircle, ShieldCheck, CalendarDays, Eye, Lock, MessageSquare, AlertTriangle, Loader2 } from 'lucide-react'; // Added Loader2
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
