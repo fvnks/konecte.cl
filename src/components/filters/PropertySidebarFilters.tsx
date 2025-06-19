@@ -4,16 +4,26 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Home, Bath, ParkingCircle } from 'lucide-react'; // Considerar iconos
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { PropertyType, ListingCategory } from '@/lib/types';
+import { Home, Bath, Tag, Filter, Building as BuildingIcon } from 'lucide-react'; 
 
 interface PropertySidebarFiltersProps {
   minBedrooms: string;
   setMinBedrooms: (value: string) => void;
   minBathrooms: string;
   setMinBathrooms: (value: string) => void;
-  // Aquí se podrían añadir más props para otros filtros como estacionamiento, piscina, etc.
-  // features: string[];
-  // setFeatures: (features: string[]) => void;
+  
+  filterPropertyType: PropertyType | 'all';
+  setFilterPropertyType: (value: PropertyType | 'all') => void;
+  propertyTypeOptions: { value: PropertyType | 'all'; label: string }[];
+  
+  filterCategory: ListingCategory | 'all';
+  setFilterCategory: (value: ListingCategory | 'all') => void;
+  categoryOptions: { value: ListingCategory | 'all'; label: string }[];
+  
+  filterCity: string;
+  setFilterCity: (value: string) => void;
 }
 
 export default function PropertySidebarFilters({
@@ -21,13 +31,68 @@ export default function PropertySidebarFilters({
   setMinBedrooms,
   minBathrooms,
   setMinBathrooms,
+  filterPropertyType,
+  setFilterPropertyType,
+  propertyTypeOptions,
+  filterCategory,
+  setFilterCategory,
+  categoryOptions,
+  filterCity,
+  setFilterCity,
 }: PropertySidebarFiltersProps) {
   return (
-    <Card className="shadow-lg rounded-xl sticky top-24"> {/* sticky top para que se quede visible al hacer scroll */}
+    <Card className="shadow-lg rounded-xl sticky top-24">
       <CardHeader className="border-b">
-        <CardTitle className="text-lg font-semibold">Filtros Adicionales</CardTitle>
+        <CardTitle className="text-lg font-semibold flex items-center">
+          <Filter className="h-5 w-5 mr-2 text-primary" />
+          Filtrar Propiedades
+        </CardTitle>
       </CardHeader>
       <CardContent className="p-4 space-y-5">
+        <div>
+          <Label htmlFor="filter-city" className="text-sm font-medium mb-1.5 flex items-center">
+            <MapPin className="h-4 w-4 mr-2 text-primary" />
+            Ciudad/Comuna
+          </Label>
+          <Input
+            id="filter-city"
+            placeholder="Ej: Santiago, Las Condes"
+            value={filterCity}
+            onChange={(e) => setFilterCity(e.target.value)}
+            className="h-9 text-sm"
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="filter-property-type" className="text-sm font-medium mb-1.5 flex items-center">
+            <Tag className="h-4 w-4 mr-2 text-primary" />
+            Tipo de Transacción
+          </Label>
+          <Select value={filterPropertyType} onValueChange={setFilterPropertyType}>
+            <SelectTrigger id="filter-property-type" className="h-9 text-sm">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              {propertyTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value} className="text-sm">{opt.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label htmlFor="filter-category" className="text-sm font-medium mb-1.5 flex items-center">
+            <BuildingIcon className="h-4 w-4 mr-2 text-primary" />
+            Categoría de Propiedad
+          </Label>
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger id="filter-category" className="h-9 text-sm">
+              <SelectValue placeholder="Categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              {categoryOptions.map(opt => <SelectItem key={opt.value} value={opt.value} className="text-sm">{opt.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div>
           <Label htmlFor="min-bedrooms" className="text-sm font-medium mb-1.5 flex items-center">
             <Home className="h-4 w-4 mr-2 text-primary" />
@@ -58,27 +123,8 @@ export default function PropertySidebarFilters({
             className="h-9 text-sm"
           />
         </div>
-
-        {/* Ejemplo de cómo se podría añadir un filtro para "Estacionamiento" (requeriría lógica adicional) */}
-        {/*
-        <div className="flex items-center space-x-2 pt-2">
-          <Checkbox
-            id="has-parking"
-            // checked={features.includes('Estacionamiento')}
-            // onCheckedChange={(checked) => {
-            //   const newFeatures = checked
-            //     ? [...features, 'Estacionamiento']
-            //     : features.filter(f => f !== 'Estacionamiento');
-            //   setFeatures(newFeatures);
-            // }}
-          />
-          <Label htmlFor="has-parking" className="text-sm font-medium flex items-center cursor-pointer">
-            <ParkingCircle className="h-4 w-4 mr-2 text-primary" />
-            Con Estacionamiento
-          </Label>
-        </div>
-        */}
       </CardContent>
     </Card>
   );
 }
+

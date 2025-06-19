@@ -12,8 +12,9 @@ import { Filter, ListFilter, Search, Building, Loader2, RotateCcw } from "lucide
 import { getPropertiesAction, type GetPropertiesActionOptions } from "@/actions/propertyActions";
 import type { PropertyListing, PropertyType, ListingCategory } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
-import PropertySidebarFilters from '@/components/filters/PropertySidebarFilters'; // Nuevo import
+import PropertySidebarFilters from '@/components/filters/PropertySidebarFilters';
 
+// Opciones para los Select que se pasarán al sidebar
 const propertyTypeOptions: { value: PropertyType | 'all'; label: string }[] = [
   { value: 'all', label: 'Todos los Tipos' },
   { value: 'rent', label: 'Arriendo' },
@@ -44,14 +45,14 @@ export default function PropertiesPage() {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  // Estado para los filtros superiores
+  // Filtros superiores (búsqueda y orden)
   const [searchTerm, setSearchTerm] = useState('');
+  const [orderBy, setOrderBy] = useState<GetPropertiesActionOptions['orderBy']>('createdAt_desc');
+
+  // Filtros laterales (ahora manejados aquí y pasados a PropertySidebarFilters)
   const [filterPropertyType, setFilterPropertyType] = useState<PropertyType | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<ListingCategory | 'all'>('all');
   const [filterCity, setFilterCity] = useState('');
-  const [orderBy, setOrderBy] = useState<GetPropertiesActionOptions['orderBy']>('createdAt_desc');
-
-  // Estado para filtros laterales
   const [minBedrooms, setMinBedrooms] = useState<string>('');
   const [minBathrooms, setMinBathrooms] = useState<string>('');
 
@@ -82,10 +83,9 @@ export default function PropertiesPage() {
   }, [searchTerm, filterPropertyType, filterCategory, filterCity, orderBy, minBedrooms, minBathrooms, toast]);
 
   useEffect(() => {
-    // Carga inicial
     fetchProperties();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Se ejecuta solo al montar inicialmente para la carga inicial
+  }, []); 
 
   const handleApplyFilters = () => {
     startTransition(() => {
@@ -95,10 +95,10 @@ export default function PropertiesPage() {
   
   const handleResetFilters = () => {
     setSearchTerm('');
+    setOrderBy('createdAt_desc');
     setFilterPropertyType('all');
     setFilterCategory('all');
     setFilterCity('');
-    setOrderBy('createdAt_desc');
     setMinBedrooms('');
     setMinBathrooms('');
     startTransition(() => {
@@ -122,74 +122,46 @@ export default function PropertiesPage() {
       </section>
 
       <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-        {/* Columna de Filtros Laterales */}
-        <aside className="w-full md:w-1/4 lg:w-1/5 space-y-6">
+        <aside className="w-full md:w-1/3 lg:w-1/4 space-y-6">
           <PropertySidebarFilters
             minBedrooms={minBedrooms}
             setMinBedrooms={setMinBedrooms}
             minBathrooms={minBathrooms}
             setMinBathrooms={setMinBathrooms}
+            filterPropertyType={filterPropertyType}
+            setFilterPropertyType={setFilterPropertyType}
+            propertyTypeOptions={propertyTypeOptions}
+            filterCategory={filterCategory}
+            setFilterCategory={setFilterCategory}
+            categoryOptions={categoryOptions}
+            filterCity={filterCity}
+            setFilterCity={setFilterCity}
           />
         </aside>
 
-        {/* Columna Principal (Filtros superiores y listado) */}
         <div className="flex-1 space-y-6">
           <Card className="shadow-lg rounded-xl">
             <CardHeader className="border-b">
               <CardTitle className="text-xl font-semibold flex items-center">
                 <Filter className="mr-2 h-5 w-5 text-primary" />
-                Filtros Rápidos y Búsqueda
+                Búsqueda y Orden
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end"> {/* Cambiado lg:grid-cols-4 a lg:grid-cols-3 */}
-                <div className="lg:col-span-1"> {/* Ajustado para ocupar el espacio disponible */}
-                  <label htmlFor="search-term" className="block text-sm font-medium text-muted-foreground mb-1">Buscar</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                <div>
+                  <label htmlFor="search-term" className="block text-sm font-medium text-muted-foreground mb-1">Buscar por Palabra Clave</label>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="search-term"
                       type="search"
-                      placeholder="Título, descripción, ciudad..."
+                      placeholder="Título, descripción..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-9"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label htmlFor="property-type" className="block text-sm font-medium text-muted-foreground mb-1">Tipo Transacción</label>
-                  <Select value={filterPropertyType} onValueChange={(value) => setFilterPropertyType(value as PropertyType | 'all')}>
-                    <SelectTrigger id="property-type">
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {propertyTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label htmlFor="category" className="block text-sm font-medium text-muted-foreground mb-1">Categoría</label>
-                  <Select value={filterCategory} onValueChange={(value) => setFilterCategory(value as ListingCategory | 'all')}>
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoryOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-muted-foreground mb-1">Ciudad/Comuna</label>
-                  <Input
-                    id="city"
-                    placeholder="Ej: Valparaíso"
-                    value={filterCity}
-                    onChange={(e) => setFilterCity(e.target.value)}
-                  />
                 </div>
                  <div>
                     <label htmlFor="order-by" className="block text-sm font-medium text-muted-foreground mb-1">Ordenar Por</label>
@@ -207,11 +179,11 @@ export default function PropertiesPage() {
               <div className="flex flex-col sm:flex-row justify-end items-end gap-4 pt-4 border-t">
                 <div className="flex gap-2 w-full sm:w-auto">
                   <Button onClick={handleResetFilters} variant="outline" className="w-full sm:w-auto" disabled={isPending || isLoading}>
-                    <RotateCcw className="mr-2 h-4 w-4" /> Reiniciar Todo
+                    <RotateCcw className="mr-2 h-4 w-4" /> Reiniciar Filtros
                   </Button>
                   <Button onClick={handleApplyFilters} className="w-full sm:w-auto" disabled={isPending || isLoading}>
                     {isPending || isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                    Aplicar Filtros
+                    Buscar Propiedades
                   </Button>
                 </div>
               </div>
