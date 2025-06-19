@@ -1,3 +1,4 @@
+
 // src/components/property/AddressAutocompleteInput.tsx
 'use client';
 
@@ -5,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { MapPin, Loader2, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
+import { MapPin, Loader2, AlertTriangle } from 'lucide-react';
 
 interface NominatimSuggestion {
   place_id: number;
@@ -46,65 +47,76 @@ export default function AddressAutocompleteInput({
   const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null); // State for fetch errors
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Only update inputValue if the external value prop changes and is different.
     if (value !== inputValue) {
       setInputValue(value);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]); // Only depend on the external value
+  }, [value]);
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 3) {
       setSuggestions([]);
       setShowSuggestions(false);
-      setFetchError(null); // Clear previous errors
+      setFetchError(null);
       return;
     }
     setIsLoading(true);
-    setFetchError(null); // Clear previous errors before new fetch
+    setFetchError(null);
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&countrycodes=cl&limit=5&addressdetails=1`
       );
+      
+      console.log(`Nominatim API request for: "${query}" - Status: ${response.status}`); // Log request and status
+
       if (!response.ok) {
-        // Try to get more info from the response if it's not ok
         let errorDetail = `Error ${response.status}: ${response.statusText}`;
         try {
-            const errorData = await response.json();
+            const errorDataText = await response.text();
+            console.error("Nominatim API error response text:", errorDataText);
+            const errorData = JSON.parse(errorDataText); // Attempt to parse, might fail if not JSON
             if (errorData && errorData.error && errorData.error.message) {
                 errorDetail += ` - ${errorData.error.message}`;
             } else if (errorData && errorData.error) {
                 errorDetail += ` - ${JSON.stringify(errorData.error)}`;
+            } else {
+                errorDetail += ` - Respuesta: ${errorDataText.substring(0,100)}...`;
             }
         } catch (e) {
-            // Ignore if response is not JSON or if response.json() itself fails
             console.warn("Could not parse error response from Nominatim as JSON.");
         }
-        console.error("Nominatim API error:", errorDetail);
         throw new Error(`Error al obtener sugerencias (${response.status})`);
       }
-      const data: NominatimSuggestion[] = await response.json();
-      setSuggestions(data);
-      if (query.length >= 3) { // Ensure query is still relevant
+      const data = await response.json();
+      console.log('Nominatim API response data:', data); // Log the actual data received
+
+      if (Array.isArray(data)) {
+        setSuggestions(data as NominatimSuggestion[]);
+      } else {
+        console.warn('Nominatim response was not an array:', data);
+        setSuggestions([]);
+        // Potentially set an error message here if the structure is unexpected but not an HTTP error
+        // setFetchError("Respuesta inesperada del servicio de direcciones.");
+      }
+
+      if (query.length >= 3) {
           setShowSuggestions(true);
       }
     } catch (error: any) {
-      // This catch block will handle network errors ("Failed to fetch") 
-      // or the error thrown above if response.ok is false.
       console.error("Error fetching/processing Nominatim suggestions:", error.message, error);
       setSuggestions([]);
       setFetchError(error.message || "No se pudieron cargar las sugerencias. Verifica tu conexión o inténtalo más tarde.");
-      // Keep suggestions panel open to show the error message via CommandEmpty
       if (query.length >=3) {
           setShowSuggestions(true);
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Added fetchSuggestions to dependencies as it's defined outside but used inside
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -113,23 +125,23 @@ export default function AddressAutocompleteInput({
       } else {
         setSuggestions([]);
         setShowSuggestions(false);
-        setIsLoading(false); // Reset isLoading if input becomes too short
-        setFetchError(null); // Clear any errors if input is too short
+        if(isLoading) setIsLoading(false); // Ensure isLoading is reset if input becomes too short during a load
+        setFetchError(null);
       }
     }, 500);
 
     return () => {
       clearTimeout(handler);
     };
-  }, [inputValue, fetchSuggestions]);
+  }, [inputValue, fetchSuggestions, isLoading]); // Added isLoading to deps
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
     setInputValue(newInputValue);
-    onChange(newInputValue); // Update form immediately with typed value
+    onChange(newInputValue);
     if (newInputValue.length >= 3) {
-      setShowSuggestions(true); // Show suggestions panel when user starts typing
-      setFetchError(null); // Clear previous errors on new input
+      // No need to setShowSuggestions(true) here, useEffect will handle it via fetchSuggestions
+      setFetchError(null);
     } else {
       setShowSuggestions(false);
       setSuggestions([]);
@@ -139,7 +151,7 @@ export default function AddressAutocompleteInput({
 
   const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
     const fullAddress = suggestion.display_name;
-    setInputValue(fullAddress);
+    setInputValue(fullAddress); // Update input field with full address
     setSuggestions([]);
     setShowSuggestions(false);
     setFetchError(null);
@@ -152,6 +164,8 @@ export default function AddressAutocompleteInput({
     onChange(fullAddress, { city, country, lat, lng });
   };
 
+  // console.log({ inputValue, isLoading, suggestionsLength: suggestions.length, showSuggestions, fetchError }); // Debug log
+
   return (
     <Command shouldFilter={false} className={cn("relative", className)}>
       <div className="relative">
@@ -160,6 +174,7 @@ export default function AddressAutocompleteInput({
           value={inputValue}
           onChange={handleInputChange}
           onFocus={() => {
+            // Show suggestions if input is valid and there's something to show (suggestions, loading, or error)
             if (inputValue.length >= 3 && (suggestions.length > 0 || isLoading || fetchError)) {
               setShowSuggestions(true);
             }
@@ -186,7 +201,7 @@ export default function AddressAutocompleteInput({
               Buscando direcciones...
             </div>
           ) : fetchError ? (
-            <CommandEmpty className="py-3 px-2 text-center text-sm text-destructive">
+            <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive">
                 <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {fetchError}
             </CommandEmpty>
           ) : suggestions.length > 0 ? (
@@ -194,7 +209,7 @@ export default function AddressAutocompleteInput({
               {suggestions.map((suggestion) => (
                 <CommandItem
                   key={suggestion.place_id}
-                  value={suggestion.display_name}
+                  value={suggestion.display_name} // Value used for cmdk filtering if enabled (it's not)
                   onSelect={() => handleSelectSuggestion(suggestion)}
                   className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
                 >
@@ -204,11 +219,11 @@ export default function AddressAutocompleteInput({
               ))}
             </CommandGroup>
           ) : (
-            // Este mensaje se muestra si fetch fue exitoso pero no devolvió sugerencias
-            <CommandEmpty className="py-3 px-2 text-center text-sm">No se encontraron resultados para "{inputValue}" en Chile.</CommandEmpty>
+            <CommandEmpty className="py-3 px-2.5 text-center text-sm">No se encontraron resultados para "{inputValue}" en Chile.</CommandEmpty>
           )}
         </CommandList>
       )}
+      {/* Overlay to close suggestions on outside click */}
       {showSuggestions && inputValue.length >=3 && (
         <div
             className="fixed inset-0 z-40"
@@ -219,3 +234,4 @@ export default function AddressAutocompleteInput({
     </Command>
   );
 }
+
