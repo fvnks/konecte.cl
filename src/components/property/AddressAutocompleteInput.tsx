@@ -8,25 +8,52 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@
 import { cn } from '@/lib/utils';
 import { MapPin, Loader2, AlertTriangle } from 'lucide-react';
 
-interface NominatimSuggestion {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-  address?: {
-    city?: string;
-    town?: string;
-    village?: string;
-    county?: string;
+// Interface for Geoapify API response features
+interface GeoapifyFeature {
+  type: string;
+  properties: {
+    country: string;
+    country_code: string;
     state?: string;
-    country?: string;
+    city?: string;
     postcode?: string;
-    country_code?: string;
-    road?: string;
-    house_number?: string;
-    neighbourhood?: string;
+    datasource: {
+      sourcename: string;
+      attribution: string;
+      license: string;
+      url: string;
+    };
+    name?: string;
+    county?: string;
+    street?: string;
+    lon: number;
+    lat: number;
+    formatted: string; // This is usually a good display name
+    address_line1: string;
+    address_line2: string;
+    category: string;
+    result_type: string;
+    rank: {
+      importance: number;
+      confidence: number;
+      confidence_city_level?: number;
+      confidence_street_level?: number;
+      match_type: string;
+    };
+    place_id: string; // Unique ID for the place
+    housenumber?: string; // Added from example
+    suburb?: string; // Added from example
+    district?: string; // Added from example
+    village?: string; // Added from example
+    town?: string; // Added from example
   };
+  geometry: {
+    type: string;
+    coordinates: [number, number]; // lon, lat
+  };
+  bbox?: [number, number, number, number];
 }
+
 
 interface AddressAutocompleteInputProps {
   value: string;
@@ -36,6 +63,8 @@ interface AddressAutocompleteInputProps {
   disabled?: boolean;
 }
 
+const GEOAPIFY_API_KEY = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
+
 export default function AddressAutocompleteInput({
   value,
   onChange,
@@ -44,7 +73,7 @@ export default function AddressAutocompleteInput({
   disabled = false,
 }: AddressAutocompleteInputProps) {
   const [inputValue, setInputValue] = useState(value);
-  const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<GeoapifyFeature[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -55,9 +84,15 @@ export default function AddressAutocompleteInput({
     if (value !== inputValue) {
       setInputValue(value);
     }
-  }, [value, inputValue]);
+  }, [value]); // Removed inputValue from dependencies to prevent potential loop
 
   const fetchSuggestions = useCallback(async (query: string) => {
+    if (!GEOAPIFY_API_KEY) {
+      console.error("[AddressAutocompleteInput] Geoapify API Key (NEXT_PUBLIC_GEOAPIFY_API_KEY) is missing.");
+      setFetchError("Servicio de autocompletado no configurado correctamente (falta API key).");
+      setIsLoading(false);
+      return;
+    }
     if (query.length < 3) {
       setSuggestions([]);
       setFetchError(null);
@@ -67,57 +102,53 @@ export default function AddressAutocompleteInput({
 
     setIsLoading(true);
     setFetchError(null);
+    
+    const requestOptions = { method: 'GET' };
+    const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&filter=countrycode:cl&limit=5&apiKey=${GEOAPIFY_API_KEY}`;
 
-    console.log(`[AddressAutocompleteInput] Fetching for: ${query}`);
+    console.log(`[AddressAutocompleteInput] Fetching from Geoapify for: ${query}`);
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&countrycodes=cl&limit=5&addressdetails=1`
-      );
-      
-      console.log(`[AddressAutocompleteInput] Nominatim API request for: "${query}" - Status: ${response.status}`);
+      const response = await fetch(url, requestOptions);
+      const responseStatus = response.status;
+      const responseText = await response.text(); // Read text first for better error details
+      console.log(`[AddressAutocompleteInput] Geoapify API response for "${query}" - Status: ${responseStatus}, Body: ${responseText.substring(0, 500)}...`);
+
 
       if (!response.ok) {
-        let errorDetail = `Error ${response.status}: ${response.statusText}`;
+        let errorDetail = `Error ${responseStatus}: ${response.statusText || 'Unknown error'}`;
         try {
-            const errorDataText = await response.text();
-            console.error("[AddressAutocompleteInput] Nominatim API error response text:", errorDataText);
-            // Try to parse, but don't fail if it's not JSON
-            try {
-                const errorData = JSON.parse(errorDataText);
-                if (errorData && errorData.error && errorData.error.message) {
-                    errorDetail += ` - ${errorData.error.message}`;
-                } else if (errorData && errorData.error) {
-                     errorDetail += ` - ${JSON.stringify(errorData.error)}`; 
-                } else {
-                     errorDetail += ` - Respuesta: ${errorDataText.substring(0,100)}...`;
-                }
-            } catch (parseErr) {
-                 errorDetail += ` - Respuesta (no JSON): ${errorDataText.substring(0,100)}...`;
+            const errorData = JSON.parse(responseText);
+            if (errorData && errorData.message) {
+                 errorDetail += ` - ${errorData.message}`;
+            } else if (errorData && errorData.error && errorData.error.message) {
+                 errorDetail += ` - ${errorData.error.message}`;
+            } else if (errorData && errorData.error) {
+                errorDetail += ` - ${JSON.stringify(errorData.error)}`;
             }
-        } catch (e) { /* ignore if response text cannot be read */ }
+        } catch (parseErr) { /* Response was not JSON, original errorDetail is fine */ }
         throw new Error(errorDetail);
       }
-      const data = await response.json();
-      console.log('[AddressAutocompleteInput] Nominatim API response data:', data);
 
-      if (Array.isArray(data)) {
-        setSuggestions(data as NominatimSuggestion[]);
+      const data = JSON.parse(responseText);
+
+      if (data && Array.isArray(data.features)) {
+        setSuggestions(data.features as GeoapifyFeature[]);
         setFetchError(null);
       } else {
-        console.warn('[AddressAutocompleteInput] Nominatim response was not an array as expected:', data);
+        console.warn('[AddressAutocompleteInput] Geoapify response "features" was not an array as expected:', data);
         setSuggestions([]);
-        setFetchError("Respuesta inesperada del servicio de direcciones.");
+        setFetchError("Respuesta inesperada del servicio de direcciones de Geoapify.");
       }
     } catch (error: any) {
-      console.error("[AddressAutocompleteInput] Error during fetch to Nominatim. Full error object:", error, "Message:", error.message);
+      console.error("[AddressAutocompleteInput] Error fetching/processing Geoapify suggestions:", error.message, error);
       setSuggestions([]);
-      setFetchError(error.message?.includes("Failed to fetch")
-        ? "Error de red: No se pudo completar la solicitud al servicio de direcciones. Por favor, revise su conexión a internet, VPN, firewall o extensiones del navegador que puedan estar bloqueando la conexión a nominatim.openstreetmap.org."
-        : (error.message || "No se pudieron cargar las sugerencias."));
+      setFetchError(error.message?.includes("Failed to fetch") || error.message?.toLowerCase().includes("networkerror")
+        ? "Error de red. No se pudo conectar al servicio de direcciones. Por favor, revise su conexión a internet, VPN, firewall o extensiones del navegador."
+        : (error.message || "No se pudieron cargar las sugerencias de Geoapify."));
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]); // Removed fetchSuggestions from dependencies as it's defined in the same scope. Add back if eslint complains and it's stable.
+  }, [isLoading]); // Keep isLoading here to prevent re-fetching if it's already loading
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -125,25 +156,22 @@ export default function AddressAutocompleteInput({
         fetchSuggestions(inputValue);
       } else {
         setSuggestions([]);
-        if(isLoading){ setIsLoading(false); }
+        if(isLoading){ setIsLoading(false); } // Stop loading if input becomes too short
         setFetchError(null);
       }
-    }, 500); 
+    }, 500); // Debounce time
 
     return () => {
       clearTimeout(handler);
-      if (isLoading && inputValue.length < 3) {
-         setIsLoading(false); // Stop loading if input becomes too short during a pending fetch
-      }
     };
   }, [inputValue, fetchSuggestions, isLoading]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
     setInputValue(newInputValue);
-    onChange(newInputValue); 
+    onChange(newInputValue); // Propagate raw input value up
     if (newInputValue.length >= 3) {
-      setFetchError(null); 
+      setFetchError(null); // Clear previous errors on new input
       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);
@@ -153,21 +181,23 @@ export default function AddressAutocompleteInput({
     }
   };
 
-  const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
-    const fullAddress = suggestion.display_name;
+  const handleSelectSuggestion = (suggestion: GeoapifyFeature) => {
+    const props = suggestion.properties;
+    const fullAddress = props.formatted;
     setInputValue(fullAddress);
     setSuggestions([]);
     setShowSuggestions(false);
     setFetchError(null);
 
-    const city = suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.address?.county || '';
-    const country = suggestion.address?.country || '';
-    const lat = parseFloat(suggestion.lat);
-    const lng = parseFloat(suggestion.lon);
+    const city = props.city || props.town || props.village || props.county || props.state || '';
+    const country = props.country || '';
+    const lat = props.lat; // Geoapify provides lat/lon directly in properties
+    const lng = props.lon;
 
     onChange(fullAddress, { city, country, lat, lng });
   };
   
+  // Diagnostic log for render phase
   // console.log("[AddressAutocompleteInput RENDER] inputValue:", `"${inputValue}"`, "isLoading:", isLoading, "fetchError:", fetchError, "showSuggestions:", showSuggestions, "suggestions.length:", suggestions.length);
 
   return (
@@ -181,6 +211,7 @@ export default function AddressAutocompleteInput({
           onFocus={() => {
             if (inputValue.length >= 3) {
               setShowSuggestions(true);
+              // Optionally re-fetch if needed, or rely on existing suggestions/error
               if (suggestions.length === 0 && !fetchError && !isLoading) {
                 fetchSuggestions(inputValue);
               }
@@ -192,10 +223,10 @@ export default function AddressAutocompleteInput({
           aria-label="Dirección"
           autoComplete="off"
         />
-        {isLoading && inputValue.length >=3 && (
+        {(isLoading && inputValue.length >=3) && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
         )}
-        {fetchError && inputValue.length >=3 && !isLoading && (
+        {(fetchError && inputValue.length >=3 && !isLoading) && (
             <AlertTriangle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" title={fetchError} />
         )}
       </div>
@@ -220,15 +251,15 @@ export default function AddressAutocompleteInput({
               </CommandEmpty>
             ) : suggestions.length > 0 ? (
               <CommandGroup heading={suggestions.length > 1 ? `${suggestions.length} sugerencias encontradas:` : `1 sugerencia encontrada:`} >
-                {suggestions.map((suggestion) => (
+                {suggestions.map((feature) => (
                   <CommandItem
-                    key={suggestion.place_id}
-                    value={suggestion.display_name} // Important for cmdk filtering if enabled, though we disabled it
-                    onSelect={() => handleSelectSuggestion(suggestion)}
+                    key={feature.properties.place_id}
+                    value={feature.properties.formatted} // Important for cmdk filtering if enabled
+                    onSelect={() => handleSelectSuggestion(feature)}
                     className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
                   >
                     <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                    <span className="flex-1">{suggestion.display_name}</span>
+                    <span className="flex-1">{feature.properties.formatted}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -238,10 +269,10 @@ export default function AddressAutocompleteInput({
               </CommandEmpty>
             )}
           </CommandList>
+          {/* Overlay to handle clicks outside */}
           <div
               className="fixed inset-0 z-[1000]" 
               onClick={(e) => {
-                  // Prevent closing if click is on input itself or on command list
                   if (inputRef.current?.contains(e.target as Node) || commandListRef.current?.contains(e.target as Node)) {
                       return;
                   }
@@ -254,4 +285,3 @@ export default function AddressAutocompleteInput({
     </Command>
   );
 }
-
