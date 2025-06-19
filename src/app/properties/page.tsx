@@ -1,4 +1,3 @@
-
 // src/app/properties/page.tsx
 'use client';
 
@@ -13,6 +12,7 @@ import { Filter, ListFilter, Search, Building, Loader2, RotateCcw } from "lucide
 import { getPropertiesAction, type GetPropertiesActionOptions } from "@/actions/propertyActions";
 import type { PropertyListing, PropertyType, ListingCategory } from "@/lib/types";
 import { useToast } from '@/hooks/use-toast';
+import PropertySidebarFilters from '@/components/filters/PropertySidebarFilters'; // Nuevo import
 
 const propertyTypeOptions: { value: PropertyType | 'all'; label: string }[] = [
   { value: 'all', label: 'Todos los Tipos' },
@@ -44,12 +44,16 @@ export default function PropertiesPage() {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  // Estado para los filtros
+  // Estado para los filtros superiores
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPropertyType, setFilterPropertyType] = useState<PropertyType | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<ListingCategory | 'all'>('all');
   const [filterCity, setFilterCity] = useState('');
   const [orderBy, setOrderBy] = useState<GetPropertiesActionOptions['orderBy']>('createdAt_desc');
+
+  // Estado para filtros laterales
+  const [minBedrooms, setMinBedrooms] = useState<string>('');
+  const [minBathrooms, setMinBathrooms] = useState<string>('');
 
   const fetchProperties = useCallback(async () => {
     setIsLoading(true);
@@ -60,6 +64,8 @@ export default function PropertiesPage() {
         category: filterCategory === 'all' ? undefined : filterCategory,
         city: filterCity || undefined,
         orderBy: orderBy,
+        minBedrooms: minBedrooms !== '' ? parseInt(minBedrooms, 10) : undefined,
+        minBathrooms: minBathrooms !== '' ? parseInt(minBathrooms, 10) : undefined,
       };
       const fetchedProperties = await getPropertiesAction(options);
       setProperties(fetchedProperties);
@@ -73,36 +79,30 @@ export default function PropertiesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, filterPropertyType, filterCategory, filterCity, orderBy, toast]);
+  }, [searchTerm, filterPropertyType, filterCategory, filterCity, orderBy, minBedrooms, minBathrooms, toast]);
 
   useEffect(() => {
     // Carga inicial
     fetchProperties();
-  }, []); // Solo se ejecuta al montar inicialmente
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Se ejecuta solo al montar inicialmente para la carga inicial
 
   const handleApplyFilters = () => {
-    // No es necesario un useTransition aquí si fetchProperties ya maneja setIsLoading
-    // startTransition(() => { // Comentado o eliminado si no es necesario
-    fetchProperties();
-    // });
-  };
-  
-  const handleFilterChange = () => {
     startTransition(() => {
       fetchProperties();
     });
   };
-
+  
   const handleResetFilters = () => {
     setSearchTerm('');
     setFilterPropertyType('all');
     setFilterCategory('all');
     setFilterCity('');
     setOrderBy('createdAt_desc');
-    // La llamada a fetchProperties se activará por el useEffect que depende de estas variables de estado
-    // o podemos llamarla explícitamente si queremos asegurar el re-fetch inmediato tras el reset.
+    setMinBedrooms('');
+    setMinBathrooms('');
     startTransition(() => {
-      fetchProperties(); // Re-ejecutar con los filtros reseteados
+      fetchProperties(); 
     });
   };
 
@@ -121,113 +121,128 @@ export default function PropertiesPage() {
         </Button>
       </section>
 
-      <Card className="shadow-lg rounded-xl">
-        <CardHeader className="border-b">
-          <CardTitle className="text-xl font-semibold flex items-center">
-            <Filter className="mr-2 h-5 w-5 text-primary" />
-            Filtros y Búsqueda
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-            <div className="sm:col-span-2 lg:col-span-1">
-              <label htmlFor="search-term" className="block text-sm font-medium text-muted-foreground mb-1">Buscar</label>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search-term"
-                  type="search"
-                  placeholder="Título, descripción, ciudad..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
+      <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+        {/* Columna de Filtros Laterales */}
+        <aside className="w-full md:w-1/4 lg:w-1/5 space-y-6">
+          <PropertySidebarFilters
+            minBedrooms={minBedrooms}
+            setMinBedrooms={setMinBedrooms}
+            minBathrooms={minBathrooms}
+            setMinBathrooms={setMinBathrooms}
+          />
+        </aside>
 
-            <div>
-              <label htmlFor="property-type" className="block text-sm font-medium text-muted-foreground mb-1">Tipo Transacción</label>
-              <Select value={filterPropertyType} onValueChange={(value) => setFilterPropertyType(value as PropertyType | 'all')}>
-                <SelectTrigger id="property-type">
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {propertyTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Columna Principal (Filtros superiores y listado) */}
+        <div className="flex-1 space-y-6">
+          <Card className="shadow-lg rounded-xl">
+            <CardHeader className="border-b">
+              <CardTitle className="text-xl font-semibold flex items-center">
+                <Filter className="mr-2 h-5 w-5 text-primary" />
+                Filtros Rápidos y Búsqueda
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end"> {/* Cambiado lg:grid-cols-4 a lg:grid-cols-3 */}
+                <div className="lg:col-span-1"> {/* Ajustado para ocupar el espacio disponible */}
+                  <label htmlFor="search-term" className="block text-sm font-medium text-muted-foreground mb-1">Buscar</label>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="search-term"
+                      type="search"
+                      placeholder="Título, descripción, ciudad..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-muted-foreground mb-1">Categoría</label>
-              <Select value={filterCategory} onValueChange={(value) => setFilterCategory(value as ListingCategory | 'all')}>
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoryOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <label htmlFor="city" className="block text-sm font-medium text-muted-foreground mb-1">Ciudad/Comuna</label>
-              <Input
-                id="city"
-                placeholder="Ej: Valparaíso"
-                value={filterCity}
-                onChange={(e) => setFilterCity(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row justify-between items-end gap-4 pt-4 border-t">
-             <div>
-                <label htmlFor="order-by" className="block text-sm font-medium text-muted-foreground mb-1">Ordenar Por</label>
-                <Select value={orderBy} onValueChange={(value) => setOrderBy(value as GetPropertiesActionOptions['orderBy'])}>
-                    <SelectTrigger id="order-by" className="w-full sm:w-[220px]">
-                    <ListFilter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Ordenar por" />
+                <div>
+                  <label htmlFor="property-type" className="block text-sm font-medium text-muted-foreground mb-1">Tipo Transacción</label>
+                  <Select value={filterPropertyType} onValueChange={(value) => setFilterPropertyType(value as PropertyType | 'all')}>
+                    <SelectTrigger id="property-type">
+                      <SelectValue placeholder="Tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                    {orderByOptions.map(opt => <SelectItem key={opt.value || 'default'} value={opt.value || 'createdAt_desc'}>{opt.label}</SelectItem>)}
+                      {propertyTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                     </SelectContent>
-                </Select>
-             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Button onClick={handleResetFilters} variant="outline" className="w-full sm:w-auto" disabled={isPending || isLoading}>
-                <RotateCcw className="mr-2 h-4 w-4" /> Reiniciar
-              </Button>
-              <Button onClick={handleApplyFilters} className="w-full sm:w-auto" disabled={isPending || isLoading}>
-                {isPending || isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                Aplicar Filtros
+                  </Select>
+                </div>
+
+                <div>
+                  <label htmlFor="category" className="block text-sm font-medium text-muted-foreground mb-1">Categoría</label>
+                  <Select value={filterCategory} onValueChange={(value) => setFilterCategory(value as ListingCategory | 'all')}>
+                    <SelectTrigger id="category">
+                      <SelectValue placeholder="Categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label htmlFor="city" className="block text-sm font-medium text-muted-foreground mb-1">Ciudad/Comuna</label>
+                  <Input
+                    id="city"
+                    placeholder="Ej: Valparaíso"
+                    value={filterCity}
+                    onChange={(e) => setFilterCity(e.target.value)}
+                  />
+                </div>
+                 <div>
+                    <label htmlFor="order-by" className="block text-sm font-medium text-muted-foreground mb-1">Ordenar Por</label>
+                    <Select value={orderBy} onValueChange={(value) => setOrderBy(value as GetPropertiesActionOptions['orderBy'])}>
+                        <SelectTrigger id="order-by" className="w-full">
+                        <ListFilter className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Ordenar por" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {orderByOptions.map(opt => <SelectItem key={opt.value || 'default'} value={opt.value || 'createdAt_desc'}>{opt.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                 </div>
+              </div>
+              <div className="flex flex-col sm:flex-row justify-end items-end gap-4 pt-4 border-t">
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button onClick={handleResetFilters} variant="outline" className="w-full sm:w-auto" disabled={isPending || isLoading}>
+                    <RotateCcw className="mr-2 h-4 w-4" /> Reiniciar Todo
+                  </Button>
+                  <Button onClick={handleApplyFilters} className="w-full sm:w-auto" disabled={isPending || isLoading}>
+                    {isPending || isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                    Aplicar Filtros
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {isLoading ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : properties.length > 0 ? (
+            <div className="space-y-6">
+              <p className="text-sm text-muted-foreground">{properties.length} propiedad(es) encontrada(s).</p>
+              {properties.map((property) => (
+                <PropertyListItem key={property.id} property={property} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Building className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-xl font-semibold">No se Encontraron Propiedades</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Intenta ajustar tus filtros o revisa más tarde.
+              </p>
+              <Button className="mt-6" variant="outline" onClick={handleResetFilters} disabled={isPending || isLoading}>
+                Limpiar Todos los Filtros
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {isLoading ? (
-        <div className="flex justify-center items-center py-10">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          )}
         </div>
-      ) : properties.length > 0 ? (
-        <div className="space-y-6">
-          <p className="text-sm text-muted-foreground">{properties.length} propiedad(es) encontrada(s).</p>
-          {properties.map((property) => (
-            <PropertyListItem key={property.id} property={property} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <Building className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-xl font-semibold">No se Encontraron Propiedades</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Intenta ajustar tus filtros o revisa más tarde.
-          </p>
-          <Button className="mt-6" variant="outline" onClick={handleResetFilters} disabled={isPending || isLoading}>
-            Limpiar Filtros
-          </Button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
