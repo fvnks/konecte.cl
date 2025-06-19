@@ -1,4 +1,3 @@
-
 // src/components/property/AddressAutocompleteInput.tsx
 'use client';
 
@@ -6,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
 
 interface NominatimSuggestion {
   place_id: number;
@@ -47,37 +46,61 @@ export default function AddressAutocompleteInput({
   const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null); // State for fetch errors
 
   useEffect(() => {
+    // Only update inputValue if the external value prop changes and is different.
     if (value !== inputValue) {
       setInputValue(value);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value]); // Only depend on the external value
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 3) {
       setSuggestions([]);
-      // setShowSuggestions(false); // Ya se maneja en handleInputChange
+      setShowSuggestions(false);
+      setFetchError(null); // Clear previous errors
       return;
     }
     setIsLoading(true);
+    setFetchError(null); // Clear previous errors before new fetch
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&countrycodes=cl&limit=5&addressdetails=1`
       );
       if (!response.ok) {
-        throw new Error('Error al obtener sugerencias de Nominatim');
+        // Try to get more info from the response if it's not ok
+        let errorDetail = `Error ${response.status}: ${response.statusText}`;
+        try {
+            const errorData = await response.json();
+            if (errorData && errorData.error && errorData.error.message) {
+                errorDetail += ` - ${errorData.error.message}`;
+            } else if (errorData && errorData.error) {
+                errorDetail += ` - ${JSON.stringify(errorData.error)}`;
+            }
+        } catch (e) {
+            // Ignore if response is not JSON or if response.json() itself fails
+            console.warn("Could not parse error response from Nominatim as JSON.");
+        }
+        console.error("Nominatim API error:", errorDetail);
+        throw new Error(`Error al obtener sugerencias (${response.status})`);
       }
       const data: NominatimSuggestion[] = await response.json();
       setSuggestions(data);
-      // Si hay datos o aunque no los haya pero se buscó, y el input sigue teniendo texto, mantener abierto el panel
-      if (query.length >= 3) {
+      if (query.length >= 3) { // Ensure query is still relevant
           setShowSuggestions(true);
       }
-    } catch (error) {
-      console.error("Error fetching Nominatim suggestions:", error);
+    } catch (error: any) {
+      // This catch block will handle network errors ("Failed to fetch") 
+      // or the error thrown above if response.ok is false.
+      console.error("Error fetching/processing Nominatim suggestions:", error.message, error);
       setSuggestions([]);
+      setFetchError(error.message || "No se pudieron cargar las sugerencias. Verifica tu conexión o inténtalo más tarde.");
+      // Keep suggestions panel open to show the error message via CommandEmpty
+      if (query.length >=3) {
+          setShowSuggestions(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -90,9 +113,10 @@ export default function AddressAutocompleteInput({
       } else {
         setSuggestions([]);
         setShowSuggestions(false);
-        setIsLoading(false); // Resetear isLoading si el input es muy corto
+        setIsLoading(false); // Reset isLoading if input becomes too short
+        setFetchError(null); // Clear any errors if input is too short
       }
-    }, 500); 
+    }, 500);
 
     return () => {
       clearTimeout(handler);
@@ -102,12 +126,14 @@ export default function AddressAutocompleteInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
     setInputValue(newInputValue);
-    onChange(newInputValue); 
+    onChange(newInputValue); // Update form immediately with typed value
     if (newInputValue.length >= 3) {
-       setShowSuggestions(true);
+      setShowSuggestions(true); // Show suggestions panel when user starts typing
+      setFetchError(null); // Clear previous errors on new input
     } else {
       setShowSuggestions(false);
       setSuggestions([]);
+      setFetchError(null);
     }
   };
 
@@ -116,12 +142,13 @@ export default function AddressAutocompleteInput({
     setInputValue(fullAddress);
     setSuggestions([]);
     setShowSuggestions(false);
+    setFetchError(null);
 
     const city = suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.address?.county || '';
     const country = suggestion.address?.country || '';
     const lat = parseFloat(suggestion.lat);
     const lng = parseFloat(suggestion.lon);
-    
+
     onChange(fullAddress, { city, country, lat, lng });
   };
 
@@ -132,8 +159,8 @@ export default function AddressAutocompleteInput({
         <Input
           value={inputValue}
           onChange={handleInputChange}
-          onFocus={() => { 
-            if (inputValue.length >=3 && (suggestions.length > 0 || isLoading)) {
+          onFocus={() => {
+            if (inputValue.length >= 3 && (suggestions.length > 0 || isLoading || fetchError)) {
               setShowSuggestions(true);
             }
           }}
@@ -143,8 +170,11 @@ export default function AddressAutocompleteInput({
           aria-label="Dirección"
           autoComplete="off"
         />
-        {isLoading && inputValue.length >=3 && (
+        {isLoading && inputValue.length >=3 && !fetchError && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+        )}
+        {fetchError && inputValue.length >=3 && !isLoading && (
+            <AlertTriangle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" title={fetchError} />
         )}
       </div>
 
@@ -155,12 +185,16 @@ export default function AddressAutocompleteInput({
               <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />
               Buscando direcciones...
             </div>
+          ) : fetchError ? (
+            <CommandEmpty className="py-3 px-2 text-center text-sm text-destructive">
+                <AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {fetchError}
+            </CommandEmpty>
           ) : suggestions.length > 0 ? (
             <CommandGroup>
               {suggestions.map((suggestion) => (
                 <CommandItem
                   key={suggestion.place_id}
-                  value={suggestion.display_name} 
+                  value={suggestion.display_name}
                   onSelect={() => handleSelectSuggestion(suggestion)}
                   className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
                 >
@@ -170,13 +204,14 @@ export default function AddressAutocompleteInput({
               ))}
             </CommandGroup>
           ) : (
+            // Este mensaje se muestra si fetch fue exitoso pero no devolvió sugerencias
             <CommandEmpty className="py-3 px-2 text-center text-sm">No se encontraron resultados para "{inputValue}" en Chile.</CommandEmpty>
           )}
         </CommandList>
       )}
       {showSuggestions && inputValue.length >=3 && (
-        <div 
-            className="fixed inset-0 z-40" 
+        <div
+            className="fixed inset-0 z-40"
             onClick={() => setShowSuggestions(false)}
             aria-hidden="true"
         />
