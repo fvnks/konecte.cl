@@ -1,12 +1,12 @@
 // src/app/page.tsx
 'use client'; 
 
-import type { ReactNode } from 'react'; // Asegurar que ReactNode esté importado
-import { useState, FormEvent, useEffect } from 'react'; // Importar useEffect y otros hooks
+import type { ReactNode } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, Bot, ArrowRight, Link as LinkIcon, CreditCard } from "lucide-react";
+import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, Bot, ArrowRight, Link as LinkIcon, CreditCard, Loader2 } from "lucide-react";
 import Link from "next/link";
 import type { PropertyListing, SearchRequest, LandingSectionKey, Plan } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
@@ -23,16 +23,19 @@ import PlanDisplayCard from '@/components/plan/PlanDisplayCard';
 
 
 async function getFeaturedListingsAndRequestsData() {
-  const allProperties: PropertyListing[] = await getPropertiesAction({ limit: 8, orderBy: 'popularity_desc' });
+  const [allProperties, allRequests] = await Promise.all([
+    getPropertiesAction({ limit: 8, orderBy: 'popularity_desc' }),
+    getRequestsAction({ includeInactive: false, limit: 8, orderBy: 'createdAt_desc' }) // Added limit and order
+  ]);
   const featuredProperties = allProperties;
-  const allRequests: SearchRequest[] = await getRequestsAction({ includeInactive: false });
-  const recentRequests = allRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8);
+  // Sorting for recentRequests is now handled by orderBy in getRequestsAction if 'createdAt_desc' is default
+  const recentRequests = allRequests;
   return { featuredProperties, recentRequests };
 }
 
 async function getFeaturedPlansData(limit: number = 3) {
-  const plans = await getPlansAction({ showAllAdmin: false });
-  return plans.slice(0, limit);
+  const plans = await getPlansAction({ showAllAdmin: false }); // This already fetches only active and visible
+  return plans.sort((a,b) => a.price_monthly - b.price_monthly).slice(0, limit); // Ensure consistent order for "featured"
 }
 
 // --- Section Components ---
@@ -227,32 +230,43 @@ export default function HomePage() {
   const [googleSheetConfig, setGoogleSheetConfig] = useState<Awaited<ReturnType<typeof getGoogleSheetConfigAction>> | null>(null);
   const [googleSheetData, setGoogleSheetData] = useState<Awaited<ReturnType<typeof fetchGoogleSheetDataAction>> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorLoading, setErrorLoading] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadInitialData() {
       setIsLoading(true);
+      setErrorLoading(null);
       try {
-        const settings = await getSiteSettingsAction();
+        // Paralelizar las llamadas independientes
+        const [
+          settings,
+          texts,
+          listings,
+          plans,
+          gSheetConfigResult
+        ] = await Promise.all([
+          getSiteSettingsAction(),
+          getEditableTextsByGroupAction('home'),
+          getFeaturedListingsAndRequestsData(),
+          getFeaturedPlansData(3),
+          getGoogleSheetConfigAction()
+        ]);
+
         setSiteSettings(settings);
-
-        const texts = await getEditableTextsByGroupAction('home');
         setHomeTexts(texts);
-
-        const listings = await getFeaturedListingsAndRequestsData();
         setListingsData(listings);
-        
-        const plans = await getFeaturedPlansData(3);
         setFeaturedPlansData(plans);
+        setGoogleSheetConfig(gSheetConfigResult);
 
-        const gSheetConfig = await getGoogleSheetConfigAction();
-        setGoogleSheetConfig(gSheetConfig);
-        if (gSheetConfig && gSheetConfig.isConfigured) {
-            const gSheetData = await fetchGoogleSheetDataAction();
-            setGoogleSheetData(gSheetData);
+        // Carga condicional de datos de Google Sheet
+        if (gSheetConfigResult && gSheetConfigResult.isConfigured) {
+          const gSheetDataResult = await fetchGoogleSheetDataAction();
+          setGoogleSheetData(gSheetDataResult);
         }
 
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error loading initial data for HomePage:", error);
+        setErrorLoading(error.message || "Ocurrió un error al cargar los datos de la página.");
       } finally {
         setIsLoading(false);
       }
@@ -268,9 +282,38 @@ export default function HomePage() {
     }
   };
 
-  if (isLoading || !siteSettings || !homeTexts || !listingsData || !featuredPlansData) {
-    return <div className="flex justify-center items-center min-h-screen">Cargando página de inicio...</div>;
+  if (isLoading) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen">
+            <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
+            <p className="text-xl text-muted-foreground">Cargando konecte...</p>
+        </div>
+    );
   }
+  
+  if (errorLoading) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
+            <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
+            <h1 className="text-2xl font-bold mb-3">Error al Cargar la Página</h1>
+            <p className="text-lg text-muted-foreground mb-4">{errorLoading}</p>
+            <p className="text-sm text-muted-foreground mb-8">Por favor, intenta recargar la página o contacta a soporte si el problema persiste.</p>
+            <Button onClick={() => window.location.reload()}>Recargar Página</Button>
+        </div>
+    );
+  }
+  
+  if (!siteSettings || !homeTexts || !listingsData || !featuredPlansData) {
+     return (
+        <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
+            <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
+            <h1 className="text-2xl font-bold mb-3">Error Inesperado</h1>
+            <p className="text-lg text-muted-foreground mb-8">No se pudieron cargar todos los datos necesarios para mostrar la página. Por favor, intenta recargar.</p>
+            <Button onClick={() => window.location.reload()}>Recargar Página</Button>
+        </div>
+    );
+  }
+
 
   const heroTitle = homeTexts.home_hero_title || DEFAULT_HERO_TITLE;
   const heroSubtitle = homeTexts.home_hero_subtitle || DEFAULT_HERO_SUBTITLE;
@@ -285,7 +328,7 @@ export default function HomePage() {
   const sectionsOrder = siteSettings?.landing_sections_order || DEFAULT_SECTIONS_ORDER;
 
   const sectionComponentsRender: Record<LandingSectionKey, () => ReactNode | null> = {
-    featured_list_requests: () => showFeaturedListings ? (
+    featured_list_requests: () => showFeaturedListings && listingsData ? (
       <Card className="shadow-xl rounded-2xl overflow-hidden border bg-card">
         <CardHeader className="p-6 md:p-8 bg-secondary/30">
           <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
@@ -306,7 +349,7 @@ export default function HomePage() {
     ai_matching: () => showAiMatching ? <AIMatchingSection /> : null,
     analisis_whatsbot: () => showAnalisisWhatsBot ? <AnalisisWhatsBotSectionClient initialConfig={googleSheetConfig} initialSheetData={googleSheetData} /> : null,
   };
-
+  
   return (
     <div className="space-y-16 md:space-y-24 lg:space-y-28">
       <section className="text-center py-16 md:py-24 lg:py-32 bg-card rounded-3xl shadow-2xl overflow-hidden relative border">
