@@ -1,4 +1,3 @@
-
 // src/components/property/EditPropertyForm.tsx
 'use client';
 
@@ -26,7 +25,8 @@ import { useRouter } from "next/navigation";
 import React, { useState, ChangeEvent, useEffect } from 'react';
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { propertyFormSchema } from '@/lib/types'; // Importar el schema original
+import { propertyFormSchema } from '@/lib/types'; 
+import AddressAutocompleteInput from "./AddressAutocompleteInput"; // Importar el nuevo componente
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -45,30 +45,25 @@ const categoryOptions: { value: ListingCategory; label: string }[] = [
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
-// El schema para el formulario de edición
-// Puede ser el mismo que el de creación si los campos son idénticos,
-// o ajustado si hay diferencias (ej. slug no editable, user_id se toma de sesión)
-// Aquí reutilizaremos propertyFormSchema para los campos editables.
-const editPropertyFormSchema = propertyFormSchema; // o una versión modificada
+const editPropertyFormSchema = propertyFormSchema; 
 type EditPropertyFormValues = z.infer<typeof editPropertyFormSchema>;
 
 interface EditPropertyFormProps {
   property: PropertyListing;
-  userId?: string; // ID del usuario, requerido si es una edición de usuario
-  // La acción de submit ahora se pasa como prop
+  userId?: string; 
   onSubmitAction: (
     propertyId: string, 
     data: PropertyFormValues, 
-    userId?: string // userId es opcional para la acción de admin, pero requerido para la acción de usuario
+    userId?: string 
   ) => Promise<SubmitPropertyResult>;
-  isAdminContext?: boolean; // Para saber si se usa en contexto de admin
+  isAdminContext?: boolean; 
 }
 
 export default function EditPropertyForm({ property, userId, onSubmitAction, isAdminContext = false }: EditPropertyFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>(property.images || []); // Init with existing images
+  const [imagePreviews, setImagePreviews] = useState<string[]>(property.images || []);
   const [isUploading, setIsUploading] = useState(false);
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>(property.images || []);
 
@@ -88,13 +83,12 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       bedrooms: property.bedrooms || 0,
       bathrooms: property.bathrooms || 0,
       areaSqMeters: property.areaSqMeters || 0,
-      images: property.images || [], // Mantener las URLs existentes inicialmente
+      images: property.images || [], 
       features: property.features?.join(', ') || "",
     },
   });
 
   useEffect(() => {
-    // Sincronizar las imágenes existentes con imagePreviews y existingImageUrls
     setImagePreviews(property.images || []);
     setExistingImageUrls(property.images || []);
     form.setValue('images', property.images || [], { shouldValidate: true });
@@ -121,8 +115,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       setImageFiles(prevFiles => [...prevFiles, ...validFiles]);
       const newPreviews = validFiles.map(file => URL.createObjectURL(file));
       setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
-      
-      // Update react-hook-form images field with all current previews (existing + new)
       form.setValue('images', [...existingImageUrls, ...newPreviews], { shouldValidate: true, shouldDirty: true });
       event.target.value = ''; 
     }
@@ -133,17 +125,14 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       const urlToRemove = existingImageUrls[indexToRemove];
       setExistingImageUrls(prevUrls => prevUrls.filter((_, index) => index !== indexToRemove));
       setImagePreviews(prev => prev.filter(url => url !== urlToRemove));
-       // Actualizar RHF images
       form.setValue('images', existingImageUrls.filter((_, index) => index !== indexToRemove), { shouldValidate: true, shouldDirty: true });
     } else {
-      // Adjust indexToRemove for newly added files based on existingImageUrls.length
       const actualFileIndex = indexToRemove - existingImageUrls.length;
       setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== actualFileIndex));
       const newPreviews = [...imagePreviews];
       const removedUrl = newPreviews.splice(indexToRemove, 1)[0];
       if (removedUrl) URL.revokeObjectURL(removedUrl);
       setImagePreviews(newPreviews);
-       // Actualizar RHF images
       form.setValue('images', newPreviews, { shouldValidate: true, shouldDirty: true });
     }
   };
@@ -172,19 +161,14 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
     return uploadedUrls;
   };
 
-
   async function onSubmit(values: EditPropertyFormValues) {
     const newlyUploadedUrls = await uploadNewImagesToProxy();
     const finalImageUrls = [...existingImageUrls, ...newlyUploadedUrls];
 
-    // Ensure data passed to action matches PropertyFormValues
     const dataToSubmit: PropertyFormValues = {
       ...values,
       images: finalImageUrls,
     };
-
-    // For admin context, userId is not needed for the action itself
-    // For user context, userId is passed to verify ownership
     const result = await onSubmitAction(property.id, dataToSubmit, isAdminContext ? undefined : userId);
     
     if (result.success) {
@@ -204,14 +188,11 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   
   useEffect(() => {
     return () => {
-      // Revoke Object URLs for newly added previews when component unmounts
       imagePreviews.forEach(url => {
         if (url.startsWith('blob:')) URL.revokeObjectURL(url);
       });
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
 
   return (
     <Form {...form}>
@@ -226,7 +207,29 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
           <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <FormControl><Input type="number" placeholder="Ej: 85000000" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <FormControl><Input placeholder="Ej: CLP, UF, USD" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
-        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl><Input placeholder="Ej: Av. Siempre Viva 742, Villa Alemana" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+        
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Dirección Completa</FormLabel>
+              <AddressAutocompleteInput
+                value={field.value}
+                onChange={(address, details) => {
+                  field.onChange(address);
+                  if (details?.city) form.setValue('city', details.city, { shouldValidate: true });
+                  if (details?.country) form.setValue('country', details.country, { shouldValidate: true });
+                }}
+                placeholder="Comienza a escribir la dirección..."
+                disabled={form.formState.isSubmitting}
+              />
+              <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
@@ -288,4 +291,3 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
     </Form>
   );
 }
-

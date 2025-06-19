@@ -1,4 +1,3 @@
-
 // src/components/property/PropertyForm.tsx
 'use client';
 
@@ -7,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Form,
-  // FormControl, // No longer needed for the images field
   FormDescription,
   FormField,
   FormItem,
@@ -28,6 +26,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import AddressAutocompleteInput from "./AddressAutocompleteInput"; // Importar el nuevo componente
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -115,15 +114,7 @@ export default function PropertyForm() {
       setImageFiles(prevFiles => [...prevFiles, ...validFiles]);
       const newPreviews = validFiles.map(file => URL.createObjectURL(file));
       setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
-      
-      // Update react-hook-form state for 'images' field
-      // This is important for validation to work correctly with the custom input
-      // We'll update it with the current array of preview URLs (or file names, or file count)
-      // Since schema expects string[], URLs are appropriate if they become available after upload
-      // For now, let's use the number of files to trigger validation state.
-      // The actual URLs will be set in onSubmit.
       form.setValue('images', [...imagePreviews, ...newPreviews], { shouldValidate: true, shouldDirty: true });
-      
       event.target.value = ''; 
     }
   };
@@ -136,7 +127,6 @@ export default function PropertyForm() {
       if (removedUrl) {
         URL.revokeObjectURL(removedUrl);
       }
-      // Update react-hook-form state after removal
       form.setValue('images', newPreviews, { shouldValidate: true, shouldDirty: true });
       return newPreviews;
     });
@@ -221,7 +211,6 @@ export default function PropertyForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* Standard Fields using FormControl */}
         <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
         <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -232,10 +221,33 @@ export default function PropertyForm() {
           <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <Input type="number" placeholder="Ej: 85000000" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <Input placeholder="Ej: CLP, UF, USD" {...field} /> <FormDescription>Código de 3 letras para la moneda.</FormDescription> <FormMessage /> </FormItem> )}/>
         </div>
-        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <Input placeholder="Ej: Av. Siempre Viva 742, Villa Alemana" {...field} /> <FormMessage /> </FormItem> )}/>
+        
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Dirección Completa</FormLabel>
+              <AddressAutocompleteInput
+                value={field.value}
+                onChange={(address, details) => {
+                  field.onChange(address); // Actualiza el campo de dirección
+                  if (details?.city) form.setValue('city', details.city, { shouldValidate: true });
+                  if (details?.country) form.setValue('country', details.country, { shouldValidate: true });
+                  // Podrías guardar lat/lng si tuvieras campos para ello
+                }}
+                placeholder="Comienza a escribir la dirección..."
+                disabled={form.formState.isSubmitting || !loggedInUser}
+              />
+              <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <Input placeholder="Ej: Valparaíso" {...field} /> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <Input placeholder="Ej: Chile" {...field} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <Input placeholder="Ej: Valparaíso (se autocompletará si es posible)" {...field} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <Input placeholder="Ej: Chile (se autocompletará si es posible)" {...field} /> <FormMessage /> </FormItem> )}/>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <Input type="number" placeholder="Ej: 3" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> <FormMessage /> </FormItem> )}/>
@@ -243,51 +255,23 @@ export default function PropertyForm() {
           <FormField control={form.control} name="areaSqMeters" render={({ field }) => ( <FormItem> <FormLabel>Superficie (m²)</FormLabel> <Input type="number" placeholder="Ej: 120" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> <FormMessage /> </FormItem> )}/>
         </div>
         
-        {/* Custom Image Upload Field - Bypassing FormControl */}
         <FormField
           control={form.control}
           name="images"
-          render={({ field }) => { // RHF field passed here, but we control value/onChange customly
+          render={({ field }) => {
             const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
             return (
               <FormItem id={formItemId}>
                 <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
-                {/* Main interactive element for the custom input */}
-                <label
-                  htmlFor="image-upload-input-actual"
-                  className={cn(
-                    "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-                    "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50",
-                    isUploading && "cursor-not-allowed opacity-70",
-                    error && "border-destructive" // Add error styling if RHF signals an error
-                  )}
-                  aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`}
-                  aria-invalid={!!error}
-                >
+                <label htmlFor="image-upload-input-actual" className={cn( "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors", "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50", isUploading && "cursor-not-allowed opacity-70", error && "border-destructive" )} aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`} aria-invalid={!!error} >
                   <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
                     <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
-                    <p className="mb-1 text-base text-muted-foreground">
-                      <span className="font-semibold text-primary">Haz clic para subir</span> o arrastra y suelta
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Imágenes (Máx. {MAX_IMAGES}, hasta {MAX_FILE_SIZE_MB}MB c/u)
-                    </p>
+                    <p className="mb-1 text-base text-muted-foreground"> <span className="font-semibold text-primary">Haz clic para subir</span> o arrastra y suelta </p>
+                    <p className="text-xs text-muted-foreground"> Imágenes (Máx. {MAX_IMAGES}, hasta {MAX_FILE_SIZE_MB}MB c/u) </p>
                     <p className="text-xs text-muted-foreground">PNG, JPG, GIF, WEBP</p>
                     <p className="text-xs text-muted-foreground mt-1">Imágenes subidas: {imagePreviews.length} de {MAX_IMAGES}</p>
                   </div>
-                  <Input // Actual hidden file input
-                    id="image-upload-input-actual"
-                    type="file"
-                    className="hidden"
-                    multiple
-                    onChange={(e) => {
-                        handleImageChange(e);
-                        // Trigger RHF validation when files change
-                        // We're using form.setValue for images in handleImageChange now
-                    }}
-                    accept="image/png, image/jpeg, image/gif, image/webp"
-                    disabled={imagePreviews.length >= MAX_IMAGES || isUploading}
-                  />
+                  <Input id="image-upload-input-actual" type="file" className="hidden" multiple onChange={(e) => { handleImageChange(e); }} accept="image/png, image/jpeg, image/gif, image/webp" disabled={imagePreviews.length >= MAX_IMAGES || isUploading} />
                 </label>
                 <FormDescription id={formDescriptionId}>Sube imágenes claras y de buena calidad de tu propiedad.</FormDescription>
                 {imagePreviews.length > 0 && (
@@ -295,27 +279,12 @@ export default function PropertyForm() {
                     {imagePreviews.map((previewUrl, index) => (
                       <div key={previewUrl} className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100">
                         <Image src={previewUrl} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md"
-                          onClick={() => removeImage(index)}
-                          disabled={isUploading}
-                          aria-label="Eliminar imagen"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <Button type="button" variant="destructive" size="icon" className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md" onClick={() => removeImage(index)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-4 w-4" /> </Button>
                       </div>
                     ))}
                   </div>
                 )}
-                {isUploading && (
-                  <div className="flex items-center mt-3 text-sm text-primary">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Subiendo imágenes...
-                  </div>
-                )}
+                {isUploading && ( <div className="flex items-center mt-3 text-sm text-primary"> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Subiendo imágenes... </div> )}
                 <FormMessage id={formMessageId} />
               </FormItem>
             );
