@@ -112,7 +112,7 @@ export default function PropertySidebarFilters({
               id="min-price"
               type="number"
               min="0"
-              placeholder="Ej: 500000"
+              placeholder="Ej: 5000"
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
               className="h-9 text-sm"
@@ -127,7 +127,7 @@ export default function PropertySidebarFilters({
               id="max-price"
               type="number"
               min="0"
-              placeholder="Ej: 100000000"
+              placeholder="Ej: 10000"
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
               className="h-9 text-sm"
