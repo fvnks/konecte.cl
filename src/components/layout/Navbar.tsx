@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus, MailQuestion } from 'lucide-react';
+import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus, MailQuestion, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -19,8 +19,9 @@ import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnnouncementBar from './AnnouncementBar';
-import ThemeToggle from './ThemeToggle';
-import styled from 'styled-components';
+// import ThemeToggle from './ThemeToggle'; // Reverted to simple button
+import { useTheme } from "next-themes";
+
 
 const navItems = [
   { href: '/', label: 'Inicio', icon: <Home /> },
@@ -43,82 +44,23 @@ interface StoredUser {
 
 const DEFAULT_NAVBAR_TITLE = "konecte";
 
-const StyledNavLink = styled(Link)`
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 10px 12px;
-  margin: 0 2px;
-  color: hsl(var(--foreground));
-  font-weight: 500;
-  font-size: 0.9rem;
-  text-decoration: none;
-  border-radius: 8px;
-  transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
-  position: relative;
-  z-index: 1;
-  overflow: visible; /* Allow pseudo-elements to be visible outside */
-
-  .dark & {
-    color: hsl(var(--foreground));
-  }
-
-  & svg {
-    color: hsl(var(--muted-foreground));
-    transition: color 0.2s, stroke 0.2s;
-  }
-
-  /* Lines for hover effect */
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    width: 0%; /* Start with 0 width */
-    height: 3px; /* Line thickness */
-    background-color: #49A7F3; /* Line color */
-    transition: width 0.3s ease-out;
-    z-index: 0; /* Behind the link content if needed, but negative positioning handles it */
-  }
-
-  &::before {
-    top: -6px; /* Position above the link content area */
-  }
-
-  &::after {
-    bottom: -6px; /* Position below the link content area */
-  }
-
-  &:hover {
-    color: #fff; /* Text color on hover */
-    background-color: #49A7F3; /* Background color on hover */
-
-    & svg {
-      color: #fff; /* Icon color on hover */
-      stroke: #fff; /* Ensure stroke also changes if applicable */
-    }
-
-    &::before,
-    &::after {
-      width: 100%; /* Expand lines to full width on hover */
-    }
-  }
-`;
-
 
 export default function Navbar() {
   const router = useRouter();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [totalUnreadMessages, setTotalUnreadMessages] = useState(0);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [currentTheme, setCurrentTheme] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    setCurrentTheme(theme); // Initialize currentTheme
+  }, [theme]);
 
 
   const fetchSiteSettings = useCallback(async () => {
@@ -208,16 +150,24 @@ export default function Navbar() {
   const isUserAdmin = loggedInUser?.role_id === 'admin';
 
   const commonNavLinksDesktop = (closeMenu?: () => void) => (
-    <div className="flex items-center gap-0"> {/* Container for links */}
+    <div className="flex items-center gap-0">
       {navItems.map((item) => (
-        <StyledNavLink
+        <Button
           key={item.label}
-          href={item.href}
+          variant="ghost"
+          asChild
+          className={cn(
+            "px-3 py-2 h-auto rounded-md text-sm font-medium transition-colors",
+            "text-muted-foreground hover:text-primary hover:bg-primary/10",
+            // router.pathname === item.href && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" // Assuming router.pathname logic
+          )}
           onClick={closeMenu}
         >
-          {React.cloneElement(item.icon as React.ReactElement, { className: "h-4 w-4"})}
-          {item.label}
-        </StyledNavLink>
+          <Link href={item.href} className="flex items-center gap-1.5">
+            {React.cloneElement(item.icon as React.ReactElement, { className: "h-4 w-4"})}
+            {item.label}
+          </Link>
+        </Button>
       ))}
     </div>
   );
@@ -227,9 +177,9 @@ export default function Navbar() {
   const logoDisplayContent = () => {
     if (isLoadingSettings) {
       return (
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-9 w-9 rounded-lg" /> {/* Adjusted for ~30% increase from original h-7 w-7 */}
-          <Skeleton className="h-7 w-36 rounded-md" /> {/* Adjusted for potential text size increase */}
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="h-[52px] w-[52px] rounded-lg" />
+          <Skeleton className="h-8 w-40 rounded-md" />
         </div>
       );
     }
@@ -238,22 +188,21 @@ export default function Navbar() {
         <Image
           src={siteSettings.logoUrl}
           alt={siteTitleForDisplay}
-          width={195} 
-          height={52} 
-          style={{ objectFit: 'contain', maxHeight: '52px', maxWidth: '195px' }}
+          width={254} 
+          height={70} 
+          style={{ objectFit: 'contain', maxHeight: '70px', maxWidth: '254px' }}
           priority
           data-ai-hint="logo empresa"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             const parent = target.parentElement;
             if (parent) {
-              // Fallback to text logo if image fails
               const textNode = document.createTextNode(siteTitleForDisplay);
               const span = document.createElement('span');
-              span.className = "text-2xl font-bold font-headline text-primary"; // Fallback text size
+              span.className = "text-4xl font-bold font-headline text-primary";
               
               const homeIconContainer = document.createElement('span');
-              homeIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-9 w-9 text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
+              homeIconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home h-[52px] w-[52px] text-primary"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
               
               while (parent.firstChild && parent.firstChild !== target) {
                 parent.removeChild(parent.firstChild);
@@ -264,16 +213,15 @@ export default function Navbar() {
               parent.insertBefore(span, target);
               span.appendChild(textNode);
             }
-            target.style.display = 'none'; // Hide broken image
+            target.style.display = 'none';
           }}
         />
       );
     }
-    // Default text logo (if no siteSettings.logoUrl)
     return (
       <>
-        <Home className="h-9 w-9 text-primary" /> 
-        <span className="text-2xl font-bold font-headline text-primary">{siteTitleForDisplay}</span>
+        <Home className="h-[52px] w-[52px] text-primary" /> 
+        <span className="text-4xl font-bold font-headline text-primary">{siteTitleForDisplay}</span>
       </>
     );
   };
@@ -308,38 +256,48 @@ export default function Navbar() {
       )}
 
       <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
-        <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8"> {/* Navbar height set to h-20 (80px) */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
-            {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-9 w-9 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
+            {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-[52px] w-[52px] text-primary" /><span className="text-4xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
           </Link>
 
-          <nav className="hidden md:flex items-center gap-0 mx-auto">
+          <nav className="hidden md:flex items-center gap-1 mx-auto"> {/* Reduced gap for nav items */}
             {commonNavLinksDesktop()}
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-             {isClient && <ThemeToggle />}
+          <div className="flex items-center gap-2 sm:gap-2"> {/* Reduced gap */}
+             {isClient && (
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setTheme(currentTheme === 'dark' ? 'light' : 'dark')}
+                    aria-label={currentTheme === 'dark' ? "Activar tema claro" : "Activar tema oscuro"}
+                    className="h-9 w-9 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                    {currentTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </Button>
+             )}
             {isClient ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="default"
-                    className="hidden md:flex items-center gap-2 text-sm font-medium px-4 py-2 h-10 rounded-lg shadow-md hover:bg-primary/90 transition-all"
+                    className="hidden md:flex items-center gap-1.5 text-sm font-medium px-3 py-2 h-9 rounded-md shadow-sm hover:bg-primary/90" // Smaller button
                   >
-                    <PlusCircle className="h-5 w-5" /> Publicar
+                    <PlusCircle className="h-4 w-4" /> Publicar
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-60 bg-card shadow-xl rounded-xl border mt-2 p-1.5">
-                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5 px-3 rounded-md cursor-pointer">
+                <DropdownMenuContent align="end" className="w-56 bg-card shadow-xl rounded-xl border mt-2 p-1.5">
+                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2 px-3 rounded-md cursor-pointer">
                     <Link href="/properties/submit">
-                        <span className="flex items-center gap-2.5 text-sm w-full">
+                        <span className="flex items-center gap-2 text-sm w-full">
                             <Briefcase className="h-4 w-4 text-primary"/>Publicar Propiedad
                         </span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2.5 px-3 rounded-md cursor-pointer">
+                  <DropdownMenuItem asChild className="hover:bg-primary/10 py-2 px-3 rounded-md cursor-pointer">
                     <Link href="/requests/submit">
-                        <span className="flex items-center gap-2.5 text-sm w-full">
+                        <span className="flex items-center gap-2 text-sm w-full">
                             <Search className="h-4 w-4 text-primary"/>Publicar Solicitud
                         </span>
                     </Link>
@@ -347,21 +305,21 @@ export default function Navbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Skeleton className="h-10 w-32 hidden md:flex rounded-lg" />
+              <Skeleton className="h-9 w-28 hidden md:flex rounded-md" />
             )}
 
             {isClient && loggedInUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0 hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                      <Avatar className="h-12 w-12 border-2 border-primary/30 hover:border-primary/60 transition-colors">
-                        <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/48x48.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona avatar"/>
-                        <AvatarFallback className="bg-muted text-muted-foreground text-lg">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
+                  <Button variant="ghost" className="relative h-11 w-11 rounded-full p-0 hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                      <Avatar className="h-11 w-11 border-2 border-primary/30 hover:border-primary/60 transition-colors">
+                        <AvatarImage src={loggedInUser.avatarUrl || `https://placehold.co/44x44.png?text=${loggedInUser.name.substring(0,1)}`} alt={loggedInUser.name} data-ai-hint="persona avatar"/>
+                        <AvatarFallback className="bg-muted text-muted-foreground text-base">{loggedInUser.name.substring(0,1).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       {showUnreadBadge && (
                           <Badge
                             variant="destructive" 
-                            className="absolute top-0.5 right-0.5 transform translate-x-1/4 -translate-y-1/4 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center leading-none z-10"
+                            className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 h-5 min-w-[1.25rem] px-1.5 text-xs rounded-full flex items-center justify-center leading-none z-10"
                           >
                               {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
                           </Badge>
@@ -433,32 +391,32 @@ export default function Navbar() {
               </DropdownMenu>
             ) : isClient ? (
               <div className="hidden md:flex items-center gap-2">
-                <Button variant="outline" size="default" asChild className="hover:bg-primary/5 hover:border-primary/70 hover:text-primary text-sm px-4 py-2 h-10 rounded-lg transition-colors">
+                <Button variant="outline" size="sm" asChild className="hover:bg-primary/5 hover:border-primary/70 hover:text-primary text-xs px-3 py-1.5 h-9 rounded-md transition-colors">
                   <Link href="/auth/signin">
-                    <span className="flex items-center gap-2">
-                        <LogIn className="h-4 w-4" /> Iniciar Sesión
+                    <span className="flex items-center gap-1.5">
+                        <LogIn className="h-3.5 w-3.5" /> Iniciar Sesión
                     </span>
                   </Link>
                 </Button>
-                <Button variant="default" size="default" asChild className="text-sm px-4 py-2 h-10 rounded-lg shadow-md hover:bg-primary/90 transition-all">
+                <Button variant="default" size="sm" asChild className="text-xs px-3 py-1.5 h-9 rounded-md shadow-sm hover:bg-primary/90">
                   <Link href="/auth/signup">
-                    <span className="flex items-center gap-2">
-                        <UserPlus className="h-4 w-4" /> Regístrate
+                    <span className="flex items-center gap-1.5">
+                        <UserPlus className="h-3.5 w-3.5" /> Regístrate
                     </span>
                   </Link>
                 </Button>
               </div>
             ) : (
-              <div className="h-10 hidden md:flex items-center gap-2">
-                  <Skeleton className="h-full w-32 rounded-lg" />
-                  <Skeleton className="h-full w-32 rounded-lg" />
+              <div className="h-9 hidden md:flex items-center gap-2">
+                  <Skeleton className="h-full w-28 rounded-md" />
+                  <Skeleton className="h-full w-28 rounded-md" />
               </div>
             )}
 
             <div className="md:hidden">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-11 w-11 hover:bg-primary/10 relative rounded-lg">
+                  <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-primary/10 relative rounded-lg">
                     <Menu className="h-5 w-5 text-primary" />
                     <span className="sr-only">Alternar menú</span>
                     {showUnreadBadge && ( 
@@ -471,7 +429,7 @@ export default function Navbar() {
                 <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 pt-5 bg-card border-l shadow-2xl">
                   <div className="px-5 pb-4 border-b">
                       <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
-                          {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-9 w-9 text-primary" /><span className="text-2xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
+                          {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-[52px] w-[52px] text-primary" /><span className="text-4xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
                       </Link>
                   </div>
                   <nav className="flex-grow flex flex-col gap-1.5 p-4 overflow-y-auto">
@@ -505,13 +463,27 @@ export default function Navbar() {
                     )}
                   </nav>
                   <div className="p-4 mt-auto border-t">
-                      {isClient && <ThemeToggle />} 
+                      {isClient && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+                                setIsMobileMenuOpen(false);
+                            }}
+                            aria-label={currentTheme === 'dark' ? "Activar tema claro" : "Activar tema oscuro"}
+                            className="w-full justify-center text-base py-3 flex items-center gap-2.5 rounded-lg mb-3"
+                        >
+                            {currentTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                            Cambiar Tema
+                        </Button>
+                      )} 
                       {isClient && loggedInUser ? (
-                          <Button variant="outline" onClick={handleLogout} className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5 cursor-pointer hover:border-destructive hover:text-destructive hover:bg-destructive/5 rounded-lg mt-3">
+                          <Button variant="outline" onClick={handleLogout} className="w-full justify-center text-lg py-3.5 flex items-center gap-2.5 cursor-pointer hover:border-destructive hover:text-destructive hover:bg-destructive/5 rounded-lg">
                               <LogOut className="h-5 w-5" /> Cerrar Sesión
                           </Button>
                       ) : isClient ? (
-                          <div className="space-y-3 mt-3">
+                          <div className="space-y-3">
                               <Button variant="default" asChild className="w-full justify-center text-lg py-3.5 rounded-lg" onClick={() => setIsMobileMenuOpen(false)}>
                                   <Link href="/auth/signup">
                                       <span className="flex items-center gap-2.5">
