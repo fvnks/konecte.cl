@@ -48,15 +48,18 @@ export default function AddressAutocompleteInput({
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
+    // Sincronizar inputValue con el 'value' externo solo si son diferentes
+    // para evitar bucles si 'onChange' actualiza 'value' inmediatamente.
     if (value !== inputValue) {
       setInputValue(value);
     }
-  }, [value]); // No incluir inputValue aquí para evitar bucles si onChange actualiza value inmediatamente
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 3) {
       setSuggestions([]);
-      setShowSuggestions(false);
+      // setShowSuggestions(false); // No ocultar aquí necesariamente, handleInputChange lo maneja
       return;
     }
     setIsLoading(true);
@@ -69,15 +72,13 @@ export default function AddressAutocompleteInput({
       }
       const data: NominatimSuggestion[] = await response.json();
       setSuggestions(data);
-      setShowSuggestions(data.length > 0 || (isLoading && suggestions.length > 0 && inputValue.length >=3));
     } catch (error) {
       console.error("Error fetching Nominatim suggestions:", error);
       setSuggestions([]);
-      setShowSuggestions(false);
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue]); // Depender de inputValue para la lógica de fetch
+  }, []);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -85,9 +86,9 @@ export default function AddressAutocompleteInput({
         fetchSuggestions(inputValue);
       } else {
         setSuggestions([]);
-        setShowSuggestions(false);
+        setShowSuggestions(false); // Ocultar si el input se vuelve corto
       }
-    }, 500);
+    }, 500); // Debounce
 
     return () => {
       clearTimeout(handler);
@@ -97,18 +98,18 @@ export default function AddressAutocompleteInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
     setInputValue(newInputValue);
-    onChange(newInputValue); 
+    onChange(newInputValue); // Notifica al formulario padre
     if (newInputValue.length >= 3) {
-       setShowSuggestions(true);
+       setShowSuggestions(true); // Intenta mostrar la lista
     } else {
       setShowSuggestions(false);
-      setSuggestions([]);
+      setSuggestions([]); // Limpia sugerencias si el input es corto
     }
   };
 
   const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
     const fullAddress = suggestion.display_name;
-    setInputValue(fullAddress);
+    setInputValue(fullAddress); // Actualiza el input localmente
     setSuggestions([]);
     setShowSuggestions(false);
 
@@ -117,7 +118,7 @@ export default function AddressAutocompleteInput({
     const lat = parseFloat(suggestion.lat);
     const lng = parseFloat(suggestion.lon);
     
-    onChange(fullAddress, { city, country, lat, lng });
+    onChange(fullAddress, { city, country, lat, lng }); // Notifica al formulario padre con la dirección completa y detalles
   };
 
   return (
@@ -128,7 +129,8 @@ export default function AddressAutocompleteInput({
           value={inputValue}
           onChange={handleInputChange}
           onFocus={() => { 
-            if (inputValue.length >=3 && suggestions.length > 0) {
+            // Mostrar sugerencias en foco si hay texto suficiente y (hay sugerencias o se estaba cargando)
+            if (inputValue.length >=3 && (suggestions.length > 0 || isLoading)) {
               setShowSuggestions(true);
             }
           }}
@@ -143,21 +145,19 @@ export default function AddressAutocompleteInput({
         )}
       </div>
 
-      {showSuggestions && (suggestions.length > 0 || (isLoading && inputValue.length >=3) ) && (
+      {showSuggestions && inputValue.length >=3 && (
         <CommandList className="absolute z-50 top-full mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto">
-          {isLoading && suggestions.length === 0 && inputValue.length >=3 ? ( 
+          {isLoading ? (
             <div className="p-3 text-center text-sm text-muted-foreground flex items-center justify-center">
               <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />
               Buscando direcciones...
             </div>
-          ) : !isLoading && suggestions.length === 0 && inputValue.length >=3 ? ( 
-            <CommandEmpty className="py-3 px-2 text-center">No se encontraron resultados para "{inputValue}" en Chile.</CommandEmpty>
-          ) : (
+          ) : suggestions.length > 0 ? (
             <CommandGroup>
               {suggestions.map((suggestion) => (
                 <CommandItem
                   key={suggestion.place_id}
-                  value={suggestion.display_name} 
+                  value={suggestion.display_name} // Importante para cmdk
                   onSelect={() => handleSelectSuggestion(suggestion)}
                   className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
                 >
@@ -166,10 +166,13 @@ export default function AddressAutocompleteInput({
                 </CommandItem>
               ))}
             </CommandGroup>
+          ) : (
+            <CommandEmpty className="py-3 px-2 text-center">No se encontraron resultados para "{inputValue}" en Chile.</CommandEmpty>
           )}
         </CommandList>
       )}
-      {showSuggestions && (suggestions.length > 0 || (isLoading && inputValue.length >=3)) && (
+      {/* Overlay para cerrar el desplegable al hacer clic fuera */}
+      {showSuggestions && inputValue.length >=3 && (
         <div 
             className="fixed inset-0 z-40" 
             onClick={() => setShowSuggestions(false)}
@@ -179,3 +182,4 @@ export default function AddressAutocompleteInput({
     </Command>
   );
 }
+
