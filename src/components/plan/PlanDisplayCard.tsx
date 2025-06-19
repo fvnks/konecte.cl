@@ -14,21 +14,19 @@ function formatPrice(price: number, currency: string) {
   if (currency?.toUpperCase() === 'UF') {
     return `${new Intl.NumberFormat('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(price)}`;
   }
-  try { // Para CLP u otras monedas
+  try {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: currency || 'CLP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price);
-  } catch { // Fallback si la moneda no es reconocida por Intl
+  } catch {
     return `${price.toLocaleString('es-CL')} ${currency}`;
   }
 }
 
-// Simulación de usuarios por corredora según el nombre del plan (esto debería venir de la BD idealmente)
 function getUsersForPlan(planName: string): string {
     const nameLower = planName.toLowerCase();
-    if (nameLower.includes("inicia")) return "1 usuario";
-    if (nameLower.includes("crece")) return "3 usuarios";
-    if (nameLower.includes("avanza")) return "5 usuarios";
-    if (nameLower.includes("premium")) return "Usuarios Ilimitados";
-    return "Múltiples usuarios"; // Fallback
+    if (nameLower.includes("gratis") || nameLower.includes("básico")) return "1 Usuario";
+    if (nameLower.includes("pro") || nameLower.includes("inicia")) return "Hasta 3 Usuarios";
+    if (nameLower.includes("premium") || nameLower.includes("avanza") || nameLower.includes("crece")) return "Hasta 5 Usuarios";
+    return "Múltiples Usuarios";
 }
 
 export default function PlanDisplayCard({ plan }: PlanDisplayCardProps) {
@@ -38,10 +36,10 @@ export default function PlanDisplayCard({ plan }: PlanDisplayCardProps) {
   const usersByBrokerage = getUsersForPlan(plan.name);
 
   return (
-    <Card className="shadow-lg rounded-xl border bg-card hover:shadow-2xl transition-shadow duration-300">
-      <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <Card className="shadow-lg rounded-xl border bg-card hover:shadow-2xl transition-shadow duration-300 flex flex-col h-full">
+      <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-start gap-4 flex-grow"> {/* items-start para flex-col y flex-row */}
         {/* Sección Izquierda: Información del Plan */}
-        <div className="flex-grow">
+        <div className="flex-grow min-w-0"> {/* Clave: min-w-0 para permitir que el texto se ajuste/trunque */}
           <CardTitle className="text-2xl font-bold text-purple-600 mb-1.5">
             {plan.name}
           </CardTitle>
@@ -49,13 +47,13 @@ export default function PlanDisplayCard({ plan }: PlanDisplayCardProps) {
             Publica hasta {plan.max_properties_allowed ?? 'ilimitadas'} propiedades
           </p>
           <p className="text-sm text-muted-foreground flex items-center">
-            <Users className="h-4 w-4 mr-1.5 text-purple-600/70"/> {usersByBrokerage} por corredora
+            <Users className="h-4 w-4 mr-1.5 text-purple-600/70"/> {usersByBrokerage}
           </p>
           {plan.description && <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2">{plan.description}</p>}
         </div>
 
         {/* Sección Derecha: Precio y Botón */}
-        <div className="flex-shrink-0 text-left sm:text-right mt-3 sm:mt-0">
+        <div className="flex-shrink-0 text-left sm:text-right mt-3 sm:mt-0 w-full sm:w-auto self-start sm:self-center"> {/* sm:self-center para alinear verticalmente en row */}
           <div className="text-2xl font-bold text-foreground mb-0.5">
             {formattedPrice}
             {!isFreePlan && <span className="font-normal">{priceSuffix}</span>}
