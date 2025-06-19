@@ -18,8 +18,8 @@ import { getEditableTextsByGroupAction } from '@/actions/editableTextActions';
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Keep if Persona Natural has options
-import { Label } from "@/components/ui/label"; // Added missing import
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; 
+import { Label } from "@/components/ui/label"; 
 import { Separator } from "@/components/ui/separator";
 
 const defaultTexts = {
@@ -50,11 +50,10 @@ export default function SignUpStep2Page() {
   const [texts, setTexts] = useState(defaultTexts);
   const [isLoadingTexts, setIsLoadingTexts] = useState(true);
   
-  // Validate accountTypeParam immediately
   useEffect(() => {
     if (accountTypeParam !== 'natural' && accountTypeParam !== 'broker') {
       toast({ title: "Tipo de cuenta inválido", description: "Por favor, selecciona un tipo de cuenta válido para continuar.", variant: "destructive" });
-      router.push('/auth/signup'); // Redirect back to step 1
+      router.push('/auth/signup'); 
     }
   }, [accountTypeParam, router, toast]);
 
@@ -75,7 +74,7 @@ export default function SignUpStep2Page() {
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
-      accountType: accountTypeParam, // Set from URL param
+      accountType: accountTypeParam, 
       name: "",
       email: "",
       phone_number: "",
@@ -93,7 +92,6 @@ export default function SignUpStep2Page() {
   });
   
   useEffect(() => {
-    // Ensure accountType in form is updated if param changes (though it shouldn't once page loads)
     if (accountTypeParam && form.getValues('accountType') !== accountTypeParam) {
       form.setValue('accountType', accountTypeParam);
     }
@@ -101,7 +99,6 @@ export default function SignUpStep2Page() {
 
 
   async function onSubmit(values: SignUpFormValues) {
-    // Ensure accountType from URL is part of the submitted values
     const submissionValues = {
       ...values,
       accountType: accountTypeParam,
@@ -143,13 +140,13 @@ export default function SignUpStep2Page() {
     <div className="min-h-[calc(100vh-5rem)] w-full lg:grid lg:grid-cols-2">
       <div className="hidden lg:flex relative h-full bg-primary/10">
         <Image
-          src={accountTypeParam === 'natural' ? "https://bukmy.cl/img/register_natural.jpg" : "https://bukmy.cl/img/register_broker.jpg"}
-          alt={`Ilustración de registro ${accountTypeParam === 'natural' ? 'persona natural' : 'corredor'}`}
+          src="https://bukmy.cl/img/register.png" // Imagen unificada
+          alt="Ilustración de registro" // Alt text genérico
           fill
           style={{objectFit: "cover", objectPosition: "center"}}
           sizes="50vw"
           priority
-          data-ai-hint={accountTypeParam === 'natural' ? "persona casa" : "corredor oficina"}
+          data-ai-hint="registro personas" // Hint genérico
         />
       </div>
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 h-full bg-card lg:bg-background">
