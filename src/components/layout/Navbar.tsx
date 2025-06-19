@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus, MailQuestion, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet'; // Added SheetHeader, SheetTitle
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'; // Added SheetDescription
 import React, { useState, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { useRouter } from 'next/navigation';
@@ -19,7 +19,6 @@ import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnnouncementBar from './AnnouncementBar';
-// import ThemeToggle from './ThemeToggle'; // Reverted to simple button
 import { useTheme } from "next-themes";
 
 
@@ -59,7 +58,7 @@ export default function Navbar() {
 
   useEffect(() => {
     setIsClient(true);
-    setCurrentTheme(theme); // Initialize currentTheme
+    setCurrentTheme(theme); 
   }, [theme]);
 
 
@@ -159,7 +158,6 @@ export default function Navbar() {
           className={cn(
             "px-3 py-2 h-auto rounded-md text-sm font-medium transition-colors",
             "text-muted-foreground hover:text-primary hover:bg-primary/10",
-            // router.pathname === item.href && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" // Assuming router.pathname logic
           )}
           onClick={closeMenu}
         >
@@ -256,16 +254,16 @@ export default function Navbar() {
       )}
 
       <header className="sticky top-0 z-50 w-full border-b bg-card shadow-lg">
-        <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8"> {/* Navbar height set to h-20 (80px) */}
+        <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5 shrink-0" onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)}>
             {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-[52px] w-[52px] text-primary" /><span className="text-4xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1 mx-auto"> {/* Reduced gap for nav items */}
+          <nav className="hidden md:flex items-center gap-1 mx-auto">
             {commonNavLinksDesktop()}
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-2"> {/* Reduced gap */}
+          <div className="flex items-center gap-2 sm:gap-2">
              {isClient && (
                 <Button
                     variant="ghost"
@@ -282,7 +280,7 @@ export default function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="default"
-                    className="hidden md:flex items-center gap-1.5 text-sm font-medium px-3 py-2 h-9 rounded-md shadow-sm hover:bg-primary/90" // Smaller button
+                    className="hidden md:flex items-center gap-1.5 text-sm font-medium px-3 py-2 h-9 rounded-md shadow-sm hover:bg-primary/90"
                   >
                     <PlusCircle className="h-4 w-4" /> Publicar
                   </Button>
@@ -427,16 +425,13 @@ export default function Navbar() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[300px] sm:w-[340px] flex flex-col p-0 bg-card border-l shadow-2xl">
-                  <SheetHeader className="sr-only"> {/* Screen-reader only title */}
-                    <SheetTitle>Navegación Principal</SheetTitle>
+                   <SheetHeader className="p-5 pb-3 border-b">
+                    <SheetTitle className="sr-only">Navegación Principal</SheetTitle>
+                    <SheetDescription className="sr-only">Menú de enlaces principales y acciones de cuenta.</SheetDescription>
+                    <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
+                        {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-[52px] w-[52px] text-primary" /><span className="text-4xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
+                    </Link>
                   </SheetHeader>
-                  
-                  {/* Visual header for logo */}
-                  <div className="px-5 pt-5 pb-4 border-b">
-                      <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
-                          {isClient ? logoDisplayContent() : <div className="flex items-center gap-2.5"><Home className="h-[52px] w-[52px] text-primary" /><span className="text-4xl font-bold font-headline text-primary">{DEFAULT_NAVBAR_TITLE}</span></div>}
-                      </Link>
-                  </div>
                   
                   <nav className="flex-grow flex flex-col gap-1.5 p-4 overflow-y-auto">
                     {navItems.map((item) => (
@@ -521,3 +516,4 @@ export default function Navbar() {
     </>
   );
 }
+
