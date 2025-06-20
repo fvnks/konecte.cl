@@ -1,10 +1,9 @@
 // src/components/property/ImageDropzoneSortableEdit.tsx
 'use client';
 
-import { useCallback, useState, useEffect, useId } from 'react';
+import { useCallback, useState, useEffect, useId, useRef } from 'react'; // Added useRef
 import { useDropzone } from 'react-dropzone';
 import { ReactSortable } from 'react-sortablejs';
-// import Image from 'next/image'; // No longer using next/image here
 import { Button } from '@/components/ui/button';
 import { UploadCloud, Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,10 +14,10 @@ const MAX_FILE_SIZE_MB = 5;
 
 export interface ManagedImageForEdit {
   id: string;
-  url: string;
-  file?: File;
+  url: string; // Can be http(s) URL for existing, or blob:URL for new
+  file?: File; // Only for new files
   isExisting: boolean;
-  originalUrl?: string;
+  originalUrl?: string; // Store original http(s) URL for existing images
 }
 
 interface ImageDropzoneSortableEditProps {
@@ -35,38 +34,38 @@ export default function ImageDropzoneSortableEdit({
   const [managedImages, setManagedImages] = useState<ManagedImageForEdit[]>([]);
   const { toast } = useToast();
   const dropzoneId = useId();
+  const createdBlobUrlsRef = useRef<string[]>([]); // Tracks only blob URLs created by this instance
 
   useEffect(() => {
+    // Initialize with existing images
     const initialProcessedImages = initialImageUrls.map((url, index) => ({
-      id: `existing-${url.slice(-10)}-${index}-${Date.now()}`,
+      id: `existing-${url.slice(-10)}-${index}-${Date.now()}`, // More unique ID
       url: url,
       isExisting: true,
       originalUrl: url,
     }));
     setManagedImages(initialProcessedImages);
+    // No blob URLs created from initialImageUrls, so createdBlobUrlsRef remains empty here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialImageUrls]); // Depend only on initialImageUrls for this setup effect
+  }, [initialImageUrls]); // Rerun only if initialImageUrls fundamentally changes
 
+  // Effect to notify parent form of changes
   useEffect(() => {
     onManagedImagesChange(managedImages);
-    // Cleanup for blob URLs when managedImages state changes and items are removed
-    // This effect should ideally run only when a blob URL is actually removed,
-    // or on unmount for all generated blob URLs.
-    // For simplicity in this context, let's stick to unmount cleanup.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [managedImages]);
+  }, [managedImages]); // onManagedImagesChange is memoized usually
 
+  // Unmount cleanup for blob URLs
   useEffect(() => {
-    // Component unmount cleanup for any blob URLs created by this instance.
     return () => {
-      managedImages.forEach(img => {
-        if (!img.isExisting && img.url.startsWith('blob:')) {
-          URL.revokeObjectURL(img.url);
+      createdBlobUrlsRef.current.forEach(url => {
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
         }
       });
+      createdBlobUrlsRef.current = [];
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty array ensures this runs only on unmount.
+  }, []); // Empty dependency array for unmount only
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     const currentImageCount = managedImages.length;
@@ -76,11 +75,8 @@ export default function ImageDropzoneSortableEdit({
       rejectedFiles.forEach((rejectedFile: any) => {
         rejectedFile.errors.forEach((error: any) => {
           let message = `Error al subir "${rejectedFile.file.name}": ${error.message}`;
-          if (error.code === 'file-too-large') {
-            message = `"${rejectedFile.file.name}" excede el tamaño máximo de ${MAX_FILE_SIZE_MB}MB.`;
-          } else if (error.code === 'file-invalid-type') {
-            message = `"${rejectedFile.file.name}" no es un tipo de imagen válido.`;
-          }
+          if (error.code === 'file-too-large') message = `"${rejectedFile.file.name}" excede ${MAX_FILE_SIZE_MB}MB.`;
+          else if (error.code === 'file-invalid-type') message = `"${rejectedFile.file.name}" no es válido.`;
           toast({ title: "Archivo Rechazado", description: message, variant: "destructive" });
         });
       });
@@ -88,33 +84,45 @@ export default function ImageDropzoneSortableEdit({
 
     if (acceptedFiles.length > availableSlots) {
       toast({
-        title: "Límite de Imágenes Excedido",
-        description: `Solo puedes subir ${availableSlots} imagen(es) más (máximo ${maxImages}). Se han añadido las primeras ${availableSlots}.`,
+        title: "Límite Excedido",
+        description: `Solo puedes subir ${availableSlots} más (máx. ${maxImages}). Se añadieron las primeras ${availableSlots}.`,
         variant: "warning",
       });
     }
 
-    const newImagesToAdd = acceptedFiles.slice(0, availableSlots).map(file => {
+    const newImagesToAdd: ManagedImageForEdit[] = [];
+    const newBlobUrlsForThisDrop: string[] = [];
+
+    acceptedFiles.slice(0, availableSlots).forEach(file => {
       const previewUrl = URL.createObjectURL(file);
-      return {
+      newBlobUrlsForThisDrop.push(previewUrl);
+      newImagesToAdd.push({
         id: `${file.name}-${Date.now()}-${Math.random()}`,
         file,
-        url: previewUrl,
+        url: previewUrl, // This is the blob:URL
         isExisting: false,
-      };
+      });
     });
-
-    setManagedImages(prev => [...prev, ...newImagesToAdd]);
-  }, [managedImages.length, maxImages, toast]); // managedImages.length is the correct dependency
+    
+    if (newImagesToAdd.length > 0) {
+      setManagedImages(prev => [...prev, ...newImagesToAdd]);
+      createdBlobUrlsRef.current = [...createdBlobUrlsRef.current, ...newBlobUrlsForThisDrop];
+    }
+  }, [managedImages.length, maxImages, toast]);
 
   const removeImage = (idToRemove: string) => {
     setManagedImages(prevImages => {
       const imageToRemove = prevImages.find(img => img.id === idToRemove);
       if (imageToRemove && !imageToRemove.isExisting && imageToRemove.url.startsWith('blob:')) {
         URL.revokeObjectURL(imageToRemove.url);
+        createdBlobUrlsRef.current = createdBlobUrlsRef.current.filter(url => url !== imageToRemove.url);
       }
       return prevImages.filter(img => img.id !== idToRemove);
     });
+  };
+  
+  const onSortEnd = (newSortedList: ManagedImageForEdit[]) => {
+    setManagedImages(newSortedList);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -157,21 +165,20 @@ export default function ImageDropzoneSortableEdit({
       {managedImages.length > 0 && (
         <ReactSortable
           list={managedImages}
-          setList={setManagedImages}
+          setList={onSortEnd} // Use the updated handler
           tag="div"
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 py-2"
           animation={150}
-          // removed handle prop to make entire item draggable
         >
           {managedImages.map((img, index) => (
             <div
-              key={img.id}
+              key={img.id} // Ensure key is stable and unique
               className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100 cursor-grab active:cursor-grabbing"
             >
               <img
                 src={img.url} // This will be blob URL for new, http URL for existing
                 alt={`Previsualización ${img.id}`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: 'rgba(0,0,0,0.05)' }}
                 data-ai-hint="propiedad interior"
               />
               <Button

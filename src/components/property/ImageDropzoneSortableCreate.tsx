@@ -1,10 +1,9 @@
 // src/components/property/ImageDropzoneSortableCreate.tsx
 'use client';
 
-import { useCallback, useState, useEffect, useId } from 'react';
+import { useCallback, useState, useEffect, useId, useRef } from 'react'; // Added useRef
 import { useDropzone } from 'react-dropzone';
 import { ReactSortable } from 'react-sortablejs';
-// import Image from 'next/image'; // No longer using next/image here
 import { Button } from '@/components/ui/button';
 import { UploadCloud, Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -16,12 +15,12 @@ const MAX_FILE_SIZE_MB = 5;
 export interface SortableImageItem {
   id: string;
   file: File;
-  preview: string;
+  preview: string; // This will be a blob:URL
 }
 
 interface ImageDropzoneSortableCreateProps {
   onImagesChange: (filesInOrder: File[]) => void;
-  initialImages?: File[];
+  initialImages?: File[]; // Should ideally be empty for "create" but handled if passed
   maxImages?: number;
 }
 
@@ -33,29 +32,46 @@ export default function ImageDropzoneSortableCreate({
   const [images, setImages] = useState<SortableImageItem[]>([]);
   const { toast } = useToast();
   const dropzoneId = useId();
+  const createdBlobUrlsRef = useRef<string[]>([]);
 
+  // Effect to handle initialImages (if any) and setup unmount cleanup
   useEffect(() => {
     if (initialImages.length > 0 && images.length === 0) {
-      const initialSortableImages = initialImages.map((file, index) => ({
-        id: `initial-${index}-${Date.now()}`,
-        file,
-        preview: URL.createObjectURL(file),
-      }));
-      setImages(initialSortableImages);
+      const newInitialSortableImages: SortableImageItem[] = [];
+      const newBlobUrls: string[] = [];
+
+      initialImages.forEach((file, index) => {
+        if (newInitialSortableImages.length < maxImages) {
+          const previewUrl = URL.createObjectURL(file);
+          newBlobUrls.push(previewUrl);
+          newInitialSortableImages.push({
+            id: `initial-${file.name}-${index}-${Date.now()}`,
+            file,
+            preview: previewUrl,
+          });
+        }
+      });
+      setImages(newInitialSortableImages);
+      createdBlobUrlsRef.current = [...createdBlobUrlsRef.current, ...newBlobUrls];
     }
-    // Cleanup for previews created by this component instance
+
+    // Unmount cleanup: revoke all blob URLs created by this instance
     return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      images.forEach(img => URL.revokeObjectURL(img.preview));
+      createdBlobUrlsRef.current.forEach(url => {
+        if (url.startsWith('blob:')) { // Ensure it's a blob URL we created
+          URL.revokeObjectURL(url);
+        }
+      });
+      createdBlobUrlsRef.current = []; // Clear the ref
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialImages]); // initialImages dependency is correct for initial setup
+  }, [initialImages, maxImages]); // Rerun if initialImages or maxImages changes (though initialImages should be stable)
 
+  // Effect to notify parent form of changes to the file list
   useEffect(() => {
     onImagesChange(images.map(img => img.file));
-    // No revocar aquí, se hace en el unmount del componente o si initialImages cambia.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [images]);
+  }, [images]); // onImagesChange is memoized by PropertyForm usually
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     const currentImageCount = images.length;
@@ -83,30 +99,44 @@ export default function ImageDropzoneSortableCreate({
       });
     }
 
-    const newImages = acceptedFiles.slice(0, availableSlots).map(file => ({
-      id: `${file.name}-${Date.now()}-${Math.random()}`,
-      file,
-      preview: URL.createObjectURL(file)
-    }));
+    const newSortableImages: SortableImageItem[] = [];
+    const newBlobUrlsForThisDrop: string[] = [];
 
-    setImages(prev => [...prev, ...newImages]);
-  }, [images.length, maxImages, toast]); // images.length is the correct dependency here
+    acceptedFiles.slice(0, availableSlots).forEach(file => {
+      const previewUrl = URL.createObjectURL(file);
+      newBlobUrlsForThisDrop.push(previewUrl);
+      newSortableImages.push({
+        id: `${file.name}-${Date.now()}-${Math.random()}`,
+        file,
+        preview: previewUrl
+      });
+    });
+
+    if (newSortableImages.length > 0) {
+      setImages(prev => [...prev, ...newSortableImages]);
+      createdBlobUrlsRef.current = [...createdBlobUrlsRef.current, ...newBlobUrlsForThisDrop];
+    }
+  }, [images.length, maxImages, toast]);
 
   const removeImage = (idToRemove: string) => {
     setImages(prevImages => {
       const imageToRemove = prevImages.find(img => img.id === idToRemove);
-      if (imageToRemove) {
+      if (imageToRemove && imageToRemove.preview.startsWith('blob:')) {
         URL.revokeObjectURL(imageToRemove.preview);
+        createdBlobUrlsRef.current = createdBlobUrlsRef.current.filter(url => url !== imageToRemove.preview);
       }
       return prevImages.filter(img => img.id !== idToRemove);
     });
+  };
+
+  const onSortEnd = (newSortedList: SortableImageItem[]) => {
+    setImages(newSortedList);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] },
     maxSize: MAX_FILE_SIZE_MB * 1024 * 1024,
-    maxFiles: maxImages, // This might not be strictly enforced if adding one by one, but good to have
     disabled: images.length >= maxImages,
   });
 
@@ -143,11 +173,10 @@ export default function ImageDropzoneSortableCreate({
       {images.length > 0 && (
         <ReactSortable
           list={images}
-          setList={setImages}
+          setList={onSortEnd}
           tag="div"
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 py-2"
           animation={150}
-          // removed handle prop to make entire item draggable
         >
           {images.map((img, index) => (
             <div
@@ -157,7 +186,7 @@ export default function ImageDropzoneSortableCreate({
               <img
                 src={img.preview}
                 alt={`Previsualización ${img.file.name}`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: 'rgba(0,0,0,0.05)' }}
                 data-ai-hint="propiedad interior"
               />
               <Button
