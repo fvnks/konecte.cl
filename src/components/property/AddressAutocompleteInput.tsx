@@ -72,8 +72,8 @@ export default function AddressAutocompleteInput({
 
   useEffect(() => {
     if (!GEOAPIFY_API_KEY) {
-      const errorMsg = "Servicio de autocompletado no disponible (Error GEO_KEY_CONFIG). Contacte al administrador.";
-      console.error("[AddressAutocompleteInput CRITICAL] Geoapify API Key (NEXT_PUBLIC_GEOAPIFY_API_KEY) no está configurada.");
+      const errorMsg = "Servicio de autocompletado no disponible (Error GEO_KEY_CONFIG).";
+      console.error("[AddressAutocompleteInput CRITICAL] Geoapify API Key no configurada.");
       setApiKeyError(errorMsg);
     } else {
       setApiKeyError(null);
@@ -81,25 +81,22 @@ export default function AddressAutocompleteInput({
   }, []);
 
   useEffect(() => {
-    // Sync external value prop with internal inputValue state
-    // Only update inputValue if the external value has actually changed
-    // to avoid potential loops if onChange updates the external value immediately.
-    if (value !== inputValue) {
+    // Sincronizar prop `value` externa con `inputValue` interno si no está enfocado
+    if (value !== inputValue && !isInputFocused) {
       setInputValue(value);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]); // Only depend on external value
+  }, [value]);
 
-  const fetchSuggestions = useCallback(async (query: string, signal: AbortSignal) => {
+
+  const fetchSuggestionsInternal = useCallback(async (query: string, signal: AbortSignal) => {
     if (apiKeyError) {
-      console.log("[AddressAutocompleteInput] Fetch aborted due to apiKeyError.");
       setFetchError(apiKeyError);
       setIsLoading(false);
       setSuggestions([]);
       return;
     }
     if (query.length < 3) {
-      console.log("[AddressAutocompleteInput] Query too short, clearing suggestions.");
       setSuggestions([]);
       setIsLoading(false);
       setFetchError(null);
@@ -107,23 +104,23 @@ export default function AddressAutocompleteInput({
     }
 
     console.log(`[AddressAutocompleteInput] Fetching from Geoapify for: "${query}"`);
-    setIsLoading(true); // Set loading true *before* the fetch
+    setIsLoading(true);
     setFetchError(null);
-    // Suggestions are cleared in the main useEffect before calling this.
+    // Suggestions are cleared by handleInputChange before debounce or if query is too short
 
     const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&filter=countrycode:cl&limit=5&apiKey=${GEOAPIFY_API_KEY}`;
     console.log(`[AddressAutocompleteInput] Fetch URL: ${url}`);
 
     try {
       const response = await fetch(url, { signal });
-      const responseBodyText = await response.text(); // Read body once
+      const responseBodyText = await response.text();
 
       if (signal.aborted) {
-        console.log(`[AddressAutocompleteInput] Fetch request for "${query}" was aborted.`);
-        // Do not change isLoading here, let the new request handle it.
+        console.log(`[AddressAutocompleteInput] Fetch for "${query}" was aborted (in fetchSuggestionsInternal).`);
+        // No cambiar isLoading aquí si ya fue abortado; la nueva llamada lo controlará
         return;
       }
-      console.log(`[AddressAutocompleteInput] Geoapify API response for "${query}" - Status: ${response.status}`);
+      console.log(`[AddressAutocompleteInput] Geoapify API response for "${query}" - Status: ${response.status}, Body: ${responseBodyText.substring(0, 100)}...`);
 
       if (!response.ok) {
         let errorDetail = `Error ${response.status} de Geoapify. `;
@@ -133,46 +130,40 @@ export default function AddressAutocompleteInput({
         } catch (parseErr) {
            errorDetail += `Respuesta no es JSON válido. Raw: ${responseBodyText.substring(0,100)}`;
         }
-        console.error("[AddressAutocompleteInput ERROR] Geoapify API error:", errorDetail);
-        throw new Error(errorDetail); // This will be caught by the catch block below
+        throw new Error(errorDetail);
       }
 
       const data = JSON.parse(responseBodyText) as { features: GeoapifyFeature[] };
       console.log(`[AddressAutocompleteInput] Geoapify response data for "${query}": `, data);
 
       if (data && Array.isArray(data.features)) {
-        setSuggestions(data.features); // Update suggestions
+        setSuggestions(data.features);
         console.log(`[AddressAutocompleteInput] Features count: ${data.features.length}`);
         setFetchError(null);
       } else {
-        console.warn('[AddressAutocompleteInput WARN] Geoapify response "features" not an array or data is null.');
         setSuggestions([]);
         setFetchError("Respuesta inesperada del servicio de direcciones.");
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        console.log(`[AddressAutocompleteInput] Fetch request for "${query}" was intentionally aborted (name: AbortError).`);
+        console.log(`[AddressAutocompleteInput] Fetch for "${query}" intentionally aborted by AbortController.`);
       } else {
-        console.error(`[AddressAutocompleteInput ERROR] Error fetching/processing Geoapify for "${query}":`, error.message, error);
-        setSuggestions([]); // Clear suggestions on error
+        console.error(`[AddressAutocompleteInput ERROR] Error fetching/processing for "${query}":`, error.message);
+        setSuggestions([]);
         setFetchError(
           error.message.includes("Failed to fetch") || error.message.includes("NetworkError")
-          ? "Error de red. Verifique su conexión, VPN, firewall o extensiones del navegador."
-          : (error.message || "No se pudieron cargar las sugerencias. Intente de nuevo.")
+          ? "Error de red. Verifique su conexión, VPN, o firewall."
+          : (error.message || "No se pudieron cargar las sugerencias.")
         );
       }
     } finally {
-      // Only set isLoading to false if this specific fetch attempt wasn't aborted
-      // and another one isn't already in progress due to rapid input.
-      // Let the new fetch call control isLoading.
       if (!signal.aborted) {
          setIsLoading(false);
       }
     }
-  }, [apiKeyError]); // Only apiKeyError, as other states are managed within the effect or setters are stable
+  }, [apiKeyError]);
 
   useEffect(() => {
-    // Cleanup previous debounce timeout and abort controller
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
@@ -181,38 +172,39 @@ export default function AddressAutocompleteInput({
       abortControllerRef.current.abort();
     }
 
-    if (inputValue && inputValue.length >= 3 && !disabled && !apiKeyError && isInputFocused) {
+    if (inputValue.length >= 3 && !disabled && !apiKeyError && isInputFocused) {
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
-      
-      setSuggestions([]); // Clear previous suggestions immediately
-      setFetchError(null); // Clear previous error
-      setIsLoading(true); // Set loading true *before* debounce timer
+
+      setSuggestions([]); // Limpiar sugerencias previas al iniciar nueva búsqueda
+      setFetchError(null);
+      setIsLoading(true); // Indicar carga inmediatamente
 
       debounceTimeoutRef.current = setTimeout(() => {
-        if (!signal.aborted) { // Check if not aborted before fetching
-            fetchSuggestions(inputValue, signal);
+        if (!signal.aborted) {
+          fetchSuggestionsInternal(inputValue, signal);
         } else {
-            console.log("[AddressAutocompleteInput] Debounced fetch for '"+inputValue+"' was aborted before execution.");
-            setIsLoading(false); // Ensure loading is false if fetch was pre-aborted
+          console.log(`[AddressAutocompleteInput] Debounced fetch for "${inputValue}" was aborted before execution.`);
+          if (!abortControllerRef.current?.signal.aborted) setIsLoading(false); // Solo si este no fue el que abortó
         }
       }, 500);
     } else {
-      setIsLoading(false); // Not enough input or disabled, so not loading
-      setSuggestions([]); // Clear suggestions if input is too short
+      setIsLoading(false);
+      setSuggestions([]);
       if (inputValue.length === 0 && !apiKeyError) {
-          setFetchError(null); // Clear errors if input is empty
+        setFetchError(null);
       }
     }
 
     return () => {
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
       if (abortControllerRef.current) {
-          console.log("[AddressAutocompleteInput] Aborting fetch in useEffect[inputValue] cleanup.");
-          abortControllerRef.current.abort();
+        console.log("[AddressAutocompleteInput] Aborting fetch in useEffect[inputValue] cleanup.");
+        abortControllerRef.current.abort();
       }
     };
-  }, [inputValue, disabled, apiKeyError, fetchSuggestions, isInputFocused]); // isInputFocused is key here
+  }, [inputValue, disabled, apiKeyError, fetchSuggestionsInternal, isInputFocused]);
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -222,6 +214,7 @@ export default function AddressAutocompleteInput({
         inputRef.current &&
         !inputRef.current.contains(event.target as Node)
       ) {
+        console.log("[AddressAutocompleteInput] Clicked outside. Setting isInputFocused to false.");
         setIsInputFocused(false);
       }
     };
@@ -234,7 +227,16 @@ export default function AddressAutocompleteInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInputValue = e.target.value;
     setInputValue(newInputValue);
-    onChange(newInputValue); 
+    onChange(newInputValue); // Propagar cambio al padre inmediatamente
+
+    if (newInputValue.length < 3) {
+      setSuggestions([]);
+      setFetchError(null);
+      setIsLoading(false); // Asegurar que no quede en estado de carga
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    }
   };
 
   const handleSelectSuggestion = (feature: GeoapifyFeature) => {
@@ -242,54 +244,46 @@ export default function AddressAutocompleteInput({
     const fullAddress = props.formatted || props.address_line1 || props.name || '';
     console.log("[AddressAutocompleteInput] Suggestion selected:", fullAddress, "Details:", props);
 
-    setInputValue(fullAddress); // Update internal input value
-    onChange(fullAddress, { // Call parent's onChange with full details
+    setInputValue(fullAddress);
+    onChange(fullAddress, {
       city: props.city || props.town || props.village || props.county || props.suburb || props.district || props.state || '',
       country: props.country || '',
       lat: props.lat ?? feature.geometry?.coordinates[1],
       lng: props.lon ?? feature.geometry?.coordinates[0]
     });
-    setIsInputFocused(false); // Hide dropdown
-    setSuggestions([]); // Clear suggestions
-    setFetchError(null); // Clear any errors
+    setIsInputFocused(false); // Esto debería cerrar el dropdown en el siguiente render
+    setSuggestions([]);
+    setFetchError(null);
+    if (inputRef.current) inputRef.current.blur();
   };
-  
+
   const handleInputFocus = () => {
     console.log("[AddressAutocompleteInput] Input focused.");
     setIsInputFocused(true);
   };
-  
+
   const handleInputBlur = () => {
+    // No cerramos el dropdown aquí directamente.
+    // handleClickOutside y handleSelectSuggestion se encargarán de eso.
+    // Solo registramos que el input perdió el foco.
     console.log("[AddressAutocompleteInput] Input blurred.");
-    // Use setTimeout to allow click on suggestion item before hiding
-    setTimeout(() => {
-        const activeEl = document.activeElement;
-        if (
-            commandRef.current && !commandRef.current.contains(activeEl) &&
-            inputRef.current && !inputRef.current.contains(activeEl)
-        ) {
-            console.log("[AddressAutocompleteInput] Blur caused dropdown to hide.");
-            setIsInputFocused(false);
-        } else {
-            console.log("[AddressAutocompleteInput] Blur detected, but focus moved to suggestion or input still focused.");
-        }
-    }, 150); // Small delay to catch clicks on items
+    // Dejar que el listener de click outside o la selección manejen el cierre.
+    //setIsInputFocused(false); // Esto podría ser demasiado agresivo
   };
 
-  const shouldShowDropdown = isInputFocused && (
-    apiKeyError || 
-    fetchError || 
-    isLoading || 
-    (suggestions.length > 0 && inputValue.length >=3) || 
-    (inputValue.length > 0 && inputValue.length < 3) // Show "type more" message
-  );
-  
-  console.log(`[AddressAutocompleteInput RENDER] inputValue: "${inputValue}", isLoading: ${isLoading}, fetchError: "${fetchError}", suggestions: ${suggestions.length}, shouldShowDropdown: ${shouldShowDropdown}, apiKeyError: ${apiKeyError}, isInputFocused: ${isInputFocused}`);
-  
+  const shouldDisplayDropdown =
+    isInputFocused &&
+    !disabled &&
+    (apiKeyError ||
+      fetchError ||
+      isLoading ||
+      (suggestions.length > 0 && inputValue.length >= 3) ||
+      (inputValue.length > 0 && inputValue.length < 3));
+
   let commandListContent;
   if (apiKeyError) {
     commandListContent = <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive whitespace-normal"><AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {apiKeyError}</CommandEmpty>;
-  } else if (isLoading) {
+  } else if (isLoading && inputValue.length >= 3) {
     commandListContent = <div className="p-3 text-center text-sm text-muted-foreground flex items-center justify-center"><Loader2 className="inline-block h-4 w-4 animate-spin mr-2" />Buscando direcciones...</div>;
   } else if (fetchError) {
     commandListContent = <CommandEmpty className="py-3 px-2.5 text-center text-sm text-destructive whitespace-normal"><AlertTriangle className="inline-block h-4 w-4 mr-1.5 mb-0.5"/> {fetchError}</CommandEmpty>;
@@ -301,9 +295,8 @@ export default function AddressAutocompleteInput({
             key={feature.properties.place_id || `sugg-${index}-${Date.now()}`}
             value={feature.properties.formatted || feature.properties.address_line1 || feature.properties.name || `value-${index}`}
             onSelect={() => handleSelectSuggestion(feature)}
+            onMouseDown={(e) => e.preventDefault()} // Previene el blur del input al hacer clic
             className="cursor-pointer flex items-start gap-2.5 text-sm p-2.5 hover:bg-accent"
-            // onMouseDown is important here to prevent blur from hiding the list before click registers
-            onMouseDown={(e) => e.preventDefault()}
           >
             <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
             <span className="flex-1">{feature.properties.formatted || feature.properties.address_line1 || feature.properties.name}</span>
@@ -311,13 +304,15 @@ export default function AddressAutocompleteInput({
         ))}
       </CommandGroup>
     );
-  } else if (inputValue.length >= 3 && isInputFocused) { // Only show "no results" if actively focused and searched
+  } else if (isInputFocused && inputValue.length >= 3) {
     commandListContent = <CommandEmpty className="py-3 px-2.5 text-center text-sm">No se encontraron resultados para "{inputValue}".</CommandEmpty>;
-  } else if (inputValue.length > 0 && inputValue.length < 3 && isInputFocused) { // Show "type more" if input is short and focused
+  } else if (isInputFocused && inputValue.length > 0 && inputValue.length < 3) {
      commandListContent = <CommandEmpty className="py-3 px-2.5 text-center text-sm">Escribe al menos 3 caracteres para buscar.</CommandEmpty>;
   } else {
-    commandListContent = null; // No content if not focused or input is empty
+    commandListContent = null;
   }
+  
+  console.log(`[AddressAutocompleteInput RENDER] inputValue: "${inputValue}", isLoading: ${isLoading}, fetchError: "${fetchError}", suggestions: ${suggestions.length}, shouldDisplayDropdown: ${shouldDisplayDropdown}, apiKeyError: ${apiKeyError}, isInputFocused: ${isInputFocused}`);
 
   return (
     <Command ref={commandRef} shouldFilter={false} className={cn("relative", className)}>
@@ -328,7 +323,7 @@ export default function AddressAutocompleteInput({
           value={inputValue}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
+          onBlur={handleInputBlur} // Mantenemos onBlur para rastrear isInputFocused
           placeholder={placeholder}
           disabled={disabled || !!apiKeyError}
           className="pl-10"
@@ -336,9 +331,10 @@ export default function AddressAutocompleteInput({
           autoComplete="off"
         />
       </div>
-      {shouldShowDropdown && commandListContent && (
+      {shouldDisplayDropdown && commandListContent && (
         <CommandList
           className="absolute z-[51] top-full mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto"
+          style={{ display: 'block' }} // Forzar display block si se debe mostrar
         >
           {commandListContent}
         </CommandList>
