@@ -27,7 +27,7 @@ import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog'; // Import the new dialog
+import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog';
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
@@ -196,21 +196,16 @@ export default function PropertyForm() {
     return uploadedUrls;
   };
 
-  async function onSubmit(values: PropertyFormValues) {
-    console.log('[PropertyForm] onSubmit: Start. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', !!loggedInUser);
-    if (isCheckingAuth) {
-      toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
-      console.log('[PropertyForm] onSubmit: Still checking auth. Returning.');
-      return;
-    }
-
+  // This is the function that will be called when the form is valid
+  async function actualFormSubmit(values: PropertyFormValues) {
+    console.log('[PropertyForm] actualFormSubmit: Called with values:', values);
     if (!loggedInUser || !loggedInUser.id) {
-      console.log('[PropertyForm] onSubmit: User not logged in. Calling setShowAuthAlert(true).');
+      // This should ideally not be reached if handleAttemptToPublish works correctly
+      console.error('[PropertyForm] actualFormSubmit: Critical error - No loggedInUser found at submission point.');
       setShowAuthAlert(true);
       return;
     }
 
-    console.log('[PropertyForm] onSubmit: User is logged in. Proceeding with image upload and submission.');
     const finalImageUrls = await uploadImagesToProxy();
 
     const dataToSubmit = {
@@ -243,6 +238,27 @@ export default function PropertyForm() {
     }
   }
 
+  const handleAttemptToPublish = async () => {
+    console.log('[PropertyForm] handleAttemptToPublish: Clicked. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', !!loggedInUser);
+    if (isCheckingAuth) {
+      toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
+      console.log('[PropertyForm] handleAttemptToPublish: Still checking auth. Returning.');
+      return;
+    }
+
+    if (!loggedInUser || !loggedInUser.id) {
+      console.log('[PropertyForm] handleAttemptToPublish: User not logged in. Setting showAuthAlert to true.');
+      setShowAuthAlert(true);
+      return;
+    }
+
+    // If user is logged in, proceed with react-hook-form's handleSubmit
+    // which will validate and then call actualFormSubmit
+    console.log('[PropertyForm] handleAttemptToPublish: User logged in. Calling form.handleSubmit(actualFormSubmit).');
+    await form.handleSubmit(actualFormSubmit)();
+  };
+
+
   useEffect(() => {
     return () => {
       imagePreviews.forEach(url => URL.revokeObjectURL(url));
@@ -257,8 +273,7 @@ export default function PropertyForm() {
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* ... (resto de los FormFields como estaban) ... */}
+        <form onSubmit={(e) => { e.preventDefault(); handleAttemptToPublish(); }} className="space-y-8">
           <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -290,7 +305,7 @@ export default function PropertyForm() {
             />
           </div>
           
-          <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl><AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting} /></FormControl> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl><AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting || isCheckingAuth} /></FormControl> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
             <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
@@ -360,13 +375,18 @@ export default function PropertyForm() {
 
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
 
-          <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isUploading}>
+          <Button 
+            type="button" /* Changed from type="submit" */
+            onClick={handleAttemptToPublish} /* New onClick handler */
+            className="w-full md:w-auto" 
+            disabled={form.formState.isSubmitting || isUploading}
+          >
             {(form.formState.isSubmitting || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isUploading ? 'Subiendo imágenes...' : 'Publicar Propiedad'}
           </Button>
         </form>
       </Form>
-
+      
       <AuthRequiredDialog
         open={showAuthAlert}
         onOpenChange={setShowAuthAlert}

@@ -23,7 +23,7 @@ import { requestFormSchema } from "@/lib/types";
 import { Loader2, UserCircle, Handshake } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog'; // Import the new dialog
+import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog';
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -85,21 +85,16 @@ export default function RequestForm() {
     },
   });
 
-  async function onSubmit(values: RequestFormValues) {
-    console.log('[RequestForm] onSubmit: Start. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', !!loggedInUser);
-    if (isCheckingAuth) {
-      toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
-      console.log('[RequestForm] onSubmit: Still checking auth. Returning.');
-      return;
-    }
-
+  // This is the function that will be called when the form is valid
+  async function actualFormSubmit(values: RequestFormValues) {
+    console.log('[RequestForm] actualFormSubmit: Called with values:', values);
     if (!loggedInUser || !loggedInUser.id) {
-      console.log('[RequestForm] onSubmit: User not logged in. Calling setShowAuthAlert(true).');
+      // This should ideally not be reached if handleAttemptToPublish works correctly
+      console.error('[RequestForm] actualFormSubmit: Critical error - No loggedInUser found at submission point.');
       setShowAuthAlert(true);
       return;
     }
 
-    console.log('[RequestForm] onSubmit: User is logged in. Proceeding with submission.');
     const dataToSubmit = {
         ...values,
         minBedrooms: values.minBedrooms === '' ? undefined : values.minBedrooms,
@@ -130,11 +125,29 @@ export default function RequestForm() {
     }
   }
 
+  const handleAttemptToPublish = async () => {
+    console.log('[RequestForm] handleAttemptToPublish: Clicked. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', !!loggedInUser);
+    if (isCheckingAuth) {
+      toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
+      console.log('[RequestForm] handleAttemptToPublish: Still checking auth. Returning.');
+      return;
+    }
+
+    if (!loggedInUser || !loggedInUser.id) {
+      console.log('[RequestForm] handleAttemptToPublish: User not logged in. Setting showAuthAlert to true.');
+      setShowAuthAlert(true);
+      return;
+    }
+
+    console.log('[RequestForm] handleAttemptToPublish: User logged in. Calling form.handleSubmit(actualFormSubmit).');
+    await form.handleSubmit(actualFormSubmit)();
+  };
+
+
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* ... (resto de los FormFields como estaban) ... */}
+        <form onSubmit={(e) => { e.preventDefault(); handleAttemptToPublish(); }} className="space-y-8">
           <FormField
             control={form.control}
             name="title"
@@ -361,7 +374,12 @@ export default function RequestForm() {
             />
           )}
           
-          <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting}>
+          <Button 
+            type="button" /* Changed from type="submit" */
+            onClick={handleAttemptToPublish} /* New onClick handler */
+            className="w-full md:w-auto" 
+            disabled={form.formState.isSubmitting}
+          >
             {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Publicar Solicitud
           </Button>
