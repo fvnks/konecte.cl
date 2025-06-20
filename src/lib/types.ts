@@ -366,15 +366,13 @@ export const signUpSchema = z.object({
   accountType: z.enum(['natural', 'broker'], { required_error: "Debes seleccionar un tipo de cuenta."}),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
   email: z.string().email("Correo electrónico inválido.").max(255),
+  phone_number: z.string().min(9, "El teléfono debe tener al menos 9 dígitos.").max(50, "El teléfono no puede exceder los 50 caracteres."),
+  rut_tin: z.string().max(20, "El RUT/Tax ID no puede exceder los 20 caracteres.").optional().or(z.literal('')),
   password: passwordValidation,
   confirmPassword: passwordValidation,
   acceptTerms: z.boolean().refine(val => val === true, {
     message: "Debes aceptar los términos y condiciones.",
   }),
-
-  phone_number: z.string().max(50, "El teléfono no puede exceder los 50 caracteres.").optional().or(z.literal('')),
-  rut_tin: z.string().max(20, "El RUT/Tax ID no puede exceder los 20 caracteres.").optional().or(z.literal('')),
-
   company_name: z.string().max(255, "El nombre de la empresa no puede exceder los 255 caracteres.").optional().or(z.literal('')),
   main_operating_region: z.string().max(100, "La región no puede exceder los 100 caracteres.").optional().or(z.literal('')),
   main_operating_commune: z.string().max(100, "La comuna no puede exceder los 100 caracteres.").optional().or(z.literal('')),
@@ -795,5 +793,6 @@ export type UserActionLogType =
   | 'unusual_activity_detected' | 'account_locked_temporarily' | 'admin_action';
 
     
+
 
 

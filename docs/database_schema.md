@@ -89,7 +89,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     -- Campos Comunes Opcionales
-    phone_number VARCHAR(50) DEFAULT NULL COMMENT 'Teléfono de contacto general.',
+    phone_number VARCHAR(50) DEFAULT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.',
     rut_tin VARCHAR(20) DEFAULT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido para Corredor/Inmobiliaria.',
 
     -- Campos Específicos de Corredor/Inmobiliaria

@@ -28,7 +28,7 @@ const defaultTexts = {
   auth_signup_name_label: "Nombre Completo *",
   auth_signup_email_label: "Correo Electrónico *",
   auth_signup_rut_label: "RUT (Empresa o Persona)",
-  auth_signup_phone_label: "Teléfono de Contacto",
+  auth_signup_phone_label: "Teléfono de Contacto o WhatsApp *",
   auth_signup_password_label: "Contraseña *",
   auth_signup_confirm_password_label: "Confirmar Contraseña *",
   auth_signup_terms_label_part1: "Declaro conocer y aceptar los",
