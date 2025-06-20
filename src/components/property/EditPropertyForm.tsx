@@ -1,4 +1,3 @@
-
 // src/components/property/EditPropertyForm.tsx
 'use client';
 
@@ -21,10 +20,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+// adminUpdatePropertyAction is no longer imported here, it's passed via props
 import type { PropertyType, ListingCategory, PropertyListing, PropertyFormValues, SubmitPropertyResult, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from '@/lib/types';
 import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"; // For redirecting after successful edit
 import React, { useState, ChangeEvent, useEffect } from 'react';
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -61,16 +61,18 @@ const orientationOptions: { value: OrientationType; label: string }[] = [
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
+// Schema remains the same as propertyFormSchema
 const editPropertyFormSchema = propertyFormSchema;
 type EditPropertyFormValues = z.infer<typeof editPropertyFormSchema>;
 
+
 interface EditPropertyFormProps {
   property: PropertyListing;
-  userId?: string;
+  userId?: string; // Optional: for user context, not strictly needed for admin
   onSubmitAction: (
     propertyId: string,
     data: PropertyFormValues,
-    userId?: string
+    userId?: string // This will be undefined in admin context
   ) => Promise<SubmitPropertyResult>;
   isAdminContext?: boolean;
 }
@@ -78,15 +80,15 @@ interface EditPropertyFormProps {
 interface ManagedImage {
   id: string;
   url: string;
-  file?: File;
-  isNew: boolean;
+  file?: File; // File is only present for newly added images not yet uploaded
+  isNew: boolean; // To differentiate new local files from existing URLs
 }
 
 export default function EditPropertyForm({ property, userId, onSubmitAction, isAdminContext = false }: EditPropertyFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const [isUploading, setIsUploading] = useState(false);
   const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<EditPropertyFormValues>({
     resolver: zodResolver(editPropertyFormSchema),
@@ -110,26 +112,29 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       commercialUseAllowed: property.commercialUseAllowed || false,
       hasStorage: property.hasStorage || false,
       orientation: property.orientation || "none",
-      images: property.images || [],
+      images: property.images || [], // This will be updated by the useEffect below
       features: property.features?.join(', ') || "",
     },
   });
-
+  
   const watchedPropertyType = form.watch("propertyType");
   const watchedCategory = form.watch("category");
-  
+
   useEffect(() => {
+    // Initialize managedImages from property.images
     const initialManagedImages = (property.images || []).map((imgUrl, index) => ({
-      id: `existing-${imgUrl.slice(-10)}-${index}`,
+      id: `existing-${imgUrl.slice(-10)}-${index}`, // Create a somewhat unique ID for existing images
       url: imgUrl,
-      isNew: false,
+      isNew: false, // Mark as existing
     }));
     setManagedImages(initialManagedImages);
   }, [property.images]);
   
+  // Effect to update form's 'images' field whenever managedImages changes
   useEffect(() => {
     form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
   }, [managedImages, form]);
+
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -152,20 +157,21 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       const newManagedImagesFromFile = validFiles.map(file => {
         const previewUrl = URL.createObjectURL(file);
         return {
-          id: previewUrl,
+          id: previewUrl, // Using URL as ID for new files
           url: previewUrl,
           file: file,
           isNew: true as const,
         };
       });
       setManagedImages(prev => [...prev, ...newManagedImagesFromFile]);
-      event.target.value = '';
+      event.target.value = ''; // Reset file input
     }
   };
 
   const removeImage = (idToRemove: string) => {
     setManagedImages(prev => {
       const imageToRemove = prev.find(img => img.id === idToRemove);
+      // If it's a newly added image (blob URL), revoke its object URL to free memory
       if (imageToRemove?.isNew && imageToRemove.url.startsWith('blob:')) {
         URL.revokeObjectURL(imageToRemove.url);
       }
@@ -174,7 +180,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   };
 
   const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
+    if (!result.destination) return; // Dropped outside the list
     setManagedImages(prev => {
       const items = Array.from(prev);
       const [reorderedItem] = items.splice(result.source.index, 1);
@@ -185,9 +191,11 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
 
   async function onSubmit(values: EditPropertyFormValues) {
     const finalImageUrlsForServer: string[] = [];
-    setIsUploading(true);
+    setIsUploading(true); // Indicate start of upload/processing
+
+    // Process images: upload new ones, keep existing URLs
     for (const img of managedImages) {
-      if (img.isNew && img.file) {
+      if (img.isNew && img.file) { // It's a new file that needs uploading
         const formData = new FormData();
         formData.append("imageFile", img.file);
         try {
@@ -196,20 +204,21 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
           if (response.ok && result.success && result.url) {
             finalImageUrlsForServer.push(result.url);
           } else {
+            // If an upload fails, notify user but continue with other images for now
             toast({ title: "Error de Subida Parcial", description: `No se pudo subir ${img.file.name}: ${result.message || 'Error desconocido'}`, variant: "warning" });
           }
         } catch (error: any) {
-          toast({ title: "Error de Subida", description: `No se pudo subir ${img.file.name}.`, variant: "destructive" });
+          toast({ title: "Error de Subida", description: `No se pudo subir ${img.file.name}. Error: ${error.message}`, variant: "destructive" });
         }
-      } else if (!img.isNew) {
+      } else if (!img.isNew) { // It's an existing image, just use its URL
         finalImageUrlsForServer.push(img.url);
       }
     }
-    setIsUploading(false);
+    setIsUploading(false); // Indicate end of upload/processing
 
     const dataToSubmit: PropertyFormValues = {
       ...values,
-      images: finalImageUrlsForServer,
+      images: finalImageUrlsForServer, // Use the processed list of URLs
       bedrooms: values.bedrooms === '' ? 0 : Number(values.bedrooms),
       bathrooms: values.bathrooms === '' ? 0 : Number(values.bathrooms),
       parkingSpaces: values.parkingSpaces === '' ? 0 : Number(values.parkingSpaces),
@@ -218,6 +227,8 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                             : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
+    
+    // Use the passed onSubmitAction
     const result = await onSubmitAction(property.id, dataToSubmit, isAdminContext ? undefined : userId);
 
     if (result.success) {
@@ -225,6 +236,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         title: "Propiedad Actualizada",
         description: "Los detalles de la propiedad han sido actualizados exitosamente.",
       });
+      // Redirect based on context
       router.push(isAdminContext ? '/admin/properties' : '/dashboard/my-listings');
     } else {
       toast({
@@ -234,19 +246,24 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       });
     }
   }
-
+  
+  // Cleanup blob URLs on component unmount
   useEffect(() => {
     return () => {
       managedImages.forEach(img => {
-        if (img.isNew && img.url.startsWith('blob:')) URL.revokeObjectURL(img.url);
+        if (img.isNew && img.url.startsWith('blob:')) {
+          URL.revokeObjectURL(img.url);
+        }
       });
     };
   }, [managedImages]);
+
 
   const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
   const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
+
 
   return (
     <Form {...form}>
@@ -311,19 +328,20 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         <FormField
           control={form.control}
           name="images"
-          render={({ field }) => {
+          render={({ field }) => { // field no se usa directamente para el input file pero es parte de FormField
             const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
             return (
               <FormItem id={formItemId}>
                 <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
                 <DragDropContext onDragEnd={onDragEnd}>
-                  <Droppable droppableId="imageDroppableEdit" direction="horizontal" isDropDisabled={false} isCombineEnabled={false}>
+                  <Droppable droppableId="imageDroppableEdit" direction="horizontal" isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
                     {(provided) => (
                       <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className="mb-4"
+                        className="mb-4" // Margen para el área de dropeo si hay imágenes
                       >
+                        {/* Existing image previews */}
                         {managedImages.length > 0 && (
                           <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                             {managedImages.map((managedImage, index) => (
@@ -337,6 +355,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                                       snapshot.isDragging && "ring-2 ring-primary shadow-xl"
                                     )}
                                   >
+                                     {/* Botón para arrastrar, usa el dragHandleProps */}
                                     <button
                                         type="button"
                                         {...provided.dragHandleProps}
@@ -359,14 +378,38 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                     )}
                   </Droppable>
                 </DragDropContext>
+
+                {/* Input para subir nuevas imágenes */}
                 {managedImages.length < MAX_IMAGES && (
-                  <label htmlFor="image-upload-input-edit" className={cn( "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors", "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50", isUploading && "cursor-not-allowed opacity-70", error && "border-destructive" )} aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`} aria-invalid={!!error} >
+                  <label
+                    htmlFor="image-upload-input-edit" // Ensure this ID is unique if PropertyForm is also on the page
+                    className={cn(
+                      "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+                      "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50",
+                      (isUploading || (managedImages.length >= MAX_IMAGES)) && "cursor-not-allowed opacity-70",
+                      error && "border-destructive"
+                    )}
+                    aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`}
+                    aria-invalid={!!error}
+                  >
                     <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
                       <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
-                      <p className="mb-1 text-base text-muted-foreground"> <span className="font-semibold text-primary">Añadir más imágenes</span> o arrastra y suelta </p>
-                      <p className="text-xs text-muted-foreground"> Máx. {MAX_IMAGES - managedImages.length} más (hasta {MAX_FILE_SIZE_MB}MB c/u) </p>
+                      <p className="mb-1 text-base text-muted-foreground">
+                        <span className="font-semibold text-primary">Añadir más imágenes</span> o arrastra y suelta
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Máx. {MAX_IMAGES - managedImages.length} más (hasta {MAX_FILE_SIZE_MB}MB c/u)
+                      </p>
                     </div>
-                    <Input id="image-upload-input-edit" type="file" className="hidden" multiple onChange={handleImageChange} accept="image/png, image/jpeg, image/gif, image/webp" disabled={managedImages.length >= MAX_IMAGES || isUploading} />
+                    <Input
+                      id="image-upload-input-edit"
+                      type="file"
+                      className="hidden"
+                      multiple
+                      onChange={handleImageChange}
+                      accept="image/png, image/jpeg, image/gif, image/webp"
+                      disabled={managedImages.length >= MAX_IMAGES || isUploading}
+                    />
                   </label>
                 )}
                 <FormDescription id={formDescriptionId}>Puedes reemplazar, añadir o reordenar imágenes. Las imágenes existentes se mantendrán a menos que las elimines.</FormDescription>
@@ -392,4 +435,3 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   );
 }
 
-    
