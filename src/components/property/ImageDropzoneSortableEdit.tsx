@@ -4,7 +4,7 @@
 import { useCallback, useState, useEffect, useId } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { ReactSortable } from 'react-sortablejs';
-import Image from 'next/image';
+// import Image from 'next/image'; // No longer using next/image here
 import { Button } from '@/components/ui/button';
 import { UploadCloud, Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,11 +14,11 @@ const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
 export interface ManagedImageForEdit {
-  id: string;          // Unique ID for SortableJS and React key
-  url: string;         // Preview URL (blob for new, http for existing)
-  file?: File;         // Original file object if it's a new upload
-  isExisting: boolean; // True if it was an image already on the server
-  originalUrl?: string;// The server URL if isExisting is true
+  id: string;
+  url: string;
+  file?: File;
+  isExisting: boolean;
+  originalUrl?: string;
 }
 
 interface ImageDropzoneSortableEditProps {
@@ -45,12 +45,28 @@ export default function ImageDropzoneSortableEdit({
     }));
     setManagedImages(initialProcessedImages);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialImageUrls]); 
+  }, [initialImageUrls]); // Depend only on initialImageUrls for this setup effect
 
   useEffect(() => {
     onManagedImagesChange(managedImages);
+    // Cleanup for blob URLs when managedImages state changes and items are removed
+    // This effect should ideally run only when a blob URL is actually removed,
+    // or on unmount for all generated blob URLs.
+    // For simplicity in this context, let's stick to unmount cleanup.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [managedImages]);
+
+  useEffect(() => {
+    // Component unmount cleanup for any blob URLs created by this instance.
+    return () => {
+      managedImages.forEach(img => {
+        if (!img.isExisting && img.url.startsWith('blob:')) {
+          URL.revokeObjectURL(img.url);
+        }
+      });
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty array ensures this runs only on unmount.
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     const currentImageCount = managedImages.length;
@@ -89,7 +105,7 @@ export default function ImageDropzoneSortableEdit({
     });
 
     setManagedImages(prev => [...prev, ...newImagesToAdd]);
-  }, [managedImages, maxImages, toast]);
+  }, [managedImages.length, maxImages, toast]); // managedImages.length is the correct dependency
 
   const removeImage = (idToRemove: string) => {
     setManagedImages(prevImages => {
@@ -105,7 +121,6 @@ export default function ImageDropzoneSortableEdit({
     onDrop,
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] },
     maxSize: MAX_FILE_SIZE_MB * 1024 * 1024,
-    maxFiles: maxImages,
     disabled: managedImages.length >= maxImages,
   });
 
@@ -146,14 +161,19 @@ export default function ImageDropzoneSortableEdit({
           tag="div"
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 py-2"
           animation={150}
-          // handle option removed: entire item is draggable
+          // removed handle prop to make entire item draggable
         >
-          {managedImages.map((img) => (
+          {managedImages.map((img, index) => (
             <div
               key={img.id}
               className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100 cursor-grab active:cursor-grabbing"
             >
-              <Image src={img.url} alt={`Previsualización ${img.id}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
+              <img
+                src={img.url} // This will be blob URL for new, http URL for existing
+                alt={`Previsualización ${img.id}`}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                data-ai-hint="propiedad interior"
+              />
               <Button
                 type="button"
                 variant="destructive"
@@ -164,7 +184,7 @@ export default function ImageDropzoneSortableEdit({
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
-              {managedImages.indexOf(img) === 0 && (
+              {index === 0 && (
                 <span className="absolute bottom-1 right-1 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-md font-medium">
                   Principal
                 </span>

@@ -3,8 +3,8 @@
 
 import { useCallback, useState, useEffect, useId } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { ReactSortable } from 'react-sortablejs'; // Using react-sortablejs
-import Image from 'next/image';
+import { ReactSortable } from 'react-sortablejs';
+// import Image from 'next/image'; // No longer using next/image here
 import { Button } from '@/components/ui/button';
 import { UploadCloud, Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,14 +14,14 @@ const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
 export interface SortableImageItem {
-  id: string; // Unique ID for SortableJS
+  id: string;
   file: File;
   preview: string;
 }
 
 interface ImageDropzoneSortableCreateProps {
   onImagesChange: (filesInOrder: File[]) => void;
-  initialImages?: File[]; 
+  initialImages?: File[];
   maxImages?: number;
 }
 
@@ -43,14 +43,17 @@ export default function ImageDropzoneSortableCreate({
       }));
       setImages(initialSortableImages);
     }
+    // Cleanup for previews created by this component instance
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       images.forEach(img => URL.revokeObjectURL(img.preview));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialImages]);
+  }, [initialImages]); // initialImages dependency is correct for initial setup
 
   useEffect(() => {
     onImagesChange(images.map(img => img.file));
+    // No revocar aquí, se hace en el unmount del componente o si initialImages cambia.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images]);
 
@@ -87,7 +90,7 @@ export default function ImageDropzoneSortableCreate({
     }));
 
     setImages(prev => [...prev, ...newImages]);
-  }, [images, maxImages, toast]);
+  }, [images.length, maxImages, toast]); // images.length is the correct dependency here
 
   const removeImage = (idToRemove: string) => {
     setImages(prevImages => {
@@ -103,7 +106,7 @@ export default function ImageDropzoneSortableCreate({
     onDrop,
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] },
     maxSize: MAX_FILE_SIZE_MB * 1024 * 1024,
-    maxFiles: maxImages,
+    maxFiles: maxImages, // This might not be strictly enforced if adding one by one, but good to have
     disabled: images.length >= maxImages,
   });
 
@@ -144,14 +147,19 @@ export default function ImageDropzoneSortableCreate({
           tag="div"
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 py-2"
           animation={150}
-          // handle option removed: entire item is draggable
+          // removed handle prop to make entire item draggable
         >
-          {images.map((img) => (
+          {images.map((img, index) => (
             <div
               key={img.id}
               className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100 cursor-grab active:cursor-grabbing"
             >
-              <Image src={img.preview} alt={`Previsualización ${img.file.name}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
+              <img
+                src={img.preview}
+                alt={`Previsualización ${img.file.name}`}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                data-ai-hint="propiedad interior"
+              />
               <Button
                 type="button"
                 variant="destructive"
@@ -162,7 +170,7 @@ export default function ImageDropzoneSortableCreate({
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
-              {images.indexOf(img) === 0 && (
+              {index === 0 && (
                 <span className="absolute bottom-1 right-1 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-md font-medium">
                   Principal
                 </span>
