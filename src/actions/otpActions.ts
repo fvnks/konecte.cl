@@ -1,3 +1,4 @@
+
 // src/actions/otpActions.ts
 'use server';
 
@@ -29,7 +30,7 @@ function generateOtpCode(length: number = OTP_LENGTH): string {
  */
 async function sendOtpViaWhatsApp(phoneNumber: string, otp: string, userName: string): Promise<{ success: boolean; message?: string }> {
   console.log(`[OTP_SIMULATION] Sending OTP to ${phoneNumber}: ${otp} for user ${userName}`);
-  
+
   //
   // !!! IMPORTANT: Replace this with your actual WhatsApp sending logic !!!
   // This might involve an HTTP POST request to your WhatsApp bot's API endpoint.
@@ -90,19 +91,19 @@ export async function generateAndSendOtpAction(
 
     // Attempt to send OTP via WhatsApp (using placeholder)
     const sendResult = await sendOtpViaWhatsApp(user.phone_number, otp, user.name);
+    const phoneNumberEnding = user.phone_number.length > 4 ? user.phone_number.slice(-4) : user.phone_number;
+
     if (!sendResult.success) {
       // Log the error but don't necessarily fail the whole action if DB update was fine.
       // The user can try resending.
       console.error(`[OTP_WARNING] OTP stored for user ${userId}, but failed to send via WhatsApp: ${sendResult.message}`);
-      return { success: false, message: sendResult.message || "No se pudo enviar el código OTP. Intenta reenviar." };
+      return { success: false, message: sendResult.message || "No se pudo enviar el código OTP. Intenta reenviar.", phone_number_ending: phoneNumberEnding };
     }
-    
-    const phoneNumberEnding = user.phone_number.length > 4 ? user.phone_number.slice(-4) : user.phone_number;
 
-    return { 
-        success: true, 
+    return {
+        success: true,
         message: 'Se ha enviado un código OTP a tu número de teléfono.',
-        phone_number_ending: phoneNumberEnding 
+        phone_number_ending: phoneNumberEnding
     };
 
   } catch (error: any) {
@@ -126,6 +127,7 @@ export async function verifyOtpAction(
     const user = users[0];
 
     if (!user.phone_otp || !user.phone_otp_expires_at) {
+      await query('UPDATE users SET phone_otp = NULL, phone_otp_expires_at = NULL WHERE id = ?', [userId]);
       return { success: false, message: 'No hay un OTP pendiente para este usuario. Por favor, solicita uno nuevo.' };
     }
 

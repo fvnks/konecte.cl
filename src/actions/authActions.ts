@@ -6,20 +6,20 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import type { User } from '@/lib/types';
-import { signUpSchema } from '@/lib/types'; 
+import { signUpSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { generateAndSendOtpAction } from './otpActions'; // Import the OTP action
 
 // --- Sign Up ---
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
 
-export async function signUpAction(values: SignUpFormValues): Promise<{ success: boolean; message?: string; user?: Omit<User, 'password_hash'>, verificationPending?: boolean, userId?: string }> {
+export async function signUpAction(values: SignUpFormValues): Promise<{ success: boolean; message?: string; user?: Omit<User, 'password_hash'>, verificationPending?: boolean, userId?: string, phone_number_ending?: string }> {
   const validation = signUpSchema.safeParse(values);
   if (!validation.success) {
     return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const { 
+  const {
     accountType, name, email, password, phone_number, rut_tin,
     company_name, main_operating_region,
     main_operating_commune, properties_in_portfolio_count, website_social_media_link
@@ -46,17 +46,17 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
 
     const insertSql = `
       INSERT INTO users (
-        id, name, email, password_hash, role_id, 
-        phone_number, rut_tin, 
-        company_name, main_operating_region, main_operating_commune, 
+        id, name, email, password_hash, role_id,
+        phone_number, rut_tin,
+        company_name, main_operating_region, main_operating_commune,
         properties_in_portfolio_count, website_social_media_link,
-        phone_verified 
+        phone_verified
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)
     `;
-    
+
     const params = [
       userId, name, email, hashedPassword, roleId,
-      phone_number, 
+      phone_number,
       rut_tin,
       accountType === 'broker' ? (company_name || null) : null,
       accountType === 'broker' ? (main_operating_region || null) : null,
@@ -64,7 +64,7 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
       accountType === 'broker' ? (properties_in_portfolio_count !== undefined && properties_in_portfolio_count !== null ? properties_in_portfolio_count : null) : null,
       accountType === 'broker' ? (website_social_media_link || null) : null,
     ];
-    
+
     await query(insertSql, params);
     console.log(`[AuthAction] Sign-up successful for email: ${email}, userID: ${userId}, roleId: ${roleId}`);
 
@@ -74,11 +74,11 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
       name,
       email,
       role_id: roleId,
-      phone_number: phone_number, // phone_number is now required
-      rut_tin: rut_tin, // rut_tin is now required
+      phone_number: phone_number,
+      rut_tin: rut_tin,
       phone_verified: false,
     };
-    
+
     const userWithoutPasswordHash: User = {
       ...userWithoutPasswordHashBase,
       company_name: accountType === 'broker' ? (company_name || null) : null,
@@ -91,23 +91,24 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
     // Generate and send OTP
     const otpResult = await generateAndSendOtpAction(userId);
     if (!otpResult.success) {
-      // Log error, but proceed with user creation. User can resend OTP.
       console.warn(`[AuthAction] User ${userId} created, but OTP sending failed: ${otpResult.message}`);
-      return { 
-        success: true, 
-        message: "Usuario registrado. Hubo un problema al enviar el código de verificación a tu teléfono. Podrás solicitarlo de nuevo desde tu perfil.", 
+      return {
+        success: true,
+        message: "Usuario registrado. Hubo un problema al enviar el código de verificación a tu teléfono. Podrás solicitarlo de nuevo desde tu perfil.",
         user: userWithoutPasswordHash,
-        verificationPending: true, // Still pending even if initial send failed
-        userId: userId 
+        verificationPending: true,
+        userId: userId,
+        phone_number_ending: otpResult.phone_number_ending // Pass even if send failed, maybe user got it before or will resend
       };
     }
 
-    return { 
-        success: true, 
-        message: "Usuario registrado exitosamente. Se ha enviado un código de verificación a tu teléfono.", 
+    return {
+        success: true,
+        message: "Usuario registrado exitosamente. Se ha enviado un código de verificación a tu teléfono.",
         user: userWithoutPasswordHash,
         verificationPending: true,
-        userId: userId
+        userId: userId,
+        phone_number_ending: otpResult.phone_number_ending
     };
   } catch (error: any) {
     console.error("[AuthAction] Error in signUpAction:", error);
@@ -137,9 +138,9 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
 
   try {
     const usersFound: any[] = await query(
-        `SELECT 
-            u.id, u.name, u.email, u.password_hash, 
-            u.rut_tin, u.phone_number, u.avatar_url, 
+        `SELECT
+            u.id, u.name, u.email, u.password_hash,
+            u.rut_tin, u.phone_number, u.avatar_url,
             u.role_id, r.name as role_name,
             u.plan_id, p.name as plan_name_from_db, u.plan_expires_at,
             p.can_view_contact_data,
@@ -147,7 +148,7 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
             p.advanced_dashboard_access,
             u.company_name,
             u.main_operating_commune, u.properties_in_portfolio_count, u.website_social_media_link,
-            u.phone_verified 
+            u.phone_verified
          FROM users u
          JOIN roles r ON u.role_id = r.id
          LEFT JOIN plans p ON u.plan_id = p.id
@@ -160,14 +161,14 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
       return { success: false, message: "Credenciales inválidas." };
     }
 
-    const userFromDb = usersFound[0] as User & { 
-        password_hash: string; 
+    const userFromDb = usersFound[0] as User & {
+        password_hash: string;
         plan_name_from_db?: string | null;
         can_view_contact_data?: boolean | null;
         automated_alerts_enabled?: boolean | null;
         advanced_dashboard_access?: boolean | null;
-        phone_verified: boolean; 
-    }; 
+        phone_verified: boolean;
+    };
     console.log(`[AuthAction] User found: ${userFromDb.email}. Stored hash: ${userFromDb.password_hash ? userFromDb.password_hash.substring(0, 10) + "..." : "NOT FOUND"}, Length: ${userFromDb.password_hash?.length}`);
 
 
@@ -175,7 +176,7 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
         console.error(`[AuthAction] CRITICAL Sign-in Error: password_hash is missing for user ${userFromDb.email}.`);
         return { success: false, message: "Error de cuenta de usuario. Contacte al administrador." };
     }
-    
+
     const passwordMatch = await bcrypt.compare(password, userFromDb.password_hash);
     console.log(`[AuthAction] Password match result for ${userFromDb.email}: ${passwordMatch}`);
 
@@ -189,22 +190,20 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
 
     const finalUser: User = {
       ...userToReturnBase,
-      phone_number: userFromDb.phone_number, // ensure phone_number is passed
+      phone_number: userFromDb.phone_number,
       plan_name: plan_name_from_db || null,
       plan_is_pro_or_premium: (plan_name_from_db?.toLowerCase().includes('pro') || plan_name_from_db?.toLowerCase().includes('premium')) && userFromDb.role_id === 'broker',
       plan_is_premium_broker: plan_name_from_db?.toLowerCase().includes('premium') && userFromDb.role_id === 'broker',
       plan_allows_contact_view: !!userFromDb.can_view_contact_data,
       plan_automated_alerts_enabled: !!userFromDb.automated_alerts_enabled,
       plan_advanced_dashboard_access: !!userFromDb.advanced_dashboard_access,
-      phone_verified: !!userFromDb.phone_verified, 
+      phone_verified: !!userFromDb.phone_verified,
     };
 
     console.log(`[AuthAction] Sign-in successful for ${finalUser.email}. Phone verified: ${finalUser.phone_verified}`);
-    
+
     const verificationPending = !finalUser.phone_verified;
     if (verificationPending) {
-        // Optionally, re-trigger OTP sending if user logs in and phone is not verified.
-        // For now, just notify the client.
         console.log(`[AuthAction] User ${finalUser.id} phone not verified. Prompting for verification.`);
     }
 
@@ -214,4 +213,3 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
     return { success: false, message: `Error al iniciar sesión: ${error.message}` };
   }
 }
-    

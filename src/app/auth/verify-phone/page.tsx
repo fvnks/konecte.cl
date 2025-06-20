@@ -1,7 +1,8 @@
+
 // src/app/auth/verify-phone/page.tsx
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent, useCallback } from 'react'; // Added useCallback
 import { useRouter, useSearchParams } from 'next/navigation';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -10,10 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ShieldCheck, SmartphoneNfc } from 'lucide-react';
+import { Loader2, ShieldCheck, SmartphoneNfc, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
 import { useToast } from '@/hooks/use-toast';
 import { generateAndSendOtpAction, verifyOtpAction } from '@/actions/otpActions';
-import { otpVerificationSchema, type OtpVerificationFormValues } from '@/lib/types';
+import { otpVerificationSchema, type OtpVerificationFormValues, User as StoredUser } from '@/lib/types'; // Import StoredUser
+import Link from 'next/link';
+
+const OTP_EXPIRATION_MINUTES = 5; // Duplicated from otpActions for display, consider centralizing
 
 export default function VerifyPhonePage() {
   const router = useRouter();
@@ -24,6 +28,8 @@ export default function VerifyPhonePage() {
   const [phoneNumberEnding, setPhoneNumberEnding] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<OtpVerificationFormValues>({
     resolver: zodResolver(otpVerificationSchema),
@@ -31,37 +37,71 @@ export default function VerifyPhonePage() {
       otp: '',
     },
   });
-  
+
+  const handleResendOtp = useCallback(async (currentUserIdToResend: string | null = userId, silent = false) => {
+    if (!currentUserIdToResend) {
+      if (!silent) toast({ title: 'Error', description: 'No se pudo identificar al usuario para reenviar el código.', variant: 'destructive' });
+      return;
+    }
+    setIsResending(true);
+    const result = await generateAndSendOtpAction(currentUserIdToResend);
+    setIsResending(false);
+
+    if (result.success) {
+      if (!silent) toast({ title: 'Código Reenviado', description: result.message });
+      if (result.phone_number_ending) {
+        setPhoneNumberEnding(result.phone_number_ending);
+      }
+    } else {
+      if (!silent) toast({ title: 'Error al Reenviar', description: result.message, variant: 'destructive' });
+    }
+  }, [userId, toast]);
+
+
   useEffect(() => {
+    setIsLoadingPage(true);
     const userIdFromQuery = searchParams.get('userId');
     const phoneEndingFromQuery = searchParams.get('phoneEnding');
-    
+
     if (userIdFromQuery) {
       setUserId(userIdFromQuery);
+      if (phoneEndingFromQuery) {
+        setPhoneNumberEnding(phoneEndingFromQuery);
+      } else {
+        // If userId is from query but phoneEnding isn't, try to get it.
+        handleResendOtp(userIdFromQuery, true);
+      }
+      setIsLoadingPage(false);
     } else {
-      // If no userId, check localStorage for a logged-in user who might be unverified
+      // If no userId in query, check localStorage for a logged-in, unverified user
       const userJson = localStorage.getItem('loggedInUser');
       if (userJson) {
         try {
-          const user = JSON.parse(userJson);
+          const user: StoredUser = JSON.parse(userJson);
           if (user.id && !user.phone_verified) {
             setUserId(user.id);
-            // If phoneEnding is not in query, attempt to resend OTP to get it
-            if (!phoneEndingFromQuery && user.phone_number) {
-                handleResendOtp(user.id, true); // silent resend if first load
-            }
+            // Try to get phone ending by "resending" OTP (silently if first load and no query param)
+             if (user.phone_number) {
+                setPhoneNumberEnding(user.phone_number.slice(-4));
+             } else {
+                handleResendOtp(user.id, true); // Attempt to get it via resend
+             }
           } else if (user.id && user.phone_verified) {
             toast({ title: "Teléfono ya verificado", description: "Tu número de teléfono ya ha sido verificado." });
-            router.push('/dashboard'); // or profile page
+            router.push('/dashboard');
+          } else {
+             setError("No se pudo determinar el usuario para la verificación. Por favor, inicia sesión de nuevo.");
           }
-        } catch (e) { console.error("Error parsing user for OTP page", e); }
+        } catch (e) {
+          console.error("Error parsing user for OTP page", e);
+          setError("Error al procesar la información del usuario.");
+        }
+      } else {
+        setError("No se encontró información de usuario para la verificación. Por favor, inicia sesión.");
       }
+      setIsLoadingPage(false);
     }
-    if (phoneEndingFromQuery) {
-        setPhoneNumberEnding(phoneEndingFromQuery);
-    }
-
-  }, [searchParams, router, toast]);
+  }, [searchParams, router, toast, handleResendOtp]);
 
 
   const handleVerifyOtp = async (values: OtpVerificationFormValues) => {
@@ -75,7 +115,6 @@ export default function VerifyPhonePage() {
 
     if (result.success) {
       toast({ title: 'Verificación Exitosa', description: result.message });
-      // Update localStorage if needed, or rely on next login to fetch updated user
       const userJson = localStorage.getItem('loggedInUser');
       if (userJson) {
           try {
@@ -86,33 +125,15 @@ export default function VerifyPhonePage() {
               }
           } catch (e) { console.error("Error updating user session after OTP verification", e); }
       }
-      router.push('/dashboard'); // Or a more specific "welcome" page
+      router.push('/dashboard');
     } else {
       toast({ title: 'Error de Verificación', description: result.message, variant: 'destructive' });
       form.setError("otp", { type: "manual", message: result.message });
     }
   };
 
-  const handleResendOtp = async (currentUserId = userId, silent = false) => {
-    if (!currentUserId) {
-      if(!silent) toast({ title: 'Error', description: 'No se pudo identificar al usuario para reenviar el código.', variant: 'destructive' });
-      return;
-    }
-    setIsResending(true);
-    const result = await generateAndSendOtpAction(currentUserId);
-    setIsResending(false);
 
-    if (result.success) {
-      if(!silent) toast({ title: 'Código Reenviado', description: result.message });
-      if (result.phone_number_ending) {
-        setPhoneNumberEnding(result.phone_number_ending);
-      }
-    } else {
-      if(!silent) toast({ title: 'Error al Reenviar', description: result.message, variant: 'destructive' });
-    }
-  };
-
-  if (!userId && !searchParams.get('userId')) { // Added check for query param to avoid premature redirect during initial load
+  if (isLoadingPage) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -120,6 +141,29 @@ export default function VerifyPhonePage() {
         </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+        <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Error de Verificación</h2>
+        <p className="text-muted-foreground mb-4">{error}</p>
+        <Button asChild><Link href="/auth/signin">Ir a Iniciar Sesión</Link></Button>
+      </div>
+    );
+  }
+
+  if (!userId) { // Should be caught by error state, but as a fallback
+     return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+            <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Usuario No Identificado</h2>
+            <p className="text-muted-foreground mb-4">No pudimos identificar tu cuenta para la verificación.</p>
+            <Button asChild><Link href="/auth/signin">Ir a Iniciar Sesión</Link></Button>
+        </div>
+    );
+  }
+
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-secondary/50 p-4">
@@ -130,12 +174,12 @@ export default function VerifyPhonePage() {
           </div>
           <CardTitle className="text-2xl font-headline">Verifica tu Número de Teléfono</CardTitle>
           <CardDescription>
-            {phoneNumberEnding 
+            {phoneNumberEnding
                 ? `Hemos enviado un código de 4 dígitos a tu número terminado en ••••${phoneNumberEnding}.`
-                : `Estamos intentando enviar un código de verificación a tu teléfono.`
+                : `Se ha enviado un código de verificación a tu teléfono registrado.`
             }
             <br/>
-            Ingresa el código a continuación para completar tu registro.
+            Ingresa el código a continuación para completar tu registro o verificación.
           </CardDescription>
         </CardHeader>
         <CardContent>

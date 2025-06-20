@@ -1,3 +1,4 @@
+
 // src/app/auth/signup/[accountType]/page.tsx
 'use client';
 
@@ -19,7 +20,7 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 // RadioGroup imports removed as it's no longer used for experience_selling_properties
-import { Label } from "@/components/ui/label"; 
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 const defaultTexts = {
@@ -27,8 +28,8 @@ const defaultTexts = {
   auth_signup_page_description: "Únete para listar, encontrar y discutir propiedades.",
   auth_signup_name_label: "Nombre Completo *",
   auth_signup_email_label: "Correo Electrónico *",
-  auth_signup_rut_label: "RUT (Empresa o Persona) *", // Actualizado con *
-  auth_signup_phone_label: "Teléfono de Contacto o WhatsApp *", // Actualizado con *
+  auth_signup_rut_label: "RUT (Empresa o Persona) *",
+  auth_signup_phone_label: "Teléfono de Contacto o WhatsApp *",
   auth_signup_password_label: "Contraseña *",
   auth_signup_confirm_password_label: "Confirmar Contraseña *",
   auth_signup_terms_label_part1: "Declaro conocer y aceptar los",
@@ -49,11 +50,11 @@ export default function SignUpStep2Page() {
 
   const [texts, setTexts] = useState(defaultTexts);
   const [isLoadingTexts, setIsLoadingTexts] = useState(true);
-  
+
   useEffect(() => {
     if (accountTypeParam !== 'natural' && accountTypeParam !== 'broker') {
       toast({ title: "Tipo de cuenta inválido", description: "Por favor, selecciona un tipo de cuenta válido para continuar.", variant: "destructive" });
-      router.push('/auth/signup'); 
+      router.push('/auth/signup');
     }
   }, [accountTypeParam, router, toast]);
 
@@ -61,9 +62,7 @@ export default function SignUpStep2Page() {
     async function fetchTexts() {
       try {
         const fetchedTexts = await getEditableTextsByGroupAction('auth_signup');
-        // Ensure our default texts (which now include asterisks) are used as base
         const combinedTexts = { ...defaultTexts, ...fetchedTexts };
-        // Specifically ensure asterisks if DB text doesn't have it but should
         if (combinedTexts.auth_signup_rut_label && !combinedTexts.auth_signup_rut_label.endsWith('*')) {
             combinedTexts.auth_signup_rut_label = combinedTexts.auth_signup_rut_label.trim() + ' *';
         }
@@ -73,7 +72,7 @@ export default function SignUpStep2Page() {
         setTexts(combinedTexts);
       } catch (error) {
         console.error("Error fetching editable texts for signup page:", error);
-        setTexts(defaultTexts); // Fallback to hardcoded defaults on error
+        setTexts(defaultTexts);
       } finally {
         setIsLoadingTexts(false);
       }
@@ -84,7 +83,7 @@ export default function SignUpStep2Page() {
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
-      accountType: accountTypeParam, 
+      accountType: accountTypeParam,
       name: "",
       email: "",
       phone_number: "",
@@ -99,7 +98,7 @@ export default function SignUpStep2Page() {
       website_social_media_link: "",
     },
   });
-  
+
   useEffect(() => {
     if (accountTypeParam && form.getValues('accountType') !== accountTypeParam) {
       form.setValue('accountType', accountTypeParam);
@@ -117,9 +116,13 @@ export default function SignUpStep2Page() {
     if (result.success && result.user) {
       toast({
         title: "Registro Exitoso",
-        description: "¡Tu cuenta ha sido creada! Ahora puedes iniciar sesión.",
+        description: result.message || "¡Tu cuenta ha sido creada! Se ha enviado un código de verificación a tu teléfono.",
       });
-      router.push('/auth/signin');
+      if (result.verificationPending && result.userId) {
+        router.push(`/auth/verify-phone?userId=${result.userId}&phoneEnding=${result.phone_number_ending || ''}`);
+      } else {
+        router.push('/auth/signin'); // Fallback if verification info is missing, though unlikely
+      }
     } else {
       toast({
         title: "Error de Registro",
@@ -136,9 +139,9 @@ export default function SignUpStep2Page() {
         </div>
     )
   }
-  
-  const pageTitleText = accountTypeParam === 'natural' 
-    ? "Registro Persona Natural" 
+
+  const pageTitleText = accountTypeParam === 'natural'
+    ? "Registro Persona Natural"
     : "Registro Corredor / Inmobiliaria";
   const pageDescriptionText = accountTypeParam === 'natural'
     ? "Completa tus datos para publicar o buscar propiedades."
@@ -149,13 +152,13 @@ export default function SignUpStep2Page() {
     <div className="min-h-[calc(100vh-5rem)] w-full lg:grid lg:grid-cols-2">
       <div className="hidden lg:flex relative h-full bg-primary/10">
         <Image
-          src="https://bukmy.cl/img/register.png" 
-          alt="Ilustración de registro" 
+          src="https://bukmy.cl/img/register.png"
+          alt="Ilustración de registro"
           fill
           style={{objectFit: "cover", objectPosition: "center"}}
           sizes="50vw"
           priority
-          data-ai-hint="registro personas" 
+          data-ai-hint="registro personas"
         />
       </div>
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 h-full bg-card lg:bg-background">
@@ -195,7 +198,7 @@ export default function SignUpStep2Page() {
                 {/* Password Fields */}
                 <FormField control={form.control} name="password" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_password_label}</FormLabel> <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl> <ShadFormDescription className="text-xs">Mín. 8 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 especial.</ShadFormDescription> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="confirmPassword" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_confirm_password_label}</FormLabel> <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                
+
                 <FormField
                   control={form.control}
                   name="acceptTerms"
@@ -233,4 +236,3 @@ export default function SignUpStep2Page() {
     </div>
   );
 }
-

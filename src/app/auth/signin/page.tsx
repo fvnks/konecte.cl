@@ -69,20 +69,19 @@ export default function SignInPage() {
         title: "Inicio de Sesión Exitoso",
         description: `¡Bienvenido de nuevo, ${result.user.name}!`,
       });
-      
-      // Store the full user object, including new plan permission flags
+
       const userToStore: User = {
         id: result.user.id,
         name: result.user.name,
         email: result.user.email,
         avatarUrl: result.user.avatarUrl,
         phone_number: result.user.phone_number,
+        phone_verified: result.user.phone_verified,
         role_id: result.user.role_id,
         role_name: result.user.role_name,
         plan_id: result.user.plan_id,
         plan_name: result.user.plan_name,
         plan_expires_at: result.user.plan_expires_at,
-        // New plan permission flags
         plan_is_pro_or_premium: result.user.plan_is_pro_or_premium,
         plan_allows_contact_view: result.user.plan_allows_contact_view,
         plan_is_premium_broker: result.user.plan_is_premium_broker,
@@ -90,10 +89,13 @@ export default function SignInPage() {
         plan_advanced_dashboard_access: result.user.plan_advanced_dashboard_access,
       };
       localStorage.setItem('loggedInUser', JSON.stringify(userToStore));
-      
+
       window.dispatchEvent(new CustomEvent('userSessionChanged'));
 
-      if (result.user.role_id === 'admin') {
+      if (result.verificationPending) {
+        const phoneEnding = result.user.phone_number ? result.user.phone_number.slice(-4) : '';
+        router.push(`/auth/verify-phone?userId=${result.user.id}&phoneEnding=${phoneEnding}`);
+      } else if (result.user.role_id === 'admin') {
         router.push('/admin');
       } else {
         router.push('/dashboard');
@@ -192,5 +194,3 @@ export default function SignInPage() {
     </div>
   );
 }
-
-    
