@@ -2,7 +2,7 @@
 // src/app/auth/verify-phone/page.tsx
 'use client';
 
-import { useEffect, useState, FormEvent, useCallback } from 'react'; // Added useCallback
+import { useEffect, useState, FormEvent, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -11,18 +11,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ShieldCheck, SmartphoneNfc, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
+import { Loader2, ShieldCheck, SmartphoneNfc, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateAndSendOtpAction, verifyOtpAction } from '@/actions/otpActions';
-import { otpVerificationSchema, type OtpVerificationFormValues, User as StoredUser } from '@/lib/types'; // Import StoredUser
+import { otpVerificationSchema, type OtpVerificationFormValues, User as StoredUser } from '@/lib/types';
 import Link from 'next/link';
 
-const OTP_EXPIRATION_MINUTES = 5; // Duplicated from otpActions for display, consider centralizing
+const OTP_EXPIRATION_MINUTES = 5;
+const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function VerifyPhonePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [phoneNumberEnding, setPhoneNumberEnding] = useState<string | null>(null);
@@ -31,12 +33,39 @@ export default function VerifyPhonePage() {
   const [isLoadingPage, setIsLoadingPage] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [canResend, setCanResend] = useState(true);
+  const cooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const form = useForm<OtpVerificationFormValues>({
     resolver: zodResolver(otpVerificationSchema),
     defaultValues: {
       otp: '',
     },
   });
+  
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isLoadingPage]); // Focus when page is done loading
+
+  const startResendCooldown = () => {
+    setCanResend(false);
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    cooldownIntervalRef.current = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(cooldownIntervalRef.current!);
+          cooldownIntervalRef.current = null;
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const handleResendOtp = useCallback(async (currentUserIdToResend: string | null = userId, silent = false) => {
     if (!currentUserIdToResend) {
@@ -48,7 +77,10 @@ export default function VerifyPhonePage() {
     setIsResending(false);
 
     if (result.success) {
-      if (!silent) toast({ title: 'Código Reenviado', description: result.message });
+      if (!silent) {
+        toast({ title: 'Código Reenviado', description: result.message });
+        startResendCooldown();
+      }
       if (result.phone_number_ending) {
         setPhoneNumberEnding(result.phone_number_ending);
       }
@@ -68,24 +100,21 @@ export default function VerifyPhonePage() {
       if (phoneEndingFromQuery) {
         setPhoneNumberEnding(phoneEndingFromQuery);
       } else {
-        // If userId is from query but phoneEnding isn't, try to get it.
-        handleResendOtp(userIdFromQuery, true);
+        handleResendOtp(userIdFromQuery, true); // Attempt to get it silently
       }
       setIsLoadingPage(false);
     } else {
-      // If no userId in query, check localStorage for a logged-in, unverified user
       const userJson = localStorage.getItem('loggedInUser');
       if (userJson) {
         try {
           const user: StoredUser = JSON.parse(userJson);
           if (user.id && !user.phone_verified) {
             setUserId(user.id);
-            // Try to get phone ending by "resending" OTP (silently if first load and no query param)
-             if (user.phone_number) {
-                setPhoneNumberEnding(user.phone_number.slice(-4));
-             } else {
-                handleResendOtp(user.id, true); // Attempt to get it via resend
-             }
+            if (user.phone_number) {
+              setPhoneNumberEnding(user.phone_number.slice(-4));
+            } else {
+              handleResendOtp(user.id, true);
+            }
           } else if (user.id && user.phone_verified) {
             toast({ title: "Teléfono ya verificado", description: "Tu número de teléfono ya ha sido verificado." });
             router.push('/dashboard');
@@ -101,6 +130,9 @@ export default function VerifyPhonePage() {
       }
       setIsLoadingPage(false);
     }
+    return () => {
+      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    };
   }, [searchParams, router, toast, handleResendOtp]);
 
 
@@ -153,7 +185,7 @@ export default function VerifyPhonePage() {
     );
   }
 
-  if (!userId) { // Should be caught by error state, but as a fallback
+  if (!userId) {
      return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
             <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
@@ -194,6 +226,7 @@ export default function VerifyPhonePage() {
                     <FormControl>
                       <Input
                         {...field}
+                        ref={inputRef}
                         type="text"
                         maxLength={4}
                         placeholder="••••"
@@ -209,7 +242,7 @@ export default function VerifyPhonePage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full h-12 text-base" disabled={isVerifying || isResending}>
+              <Button type="submit" className="w-full h-12 text-base" disabled={isVerifying || isResending || !canResend && resendCooldown > 0}>
                 {isVerifying ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldCheck className="mr-2 h-5 w-5" />}
                 Verificar Código
               </Button>
@@ -219,11 +252,13 @@ export default function VerifyPhonePage() {
             <Button
               variant="link"
               onClick={() => handleResendOtp()}
-              disabled={isResending || isVerifying}
+              disabled={isResending || isVerifying || !canResend}
               className="text-sm"
             >
-              {isResending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              ¿No recibiste el código? Reenviar
+              {(isResending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {!canResend && resendCooldown > 0 
+                ? `Reenviar en ${resendCooldown}s` 
+                : (isResending ? 'Reenviando...' : '¿No recibiste el código? Reenviar')}
             </Button>
           </div>
         </CardContent>
@@ -231,3 +266,4 @@ export default function VerifyPhonePage() {
     </div>
   );
 }
+
