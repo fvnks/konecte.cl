@@ -6,7 +6,6 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from "next-themes";
 import StyledComponentsRegistry from '@/lib/styled-components-registry';
-// Script import no es necesario aquí para OSM Nominatim
 
 const inter = Inter({
   subsets: ['latin'],
@@ -33,7 +32,6 @@ export default function RootLayout({
   return (
     <html lang="es-CL" className={`${inter.variable} antialiased`} suppressHydrationWarning>
       <head>
-        {/* El script de Google Maps API ya no es necesario aquí */}
       </head>
       <body className="font-body"> 
         <StyledComponentsRegistry>
