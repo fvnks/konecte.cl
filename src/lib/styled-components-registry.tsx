@@ -5,23 +5,22 @@ import React, { useState } from 'react'
 import { useServerInsertedHTML } from 'next/navigation'
 import { ServerStyleSheet, StyleSheetManager } from 'styled-components'
 
-// Define una lista de props que no deben pasarse a los elementos del DOM
-// si son usadas por styled-components para lógica de estilo.
+// Lista de props comunes que son para lógica de estilo y no deben pasarse al DOM
 const commonStyledProps = new Set([
   'variant', 'color', 'bg', 'fontSize', 'fontWeight', 'fontFamily',
   'p', 'pt', 'pb', 'pl', 'pr', 'px', 'py',
   'm', 'mt', 'mb', 'ml', 'mr', 'mx', 'my',
-  'width', 'height', 'size', // 'size' es común para íconos o botones
-  'active', 'disabled', 'isLoading', // Props comunes de estado
-  'error', 'success', 'warning', // Props de estado visual
-  // Añade otras props personalizadas que sepas que usas solo para estilizar
-  // como 'align', 'justify', 'direction', 'wrap', 'spacing', etc.
-  'align', 'justify', 'direction', 'wrap', 'spacing', 'hoverColor', 'activeColor'
+  'width', 'height', 'size', 
+  'active', 'disabled', 'isLoading',
+  'error', 'success', 'warning',
+  'align', 'justify', 'direction', 'wrap', 'spacing', 
+  'hoverColor', 'activeColor', 'focusColor',
+  // Añade aquí otras props personalizadas si las usas extensivamente para estilos
+  'isMobile', 'isOpen', 'isSticky', 'fixedHeight', 'asModal'
 ]);
 
 const shouldForwardProp = (propName: string, target: any) => {
   if (typeof target === 'string') { // Solo aplicar a elementos HTML nativos
-    // Filtrar props de styled-system y otras comunes que no son atributos HTML
     if (commonStyledProps.has(propName)) {
       return false;
     }
@@ -29,9 +28,7 @@ const shouldForwardProp = (propName: string, target: any) => {
     if (propName.startsWith('data-') || propName.startsWith('aria-')) {
       return true;
     }
-    // Evitar pasar props que son eventos (como onFocus, onClick) si empiezan con '$'
-    // o si no son atributos HTML válidos (esto es más complejo de generalizar sin una lista completa)
-    // El filtrado por `$` es una convención de styled-components para "transient props".
+    // Filtrar props transitorias de styled-components (que empiezan con '$')
     return !propName.startsWith('$');
   }
   // Para componentes React (que no son strings), pasar todas las props por defecto.
@@ -48,22 +45,20 @@ export default function StyledComponentsRegistry({
 
   useServerInsertedHTML(() => {
     const styles = styledComponentsStyleSheet.getStyleElement()
-    // styledComponentsStyleSheet.instance.clearTag(); // This line is problematic and often not needed.
+    // La línea original `styledComponentsStyleSheet.instance.clearTag()`
+    // puede causar problemas en algunas versiones/configuraciones y a menudo no es necesaria.
+    // Si se elimina, puede que solucione algunos problemas de estilos en SSR con Fast Refresh.
+    // Por ahora, la mantenemos comentada como en la versión anterior.
+    // styledComponentsStyleSheet.instance.clearTag(); 
     return <>{styles}</>;
   })
 
-  if (typeof window !== 'undefined') {
-    // En el cliente, solo necesitamos el StyleSheetManager para `shouldForwardProp` si aún hay warnings
-    return (
-      <StyleSheetManager shouldForwardProp={shouldForwardProp}>
-        {children}
-      </StyleSheetManager>
-    );
-  }
-
-  // En el servidor, pasamos la instancia de la hoja de estilos
+  // En el cliente y servidor, usar StyleSheetManager con shouldForwardProp
   return (
-    <StyleSheetManager sheet={styledComponentsStyleSheet.instance} shouldForwardProp={shouldForwardProp}>
+    <StyleSheetManager 
+      sheet={typeof window === 'undefined' ? styledComponentsStyleSheet.instance : undefined}
+      shouldForwardProp={shouldForwardProp}
+    >
       {children}
     </StyleSheetManager>
   )
