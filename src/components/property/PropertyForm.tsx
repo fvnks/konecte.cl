@@ -199,6 +199,11 @@ export default function PropertyForm() {
   };
 
   async function onSubmit(values: PropertyFormValues) {
+    if (isCheckingAuth) {
+      toast({ title: "Verificando...", description: "Por favor, espera mientras se verifica tu sesión.", variant: "default"});
+      return;
+    }
+
     if (!loggedInUser || !loggedInUser.id) {
       setShowAuthAlert(true);
       return;
@@ -242,20 +247,10 @@ export default function PropertyForm() {
     };
   }, [imagePreviews]);
 
-  if (isCheckingAuth) {
-    return (
-      <div className="flex justify-center items-center py-10">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Verificando autenticación...</p>
-      </div>
-    );
-  }
-
   const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
   const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
-
 
   return (
     <>
@@ -377,18 +372,18 @@ export default function PropertyForm() {
               Acción Requerida
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Para publicar una propiedad, primero debes iniciar sesión o crear una cuenta en PropSpot. ¿Qué te gustaría hacer?
+              Para publicar una propiedad, primero debes iniciar sesión o crear una cuenta.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <Button variant="outline" asChild onClick={() => setShowAuthAlert(false)}>
-              <Link href="/auth/signup" className="flex items-center gap-1.5">
+              <Link href={`/auth/signup?redirect=${encodeURIComponent(router.asPath)}`} className="flex items-center gap-1.5">
                 <UserPlus className="h-4 w-4" /> Registrarme
               </Link>
             </Button>
             <AlertDialogAction asChild onClick={() => setShowAuthAlert(false)}>
-              <Link href="/auth/signin" className="flex items-center gap-1.5">
+              <Link href={`/auth/signin?redirect=${encodeURIComponent(router.asPath)}`} className="flex items-center gap-1.5">
                 <LogIn className="h-4 w-4" /> Iniciar Sesión
               </Link>
             </AlertDialogAction>
