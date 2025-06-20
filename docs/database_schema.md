@@ -85,12 +85,13 @@ CREATE TABLE users (
     role_id VARCHAR(36) NOT NULL,
     plan_id VARCHAR(36) DEFAULT NULL,
     plan_expires_at TIMESTAMP DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    phone_number VARCHAR(50) NOT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.',
+    phone_verified BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Indica si el número de teléfono ha sido verificado con OTP.',
+    phone_otp VARCHAR(10) DEFAULT NULL COMMENT 'Código OTP actual para verificación de teléfono.',
+    phone_otp_expires_at TIMESTAMP DEFAULT NULL COMMENT 'Fecha de expiración del OTP actual.',
 
-    -- Campos Comunes Opcionales
-    phone_number VARCHAR(50) DEFAULT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.',
-    rut_tin VARCHAR(20) DEFAULT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido por la aplicación.',
+    rut_tin VARCHAR(20) NOT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido por la aplicación.',
 
     -- Campos Específicos de Corredor/Inmobiliaria
     company_name VARCHAR(255) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Nombre de la empresa',
@@ -98,6 +99,9 @@ CREATE TABLE users (
     main_operating_commune VARCHAR(100) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Comuna principal de operación',
     properties_in_portfolio_count INT DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Cantidad de propiedades en cartera',
     website_social_media_link VARCHAR(2048) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Enlace a sitio web o red social',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT,
     FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE SET NULL
@@ -109,6 +113,7 @@ CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE INDEX idx_users_plan_id ON users(plan_id);
 CREATE INDEX idx_users_rut_tin ON users(rut_tin);
 CREATE INDEX idx_users_phone_number ON users(phone_number);
+CREATE INDEX idx_users_phone_verified ON users(phone_verified);
 CREATE INDEX idx_users_company_name ON users(company_name); 
 CREATE INDEX idx_users_main_operating_region ON users(main_operating_region); 
 ```

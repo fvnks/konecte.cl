@@ -68,6 +68,9 @@ const SQL_STATEMENTS: string[] = [
     ('${randomUUID()}', 'PREMIUM Corredor', 'Funcionalidad completa, alertas IA y panel avanzado para corredores activos.', 24900.00, NULL, NULL, 90, TRUE, TRUE, NULL, TRUE, 50, TRUE, NULL, 100, TRUE, TRUE, FALSE);`,
 
   // users
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Indica si el número de teléfono ha sido verificado con OTP.' AFTER phone_number;`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_otp VARCHAR(10) DEFAULT NULL COMMENT 'Código OTP actual para verificación de teléfono.' AFTER phone_verified;`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_otp_expires_at TIMESTAMP DEFAULT NULL COMMENT 'Fecha de expiración del OTP actual.' AFTER phone_otp;`,
   `CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -77,17 +80,21 @@ const SQL_STATEMENTS: string[] = [
     role_id VARCHAR(36) NOT NULL,
     plan_id VARCHAR(36) DEFAULT NULL,
     plan_expires_at TIMESTAMP DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    phone_number VARCHAR(50) DEFAULT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.',
-    rut_tin VARCHAR(20) DEFAULT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido por la aplicación.',
+    
+    phone_number VARCHAR(50) NOT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.',
+    phone_verified BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Indica si el número de teléfono ha sido verificado con OTP.',
+    phone_otp VARCHAR(10) DEFAULT NULL COMMENT 'Código OTP actual para verificación de teléfono.',
+    phone_otp_expires_at TIMESTAMP DEFAULT NULL COMMENT 'Fecha de expiración del OTP actual.',
+    
+    rut_tin VARCHAR(20) NOT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido por la aplicación.',
     company_name VARCHAR(255) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Nombre de la empresa',
     main_operating_region VARCHAR(100) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Región principal de operación',
     main_operating_commune VARCHAR(100) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Comuna principal de operación',
     properties_in_portfolio_count INT DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Cantidad de propiedades en cartera',
     website_social_media_link VARCHAR(2048) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Enlace a sitio web o red social',
                         
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT,
     FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE SET NULL
   );`,
@@ -96,13 +103,12 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_users_plan_id ON users(plan_id);`,
   `CREATE INDEX IF NOT EXISTS idx_users_rut_tin ON users(rut_tin);`,
   `CREATE INDEX IF NOT EXISTS idx_users_phone_number ON users(phone_number);`,
+  `CREATE INDEX IF NOT EXISTS idx_users_phone_verified ON users(phone_verified);`,
   `CREATE INDEX IF NOT EXISTS idx_users_company_name ON users(company_name);`,
   `CREATE INDEX IF NOT EXISTS idx_users_main_operating_region ON users(main_operating_region);`,
-
+  
   // properties
-  // Intenta renombrar primero, si la columna antigua existe y la nueva no.
   `ALTER TABLE properties RENAME COLUMN area_sq_meters TO total_area_sq_meters;`,
-  // Luego, añade las nuevas columnas, asegurándose de que no existan ya.
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS useful_area_sq_meters DECIMAL(10,2) DEFAULT NULL AFTER total_area_sq_meters;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS parking_spaces INT DEFAULT 0 AFTER useful_area_sq_meters;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS pets_allowed BOOLEAN DEFAULT FALSE AFTER parking_spaces;`,
@@ -110,7 +116,6 @@ const SQL_STATEMENTS: string[] = [
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS commercial_use_allowed BOOLEAN DEFAULT FALSE AFTER furnished;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_storage BOOLEAN DEFAULT FALSE AFTER commercial_use_allowed;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS orientation VARCHAR(50) DEFAULT NULL AFTER has_storage;`,
-  // Finalmente, el CREATE TABLE IF NOT EXISTS con la estructura completa.
   `CREATE TABLE IF NOT EXISTS properties (
     id VARCHAR(36) PRIMARY KEY, 
     user_id VARCHAR(36) NOT NULL, 
@@ -126,14 +131,14 @@ const SQL_STATEMENTS: string[] = [
     country VARCHAR(100) NOT NULL, 
     bedrooms INT NOT NULL DEFAULT 0, 
     bathrooms INT NOT NULL DEFAULT 0, 
-    total_area_sq_meters DECIMAL(10,2) NOT NULL,       -- Columna renombrada
-    useful_area_sq_meters DECIMAL(10,2) DEFAULT NULL,  -- Nueva columna
-    parking_spaces INT DEFAULT 0,                      -- Nueva columna
-    pets_allowed BOOLEAN DEFAULT FALSE,                -- Nueva columna
-    furnished BOOLEAN DEFAULT FALSE,                   -- Nueva columna
-    commercial_use_allowed BOOLEAN DEFAULT FALSE,      -- Nueva columna
-    has_storage BOOLEAN DEFAULT FALSE,                 -- Nueva columna
-    orientation VARCHAR(50) DEFAULT NULL,              -- Nueva columna
+    total_area_sq_meters DECIMAL(10,2) NOT NULL,
+    useful_area_sq_meters DECIMAL(10,2) DEFAULT NULL,
+    parking_spaces INT DEFAULT 0,
+    pets_allowed BOOLEAN DEFAULT FALSE,
+    furnished BOOLEAN DEFAULT FALSE,
+    commercial_use_allowed BOOLEAN DEFAULT FALSE,
+    has_storage BOOLEAN DEFAULT FALSE,
+    orientation VARCHAR(50) DEFAULT NULL,
     images JSON, 
     features JSON, 
     upvotes INT DEFAULT 0, 
@@ -413,14 +418,13 @@ async function setupDatabase() {
       try {
         // Check if the statement is an ALTER TABLE statement
         if (stmt.trim().toUpperCase().startsWith('ALTER TABLE')) {
-          const alterMatch = stmt.match(/ALTER TABLE\s+(\w+)\s+(ADD COLUMN IF NOT EXISTS|RENAME COLUMN)\s+(.+)/i);
+          const alterMatch = stmt.match(/ALTER TABLE\s+(\w+)\s+(ADD COLUMN IF NOT EXISTS|RENAME COLUMN|MODIFY COLUMN)\s+(.+)/i); // Added MODIFY COLUMN
           if (alterMatch) {
             const tableName = alterMatch[1];
             const operation = alterMatch[2].toUpperCase();
             const details = alterMatch[3];
             
             if (operation === 'ADD COLUMN IF NOT EXISTS') {
-              // Check if column exists before trying to add
               const colNameMatch = details.match(/(\w+)\s+/);
               if (colNameMatch && colNameMatch[1]) {
                 const columnName = colNameMatch[1];
@@ -433,11 +437,10 @@ async function setupDatabase() {
                   console.log(`  -> Columna ${columnName} ya existe en tabla ${tableName}, omitiendo ADD.`);
                 }
               } else {
-                await pool.query(stmt); // Fallback if regex fails
+                await pool.query(stmt); 
                 console.log(`  -> Sentencia ALTER TABLE ADD COLUMN procesada para ${tableName}.`);
               }
             } else if (operation === 'RENAME COLUMN') {
-              // Check if old column exists and new one doesn't
               const renameDetailsMatch = details.match(/(\w+)\s+TO\s+(\w+)/i);
               if (renameDetailsMatch) {
                 const oldColName = renameDetailsMatch[1];
@@ -455,20 +458,24 @@ async function setupDatabase() {
                    console.log(`  -> Columna ${oldColName} no encontrada en tabla ${tableName} para renombrar, omitiendo RENAME.`);
                 }
               } else {
-                 await pool.query(stmt); // Fallback
+                 await pool.query(stmt);
                  console.log(`  -> Sentencia ALTER TABLE RENAME COLUMN procesada para ${tableName}.`);
               }
+            } else if (operation === 'MODIFY COLUMN') { // Handle MODIFY COLUMN
+                await pool.query(stmt);
+                const colNameMatch = details.match(/(\w+)\s+/);
+                const columnName = colNameMatch ? colNameMatch[1] : 'desconocida';
+                console.log(`  -> Columna ${columnName} modificada en tabla ${tableName}.`);
             } else {
-              // For other ALTER statements not explicitly handled
               await pool.query(stmt);
               console.log(`  -> Sentencia ALTER TABLE procesada para ${tableName}.`);
             }
           } else {
-             await pool.query(stmt); // If not ALTER TABLE or regex fails
-             console.log(`  -> Sentencia SQL (no ALTER TABLE) procesada.`);
+             await pool.query(stmt); 
+             console.log(`  -> Sentencia SQL (no ALTER TABLE estándar) procesada.`);
           }
         } else if (stmt.trim().toUpperCase().startsWith('CREATE TABLE')) {
-            await pool.query(stmt); // Execute CREATE TABLE IF NOT EXISTS
+            await pool.query(stmt); 
             const tableNameMatch = stmt.match(/CREATE TABLE IF NOT EXISTS (\w+)/i);
             if (tableNameMatch && tableNameMatch[1]) {
                  console.log(`  -> Tabla ${tableNameMatch[1]} procesada/verificada (CREATE IF NOT EXISTS).`);
@@ -505,7 +512,7 @@ async function setupDatabase() {
             const indexName = indexNameMatch ? indexNameMatch[1] : 'desconocido';
             console.log(`  -> Índice ${indexName} procesado/verificado.`);
         } else {
-            await pool.query(stmt); // For any other SQL statements
+            await pool.query(stmt); 
             console.log(`  -> Sentencia SQL genérica procesada: ${stmt.substring(0, 50)}...`);
         }
       } catch (err: any) {
@@ -520,7 +527,6 @@ async function setupDatabase() {
         } else if (err.code === 'ER_CANT_CREATE_TABLE' && err.message.includes('errno: 150')) {
             console.warn(`  ⚠️  Error al crear tabla (posiblemente FK a tabla no existente aún, o error de tipo). MySQL a veces es sensible al orden. Statement: ${stmt.substring(0,100)}... Error: ${err.message}`);
         } else if (err.code === 'ER_TABLE_EXISTS_ERROR' && stmt.toUpperCase().includes('DROP TABLE IF EXISTS')) {
-            // This is fine, means IF EXISTS worked as intended or table wasn't there.
             console.log(`  -> Tabla en DROP IF EXISTS no existía o ya fue eliminada.`);
         } else if (err.code === 'ER_CANNOT_DROP_FOREIGN_KEY_CONSTRAINT' || err.code === 'ER_DROP_INDEX_FK') {
             console.warn(`  ⚠️  No se pudo eliminar una FK o índice (posiblemente porque no existe o está en uso). Statement: ${stmt.substring(0,100)}... Error: ${err.message}`);
@@ -532,6 +538,10 @@ async function setupDatabase() {
             const colNameMatch = stmt.match(/RENAME COLUMN (\w+) TO/i);
             const colName = colNameMatch ? colNameMatch[1] : 'desconocida';
             console.warn(`  ⚠️  Columna ${colName} no existe o no se puede renombrar. Se omite ALTER RENAME. (Error: ${err.message})`);
+        } else if (err.code === 'ER_ALTER_OPERATION_NOT_SUPPORTED_REASON' && stmt.toUpperCase().startsWith('ALTER TABLE') && stmt.toUpperCase().includes('MODIFY COLUMN')) {
+             const colNameMatch = stmt.match(/MODIFY COLUMN (\w+)/i);
+             const colName = colNameMatch ? colNameMatch[1] : 'desconocida';
+            console.warn(`  ⚠️  Modificación de columna ${colName} puede no ser totalmente soportada o la sintaxis no es la esperada para esta versión de MySQL. Se omite el error. (Error: ${err.message})`);
         }
         else {
           console.error(`\n❌ Error ejecutando SQL: \n${stmt.substring(0, 200)}...\nError: ${err.message} (Code: ${err.code})`);
@@ -545,6 +555,8 @@ async function setupDatabase() {
     const adminPassword = 'ola12345';
     const adminName = 'Administrador konecte';
     const adminRoleId = 'admin';
+    const adminPhoneNumber = '+56900000000'; // Placeholder
+    const adminRut = '1-9'; // Placeholder
 
     const existingAdminResult = await pool.query('SELECT id FROM users WHERE email = ?', [adminEmail]);
     const existingAdmin = Array.isArray(existingAdminResult) && Array.isArray(existingAdminResult[0]) ? existingAdminResult[0] : [];
@@ -556,8 +568,8 @@ async function setupDatabase() {
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
       const adminUserId = randomUUID();
       await pool.query(
-        'INSERT INTO users (id, name, email, password_hash, role_id) VALUES (?, ?, ?, ?, ?)',
-        [adminUserId, adminName, adminEmail, hashedPassword, adminRoleId]
+        'INSERT INTO users (id, name, email, password_hash, role_id, phone_number, rut_tin, phone_verified) VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)',
+        [adminUserId, adminName, adminEmail, hashedPassword, adminRoleId, adminPhoneNumber, adminRut]
       );
       console.log(`  ✅ Usuario administrador ${adminEmail} creado con éxito.`);
       console.log(`     Contraseña: ${adminPassword} (¡Cámbiala después del primer inicio de sesión!)`);
@@ -580,12 +592,3 @@ async function setupDatabase() {
 }
 
 setupDatabase();
-
-
-
-
-
-
-
-
-

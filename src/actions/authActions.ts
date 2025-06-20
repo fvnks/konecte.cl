@@ -8,11 +8,12 @@ import { query } from '@/lib/db';
 import type { User } from '@/lib/types';
 import { signUpSchema } from '@/lib/types'; 
 import { randomUUID } from 'crypto';
+import { generateAndSendOtpAction } from './otpActions'; // Import the OTP action
 
 // --- Sign Up ---
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
 
-export async function signUpAction(values: SignUpFormValues): Promise<{ success: boolean; message?: string; user?: Omit<User, 'password_hash'> }> {
+export async function signUpAction(values: SignUpFormValues): Promise<{ success: boolean; message?: string; user?: Omit<User, 'password_hash'>, verificationPending?: boolean, userId?: string }> {
   const validation = signUpSchema.safeParse(values);
   if (!validation.success) {
     return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
@@ -20,16 +21,11 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
 
   const { 
     accountType, name, email, password, phone_number, rut_tin,
-    // experience_selling_properties, // REMOVED
     company_name, main_operating_region,
     main_operating_commune, properties_in_portfolio_count, website_social_media_link
   } = validation.data;
 
   console.log(`[AuthAction] Attempting sign-up for email: ${email}, type: ${accountType}`);
-
-  if (accountType === 'broker' && !rut_tin) {
-    return { success: false, message: "El RUT es requerido para corredores/inmobiliarias." };
-  }
 
   try {
     const existingUserRows: any[] = await query('SELECT id FROM users WHERE email = ?', [email]);
@@ -53,15 +49,15 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
         id, name, email, password_hash, role_id, 
         phone_number, rut_tin, 
         company_name, main_operating_region, main_operating_commune, 
-        properties_in_portfolio_count, website_social_media_link
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        properties_in_portfolio_count, website_social_media_link,
+        phone_verified 
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)
     `;
     
     const params = [
       userId, name, email, hashedPassword, roleId,
-      phone_number || null,
-      rut_tin || null,
-      // experienceValue removed
+      phone_number, 
+      rut_tin,
       accountType === 'broker' ? (company_name || null) : null,
       accountType === 'broker' ? (main_operating_region || null) : null,
       accountType === 'broker' ? (main_operating_commune || null) : null,
@@ -78,13 +74,13 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
       name,
       email,
       role_id: roleId,
-      phone_number: phone_number || null,
-      rut_tin: rut_tin || null,
+      phone_number: phone_number, // phone_number is now required
+      rut_tin: rut_tin, // rut_tin is now required
+      phone_verified: false,
     };
     
     const userWithoutPasswordHash: User = {
       ...userWithoutPasswordHashBase,
-      // experience_selling_properties: null, // REMOVED
       company_name: accountType === 'broker' ? (company_name || null) : null,
       main_operating_region: accountType === 'broker' ? (main_operating_region || null) : null,
       main_operating_commune: accountType === 'broker' ? (main_operating_commune || null) : null,
@@ -92,8 +88,27 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
       website_social_media_link: accountType === 'broker' ? (website_social_media_link || null) : null,
     };
 
+    // Generate and send OTP
+    const otpResult = await generateAndSendOtpAction(userId);
+    if (!otpResult.success) {
+      // Log error, but proceed with user creation. User can resend OTP.
+      console.warn(`[AuthAction] User ${userId} created, but OTP sending failed: ${otpResult.message}`);
+      return { 
+        success: true, 
+        message: "Usuario registrado. Hubo un problema al enviar el código de verificación a tu teléfono. Podrás solicitarlo de nuevo desde tu perfil.", 
+        user: userWithoutPasswordHash,
+        verificationPending: true, // Still pending even if initial send failed
+        userId: userId 
+      };
+    }
 
-    return { success: true, message: "Usuario registrado exitosamente.", user: userWithoutPasswordHash };
+    return { 
+        success: true, 
+        message: "Usuario registrado exitosamente. Se ha enviado un código de verificación a tu teléfono.", 
+        user: userWithoutPasswordHash,
+        verificationPending: true,
+        userId: userId
+    };
   } catch (error: any) {
     console.error("[AuthAction] Error in signUpAction:", error);
     if (error.code === 'ER_DUP_ENTRY' && error.message.includes('users.email')) {
@@ -111,7 +126,7 @@ const signInSchema = z.object({
 });
 export type SignInFormValues = z.infer<typeof signInSchema>;
 
-export async function signInAction(values: SignInFormValues): Promise<{ success: boolean; message?: string; user?: User }> {
+export async function signInAction(values: SignInFormValues): Promise<{ success: boolean; message?: string; user?: User, verificationPending?: boolean }> {
   const validation = signInSchema.safeParse(values);
   if (!validation.success) {
     return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
@@ -130,8 +145,9 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
             p.can_view_contact_data,
             p.automated_alerts_enabled,
             p.advanced_dashboard_access,
-            u.company_name, u.main_operating_region, /* experience_selling_properties removed */
-            u.main_operating_commune, u.properties_in_portfolio_count, u.website_social_media_link
+            u.company_name,
+            u.main_operating_commune, u.properties_in_portfolio_count, u.website_social_media_link,
+            u.phone_verified 
          FROM users u
          JOIN roles r ON u.role_id = r.id
          LEFT JOIN plans p ON u.plan_id = p.id
@@ -150,6 +166,7 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
         can_view_contact_data?: boolean | null;
         automated_alerts_enabled?: boolean | null;
         advanced_dashboard_access?: boolean | null;
+        phone_verified: boolean; 
     }; 
     console.log(`[AuthAction] User found: ${userFromDb.email}. Stored hash: ${userFromDb.password_hash ? userFromDb.password_hash.substring(0, 10) + "..." : "NOT FOUND"}, Length: ${userFromDb.password_hash?.length}`);
 
@@ -172,23 +189,26 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
 
     const finalUser: User = {
       ...userToReturnBase,
+      phone_number: userFromDb.phone_number, // ensure phone_number is passed
       plan_name: plan_name_from_db || null,
       plan_is_pro_or_premium: (plan_name_from_db?.toLowerCase().includes('pro') || plan_name_from_db?.toLowerCase().includes('premium')) && userFromDb.role_id === 'broker',
       plan_is_premium_broker: plan_name_from_db?.toLowerCase().includes('premium') && userFromDb.role_id === 'broker',
       plan_allows_contact_view: !!userFromDb.can_view_contact_data,
       plan_automated_alerts_enabled: !!userFromDb.automated_alerts_enabled,
       plan_advanced_dashboard_access: !!userFromDb.advanced_dashboard_access,
+      phone_verified: !!userFromDb.phone_verified, 
     };
 
-    console.log(`[AuthAction] Sign-in successful for ${finalUser.email}. Derived plan flags:`, {
-        is_pro_or_premium: finalUser.plan_is_pro_or_premium,
-        allows_contact_view: finalUser.plan_allows_contact_view,
-        is_premium_broker: finalUser.plan_is_premium_broker,
-        automated_alerts: finalUser.plan_automated_alerts_enabled,
-        advanced_dashboard: finalUser.plan_advanced_dashboard_access,
-    });
+    console.log(`[AuthAction] Sign-in successful for ${finalUser.email}. Phone verified: ${finalUser.phone_verified}`);
+    
+    const verificationPending = !finalUser.phone_verified;
+    if (verificationPending) {
+        // Optionally, re-trigger OTP sending if user logs in and phone is not verified.
+        // For now, just notify the client.
+        console.log(`[AuthAction] User ${finalUser.id} phone not verified. Prompting for verification.`);
+    }
 
-    return { success: true, user: finalUser };
+    return { success: true, user: finalUser, verificationPending };
   } catch (error: any) {
     console.error("[AuthAction] Error in signInAction:", error);
     return { success: false, message: `Error al iniciar sesión: ${error.message}` };

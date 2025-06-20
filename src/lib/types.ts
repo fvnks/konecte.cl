@@ -43,9 +43,12 @@ export interface User {
   name: string;
   avatarUrl?: string;
   email?: string;
-  password_hash?: string; // Should ideally not be sent to client
+  password_hash?: string; 
   rut_tin?: string | null;
-  phone_number?: string | null;
+  phone_number: string; // Made non-optional as it's now required
+  phone_verified?: boolean;
+  phone_otp?: string | null;
+  phone_otp_expires_at?: string | null; // ISO string format
   role_id: string;
   role_name?: string;
   role_permissions?: AppPermission[] | null;
@@ -59,7 +62,6 @@ export interface User {
   plan_automated_alerts_enabled?: boolean;
   plan_advanced_dashboard_access?: boolean;
 
-  // New fields for different account types
   company_name?: string | null;
   main_operating_region?: string | null;
   main_operating_commune?: string | null;
@@ -84,7 +86,7 @@ export interface PropertyListing {
   propertyType: PropertyType;
   category: ListingCategory;
   price: number;
-  currency: string; // Could be 'CLP' or 'UF'
+  currency: string; 
   address: string;
   city: string;
   country: string;
@@ -382,26 +384,12 @@ export const signUpSchema = z.object({
   message: "Las contraseñas no coinciden.",
   path: ["confirmPassword"],
 }).superRefine((data, ctx) => {
-  // La obligatoriedad del RUT ya está cubierta por .min(1) en su definición.
-  // Aquí solo validamos el formato.
-  if (data.rut_tin && data.rut_tin.trim() !== '' && !validarRut(data.rut_tin)) {
+  if (data.rut_tin && !validarRut(data.rut_tin)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "El RUT ingresado no es válido.",
       path: ["rut_tin"],
     });
-  }
-
-  // Validaciones específicas para 'broker' si es necesario, más allá de la obligatoriedad del RUT.
-  if (data.accountType === 'broker') {
-    // Ejemplo: si company_name fuera obligatorio para broker
-    // if (!data.company_name || data.company_name.trim() === '') {
-    //   ctx.addIssue({
-    //     code: z.ZodIssueCode.custom,
-    //     message: "El nombre de la empresa es requerido para corredores/inmobiliarias.",
-    //     path: ["company_name"],
-    //   });
-    // }
   }
 });
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
@@ -790,7 +778,13 @@ export type UserActionLogType =
   | 'plan_subscription_change'
   | 'unusual_activity_detected' | 'account_locked_temporarily' | 'admin_action';
 
+// OTP Related Schemas
+export const otpVerificationSchema = z.object({
+  otp: z.string().length(4, "El código OTP debe tener 4 dígitos.").regex(/^\d{4}$/, "El código OTP debe ser numérico."),
+});
+export type OtpVerificationFormValues = z.infer<typeof otpVerificationSchema>;
     
+
 
 
 
