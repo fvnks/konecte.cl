@@ -22,8 +22,8 @@ import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from "@/lib/types";
-import { Loader2, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react"; // Added GripVertical, Move
-import { useEffect, useState, ChangeEvent } from "react";
+import { Loader2, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react";
+import { useEffect, useState, ChangeEvent, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -62,10 +62,10 @@ const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
 interface ManagedImage {
-  id: string; // Unique ID for DnD (e.g., blob URL or a generated ID)
-  url: string; // Preview URL (blob URL)
-  file: File;  // The actual file object
-  isNew: true; // Always true for PropertyForm
+  id: string;
+  url: string;
+  file: File;
+  isNew: true;
 }
 
 export default function PropertyForm() {
@@ -73,31 +73,10 @@ export default function PropertyForm() {
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  
+
   const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showAuthAlert, setShowAuthAlert] = useState(false);
-
-  useEffect(() => {
-    console.log("[PropertyForm] Auth Check Effect: Start");
-    const userJson = localStorage.getItem('loggedInUser');
-    if (userJson) {
-      try {
-        const parsedUser = JSON.parse(userJson);
-        setLoggedInUser(parsedUser);
-        console.log("[PropertyForm] Auth Check Effect: User found in localStorage:", parsedUser.email);
-      } catch (error) {
-        console.error("[PropertyForm] Auth Check Effect: Error parsing user from localStorage", error);
-        localStorage.removeItem('loggedInUser');
-        setLoggedInUser(null);
-      }
-    } else {
-      console.log("[PropertyForm] Auth Check Effect: No user found in localStorage.");
-      setLoggedInUser(null);
-    }
-    setIsCheckingAuth(false);
-    console.log("[PropertyForm] Auth Check Effect: Finished. isCheckingAuth = false");
-  }, []);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
@@ -129,6 +108,33 @@ export default function PropertyForm() {
   const watchedPropertyType = form.watch("propertyType");
   const watchedCategory = form.watch("category");
 
+  useEffect(() => {
+    console.log("[PropertyForm] Auth Check Effect: Start");
+    const userJson = localStorage.getItem('loggedInUser');
+    if (userJson) {
+      try {
+        const parsedUser = JSON.parse(userJson);
+        setLoggedInUser(parsedUser);
+        console.log("[PropertyForm] Auth Check Effect: User found in localStorage:", parsedUser.email);
+      } catch (error) {
+        console.error("[PropertyForm] Auth Check Effect: Error parsing user from localStorage", error);
+        localStorage.removeItem('loggedInUser');
+        setLoggedInUser(null);
+      }
+    } else {
+      console.log("[PropertyForm] Auth Check Effect: No user found in localStorage.");
+      setLoggedInUser(null);
+    }
+    setIsCheckingAuth(false);
+    console.log("[PropertyForm] Auth Check Effect: Finished. isCheckingAuth = false");
+  }, []);
+  
+  // Effect to update form's 'images' field when managedImages changes
+  useEffect(() => {
+    form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+  }, [managedImages, form]);
+
+
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const filesArray = Array.from(event.target.files);
@@ -158,18 +164,14 @@ export default function PropertyForm() {
       const newManagedImagesFromFile = validFiles.map(file => {
         const previewUrl = URL.createObjectURL(file);
         return {
-          id: previewUrl, // Use blob url as temporary unique ID
+          id: previewUrl,
           url: previewUrl,
           file: file,
-          isNew: true as const, // Type assertion
+          isNew: true as const,
         };
       });
       
-      setManagedImages(prev => {
-          const updated = [...prev, ...newManagedImagesFromFile];
-          form.setValue('images', updated.map(img => img.url), { shouldValidate: true, shouldDirty: true });
-          return updated;
-      });
+      setManagedImages(prev => [...prev, ...newManagedImagesFromFile]);
       event.target.value = '';
     }
   };
@@ -180,9 +182,7 @@ export default function PropertyForm() {
       if (imageToRemove?.url.startsWith('blob:')) {
         URL.revokeObjectURL(imageToRemove.url);
       }
-      const updated = prev.filter(img => img.id !== idToRemove);
-      form.setValue('images', updated.map(img => img.url), { shouldValidate: true, shouldDirty: true });
-      return updated;
+      return prev.filter(img => img.id !== idToRemove);
     });
   };
 
@@ -192,7 +192,6 @@ export default function PropertyForm() {
       const items = Array.from(prev);
       const [reorderedItem] = items.splice(result.source.index, 1);
       items.splice(result.destination!.index, 0, reorderedItem);
-      form.setValue('images', items.map(img => img.url), { shouldValidate: true, shouldDirty: true });
       return items;
     });
   };
@@ -222,19 +221,26 @@ export default function PropertyForm() {
     return uploadedUrls;
   };
 
-  // This is the main submit logic IF the user is logged in
   const actualFormSubmit = async (values: PropertyFormValues) => {
+    console.log("[PropertyForm] actualFormSubmit: Called. Uploading images...");
     const finalImageUrls = await uploadImagesToProxy();
+    console.log("[PropertyForm] actualFormSubmit: Images uploaded, URLs:", finalImageUrls);
+
     const dataToSubmit = {
       ...values,
       images: finalImageUrls,
       bedrooms: values.bedrooms === '' ? 0 : Number(values.bedrooms),
       bathrooms: values.bathrooms === '' ? 0 : Number(values.bathrooms),
       parkingSpaces: values.parkingSpaces === '' ? 0 : Number(values.parkingSpaces),
-      usefulAreaSqMeters: values.usefulAreaSqMeters === '' ? undefined : Number(values.usefulAreaSqMeters),
+      usefulAreaSqMeters: values.usefulAreaSqMeters === '' || values.usefulAreaSqMeters === undefined || values.usefulAreaSqMeters === null
+                          ? undefined
+                          : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
+    console.log("[PropertyForm] actualFormSubmit: Submitting to server action with data:", dataToSubmit);
     const result = await submitPropertyAction(dataToSubmit, loggedInUser!.id);
+    console.log("[PropertyForm] actualFormSubmit: Server action result:", result);
+
     if (result.success && result.propertyId) {
       toast({
         title: result.autoMatchesCount && result.autoMatchesCount > 0 ? "¡Propiedad Publicada y Matches Encontrados!" : "Propiedad Publicada",
@@ -253,7 +259,6 @@ export default function PropertyForm() {
     }
   };
 
-  // This function is called when the button is clicked
   const handleAttemptToPublish = async () => {
     console.log("[PropertyForm] handleAttemptToPublish: Clicked. isCheckingAuth:", isCheckingAuth, "loggedInUser:", !!loggedInUser);
     if (isCheckingAuth) {
@@ -265,7 +270,6 @@ export default function PropertyForm() {
       setShowAuthAlert(true);
       return;
     }
-    // If user is logged in, trigger RHF's submit (which includes validation then actualFormSubmit)
     console.log("[PropertyForm] handleAttemptToPublish: User logged in, calling form.handleSubmit.");
     form.handleSubmit(actualFormSubmit)();
   };
@@ -282,12 +286,11 @@ export default function PropertyForm() {
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
   const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
-  
+
   return (
     <>
       <Form {...form}>
         <form onSubmit={(e) => { e.preventDefault(); handleAttemptToPublish(); }} className="space-y-8">
-          {/* ... (todos los FormField como estaban) ... */}
           <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -318,26 +321,21 @@ export default function PropertyForm() {
               )}
             />
           </div>
-          
           <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl><AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting || isCheckingAuth} /></FormControl> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
             <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField control={form.control} name="totalAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Total (m²)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 120" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl> <FormMessage /> </FormItem> )}/>
             <FormField control={form.control} name="usefulAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Útil (m²) (Opcional)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 100" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} /></FormControl> <FormMessage /> </FormItem> )}/>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><BedDouble className="mr-2 h-4 w-4 text-primary"/>N° de Dormitorios</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
             <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Bath className="mr-2 h-4 w-4 text-primary"/>N° de Baños</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
             <FormField control={form.control} name="parkingSpaces" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Car className="mr-2 h-4 w-4 text-primary"/>N° Estacionamientos</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
           </div>
-          
           <FormField control={form.control} name="orientation" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Compass className="mr-2 h-4 w-4 text-primary"/>Orientación</FormLabel> <Select onValueChange={field.onChange} value={field.value || "none"}> <FormControl><SelectTrigger> <SelectValue placeholder="Selecciona orientación" /> </SelectTrigger></FormControl> <SelectContent> {orientationOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
-          
           <div className="space-y-4 pt-2">
               <FormLabel className="text-base font-medium">Otras Características</FormLabel>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
@@ -350,17 +348,16 @@ export default function PropertyForm() {
                   <p className="text-sm text-muted-foreground italic">No hay características adicionales aplicables para el tipo y categoría de propiedad seleccionada.</p>
               }
           </div>
-          
           <FormField
             control={form.control}
             name="images"
-            render={({ field }) => { 
+            render={({ field }) => {
               const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
               return (
                 <FormItem id={formItemId}>
                   <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
                   <DragDropContext onDragEnd={onDragEnd}>
-                    <Droppable droppableId="imageDroppable" direction="horizontal">
+                    <Droppable droppableId="imageDroppableForm" direction="horizontal">
                       {(provided) => (
                         <div
                           ref={provided.innerRef}
@@ -403,14 +400,14 @@ export default function PropertyForm() {
                     </Droppable>
                   </DragDropContext>
                   {managedImages.length < MAX_IMAGES && (
-                    <label htmlFor="image-upload-input-actual" className={cn( "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors", "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50", isUploading && "cursor-not-allowed opacity-70", error && "border-destructive" )} aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`} aria-invalid={!!error} >
+                    <label htmlFor="image-upload-input-create" className={cn( "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors", "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50", isUploading && "cursor-not-allowed opacity-70", error && "border-destructive" )} aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`} aria-invalid={!!error} >
                       <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
                         <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
                         <p className="mb-1 text-base text-muted-foreground"> <span className="font-semibold text-primary">Haz clic para subir</span> o arrastra y suelta </p>
                         <p className="text-xs text-muted-foreground"> Imágenes (Máx. {MAX_IMAGES - managedImages.length} más) </p>
                         <p className="text-xs text-muted-foreground">PNG, JPG, GIF, WEBP (hasta {MAX_FILE_SIZE_MB}MB c/u)</p>
                       </div>
-                      <Input id="image-upload-input-actual" type="file" className="hidden" multiple onChange={handleImageChange} accept="image/png, image/jpeg, image/gif, image/webp" disabled={managedImages.length >= MAX_IMAGES || isUploading} />
+                      <Input id="image-upload-input-create" type="file" className="hidden" multiple onChange={handleImageChange} accept="image/png, image/jpeg, image/gif, image/webp" disabled={managedImages.length >= MAX_IMAGES || isUploading} />
                     </label>
                   )}
                   <FormDescription id={formDescriptionId}>Sube imágenes claras y de buena calidad. Puedes arrastrarlas para cambiar el orden (la primera será la principal).</FormDescription>
@@ -420,12 +417,10 @@ export default function PropertyForm() {
               );
             }}
           />
-
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
-          
-          <Button 
+          <Button
             type="submit"
-            className="w-full md:w-auto" 
+            className="w-full md:w-auto"
             disabled={form.formState.isSubmitting || isUploading || isCheckingAuth}
           >
             {(form.formState.isSubmitting || isUploading || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

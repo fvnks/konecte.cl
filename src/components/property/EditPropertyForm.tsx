@@ -13,7 +13,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  useFormField, // Importado
+  useFormField,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,8 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import type { PropertyType, ListingCategory, PropertyListing, PropertyFormValues, SubmitPropertyResult, OrientationType } from "@/lib/types";
-import { propertyFormSchema, orientationValues } from '@/lib/types'; 
-import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react"; // Added GripVertical, Move
+import { propertyFormSchema, orientationValues } from '@/lib/types';
+import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState, ChangeEvent, useEffect } from 'react';
 import Image from "next/image";
@@ -57,31 +57,29 @@ const orientationOptions: { value: OrientationType; label: string }[] = [
   { value: "none", label: "No especificada" },
 ];
 
-
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
-const editPropertyFormSchema = propertyFormSchema; 
+const editPropertyFormSchema = propertyFormSchema;
 type EditPropertyFormValues = z.infer<typeof editPropertyFormSchema>;
 
 interface EditPropertyFormProps {
   property: PropertyListing;
-  userId?: string; 
+  userId?: string;
   onSubmitAction: (
-    propertyId: string, 
-    data: PropertyFormValues, 
-    userId?: string 
+    propertyId: string,
+    data: PropertyFormValues,
+    userId?: string
   ) => Promise<SubmitPropertyResult>;
-  isAdminContext?: boolean; 
+  isAdminContext?: boolean;
 }
 
 interface ManagedImage {
-  id: string; 
-  url: string; 
+  id: string;
+  url: string;
   file?: File;
-  isNew: boolean; 
+  isNew: boolean;
 }
-
 
 export default function EditPropertyForm({ property, userId, onSubmitAction, isAdminContext = false }: EditPropertyFormProps) {
   const { toast } = useToast();
@@ -111,23 +109,29 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       commercialUseAllowed: property.commercialUseAllowed || false,
       hasStorage: property.hasStorage || false,
       orientation: property.orientation || "none",
-      images: property.images || [], 
+      images: property.images || [],
       features: property.features?.join(', ') || "",
     },
   });
 
   const watchedPropertyType = form.watch("propertyType");
   const watchedCategory = form.watch("category");
-
+  
+  // Initialize managedImages from property.images
   useEffect(() => {
     const initialManagedImages = (property.images || []).map((imgUrl, index) => ({
-      id: `existing-${imgUrl.slice(-10)}-${index}`, 
+      id: `existing-${imgUrl.slice(-10)}-${index}`,
       url: imgUrl,
       isNew: false,
     }));
     setManagedImages(initialManagedImages);
-    form.setValue('images', property.images || [], { shouldValidate: true });
-  }, [property.images, form]);
+    // No need to call form.setValue here, as it's handled by defaultValues
+  }, [property.images]); // Rerun if property.images changes externally
+  
+  // Effect to update form's 'images' field when managedImages changes
+  useEffect(() => {
+    form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+  }, [managedImages, form]);
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -150,18 +154,14 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       const newManagedImagesFromFile = validFiles.map(file => {
         const previewUrl = URL.createObjectURL(file);
         return {
-          id: previewUrl, // Use blob url as unique ID for new files
+          id: previewUrl,
           url: previewUrl,
           file: file,
           isNew: true as const,
         };
       });
-      setManagedImages(prev => {
-          const updated = [...prev, ...newManagedImagesFromFile];
-          form.setValue('images', updated.map(img => img.url), { shouldValidate: true, shouldDirty: true });
-          return updated;
-      });
-      event.target.value = ''; 
+      setManagedImages(prev => [...prev, ...newManagedImagesFromFile]);
+      event.target.value = '';
     }
   };
 
@@ -171,9 +171,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       if (imageToRemove?.isNew && imageToRemove.url.startsWith('blob:')) {
         URL.revokeObjectURL(imageToRemove.url);
       }
-      const updated = prev.filter(img => img.id !== idToRemove);
-      form.setValue('images', updated.map(img => img.url), { shouldValidate: true, shouldDirty: true });
-      return updated;
+      return prev.filter(img => img.id !== idToRemove);
     });
   };
 
@@ -183,7 +181,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       const items = Array.from(prev);
       const [reorderedItem] = items.splice(result.source.index, 1);
       items.splice(result.destination!.index, 0, reorderedItem);
-      form.setValue('images', items.map(img => img.url), { shouldValidate: true, shouldDirty: true });
       return items;
     });
   };
@@ -213,24 +210,24 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
     setIsUploading(false);
 
     const dataToSubmit: PropertyFormValues = {
-        ...values,
-        images: finalImageUrlsForServer,
-        bedrooms: values.bedrooms === '' ? 0 : Number(values.bedrooms),
-        bathrooms: values.bathrooms === '' ? 0 : Number(values.bathrooms),
-        parkingSpaces: values.parkingSpaces === '' ? 0 : Number(values.parkingSpaces),
-        usefulAreaSqMeters: values.usefulAreaSqMeters === '' || values.usefulAreaSqMeters === undefined || values.usefulAreaSqMeters === null
-                            ? undefined 
+      ...values,
+      images: finalImageUrlsForServer,
+      bedrooms: values.bedrooms === '' ? 0 : Number(values.bedrooms),
+      bathrooms: values.bathrooms === '' ? 0 : Number(values.bathrooms),
+      parkingSpaces: values.parkingSpaces === '' ? 0 : Number(values.parkingSpaces),
+      usefulAreaSqMeters: values.usefulAreaSqMeters === '' || values.usefulAreaSqMeters === undefined || values.usefulAreaSqMeters === null
+                            ? undefined
                             : Number(values.usefulAreaSqMeters),
-        orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
+      orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
     const result = await onSubmitAction(property.id, dataToSubmit, isAdminContext ? undefined : userId);
-    
+
     if (result.success) {
       toast({
         title: "Propiedad Actualizada",
         description: "Los detalles de la propiedad han sido actualizados exitosamente.",
       });
-      router.push(isAdminContext ? '/admin/properties' : '/dashboard/my-listings'); 
+      router.push(isAdminContext ? '/admin/properties' : '/dashboard/my-listings');
     } else {
       toast({
         title: "Error al Actualizar",
@@ -239,7 +236,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       });
     }
   }
-  
+
   useEffect(() => {
     return () => {
       managedImages.forEach(img => {
@@ -256,7 +253,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* ... (todos los FormField como estaban) ... */}
         <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -287,26 +283,21 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
             )}
           />
         </div>
-        
         <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl><AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting} /></FormControl> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField control={form.control} name="totalAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Total (m²)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 120" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="usefulAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Útil (m²) (Opcional)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 100" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><BedDouble className="mr-2 h-4 w-4 text-primary"/>N° de Dormitorios</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Bath className="mr-2 h-4 w-4 text-primary"/>N° de Baños</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="parkingSpaces" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Car className="mr-2 h-4 w-4 text-primary"/>N° Estacionamientos</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
-        
         <FormField control={form.control} name="orientation" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Compass className="mr-2 h-4 w-4 text-primary"/>Orientación</FormLabel> <Select onValueChange={field.onChange} value={field.value || "none"}> <FormControl><SelectTrigger> <SelectValue placeholder="Selecciona orientación" /> </SelectTrigger></FormControl> <SelectContent> {orientationOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
-        
         <div className="space-y-4 pt-2">
             <FormLabel className="text-base font-medium">Otras Características</FormLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
@@ -319,7 +310,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                 <p className="text-sm text-muted-foreground italic">No hay características adicionales aplicables para el tipo y categoría de propiedad seleccionada.</p>
               }
         </div>
-        
         <FormField
           control={form.control}
           name="images"
@@ -388,9 +378,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
             );
           }}
         />
-
         <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de la propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
-        
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => router.back()} disabled={form.formState.isSubmitting || isUploading}> Cancelar </Button>
             <Button type="submit" disabled={form.formState.isSubmitting || isUploading}>
