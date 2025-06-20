@@ -1,4 +1,3 @@
-
 // src/components/request/RequestForm.tsx
 'use client';
 
@@ -19,12 +18,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { submitRequestAction } from "@/actions/requestActions";
-import type { PropertyType, ListingCategory, User as StoredUser, RequestFormValues } from "@/lib/types"; // Import RequestFormValues
-import { requestFormSchema } from "@/lib/types"; // Import requestFormSchema
-import { Loader2, UserCircle, Handshake } from "lucide-react";
+import type { PropertyType, ListingCategory, User as StoredUser, RequestFormValues } from "@/lib/types";
+import { requestFormSchema } from "@/lib/types";
+import { Loader2, UserCircle, Handshake, LogIn, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -46,6 +55,7 @@ export default function RequestForm() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isBroker, setIsBroker] = useState(false);
+  const [showAuthAlert, setShowAuthAlert] = useState(false);
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -56,7 +66,7 @@ export default function RequestForm() {
         setIsBroker(user.role_id === 'broker');
       } catch (error) {
         console.error("Error parsing user from localStorage", error);
-        localStorage.removeItem('loggedInUser'); 
+        localStorage.removeItem('loggedInUser');
       }
     }
     setIsCheckingAuth(false);
@@ -81,12 +91,8 @@ export default function RequestForm() {
 
   async function onSubmit(values: RequestFormValues) {
      if (!loggedInUser || !loggedInUser.id) {
-      toast({
-        title: "Acción Requerida",
-        description: "Debes iniciar sesión para publicar una solicitud.",
-        variant: "destructive",
-        action: <Button variant="outline" size="sm" onClick={() => router.push('/auth/signin')}>Iniciar Sesión</Button>
-      });
+      toast({ title: "Acción Requerida", description: "Debes iniciar sesión o registrarte para publicar.", variant: "warning" });
+      setShowAuthAlert(true);
       return;
     }
 
@@ -95,7 +101,7 @@ export default function RequestForm() {
         minBedrooms: values.minBedrooms === '' ? undefined : values.minBedrooms,
         minBathrooms: values.minBathrooms === '' ? undefined : values.minBathrooms,
         budgetMax: values.budgetMax === '' ? undefined : values.budgetMax,
-        open_for_broker_collaboration: isBroker ? values.open_for_broker_collaboration : false, // Solo brokers pueden setear esto
+        open_for_broker_collaboration: isBroker ? values.open_for_broker_collaboration : false,
     };
 
     const result = await submitRequestAction(dataToSubmit, loggedInUser.id);
@@ -130,245 +136,268 @@ export default function RequestForm() {
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Título de la Solicitud</FormLabel>
-              <FormControl>
-                <Input placeholder="Ej: Busco departamento de 2 dormitorios en Providencia" {...field} />
-              </FormControl>
-              <FormDescription>Un título claro sobre lo que estás buscando.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Descripción Detallada de tu Búsqueda</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Describe con detalle qué tipo de propiedad buscas, características importantes, etc." className="min-h-[120px]" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="desiredPropertyType"
-          render={() => (
-            <FormItem>
-              <div className="mb-4">
-                <FormLabel className="text-base">Tipo de Transacción Buscada</FormLabel>
-                <FormDescription>
-                  Selecciona si buscas arrendar, comprar, o ambos.
-                </FormDescription>
-              </div>
-              {propertyTypeOptions.map((item) => (
-                <FormField
-                  key={item.value}
-                  control={form.control}
-                  name="desiredPropertyType"
-                  render={({ field }) => {
-                    return (
-                      <FormItem
-                        key={item.value}
-                        className="flex flex-row items-start space-x-3 space-y-0"
-                      >
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value?.includes(item.value)}
-                            onCheckedChange={(checked) => {
-                              return checked
-                                ? field.onChange([...(field.value || []), item.value])
-                                : field.onChange(
-                                    (field.value || []).filter(
-                                      (value) => value !== item.value
-                                    )
-                                  );
-                            }}
-                          />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          {item.label}
-                        </FormLabel>
-                      </FormItem>
-                    );
-                  }}
-                />
-              ))}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="desiredCategories"
-          render={() => (
-            <FormItem>
-              <div className="mb-4">
-                <FormLabel className="text-base">Categorías de Propiedad Deseadas</FormLabel>
-                <FormDescription>
-                  Selecciona los tipos de propiedad que te interesan.
-                </FormDescription>
-              </div>
-              {categoryOptions.map((item) => (
-                <FormField
-                  key={item.value}
-                  control={form.control}
-                  name="desiredCategories"
-                  render={({ field }) => {
-                    return (
-                      <FormItem
-                        key={item.value}
-                        className="flex flex-row items-start space-x-3 space-y-0 mb-2"
-                      >
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value?.includes(item.value)}
-                            onCheckedChange={(checked) => {
-                              return checked
-                                ? field.onChange([...(field.value || []), item.value])
-                                : field.onChange(
-                                    (field.value || []).filter(
-                                      (value) => value !== item.value
-                                    )
-                                  );
-                            }}
-                          />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          {item.label}
-                        </FormLabel>
-                      </FormItem>
-                    );
-                  }}
-                />
-              ))}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-            control={form.control}
-            name="desiredLocationCity"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Ciudad/Comuna Deseada</FormLabel>
-                <FormControl>
-                    <Input placeholder="Ej: Santiago, Viña del Mar" {...field} />
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-            <FormField
-            control={form.control}
-            name="desiredLocationNeighborhood"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Barrio/Sector Preferido (Opcional)</FormLabel>
-                <FormControl>
-                    <Input placeholder="Ej: Las Condes, Ñuñoa, Reñaca" {...field} />
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-        </div>
-
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <FormField
             control={form.control}
-            name="minBedrooms"
+            name="title"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Mínimo de Dormitorios (Opcional)</FormLabel>
+                <FormLabel>Título de la Solicitud</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Ej: 2" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
+                  <Input placeholder="Ej: Busco departamento de 2 dormitorios en Providencia" {...field} />
+                </FormControl>
+                <FormDescription>Un título claro sobre lo que estás buscando.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Descripción Detallada de tu Búsqueda</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="Describe con detalle qué tipo de propiedad buscas, características importantes, etc." className="min-h-[120px]" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="minBathrooms"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Mínimo de Baños (Opcional)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="Ej: 1" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="budgetMax"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Presupuesto Máximo (Opcional)</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="Ej: 600000 (en CLP)" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} />
-                </FormControl>
-                <FormDescription>Indica tu presupuesto máximo en CLP o UF.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
 
-        {isBroker && (
           <FormField
             control={form.control}
-            name="open_for_broker_collaboration"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm bg-secondary/30">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel className="font-medium flex items-center">
-                    <Handshake className="h-5 w-5 mr-2 text-primary"/>
-                    Abrir a Colaboración de Corredores
-                  </FormLabel>
+            name="desiredPropertyType"
+            render={() => (
+              <FormItem>
+                <div className="mb-4">
+                  <FormLabel className="text-base">Tipo de Transacción Buscada</FormLabel>
                   <FormDescription>
-                    Permite que otros corredores vean esta solicitud y te propongan propiedades de su cartera.
+                    Selecciona si buscas arrendar, comprar, o ambos.
                   </FormDescription>
                 </div>
+                {propertyTypeOptions.map((item) => (
+                  <FormField
+                    key={item.value}
+                    control={form.control}
+                    name="desiredPropertyType"
+                    render={({ field }) => {
+                      return (
+                        <FormItem
+                          key={item.value}
+                          className="flex flex-row items-start space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(item.value)}
+                              onCheckedChange={(checked) => {
+                                return checked
+                                  ? field.onChange([...(field.value || []), item.value])
+                                  : field.onChange(
+                                      (field.value || []).filter(
+                                        (value) => value !== item.value
+                                      )
+                                    );
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            {item.label}
+                          </FormLabel>
+                        </FormItem>
+                      );
+                    }}
+                  />
+                ))}
+                <FormMessage />
               </FormItem>
             )}
           />
-        )}
-        
-        <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth || !loggedInUser}>
-          {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Publicar Solicitud
-        </Button>
-        {!isCheckingAuth && !loggedInUser && (
-           <p className="text-sm text-destructive text-center mt-2">
-            <UserCircle className="inline-block h-4 w-4 mr-1 align-text-bottom" />
-            Debes <Link href="/auth/signin" className="underline hover:text-destructive/80">iniciar sesión</Link> o <Link href="/auth/signup" className="underline hover:text-destructive/80">registrarte</Link> para publicar.
-          </p>
-        )}
-      </form>
-    </Form>
+
+          <FormField
+            control={form.control}
+            name="desiredCategories"
+            render={() => (
+              <FormItem>
+                <div className="mb-4">
+                  <FormLabel className="text-base">Categorías de Propiedad Deseadas</FormLabel>
+                  <FormDescription>
+                    Selecciona los tipos de propiedad que te interesan.
+                  </FormDescription>
+                </div>
+                {categoryOptions.map((item) => (
+                  <FormField
+                    key={item.value}
+                    control={form.control}
+                    name="desiredCategories"
+                    render={({ field }) => {
+                      return (
+                        <FormItem
+                          key={item.value}
+                          className="flex flex-row items-start space-x-3 space-y-0 mb-2"
+                        >
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(item.value)}
+                              onCheckedChange={(checked) => {
+                                return checked
+                                  ? field.onChange([...(field.value || []), item.value])
+                                  : field.onChange(
+                                      (field.value || []).filter(
+                                        (value) => value !== item.value
+                                      )
+                                    );
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            {item.label}
+                          </FormLabel>
+                        </FormItem>
+                      );
+                    }}
+                  />
+                ))}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+              control={form.control}
+              name="desiredLocationCity"
+              render={({ field }) => (
+                  <FormItem>
+                  <FormLabel>Ciudad/Comuna Deseada</FormLabel>
+                  <FormControl>
+                      <Input placeholder="Ej: Santiago, Viña del Mar" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                  </FormItem>
+              )}
+              />
+              <FormField
+              control={form.control}
+              name="desiredLocationNeighborhood"
+              render={({ field }) => (
+                  <FormItem>
+                  <FormLabel>Barrio/Sector Preferido (Opcional)</FormLabel>
+                  <FormControl>
+                      <Input placeholder="Ej: Las Condes, Ñuñoa, Reñaca" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                  </FormItem>
+              )}
+              />
+          </div>
+
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <FormField
+              control={form.control}
+              name="minBedrooms"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mínimo de Dormitorios (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="Ej: 2" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="minBathrooms"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mínimo de Baños (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="Ej: 1" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="budgetMax"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Presupuesto Máximo (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="Ej: 600000 (en CLP)" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} />
+                  </FormControl>
+                  <FormDescription>Indica tu presupuesto máximo en CLP o UF.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {isBroker && (
+            <FormField
+              control={form.control}
+              name="open_for_broker_collaboration"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm bg-secondary/30">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="font-medium flex items-center">
+                      <Handshake className="h-5 w-5 mr-2 text-primary"/>
+                      Abrir a Colaboración de Corredores
+                    </FormLabel>
+                    <FormDescription>
+                      Permite que otros corredores vean esta solicitud y te propongan propiedades de su cartera.
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
+          )}
+          
+          <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth}>
+            {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Publicar Solicitud
+          </Button>
+        </form>
+      </Form>
+
+      <AlertDialog open={showAuthAlert} onOpenChange={setShowAuthAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+                <UserCircle className="h-6 w-6 mr-2 text-primary" />
+                Acción Requerida
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Para publicar una solicitud, primero debes iniciar sesión o crear una cuenta en PropSpot.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">Entendido</AlertDialogCancel>
+            <Button asChild className="w-full sm:w-auto" onClick={() => setShowAuthAlert(false)}>
+              <Link href="/auth/signup" className="flex items-center">
+                <UserPlus className="mr-2 h-4 w-4" /> Registrarse
+              </Link>
+            </Button>
+            <Button asChild className="w-full sm:w-auto bg-primary hover:bg-primary/90" onClick={() => setShowAuthAlert(false)}>
+              <Link href="/auth/signin" className="flex items-center">
+                <LogIn className="mr-2 h-4 w-4" /> Iniciar Sesión
+              </Link>
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
