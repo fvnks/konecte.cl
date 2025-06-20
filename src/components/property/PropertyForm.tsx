@@ -93,11 +93,11 @@ export default function PropertyForm() {
       address: "",
       city: "",
       country: "Chile",
-      bedrooms: '', 
-      bathrooms: '', 
+      bedrooms: '',
+      bathrooms: '',
       totalAreaSqMeters: undefined,
       usefulAreaSqMeters: undefined,
-      parkingSpaces: '', 
+      parkingSpaces: '',
       petsAllowed: false,
       furnished: false,
       commercialUseAllowed: false,
@@ -105,9 +105,7 @@ export default function PropertyForm() {
       orientation: "none",
       images: [],
       features: "",
-      // PropertyType y Category se inicializarán como undefined por defecto
-      // y el usuario deberá seleccionarlos.
-      propertyType: undefined, 
+      propertyType: undefined,
       category: undefined,
     },
   });
@@ -241,7 +239,7 @@ export default function PropertyForm() {
   }
 
   // Conditional rendering flags
-  const showPetsAllowed = watchedPropertyType === 'rent' && watchedCategory === 'apartment';
+  const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
   const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
@@ -365,4 +363,3 @@ export default function PropertyForm() {
     </Form>
   );
 }
-

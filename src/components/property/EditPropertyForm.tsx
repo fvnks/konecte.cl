@@ -99,7 +99,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       bedrooms: property.bedrooms === 0 ? '' : property.bedrooms,
       bathrooms: property.bathrooms === 0 ? '' : property.bathrooms,
       totalAreaSqMeters: property.totalAreaSqMeters || 0,
-      usefulAreaSqMeters: property.usefulAreaSqMeters === 0 ? '' : (property.usefulAreaSqMeters ?? undefined),
+      usefulAreaSqMeters: property.usefulAreaSqMeters === 0 || property.usefulAreaSqMeters === null ? '' : (property.usefulAreaSqMeters ?? undefined),
       parkingSpaces: property.parkingSpaces === 0 ? '' : property.parkingSpaces,
       petsAllowed: property.petsAllowed || false,
       furnished: property.furnished || false,
@@ -242,7 +242,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   }, [imagePreviews]);
 
   // Conditional rendering flags
-  const showPetsAllowed = watchedPropertyType === 'rent' && watchedCategory === 'apartment';
+  const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
   const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
@@ -258,7 +258,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <FormControl><Input type="number" placeholder="Ej: 85000000" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField
+           <FormField
             control={form.control}
             name="currency"
             render={({ field }) => (
@@ -364,4 +364,3 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
     </Form>
   );
 }
-
