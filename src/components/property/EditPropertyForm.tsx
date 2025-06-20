@@ -22,20 +22,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import type { PropertyType, ListingCategory, PropertyListing, PropertyFormValues, SubmitPropertyResult, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from '@/lib/types';
-import { Loader2, Save, UploadCloud, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react"; // Removed GripVertical, Move, Trash2
+import { Loader2, Save, UploadCloud, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState, ChangeEvent, useEffect } from 'react';
 import { cn } from "@/lib/utils";
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import type { DropResult } from 'react-beautiful-dnd';
-import dynamic from 'next/dynamic'; // Import dynamic
-import type { ManagedImageEdit } from './ImageUploadDndAreaEdit'; // Import the specific type
+import dynamic from 'next/dynamic';
+import type { ManagedImageEdit } from './ImageUploadDndAreaEdit';
 
 const ImageUploadDndAreaEditWithNoSSR = dynamic(
   () => import('./ImageUploadDndAreaEdit'),
-  { 
+  {
     ssr: false,
-    loading: () => <div className="mb-4 flex gap-3 overflow-x-auto py-2 min-h-[112px] items-center justify-center text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2"/>Cargando área de imágenes...</div>
+    loading: () => null, // Changed to return null
   }
 );
 
@@ -69,7 +69,7 @@ const orientationOptions: { value: OrientationType; label: string }[] = [
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
-const editPropertyFormSchema = propertyFormSchema; 
+const editPropertyFormSchema = propertyFormSchema;
 type EditPropertyFormValues = z.infer<typeof editPropertyFormSchema>;
 
 interface EditPropertyFormProps {
@@ -78,7 +78,7 @@ interface EditPropertyFormProps {
   onSubmitAction: (
     propertyId: string,
     data: PropertyFormValues,
-    userId?: string 
+    userId?: string
   ) => Promise<SubmitPropertyResult>;
   isAdminContext?: boolean;
 }
@@ -121,7 +121,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
 
   useEffect(() => {
     const initialManagedImages = (property.images || []).map((imgUrl, index) => ({
-      id: `existing-${imgUrl.slice(-10)}-${index}`, // Ensure unique ID for existing images
+      id: `existing-${imgUrl.slice(-10)}-${index}`,
       url: imgUrl,
       isNew: false,
     }));
@@ -129,6 +129,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   }, [property.images]);
 
   useEffect(() => {
+    // This effect updates the react-hook-form 'images' field whenever managedImages changes.
     form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
   }, [managedImages, form]);
 
@@ -369,7 +370,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
           }}
         />
         <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de la propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
-        
+
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => router.back()} disabled={form.formState.isSubmitting || isUploading}>
                 Cancelar

@@ -22,20 +22,20 @@ import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from '@/lib/types';
-import { Loader2, UploadCloud, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react"; // Removed GripVertical, Move, Trash2
+import { Loader2, UploadCloud, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react";
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import type { DropResult } from 'react-beautiful-dnd';
-import dynamic from 'next/dynamic'; // Import dynamic
-import type { ManagedImageCreate } from './ImageUploadDndAreaCreate'; // Import the specific type
+import dynamic from 'next/dynamic';
+import type { ManagedImageCreate } from './ImageUploadDndAreaCreate';
 
 const ImageUploadDndAreaCreateWithNoSSR = dynamic(
   () => import('./ImageUploadDndAreaCreate'),
-  { 
+  {
     ssr: false,
-    loading: () => <div className="mb-4 flex gap-3 overflow-x-auto py-2 min-h-[112px] items-center justify-center text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2"/>Cargando área de imágenes...</div> 
+    loading: () => null, // Changed to return null
   }
 );
 
@@ -76,10 +76,9 @@ export default function PropertyForm() {
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  
+
   const [managedImages, setManagedImages] = useState<ManagedImageCreate[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  // AuthRequiredDialog and showAuthAlert state are removed
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
@@ -129,6 +128,8 @@ export default function PropertyForm() {
   }, []);
 
   useEffect(() => {
+    // This effect updates the react-hook-form 'images' field whenever managedImages changes.
+    // It's crucial for validation and submission that RHF knows about the image URLs.
     form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
   }, [managedImages, form]);
 
@@ -162,15 +163,15 @@ export default function PropertyForm() {
       const newManagedImagesFromFile: ManagedImageCreate[] = validFiles.map(file => {
         const previewUrl = URL.createObjectURL(file);
         return {
-          id: previewUrl, 
+          id: previewUrl,
           url: previewUrl,
           file: file,
           isNew: true as const,
         };
       });
-      
+      // Directly update managedImages state. The useEffect will handle form.setValue.
       setManagedImages(prev => [...prev, ...newManagedImagesFromFile]);
-      event.target.value = '';
+      event.target.value = ''; // Reset file input
     }
   };
 
@@ -213,6 +214,7 @@ export default function PropertyForm() {
         }
       } catch (error: any) {
         toast({ title: "Error de Subida", description: error.message || `No se pudo subir ${file.name}.`, variant: "destructive" });
+        // Decide if you want to stop all uploads on first error or continue
       }
     }
     setIsUploading(false);
@@ -226,12 +228,15 @@ export default function PropertyForm() {
     }
     if (!loggedInUser || !loggedInUser.id) {
       toast({ title: "Acción Requerida", description: "Debes iniciar sesión para publicar.", variant: "destructive" });
-      // Potentially redirect or show a modal here
       return;
     }
 
     const finalImageUrls = await uploadImagesToProxy();
-    
+    if (managedImages.length > 0 && finalImageUrls.length === 0 && managedImages.every(img => img.isNew)) {
+        toast({ title: "Error de Imágenes", description: "No se pudieron subir las imágenes. Intenta de nuevo.", variant: "destructive"});
+        return; // Stop submission if new images were present but none uploaded
+    }
+
     const dataToSubmit = {
       ...values,
       images: finalImageUrls,
@@ -262,7 +267,7 @@ export default function PropertyForm() {
       toast({ title: "Error al Publicar", description: result.message || "No se pudo enviar tu propiedad.", variant: "destructive" });
     }
   }
-  
+
   useEffect(() => {
     return () => {
       managedImages.forEach(img => {
@@ -397,7 +402,7 @@ export default function PropertyForm() {
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
 
           <Button
-            type="submit" // Changed back to submit for form.handleSubmit
+            type="submit"
             className="w-full md:w-auto"
             disabled={isCheckingAuth || !loggedInUser || form.formState.isSubmitting || isUploading}
           >
@@ -406,7 +411,6 @@ export default function PropertyForm() {
           </Button>
         </form>
       </Form>
-      {/* AuthRequiredDialog removed */}
     </>
   );
 }
