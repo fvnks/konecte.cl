@@ -22,13 +22,14 @@ import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from "@/lib/types";
-import { Loader2, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react";
+import { Loader2, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react"; // Added GripVertical, Move
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-// AuthRequiredDialog no longer imported
+import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog';
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
+import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -60,31 +61,42 @@ const orientationOptions: { value: OrientationType; label: string }[] = [
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
+interface ManagedImage {
+  id: string; // Unique ID for DnD (e.g., blob URL or a generated ID)
+  url: string; // Preview URL (blob URL)
+  file: File;  // The actual file object
+  isNew: true; // Always true for PropertyForm
+}
+
 export default function PropertyForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  
+  const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  // showAuthAlert state removed
+  const [showAuthAlert, setShowAuthAlert] = useState(false);
 
   useEffect(() => {
+    console.log("[PropertyForm] Auth Check Effect: Start");
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
         const parsedUser = JSON.parse(userJson);
         setLoggedInUser(parsedUser);
+        console.log("[PropertyForm] Auth Check Effect: User found in localStorage:", parsedUser.email);
       } catch (error) {
         console.error("[PropertyForm] Auth Check Effect: Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
         setLoggedInUser(null);
       }
     } else {
+      console.log("[PropertyForm] Auth Check Effect: No user found in localStorage.");
       setLoggedInUser(null);
     }
     setIsCheckingAuth(false);
+    console.log("[PropertyForm] Auth Check Effect: Finished. isCheckingAuth = false");
   }, []);
 
   const form = useForm<PropertyFormValues>({
@@ -120,7 +132,7 @@ export default function PropertyForm() {
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const filesArray = Array.from(event.target.files);
-      const currentImageCount = imagePreviews.length;
+      const currentImageCount = managedImages.length;
       const availableSlots = MAX_IMAGES - currentImageCount;
 
       if (filesArray.length > availableSlots) {
@@ -143,41 +155,59 @@ export default function PropertyForm() {
         return true;
       });
 
-      setImageFiles(prevFiles => [...prevFiles, ...validFiles]);
-      const newPreviews = validFiles.map(file => URL.createObjectURL(file));
-      setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
-      form.setValue('images', [...imagePreviews, ...newPreviews], { shouldValidate: true, shouldDirty: true });
+      const newManagedImagesFromFile = validFiles.map(file => {
+        const previewUrl = URL.createObjectURL(file);
+        return {
+          id: previewUrl, // Use blob url as temporary unique ID
+          url: previewUrl,
+          file: file,
+          isNew: true as const, // Type assertion
+        };
+      });
+      
+      setManagedImages(prev => {
+          const updated = [...prev, ...newManagedImagesFromFile];
+          form.setValue('images', updated.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+          return updated;
+      });
       event.target.value = '';
     }
   };
 
-  const removeImage = (indexToRemove: number) => {
-    setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
-    setImagePreviews(prevPreviews => {
-      const newPreviews = [...prevPreviews];
-      const removedUrl = newPreviews.splice(indexToRemove, 1)[0];
-      if (removedUrl) {
-        URL.revokeObjectURL(removedUrl);
+  const removeImage = (idToRemove: string) => {
+    setManagedImages(prev => {
+      const imageToRemove = prev.find(img => img.id === idToRemove);
+      if (imageToRemove?.url.startsWith('blob:')) {
+        URL.revokeObjectURL(imageToRemove.url);
       }
-      form.setValue('images', newPreviews, { shouldValidate: true, shouldDirty: true });
-      return newPreviews;
+      const updated = prev.filter(img => img.id !== idToRemove);
+      form.setValue('images', updated.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+      return updated;
+    });
+  };
+
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    setManagedImages(prev => {
+      const items = Array.from(prev);
+      const [reorderedItem] = items.splice(result.source.index, 1);
+      items.splice(result.destination!.index, 0, reorderedItem);
+      form.setValue('images', items.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+      return items;
     });
   };
 
   const uploadImagesToProxy = async (): Promise<string[]> => {
-    if (imageFiles.length === 0) return [];
+    const filesToUpload = managedImages.map(img => img.file);
+    if (filesToUpload.length === 0) return [];
     setIsUploading(true);
     const uploadedUrls: string[] = [];
 
-    for (const file of imageFiles) {
+    for (const file of filesToUpload) {
       const formData = new FormData();
       formData.append("imageFile", file);
-
       try {
-        const response = await fetch('/api/upload-image-to-cpanel', {
-          method: 'POST',
-          body: formData,
-        });
+        const response = await fetch('/api/upload-image-to-cpanel', { method: 'POST', body: formData });
         const result = await response.json();
         if (response.ok && result.success && result.url) {
           uploadedUrls.push(result.url);
@@ -192,16 +222,9 @@ export default function PropertyForm() {
     return uploadedUrls;
   };
 
-  async function onSubmit(values: PropertyFormValues) {
-    // This function is now only called if the user is logged in and form is valid
-    if (!loggedInUser || !loggedInUser.id) {
-      // This check is mostly a safeguard, button should be disabled if not logged in
-      toast({ title: "Error", description: "Debes iniciar sesión para publicar.", variant: "destructive" });
-      return;
-    }
-
+  // This is the main submit logic IF the user is logged in
+  const actualFormSubmit = async (values: PropertyFormValues) => {
     const finalImageUrls = await uploadImagesToProxy();
-
     const dataToSubmit = {
       ...values,
       images: finalImageUrls,
@@ -211,8 +234,7 @@ export default function PropertyForm() {
       usefulAreaSqMeters: values.usefulAreaSqMeters === '' ? undefined : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
-
-    const result = await submitPropertyAction(dataToSubmit, loggedInUser.id);
+    const result = await submitPropertyAction(dataToSubmit, loggedInUser!.id);
     if (result.success && result.propertyId) {
       toast({
         title: result.autoMatchesCount && result.autoMatchesCount > 0 ? "¡Propiedad Publicada y Matches Encontrados!" : "Propiedad Publicada",
@@ -220,8 +242,7 @@ export default function PropertyForm() {
         duration: result.autoMatchesCount && result.autoMatchesCount > 0 ? 7000 : 5000,
       });
       form.reset();
-      setImageFiles([]);
-      setImagePreviews([]);
+      setManagedImages([]);
       if (result.propertySlug) {
         router.push(`/properties/${result.propertySlug}`);
       } else {
@@ -230,23 +251,42 @@ export default function PropertyForm() {
     } else {
       toast({ title: "Error al Publicar", description: result.message || "No se pudo enviar tu propiedad.", variant: "destructive" });
     }
-  }
+  };
+
+  // This function is called when the button is clicked
+  const handleAttemptToPublish = async () => {
+    console.log("[PropertyForm] handleAttemptToPublish: Clicked. isCheckingAuth:", isCheckingAuth, "loggedInUser:", !!loggedInUser);
+    if (isCheckingAuth) {
+      toast({ title: "Verificando sesión...", description: "Por favor espera un momento." });
+      return;
+    }
+    if (!loggedInUser || !loggedInUser.id) {
+      console.log("[PropertyForm] handleAttemptToPublish: User not logged in, setShowAuthAlert(true)");
+      setShowAuthAlert(true);
+      return;
+    }
+    // If user is logged in, trigger RHF's submit (which includes validation then actualFormSubmit)
+    console.log("[PropertyForm] handleAttemptToPublish: User logged in, calling form.handleSubmit.");
+    form.handleSubmit(actualFormSubmit)();
+  };
 
   useEffect(() => {
     return () => {
-      imagePreviews.forEach(url => URL.revokeObjectURL(url));
+      managedImages.forEach(img => {
+        if (img.url.startsWith('blob:')) URL.revokeObjectURL(img.url);
+      });
     };
-  }, [imagePreviews]);
+  }, [managedImages]);
 
   const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
   const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
-
+  
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={(e) => { e.preventDefault(); handleAttemptToPublish(); }} className="space-y-8">
           {/* ... (todos los FormField como estaban) ... */}
           <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
@@ -319,27 +359,61 @@ export default function PropertyForm() {
               return (
                 <FormItem id={formItemId}>
                   <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
-                  <label htmlFor="image-upload-input-actual" className={cn( "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors", "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50", isUploading && "cursor-not-allowed opacity-70", error && "border-destructive" )} aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`} aria-invalid={!!error} >
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
-                      <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
-                      <p className="mb-1 text-base text-muted-foreground"> <span className="font-semibold text-primary">Haz clic para subir</span> o arrastra y suelta </p>
-                      <p className="text-xs text-muted-foreground"> Imágenes (Máx. {MAX_IMAGES}, hasta {MAX_FILE_SIZE_MB}MB c/u) </p>
-                      <p className="text-xs text-muted-foreground">PNG, JPG, GIF, WEBP</p>
-                      <p className="text-xs text-muted-foreground mt-1">Imágenes subidas: {imagePreviews.length} de {MAX_IMAGES}</p>
-                    </div>
-                    <Input id="image-upload-input-actual" type="file" className="hidden" multiple onChange={(e) => { handleImageChange(e); }} accept="image/png, image/jpeg, image/gif, image/webp" disabled={imagePreviews.length >= MAX_IMAGES || isUploading} />
-                  </label>
-                  <FormDescription id={formDescriptionId}>Sube imágenes claras y de buena calidad de tu propiedad.</FormDescription>
-                  {imagePreviews.length > 0 && (
-                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                      {imagePreviews.map((previewUrl, index) => (
-                        <div key={previewUrl} className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100">
-                          <Image src={previewUrl} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
-                          <Button type="button" variant="destructive" size="icon" className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md" onClick={() => removeImage(index)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-4 w-4" /> </Button>
+                  <DragDropContext onDragEnd={onDragEnd}>
+                    <Droppable droppableId="imageDroppable" direction="horizontal">
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className="mb-4"
+                        >
+                          {managedImages.length > 0 && (
+                            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                              {managedImages.map((managedImage, index) => (
+                                <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
+                                  {(provided, snapshot) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      className={cn(
+                                        "relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100",
+                                        snapshot.isDragging && "ring-2 ring-primary shadow-xl"
+                                      )}
+                                    >
+                                      <button
+                                        type="button"
+                                        {...provided.dragHandleProps}
+                                        className="absolute top-1 left-1 z-20 p-1 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                                        aria-label="Mover imagen"
+                                        title="Arrastrar para reordenar"
+                                      >
+                                        <Move className="h-3.5 w-3.5" />
+                                      </button>
+                                      <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
+                                      <Button type="button" variant="destructive" size="icon" className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-4 w-4" /> </Button>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              ))}
+                              {provided.placeholder}
+                            </div>
+                          )}
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                  {managedImages.length < MAX_IMAGES && (
+                    <label htmlFor="image-upload-input-actual" className={cn( "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors", "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50", isUploading && "cursor-not-allowed opacity-70", error && "border-destructive" )} aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`} aria-invalid={!!error} >
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
+                        <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
+                        <p className="mb-1 text-base text-muted-foreground"> <span className="font-semibold text-primary">Haz clic para subir</span> o arrastra y suelta </p>
+                        <p className="text-xs text-muted-foreground"> Imágenes (Máx. {MAX_IMAGES - managedImages.length} más) </p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG, GIF, WEBP (hasta {MAX_FILE_SIZE_MB}MB c/u)</p>
+                      </div>
+                      <Input id="image-upload-input-actual" type="file" className="hidden" multiple onChange={handleImageChange} accept="image/png, image/jpeg, image/gif, image/webp" disabled={managedImages.length >= MAX_IMAGES || isUploading} />
+                    </label>
                   )}
+                  <FormDescription id={formDescriptionId}>Sube imágenes claras y de buena calidad. Puedes arrastrarlas para cambiar el orden (la primera será la principal).</FormDescription>
                   {isUploading && ( <div className="flex items-center mt-3 text-sm text-primary"> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Subiendo imágenes... </div> )}
                   <FormMessage id={formMessageId} />
                 </FormItem>
@@ -348,18 +422,22 @@ export default function PropertyForm() {
           />
 
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
-
+          
           <Button 
             type="submit"
             className="w-full md:w-auto" 
-            disabled={isCheckingAuth || !loggedInUser || form.formState.isSubmitting || isUploading}
+            disabled={form.formState.isSubmitting || isUploading || isCheckingAuth}
           >
             {(form.formState.isSubmitting || isUploading || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isCheckingAuth ? 'Verificando...' : (isUploading ? 'Subiendo imágenes...' : 'Publicar Propiedad')}
           </Button>
         </form>
       </Form>
-      {/* AuthRequiredDialog removed */}
+      <AuthRequiredDialog
+        open={showAuthAlert}
+        onOpenChange={setShowAuthAlert}
+        redirectPath="/properties/submit"
+      />
     </>
   );
 }

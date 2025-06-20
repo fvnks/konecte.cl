@@ -13,7 +13,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  useFormField,
+  useFormField, // Importado
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,12 +22,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import type { PropertyType, ListingCategory, PropertyListing, PropertyFormValues, SubmitPropertyResult, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from '@/lib/types'; 
-import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react"; // Added BedDouble
+import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react"; // Added GripVertical, Move
 import { useRouter } from "next/navigation";
 import React, { useState, ChangeEvent, useEffect } from 'react';
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
+import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -74,14 +75,19 @@ interface EditPropertyFormProps {
   isAdminContext?: boolean; 
 }
 
+interface ManagedImage {
+  id: string; 
+  url: string; 
+  file?: File;
+  isNew: boolean; 
+}
+
+
 export default function EditPropertyForm({ property, userId, onSubmitAction, isAdminContext = false }: EditPropertyFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>(property.images || []);
   const [isUploading, setIsUploading] = useState(false);
-  const [existingImageUrls, setExistingImageUrls] = useState<string[]>(property.images || []);
-
+  const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
 
   const form = useForm<EditPropertyFormValues>({
     resolver: zodResolver(editPropertyFormSchema),
@@ -95,11 +101,11 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       address: property.address || "",
       city: property.city || "",
       country: property.country || "Chile",
-      bedrooms: property.bedrooms === 0 ? '' : (property.bedrooms ?? ''), // Handle 0 as empty for placeholder
-      bathrooms: property.bathrooms === 0 ? '' : (property.bathrooms ?? ''), // Handle 0 as empty
+      bedrooms: property.bedrooms === 0 ? '' : (property.bedrooms ?? ''),
+      bathrooms: property.bathrooms === 0 ? '' : (property.bathrooms ?? ''),
       totalAreaSqMeters: property.totalAreaSqMeters || 0,
       usefulAreaSqMeters: property.usefulAreaSqMeters === 0 || property.usefulAreaSqMeters === null ? '' : (property.usefulAreaSqMeters ?? undefined),
-      parkingSpaces: property.parkingSpaces === 0 ? '' : (property.parkingSpaces ?? ''), // Handle 0 as empty
+      parkingSpaces: property.parkingSpaces === 0 ? '' : (property.parkingSpaces ?? ''),
       petsAllowed: property.petsAllowed || false,
       furnished: property.furnished || false,
       commercialUseAllowed: property.commercialUseAllowed || false,
@@ -114,15 +120,19 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   const watchedCategory = form.watch("category");
 
   useEffect(() => {
-    setImagePreviews(property.images || []);
-    setExistingImageUrls(property.images || []);
+    const initialManagedImages = (property.images || []).map((imgUrl, index) => ({
+      id: `existing-${imgUrl.slice(-10)}-${index}`, 
+      url: imgUrl,
+      isNew: false,
+    }));
+    setManagedImages(initialManagedImages);
     form.setValue('images', property.images || [], { shouldValidate: true });
   }, [property.images, form]);
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const filesArray = Array.from(event.target.files);
-      const currentImageCount = imagePreviews.length;
+      const currentImageCount = managedImages.length;
       const availableSlots = MAX_IMAGES - currentImageCount;
 
       if (filesArray.length > availableSlots) {
@@ -137,80 +147,81 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         return true;
       });
 
-      setImageFiles(prevFiles => [...prevFiles, ...validFiles]);
-      const newPreviews = validFiles.map(file => URL.createObjectURL(file));
-      setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
-      form.setValue('images', [...existingImageUrls, ...newPreviews], { shouldValidate: true, shouldDirty: true });
+      const newManagedImagesFromFile = validFiles.map(file => {
+        const previewUrl = URL.createObjectURL(file);
+        return {
+          id: previewUrl, // Use blob url as unique ID for new files
+          url: previewUrl,
+          file: file,
+          isNew: true as const,
+        };
+      });
+      setManagedImages(prev => {
+          const updated = [...prev, ...newManagedImagesFromFile];
+          form.setValue('images', updated.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+          return updated;
+      });
       event.target.value = ''; 
     }
   };
 
-  const removeImage = (indexToRemove: number, isExisting: boolean) => {
-    if (isExisting) {
-      const urlToRemove = existingImageUrls[indexToRemove];
-      setExistingImageUrls(prevUrls => prevUrls.filter((_, index) => index !== indexToRemove));
-      setImagePreviews(prev => prev.filter(url => url !== urlToRemove));
-      const updatedExistingUrls = existingImageUrls.filter((_, index) => index !== indexToRemove);
-      const currentNewPreviews = imagePreviews.filter(url => url.startsWith('blob:'));
-      form.setValue('images', [...updatedExistingUrls, ...currentNewPreviews], { shouldValidate: true, shouldDirty: true });
-    } else {
-      let fileIndexToRemove = -1;
-      let blobUrlCount = 0;
-      for (let i = 0; i < indexToRemove; i++) {
-          if (imagePreviews[i].startsWith('blob:')) {
-              blobUrlCount++;
-          }
+  const removeImage = (idToRemove: string) => {
+    setManagedImages(prev => {
+      const imageToRemove = prev.find(img => img.id === idToRemove);
+      if (imageToRemove?.isNew && imageToRemove.url.startsWith('blob:')) {
+        URL.revokeObjectURL(imageToRemove.url);
       }
-      if (imagePreviews[indexToRemove].startsWith('blob:')) {
-          fileIndexToRemove = blobUrlCount;
-      }
-
-      if (fileIndexToRemove !== -1) {
-          setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== fileIndexToRemove));
-      }
-      
-      const newPreviews = [...imagePreviews];
-      const removedUrl = newPreviews.splice(indexToRemove, 1)[0];
-      if (removedUrl && removedUrl.startsWith('blob:')) URL.revokeObjectURL(removedUrl);
-      setImagePreviews(newPreviews);
-      form.setValue('images', newPreviews, { shouldValidate: true, shouldDirty: true });
-    }
+      const updated = prev.filter(img => img.id !== idToRemove);
+      form.setValue('images', updated.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+      return updated;
+    });
   };
 
-
-  const uploadNewImagesToProxy = async (): Promise<string[]> => {
-    if (imageFiles.length === 0) return [];
-    setIsUploading(true);
-    const uploadedUrls: string[] = [];
-    
-    for (const file of imageFiles) {
-      const formData = new FormData();
-      formData.append("imageFile", file);
-      try {
-        const response = await fetch('/api/upload-image-to-cpanel', { method: 'POST', body: formData });
-        const result = await response.json();
-        if (response.ok && result.success && result.url) {
-          uploadedUrls.push(result.url);
-        } else {
-          throw new Error(result.message || `Error al subir ${file.name}`);
-        }
-      } catch (error: any) {
-        toast({ title: "Error de Subida", description: error.message || `No se pudo subir ${file.name}.`, variant: "destructive" });
-      }
-    }
-    setIsUploading(false);
-    return uploadedUrls;
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    setManagedImages(prev => {
+      const items = Array.from(prev);
+      const [reorderedItem] = items.splice(result.source.index, 1);
+      items.splice(result.destination!.index, 0, reorderedItem);
+      form.setValue('images', items.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+      return items;
+    });
   };
 
   async function onSubmit(values: EditPropertyFormValues) {
-    const newlyUploadedUrls = await uploadNewImagesToProxy();
-    const finalImageUrls = [...existingImageUrls, ...newlyUploadedUrls];
+    const finalImageUrlsForServer: string[] = [];
+    setIsUploading(true);
+    for (const img of managedImages) {
+      if (img.isNew && img.file) {
+        const formData = new FormData();
+        formData.append("imageFile", img.file);
+        try {
+          const response = await fetch('/api/upload-image-to-cpanel', { method: 'POST', body: formData });
+          const result = await response.json();
+          if (response.ok && result.success && result.url) {
+            finalImageUrlsForServer.push(result.url);
+          } else {
+            toast({ title: "Error de Subida Parcial", description: `No se pudo subir ${img.file.name}: ${result.message || 'Error desconocido'}`, variant: "warning" });
+          }
+        } catch (error: any) {
+          toast({ title: "Error de Subida", description: `No se pudo subir ${img.file.name}.`, variant: "destructive" });
+        }
+      } else if (!img.isNew) {
+        finalImageUrlsForServer.push(img.url);
+      }
+    }
+    setIsUploading(false);
 
     const dataToSubmit: PropertyFormValues = {
-      ...values,
-      images: finalImageUrls,
-      usefulAreaSqMeters: values.usefulAreaSqMeters === '' ? undefined : values.usefulAreaSqMeters,
-      orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
+        ...values,
+        images: finalImageUrlsForServer,
+        bedrooms: values.bedrooms === '' ? 0 : Number(values.bedrooms),
+        bathrooms: values.bathrooms === '' ? 0 : Number(values.bathrooms),
+        parkingSpaces: values.parkingSpaces === '' ? 0 : Number(values.parkingSpaces),
+        usefulAreaSqMeters: values.usefulAreaSqMeters === '' || values.usefulAreaSqMeters === undefined || values.usefulAreaSqMeters === null
+                            ? undefined 
+                            : Number(values.usefulAreaSqMeters),
+        orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
     const result = await onSubmitAction(property.id, dataToSubmit, isAdminContext ? undefined : userId);
     
@@ -231,11 +242,11 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   
   useEffect(() => {
     return () => {
-      imagePreviews.forEach(url => {
-        if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+      managedImages.forEach(img => {
+        if (img.isNew && img.url.startsWith('blob:')) URL.revokeObjectURL(img.url);
       });
     };
-  }, [imagePreviews]);
+  }, [managedImages]);
 
   const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
@@ -245,6 +256,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* ... (todos los FormField como estaban) ... */}
         <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -253,7 +265,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <FormControl><Input type="number" placeholder="Ej: 85000000" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-           <FormField
+          <FormField
             control={form.control}
             name="currency"
             render={({ field }) => (
@@ -305,7 +317,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
             </div>
              { !showPetsAllowed && !showFurnished && !showCommercialUse && !showStorage && watchedPropertyType && watchedCategory &&
                 <p className="text-sm text-muted-foreground italic">No hay características adicionales aplicables para el tipo y categoría de propiedad seleccionada.</p>
-            }
+              }
         </div>
         
         <FormField
@@ -316,29 +328,60 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
             return (
               <FormItem id={formItemId}>
                 <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
-                <label htmlFor="image-upload-input-actual" className={cn( "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors", "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50", isUploading && "cursor-not-allowed opacity-70", error && "border-destructive" )} aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`} aria-invalid={!!error} >
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
-                    <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
-                    <p className="mb-1 text-base text-muted-foreground"> <span className="font-semibold text-primary">Haz clic para subir</span> o arrastra y suelta nuevas imágenes </p>
-                    <p className="text-xs text-muted-foreground"> PNG, JPG, GIF, WEBP (Máx. {MAX_IMAGES} en total, hasta {MAX_FILE_SIZE_MB}MB c/u) </p>
-                    <p className="text-xs text-muted-foreground mt-1">Imágenes actuales: {imagePreviews.length} de {MAX_IMAGES}</p>
-                  </div>
-                  <Input id="image-upload-input-actual" type="file" className="hidden" multiple onChange={handleImageChange} accept="image/png, image/jpeg, image/gif, image/webp" disabled={imagePreviews.length >= MAX_IMAGES || isUploading} />
-                </label>
-                <FormDescription id={formDescriptionId}>Puedes reemplazar o añadir imágenes. Las imágenes existentes se mantendrán a menos que las elimines.</FormDescription>
-                {imagePreviews.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {imagePreviews.map((previewUrl, index) => {
-                      const isExisting = existingImageUrls.includes(previewUrl) && !previewUrl.startsWith('blob:');
-                      return (
-                        <div key={previewUrl + index} className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100">
-                          <Image src={previewUrl} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
-                          <Button type="button" variant="destructive" size="icon" className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md" onClick={() => removeImage(index, isExisting)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-4 w-4" /> </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="imageDroppableEdit" direction="horizontal">
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className="mb-4"
+                      >
+                        {managedImages.length > 0 && (
+                          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                            {managedImages.map((managedImage, index) => (
+                              <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    className={cn(
+                                      "relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100",
+                                      snapshot.isDragging && "ring-2 ring-primary shadow-xl"
+                                    )}
+                                  >
+                                    <button
+                                        type="button"
+                                        {...provided.dragHandleProps}
+                                        className="absolute top-1 left-1 z-20 p-1 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                                        aria-label="Mover imagen"
+                                        title="Arrastrar para reordenar"
+                                      >
+                                        <Move className="h-3.5 w-3.5" />
+                                    </button>
+                                    <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
+                                    <Button type="button" variant="destructive" size="icon" className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-4 w-4" /> </Button>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+                {managedImages.length < MAX_IMAGES && (
+                  <label htmlFor="image-upload-input-edit" className={cn( "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors", "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50", isUploading && "cursor-not-allowed opacity-70", error && "border-destructive" )} aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`} aria-invalid={!!error} >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
+                      <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
+                      <p className="mb-1 text-base text-muted-foreground"> <span className="font-semibold text-primary">Añadir más imágenes</span> o arrastra y suelta </p>
+                      <p className="text-xs text-muted-foreground"> Máx. {MAX_IMAGES - managedImages.length} más (hasta {MAX_FILE_SIZE_MB}MB c/u) </p>
+                    </div>
+                    <Input id="image-upload-input-edit" type="file" className="hidden" multiple onChange={handleImageChange} accept="image/png, image/jpeg, image/gif, image/webp" disabled={managedImages.length >= MAX_IMAGES || isUploading} />
+                  </label>
                 )}
+                <FormDescription id={formDescriptionId}>Puedes reemplazar, añadir o reordenar imágenes. Las imágenes existentes se mantendrán a menos que las elimines.</FormDescription>
                 {isUploading && ( <div className="flex items-center mt-3 text-sm text-primary"> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Subiendo nuevas imágenes... </div> )}
                 <FormMessage id={formMessageId} />
               </FormItem>
