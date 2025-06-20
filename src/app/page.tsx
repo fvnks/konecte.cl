@@ -196,9 +196,12 @@ function FeaturedPlansSection({ plans }: FeaturedPlansSectionProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 md:p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Grid for plan cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-center">
           {plans.map((plan) => (
-            <PlanDisplayCard key={plan.id} plan={plan} />
+            <div key={plan.id} className="flex justify-center"> {/* Center each card in its grid cell */}
+              <PlanDisplayCard plan={plan} />
+            </div>
           ))}
         </div>
         <div className="mt-10 text-center">
