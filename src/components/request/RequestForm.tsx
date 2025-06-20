@@ -91,7 +91,7 @@ export default function RequestForm() {
 
   async function onSubmit(values: RequestFormValues) {
      if (!loggedInUser || !loggedInUser.id) {
-      toast({ title: "Acción Requerida", description: "Debes iniciar sesión o registrarte para publicar.", variant: "warning" });
+      // toast({ title: "Acción Requerida", description: "Debes iniciar sesión o registrarte para publicar.", variant: "warning" });
       setShowAuthAlert(true);
       return;
     }
@@ -380,11 +380,12 @@ export default function RequestForm() {
                 Acción Requerida
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Para publicar una solicitud, primero debes iniciar sesión o crear una cuenta en PropSpot.
+              Para poder publicar tu solicitud, necesitas estar registrado e iniciar sesión.
+              ¿Deseas crear una cuenta o iniciar sesión ahora?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel className="w-full sm:w-auto">Entendido</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-2">
+            <AlertDialogCancel className="w-full sm:w-auto" onClick={() => setShowAuthAlert(false)}>Cancelar</AlertDialogCancel>
             <Button asChild className="w-full sm:w-auto" onClick={() => setShowAuthAlert(false)}>
               <Link href="/auth/signup" className="flex items-center">
                 <UserPlus className="mr-2 h-4 w-4" /> Registrarse
