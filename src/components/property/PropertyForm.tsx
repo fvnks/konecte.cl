@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
-import { propertyFormSchema, orientationValues } from "@/lib/types";
+import { propertyFormSchema, orientationValues } from '@/lib/types';
 import { Loader2, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react";
 import { useEffect, useState, ChangeEvent, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -73,7 +73,7 @@ export default function PropertyForm() {
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [mounted, setMounted] = useState(false); // For react-beautiful-dnd
+  const [mounted, setMounted] = useState(false);
 
   const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -110,7 +110,16 @@ export default function PropertyForm() {
   const watchedCategory = form.watch("category");
 
   useEffect(() => {
-    setMounted(true); // Ensure dnd components render only on client after mount
+    if (typeof window !== 'undefined') {
+      const timerId = setTimeout(() => {
+        setMounted(true);
+        console.log(`[PropertyForm] Mounted state set to true.`);
+      }, 0);
+      return () => clearTimeout(timerId);
+    }
+  }, []);
+  
+  useEffect(() => {
     console.log("[PropertyForm] Auth Check Effect: Start");
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
@@ -223,7 +232,9 @@ export default function PropertyForm() {
   };
 
   const onSubmitLogic = async (values: PropertyFormValues) => {
+    console.log("[PropertyForm] onSubmitLogic: Starting actual form submission logic.");
     const finalImageUrls = await uploadImagesToProxy();
+    console.log("[PropertyForm] onSubmitLogic: Image URLs for server:", finalImageUrls);
     
     const dataToSubmit = {
       ...values,
@@ -236,7 +247,8 @@ export default function PropertyForm() {
                           : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
-    const result = await submitPropertyAction(dataToSubmit, loggedInUser!.id); // User ID is checked before this is called
+    console.log("[PropertyForm] onSubmitLogic: Data to submit to server action:", dataToSubmit);
+    const result = await submitPropertyAction(dataToSubmit, loggedInUser!.id);
 
     if (result.success && result.propertyId) {
       toast({
@@ -285,7 +297,6 @@ export default function PropertyForm() {
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
   const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
-
 
   return (
     <>
@@ -351,8 +362,8 @@ export default function PropertyForm() {
           <FormField
             control={form.control}
             name="images"
-            render={({ field }) => { 
-              const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
+            render={() => { 
+              const { formItemId, formDescriptionId, formMessageId, error } = useFormField(); // No usar field aquí directamente para images
               return (
                 <FormItem id={formItemId}>
                   <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
@@ -363,31 +374,27 @@ export default function PropertyForm() {
                           <div
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className="mb-4" 
+                            className="mb-4 flex gap-3 overflow-x-auto py-2" 
                           >
-                            {managedImages.length > 0 && (
-                              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                {managedImages.map((managedImage, index) => (
-                                  <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
-                                    {(provided, snapshot) => (
-                                      <div
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        className={cn(
-                                          "relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100",
-                                          snapshot.isDragging && "ring-2 ring-primary shadow-xl"
-                                        )}
-                                      >
-                                        <button type="button" {...provided.dragHandleProps} className="absolute top-1 left-1 z-20 p-1 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity" aria-label="Mover imagen" title="Arrastrar para reordenar" > <Move className="h-3.5 w-3.5" /> </button>
-                                        <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
-                                        <Button type="button" variant="destructive" size="icon" className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-4 w-4" /> </Button>
-                                      </div>
+                            {managedImages.map((managedImage, index) => (
+                              <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
+                                {(providedDraggable, snapshot) => (
+                                  <div
+                                    ref={providedDraggable.innerRef}
+                                    {...providedDraggable.draggableProps}
+                                    {...providedDraggable.dragHandleProps}
+                                    className={cn(
+                                      "relative group w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 border rounded-lg overflow-hidden shadow-sm bg-slate-100",
+                                      snapshot.isDragging && "ring-2 ring-primary shadow-xl"
                                     )}
-                                  </Draggable>
-                                ))}
-                                {provided.placeholder}
-                              </div>
-                            )}
+                                  >
+                                    <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
+                                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-3.5 w-3.5" /> </Button>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
                           </div>
                         )}
                       </Droppable>

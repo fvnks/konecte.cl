@@ -20,11 +20,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-// adminUpdatePropertyAction is no longer imported here, it's passed via props
 import type { PropertyType, ListingCategory, PropertyListing, PropertyFormValues, SubmitPropertyResult, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from '@/lib/types';
-import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react";
-import { useRouter } from "next/navigation"; // For redirecting after successful edit
+import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, Move } from "lucide-react";
+import { useRouter } from "next/navigation"; 
 import React, { useState, ChangeEvent, useEffect } from 'react';
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -61,18 +60,16 @@ const orientationOptions: { value: OrientationType; label: string }[] = [
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
-// Schema remains the same as propertyFormSchema
 const editPropertyFormSchema = propertyFormSchema;
 type EditPropertyFormValues = z.infer<typeof editPropertyFormSchema>;
 
-
 interface EditPropertyFormProps {
   property: PropertyListing;
-  userId?: string; // Optional: for user context, not strictly needed for admin
+  userId?: string; 
   onSubmitAction: (
     propertyId: string,
     data: PropertyFormValues,
-    userId?: string // This will be undefined in admin context
+    userId?: string 
   ) => Promise<SubmitPropertyResult>;
   isAdminContext?: boolean;
 }
@@ -80,8 +77,8 @@ interface EditPropertyFormProps {
 interface ManagedImage {
   id: string;
   url: string;
-  file?: File; // File is only present for newly added images not yet uploaded
-  isNew: boolean; // To differentiate new local files from existing URLs
+  file?: File; 
+  isNew: boolean; 
 }
 
 export default function EditPropertyForm({ property, userId, onSubmitAction, isAdminContext = false }: EditPropertyFormProps) {
@@ -89,7 +86,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   const router = useRouter();
   const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [mounted, setMounted] = useState(false); // For react-beautiful-dnd
+  const [mounted, setMounted] = useState(false);
 
   const form = useForm<EditPropertyFormValues>({
     resolver: zodResolver(editPropertyFormSchema),
@@ -113,7 +110,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       commercialUseAllowed: property.commercialUseAllowed || false,
       hasStorage: property.hasStorage || false,
       orientation: property.orientation || "none",
-      images: property.images || [], // This will be updated by the useEffect below
+      images: property.images || [],
       features: property.features?.join(', ') || "",
     },
   });
@@ -122,7 +119,16 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   const watchedCategory = form.watch("category");
 
   useEffect(() => {
-    setMounted(true); // Ensure dnd components render only on client after mount
+    if (typeof window !== 'undefined') {
+      const timerId = setTimeout(() => {
+        setMounted(true);
+        console.log(`[EditPropertyForm] Mounted state set to true.`);
+      }, 0);
+      return () => clearTimeout(timerId);
+    }
+  }, []);
+  
+  useEffect(() => {
     const initialManagedImages = (property.images || []).map((imgUrl, index) => ({
       id: `existing-${imgUrl.slice(-10)}-${index}`, 
       url: imgUrl,
@@ -134,7 +140,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   useEffect(() => {
     form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
   }, [managedImages, form]);
-
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -215,7 +220,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
 
     const dataToSubmit: PropertyFormValues = {
       ...values,
-      images: finalImageUrls, 
+      images: finalImageUrlsForServer, 
       bedrooms: values.bedrooms === '' ? 0 : Number(values.bedrooms),
       bathrooms: values.bathrooms === '' ? 0 : Number(values.bathrooms),
       parkingSpaces: values.parkingSpaces === '' ? 0 : Number(values.parkingSpaces),
@@ -252,12 +257,10 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
     };
   }, [managedImages]);
 
-
   const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
   const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
-
 
   return (
     <Form {...form}>
@@ -322,7 +325,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         <FormField
           control={form.control}
           name="images"
-          render={({ field }) => { 
+          render={() => { 
             const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
             return (
               <FormItem id={formItemId}>
@@ -334,31 +337,27 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className="mb-4" 
+                          className="mb-4 flex gap-3 overflow-x-auto py-2" 
                         >
-                          {managedImages.length > 0 && (
-                            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                              {managedImages.map((managedImage, index) => (
-                                <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
-                                  {(provided, snapshot) => (
-                                    <div
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      className={cn(
-                                        "relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100",
-                                        snapshot.isDragging && "ring-2 ring-primary shadow-xl"
-                                      )}
-                                    >
-                                      <button type="button" {...provided.dragHandleProps} className="absolute top-1 left-1 z-20 p-1 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity" aria-label="Mover imagen" title="Arrastrar para reordenar" > <Move className="h-3.5 w-3.5" /> </button>
-                                      <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
-                                      <Button type="button" variant="destructive" size="icon" className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-4 w-4" /> </Button>
-                                    </div>
+                          {managedImages.map((managedImage, index) => (
+                            <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
+                              {(providedDraggable, snapshot) => (
+                                <div
+                                  ref={providedDraggable.innerRef}
+                                  {...providedDraggable.draggableProps}
+                                  {...providedDraggable.dragHandleProps}
+                                  className={cn(
+                                    "relative group w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 border rounded-lg overflow-hidden shadow-sm bg-slate-100",
+                                    snapshot.isDragging && "ring-2 ring-primary shadow-xl"
                                   )}
-                                </Draggable>
-                              ))}
-                              {provided.placeholder}
-                            </div>
-                          )}
+                                >
+                                  <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
+                                  <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-3.5 w-3.5" /> </Button>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
                         </div>
                       )}
                     </Droppable>
