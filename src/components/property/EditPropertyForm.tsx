@@ -317,7 +317,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
               <FormItem id={formItemId}>
                 <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
                 <DragDropContext onDragEnd={onDragEnd}>
-                  <Droppable droppableId="imageDroppableEdit" direction="horizontal" isDropDisabled={false}>
+                  <Droppable droppableId="imageDroppableEdit" direction="horizontal" isDropDisabled={false} isCombineEnabled={false}>
                     {(provided) => (
                       <div
                         ref={provided.innerRef}
@@ -392,3 +392,4 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   );
 }
 
+    
