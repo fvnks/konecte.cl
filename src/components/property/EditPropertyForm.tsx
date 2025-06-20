@@ -1,3 +1,4 @@
+
 // src/components/property/EditPropertyForm.tsx
 'use client';
 
@@ -117,7 +118,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   const watchedPropertyType = form.watch("propertyType");
   const watchedCategory = form.watch("category");
   
-  // Initialize managedImages from property.images
   useEffect(() => {
     const initialManagedImages = (property.images || []).map((imgUrl, index) => ({
       id: `existing-${imgUrl.slice(-10)}-${index}`,
@@ -125,10 +125,8 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       isNew: false,
     }));
     setManagedImages(initialManagedImages);
-    // No need to call form.setValue here, as it's handled by defaultValues
-  }, [property.images]); // Rerun if property.images changes externally
+  }, [property.images]);
   
-  // Effect to update form's 'images' field when managedImages changes
   useEffect(() => {
     form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
   }, [managedImages, form]);
@@ -319,7 +317,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
               <FormItem id={formItemId}>
                 <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
                 <DragDropContext onDragEnd={onDragEnd}>
-                  <Droppable droppableId="imageDroppableEdit" direction="horizontal">
+                  <Droppable droppableId="imageDroppableEdit" direction="horizontal" isDropDisabled={false}>
                     {(provided) => (
                       <div
                         ref={provided.innerRef}
@@ -379,8 +377,11 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
           }}
         />
         <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de la propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
+        
         <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={form.formState.isSubmitting || isUploading}> Cancelar </Button>
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={form.formState.isSubmitting || isUploading}>
+                Cancelar
+            </Button>
             <Button type="submit" disabled={form.formState.isSubmitting || isUploading}>
               {(form.formState.isSubmitting || isUploading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               {isUploading ? 'Subiendo...' : 'Guardar Cambios'}
@@ -390,3 +391,4 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
     </Form>
   );
 }
+

@@ -1,3 +1,4 @@
+
 // src/components/property/PropertyForm.tsx
 'use client';
 
@@ -109,27 +110,22 @@ export default function PropertyForm() {
   const watchedCategory = form.watch("category");
 
   useEffect(() => {
-    console.log("[PropertyForm] Auth Check Effect: Start");
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
         const parsedUser = JSON.parse(userJson);
         setLoggedInUser(parsedUser);
-        console.log("[PropertyForm] Auth Check Effect: User found in localStorage:", parsedUser.email);
       } catch (error) {
         console.error("[PropertyForm] Auth Check Effect: Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
         setLoggedInUser(null);
       }
     } else {
-      console.log("[PropertyForm] Auth Check Effect: No user found in localStorage.");
       setLoggedInUser(null);
     }
     setIsCheckingAuth(false);
-    console.log("[PropertyForm] Auth Check Effect: Finished. isCheckingAuth = false");
   }, []);
   
-  // Effect to update form's 'images' field when managedImages changes
   useEffect(() => {
     form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
   }, [managedImages, form]);
@@ -221,10 +217,8 @@ export default function PropertyForm() {
     return uploadedUrls;
   };
 
-  const actualFormSubmit = async (values: PropertyFormValues) => {
-    console.log("[PropertyForm] actualFormSubmit: Called. Uploading images...");
+  const onSubmitLogic = async (values: PropertyFormValues) => {
     const finalImageUrls = await uploadImagesToProxy();
-    console.log("[PropertyForm] actualFormSubmit: Images uploaded, URLs:", finalImageUrls);
 
     const dataToSubmit = {
       ...values,
@@ -237,9 +231,7 @@ export default function PropertyForm() {
                           : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
-    console.log("[PropertyForm] actualFormSubmit: Submitting to server action with data:", dataToSubmit);
     const result = await submitPropertyAction(dataToSubmit, loggedInUser!.id);
-    console.log("[PropertyForm] actualFormSubmit: Server action result:", result);
 
     if (result.success && result.propertyId) {
       toast({
@@ -259,7 +251,7 @@ export default function PropertyForm() {
     }
   };
 
-  const handleAttemptToPublish = async () => {
+  const handleAttemptToPublish = () => {
     console.log("[PropertyForm] handleAttemptToPublish: Clicked. isCheckingAuth:", isCheckingAuth, "loggedInUser:", !!loggedInUser);
     if (isCheckingAuth) {
       toast({ title: "Verificando sesión...", description: "Por favor espera un momento." });
@@ -271,7 +263,7 @@ export default function PropertyForm() {
       return;
     }
     console.log("[PropertyForm] handleAttemptToPublish: User logged in, calling form.handleSubmit.");
-    form.handleSubmit(actualFormSubmit)();
+    form.handleSubmit(onSubmitLogic)();
   };
 
   useEffect(() => {
@@ -290,7 +282,7 @@ export default function PropertyForm() {
   return (
     <>
       <Form {...form}>
-        <form onSubmit={(e) => { e.preventDefault(); handleAttemptToPublish(); }} className="space-y-8">
+        <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-8">
           <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -357,7 +349,7 @@ export default function PropertyForm() {
                 <FormItem id={formItemId}>
                   <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
                   <DragDropContext onDragEnd={onDragEnd}>
-                    <Droppable droppableId="imageDroppableForm" direction="horizontal">
+                    <Droppable droppableId="imageDroppableForm" direction="horizontal" isDropDisabled={false}>
                       {(provided) => (
                         <div
                           ref={provided.innerRef}
@@ -419,7 +411,8 @@ export default function PropertyForm() {
           />
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
           <Button
-            type="submit"
+            type="button"
+            onClick={handleAttemptToPublish}
             className="w-full md:w-auto"
             disabled={form.formState.isSubmitting || isUploading || isCheckingAuth}
           >
@@ -436,3 +429,4 @@ export default function PropertyForm() {
     </>
   );
 }
+
