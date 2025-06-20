@@ -27,7 +27,7 @@ import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog';
+// AuthRequiredDialog no longer imported
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
@@ -68,27 +68,23 @@ export default function PropertyForm() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [showAuthAlert, setShowAuthAlert] = useState(false);
+  // showAuthAlert state removed
 
   useEffect(() => {
-    console.log('[PropertyForm] Auth Check Effect: Start');
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
         const parsedUser = JSON.parse(userJson);
         setLoggedInUser(parsedUser);
-        console.log('[PropertyForm] Auth Check Effect: User found in localStorage:', parsedUser);
       } catch (error) {
         console.error("[PropertyForm] Auth Check Effect: Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
         setLoggedInUser(null);
       }
     } else {
-      console.log('[PropertyForm] Auth Check Effect: No user found in localStorage.');
       setLoggedInUser(null);
     }
     setIsCheckingAuth(false);
-    console.log('[PropertyForm] Auth Check Effect: Finished. isCheckingAuth = false');
   }, []);
 
   const form = useForm<PropertyFormValues>({
@@ -196,13 +192,11 @@ export default function PropertyForm() {
     return uploadedUrls;
   };
 
-  // This is the function that will be called when the form is valid
-  async function actualFormSubmit(values: PropertyFormValues) {
-    console.log('[PropertyForm] actualFormSubmit: Called with values:', values);
+  async function onSubmit(values: PropertyFormValues) {
+    // This function is now only called if the user is logged in and form is valid
     if (!loggedInUser || !loggedInUser.id) {
-      // This should ideally not be reached if handleAttemptToPublish works correctly
-      console.error('[PropertyForm] actualFormSubmit: Critical error - No loggedInUser found at submission point.');
-      setShowAuthAlert(true);
+      // This check is mostly a safeguard, button should be disabled if not logged in
+      toast({ title: "Error", description: "Debes iniciar sesión para publicar.", variant: "destructive" });
       return;
     }
 
@@ -238,27 +232,6 @@ export default function PropertyForm() {
     }
   }
 
-  const handleAttemptToPublish = async () => {
-    console.log('[PropertyForm] handleAttemptToPublish: Clicked. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', !!loggedInUser);
-    if (isCheckingAuth) {
-      toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
-      console.log('[PropertyForm] handleAttemptToPublish: Still checking auth. Returning.');
-      return;
-    }
-
-    if (!loggedInUser || !loggedInUser.id) {
-      console.log('[PropertyForm] handleAttemptToPublish: User not logged in. Setting showAuthAlert to true.');
-      setShowAuthAlert(true);
-      return;
-    }
-
-    // If user is logged in, proceed with react-hook-form's handleSubmit
-    // which will validate and then call actualFormSubmit
-    console.log('[PropertyForm] handleAttemptToPublish: User logged in. Calling form.handleSubmit(actualFormSubmit).');
-    await form.handleSubmit(actualFormSubmit)();
-  };
-
-
   useEffect(() => {
     return () => {
       imagePreviews.forEach(url => URL.revokeObjectURL(url));
@@ -273,7 +246,8 @@ export default function PropertyForm() {
   return (
     <>
       <Form {...form}>
-        <form onSubmit={(e) => { e.preventDefault(); handleAttemptToPublish(); }} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* ... (todos los FormField como estaban) ... */}
           <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -376,22 +350,16 @@ export default function PropertyForm() {
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
 
           <Button 
-            type="button" /* Changed from type="submit" */
-            onClick={handleAttemptToPublish} /* New onClick handler */
+            type="submit"
             className="w-full md:w-auto" 
-            disabled={form.formState.isSubmitting || isUploading}
+            disabled={isCheckingAuth || !loggedInUser || form.formState.isSubmitting || isUploading}
           >
-            {(form.formState.isSubmitting || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isUploading ? 'Subiendo imágenes...' : 'Publicar Propiedad'}
+            {(form.formState.isSubmitting || isUploading || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isCheckingAuth ? 'Verificando...' : (isUploading ? 'Subiendo imágenes...' : 'Publicar Propiedad')}
           </Button>
         </form>
       </Form>
-      
-      <AuthRequiredDialog
-        open={showAuthAlert}
-        onOpenChange={setShowAuthAlert}
-        redirectPath={router.asPath}
-      />
+      {/* AuthRequiredDialog removed */}
     </>
   );
 }
