@@ -1,4 +1,3 @@
-
 // src/components/property/PropertyForm.tsx
 'use client';
 
@@ -23,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from "@/lib/types";
-import { Loader2, UserCircle, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass } from "lucide-react";
+import { Loader2, UserCircle, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react"; // Added BedDouble
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -238,7 +237,6 @@ export default function PropertyForm() {
     );
   }
 
-  // Conditional rendering flags
   const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
@@ -291,7 +289,7 @@ export default function PropertyForm() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><BedDouble className="mr-2 h-4 w-4 text-primary"/>N° de Dormitorios</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Bath className="mr-2 h-4 w-4 text-primary"/>N° de Baños</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="parkingSpaces" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Car className="mr-2 h-4 w-4 text-primary"/>N° Estacionamientos</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>

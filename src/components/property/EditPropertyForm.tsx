@@ -1,4 +1,3 @@
-
 // src/components/property/EditPropertyForm.tsx
 'use client';
 
@@ -23,7 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import type { PropertyType, ListingCategory, PropertyListing, PropertyFormValues, SubmitPropertyResult, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from '@/lib/types'; 
-import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass } from "lucide-react";
+import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react"; // Added BedDouble
 import { useRouter } from "next/navigation";
 import React, { useState, ChangeEvent, useEffect } from 'react';
 import Image from "next/image";
@@ -96,11 +95,11 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       address: property.address || "",
       city: property.city || "",
       country: property.country || "Chile",
-      bedrooms: property.bedrooms === 0 ? '' : property.bedrooms,
-      bathrooms: property.bathrooms === 0 ? '' : property.bathrooms,
+      bedrooms: property.bedrooms === 0 ? '' : (property.bedrooms ?? ''), // Handle 0 as empty for placeholder
+      bathrooms: property.bathrooms === 0 ? '' : (property.bathrooms ?? ''), // Handle 0 as empty
       totalAreaSqMeters: property.totalAreaSqMeters || 0,
       usefulAreaSqMeters: property.usefulAreaSqMeters === 0 || property.usefulAreaSqMeters === null ? '' : (property.usefulAreaSqMeters ?? undefined),
-      parkingSpaces: property.parkingSpaces === 0 ? '' : property.parkingSpaces,
+      parkingSpaces: property.parkingSpaces === 0 ? '' : (property.parkingSpaces ?? ''), // Handle 0 as empty
       petsAllowed: property.petsAllowed || false,
       furnished: property.furnished || false,
       commercialUseAllowed: property.commercialUseAllowed || false,
@@ -155,9 +154,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       const currentNewPreviews = imagePreviews.filter(url => url.startsWith('blob:'));
       form.setValue('images', [...updatedExistingUrls, ...currentNewPreviews], { shouldValidate: true, shouldDirty: true });
     } else {
-      // Calculate the correct index in imageFiles (only contains newly added files)
-      // This assumes imagePreviews contains existing URLs first, then blob URLs for new files.
-      // Count how many blob URLs are before the indexToRemove in imagePreviews.
       let fileIndexToRemove = -1;
       let blobUrlCount = 0;
       for (let i = 0; i < indexToRemove; i++) {
@@ -241,7 +237,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
     };
   }, [imagePreviews]);
 
-  // Conditional rendering flags
   const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
@@ -293,7 +288,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><BedDouble className="mr-2 h-4 w-4 text-primary"/>N° de Dormitorios</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Bath className="mr-2 h-4 w-4 text-primary"/>N° de Baños</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="parkingSpaces" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Car className="mr-2 h-4 w-4 text-primary"/>N° Estacionamientos</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
