@@ -2,7 +2,7 @@
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFormField as useFormFieldShadcn } from "react-hook-form"; // Renamed to avoid conflict
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -12,7 +12,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  useFormField,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,20 +21,18 @@ import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from '@/lib/types';
-import { Loader2, UploadCloud, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react";
-import { useEffect, useState, ChangeEvent } from "react";
+import { Loader2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
-import type { DropResult } from 'react-beautiful-dnd';
 import dynamic from 'next/dynamic';
-import type { ManagedImageCreate } from './ImageUploadDndAreaCreate';
-
-const ImageUploadDndAreaCreateWithNoSSR = dynamic(
-  () => import('./ImageUploadDndAreaCreate'),
-  {
+// Import the new DND component and its types
+import type { SortableImageItem } from './ImageDropzoneSortableCreate'; 
+const ImageDropzoneSortableCreate = dynamic(
+  () => import('./ImageDropzoneSortableCreate'),
+  { 
     ssr: false,
-    loading: () => null, // Changed to return null
+    loading: () => <div className="min-h-[10rem] flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary"/> Cargando cargador de imágenes...</div>
   }
 );
 
@@ -67,17 +64,13 @@ const orientationOptions: { value: OrientationType; label: string }[] = [
   { value: "none", label: "No especificada" },
 ];
 
-const MAX_IMAGES = 5;
-const MAX_FILE_SIZE_MB = 5;
-
 
 export default function PropertyForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  const [managedImages, setManagedImages] = useState<ManagedImageCreate[]>([]);
+  const [orderedImageFiles, setOrderedImageFiles] = useState<File[]>([]); // State to hold files from DND component
   const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<PropertyFormValues>({
@@ -100,7 +93,7 @@ export default function PropertyForm() {
       commercialUseAllowed: false,
       hasStorage: false,
       orientation: "none",
-      images: [],
+      images: [], // This will be populated with URLs before submit, not Files
       features: "",
       propertyType: undefined,
       category: undefined,
@@ -127,99 +120,12 @@ export default function PropertyForm() {
     setIsCheckingAuth(false);
   }, []);
 
-  useEffect(() => {
-    // This effect updates the react-hook-form 'images' field whenever managedImages changes.
-    // It's crucial for validation and submission that RHF knows about the image URLs.
-    form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
-  }, [managedImages, form]);
+  const handleOrderedImagesChange = useCallback((filesInOrder: File[]) => {
+    setOrderedImageFiles(filesInOrder);
+    // We don't need to update RHF 'images' field here with File objects,
+    // as it expects URLs for the final submission. The upload process will handle this.
+  }, []);
 
-
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      const filesArray = Array.from(event.target.files);
-      const currentImageCount = managedImages.length;
-      const availableSlots = MAX_IMAGES - currentImageCount;
-
-      if (filesArray.length > availableSlots) {
-        toast({
-          title: "Límite de Imágenes Excedido",
-          description: `Solo puedes subir ${availableSlots} imagen(es) más (máximo ${MAX_IMAGES}).`,
-          variant: "warning",
-        });
-      }
-
-      const validFiles = filesArray.slice(0, availableSlots).filter(file => {
-        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-          toast({
-            title: "Archivo Demasiado Grande",
-            description: `La imagen "${file.name}" excede el tamaño máximo de ${MAX_FILE_SIZE_MB}MB.`,
-            variant: "destructive",
-          });
-          return false;
-        }
-        return true;
-      });
-
-      const newManagedImagesFromFile: ManagedImageCreate[] = validFiles.map(file => {
-        const previewUrl = URL.createObjectURL(file);
-        return {
-          id: previewUrl,
-          url: previewUrl,
-          file: file,
-          isNew: true as const,
-        };
-      });
-      // Directly update managedImages state. The useEffect will handle form.setValue.
-      setManagedImages(prev => [...prev, ...newManagedImagesFromFile]);
-      event.target.value = ''; // Reset file input
-    }
-  };
-
-  const removeImage = (idToRemove: string) => {
-    setManagedImages(prev => {
-      const imageToRemove = prev.find(img => img.id === idToRemove);
-      if (imageToRemove?.url.startsWith('blob:')) {
-        URL.revokeObjectURL(imageToRemove.url);
-      }
-      return prev.filter(img => img.id !== idToRemove);
-    });
-  };
-
-  const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
-    setManagedImages(prev => {
-      const items = Array.from(prev);
-      const [reorderedItem] = items.splice(result.source.index, 1);
-      items.splice(result.destination!.index, 0, reorderedItem);
-      return items;
-    });
-  };
-
-  const uploadImagesToProxy = async (): Promise<string[]> => {
-    const filesToUpload = managedImages.map(img => img.file);
-    if (filesToUpload.length === 0) return [];
-    setIsUploading(true);
-    const uploadedUrls: string[] = [];
-
-    for (const file of filesToUpload) {
-      const formData = new FormData();
-      formData.append("imageFile", file);
-      try {
-        const response = await fetch('/api/upload-image-to-cpanel', { method: 'POST', body: formData });
-        const result = await response.json();
-        if (response.ok && result.success && result.url) {
-          uploadedUrls.push(result.url);
-        } else {
-          throw new Error(result.message || `Error al subir ${file.name}`);
-        }
-      } catch (error: any) {
-        toast({ title: "Error de Subida", description: error.message || `No se pudo subir ${file.name}.`, variant: "destructive" });
-        // Decide if you want to stop all uploads on first error or continue
-      }
-    }
-    setIsUploading(false);
-    return uploadedUrls;
-  };
 
   async function onSubmit(values: PropertyFormValues) {
     if (isCheckingAuth) {
@@ -231,15 +137,34 @@ export default function PropertyForm() {
       return;
     }
 
-    const finalImageUrls = await uploadImagesToProxy();
-    if (managedImages.length > 0 && finalImageUrls.length === 0 && managedImages.every(img => img.isNew)) {
-        toast({ title: "Error de Imágenes", description: "No se pudieron subir las imágenes. Intenta de nuevo.", variant: "destructive"});
-        return; // Stop submission if new images were present but none uploaded
-    }
+    setIsUploading(true);
+    const finalImageUrlsForServer: string[] = [];
 
+    for (const file of orderedImageFiles) {
+      const formData = new FormData();
+      formData.append("imageFile", file);
+      try {
+        const response = await fetch('/api/upload-image-to-cpanel', { method: 'POST', body: formData });
+        const result = await response.json();
+        if (response.ok && result.success && result.url) {
+          finalImageUrlsForServer.push(result.url);
+        } else {
+          toast({ title: "Error de Subida Parcial", description: `No se pudo subir ${file.name}: ${result.message || 'Error desconocido'}`, variant: "warning" });
+        }
+      } catch (error: any) {
+        toast({ title: "Error de Subida", description: `No se pudo subir ${file.name}. Error: ${error.message}`, variant: "destructive" });
+      }
+    }
+    setIsUploading(false);
+
+    if (orderedImageFiles.length > 0 && finalImageUrlsForServer.length === 0) {
+        toast({ title: "Error de Imágenes", description: "No se pudieron subir las imágenes. Intenta de nuevo.", variant: "destructive"});
+        return;
+    }
+    
     const dataToSubmit = {
       ...values,
-      images: finalImageUrls,
+      images: finalImageUrlsForServer, // Use the uploaded URLs
       bedrooms: values.bedrooms === '' ? 0 : Number(values.bedrooms),
       bathrooms: values.bathrooms === '' ? 0 : Number(values.bathrooms),
       parkingSpaces: values.parkingSpaces === '' ? 0 : Number(values.parkingSpaces),
@@ -248,6 +173,7 @@ export default function PropertyForm() {
                             : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
+    
     const result = await submitPropertyAction(dataToSubmit, loggedInUser.id);
 
     if (result.success && result.propertyId) {
@@ -257,7 +183,7 @@ export default function PropertyForm() {
         duration: result.autoMatchesCount && result.autoMatchesCount > 0 ? 7000 : 5000,
       });
       form.reset();
-      setManagedImages([]);
+      setOrderedImageFiles([]); // Reset ordered files state
       if (result.propertySlug) {
         router.push(`/properties/${result.propertySlug}`);
       } else {
@@ -267,16 +193,6 @@ export default function PropertyForm() {
       toast({ title: "Error al Publicar", description: result.message || "No se pudo enviar tu propiedad.", variant: "destructive" });
     }
   }
-
-  useEffect(() => {
-    return () => {
-      managedImages.forEach(img => {
-        if (img.url.startsWith('blob:')) {
-          URL.revokeObjectURL(img.url);
-        }
-      });
-    };
-  }, [managedImages]);
 
   const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
@@ -344,61 +260,14 @@ export default function PropertyForm() {
                   <p className="text-sm text-muted-foreground italic">No hay características adicionales aplicables para el tipo y categoría de propiedad seleccionada.</p>
               }
           </div>
-          <FormField
-            control={form.control}
-            name="images"
-            render={() => {
-              const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
-              return (
-                <FormItem id={formItemId}>
-                  <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
-                    <ImageUploadDndAreaCreateWithNoSSR
-                        droppableId="imageDroppableForm"
-                        managedImages={managedImages}
-                        onDragEnd={onDragEnd}
-                        removeImage={removeImage}
-                        isUploading={isUploading}
-                    />
-                  {managedImages.length < MAX_IMAGES && (
-                    <label
-                      htmlFor="image-upload-input-create"
-                      className={cn(
-                        "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-                        "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50",
-                        (isUploading || (managedImages.length >= MAX_IMAGES)) && "cursor-not-allowed opacity-70",
-                        error && "border-destructive"
-                      )}
-                      aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`}
-                      aria-invalid={!!error}
-                    >
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
-                        <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
-                        <p className="mb-1 text-base text-muted-foreground">
-                          <span className="font-semibold text-primary">Haz clic para subir</span> o arrastra y suelta
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Imágenes (Máx. {MAX_IMAGES - managedImages.length} más)
-                        </p>
-                        <p className="text-xs text-muted-foreground">PNG, JPG, GIF, WEBP (hasta {MAX_FILE_SIZE_MB}MB c/u)</p>
-                      </div>
-                      <Input
-                        id="image-upload-input-create"
-                        type="file"
-                        className="hidden"
-                        multiple
-                        onChange={handleImageChange}
-                        accept="image/png, image/jpeg, image/gif, image/webp"
-                        disabled={managedImages.length >= MAX_IMAGES || isUploading}
-                      />
-                    </label>
-                  )}
-                  <FormDescription id={formDescriptionId}>Sube imágenes claras y de buena calidad. Puedes arrastrarlas para cambiar el orden (la primera será la principal).</FormDescription>
-                  {isUploading && ( <div className="flex items-center mt-3 text-sm text-primary"> <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Subiendo imágenes... </div> )}
-                  <FormMessage id={formMessageId} />
-                </FormItem>
-              );
-            }}
-          />
+          
+          <FormItem>
+            <FormLabel>Imágenes de la Propiedad</FormLabel>
+            <ImageDropzoneSortableCreate onImagesChange={handleOrderedImagesChange} />
+            <FormDescription>Sube imágenes claras y de buena calidad. Puedes arrastrarlas para cambiar el orden (la primera será la principal).</FormDescription>
+            <FormMessage>{form.formState.errors.images?.message}</FormMessage>
+          </FormItem>
+
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
 
           <Button
