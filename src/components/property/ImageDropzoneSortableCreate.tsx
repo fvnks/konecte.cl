@@ -6,7 +6,7 @@ import { useDropzone } from 'react-dropzone';
 import { ReactSortable } from 'react-sortablejs'; // Using react-sortablejs
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, Trash2, GripVertical, AlertTriangle } from 'lucide-react';
+import { UploadCloud, Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -21,7 +21,7 @@ export interface SortableImageItem {
 
 interface ImageDropzoneSortableCreateProps {
   onImagesChange: (filesInOrder: File[]) => void;
-  initialImages?: File[]; // Not typically used for 'create' but good for consistency
+  initialImages?: File[]; 
   maxImages?: number;
 }
 
@@ -35,7 +35,6 @@ export default function ImageDropzoneSortableCreate({
   const dropzoneId = useId();
 
   useEffect(() => {
-    // Initialize from initialImages if provided (e.g., if form re-renders with previous state)
     if (initialImages.length > 0 && images.length === 0) {
       const initialSortableImages = initialImages.map((file, index) => ({
         id: `initial-${index}-${Date.now()}`,
@@ -44,17 +43,16 @@ export default function ImageDropzoneSortableCreate({
       }));
       setImages(initialSortableImages);
     }
-    // Cleanup previews on unmount
     return () => {
       images.forEach(img => URL.revokeObjectURL(img.preview));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialImages]); // Only run if initialImages changes or on first mount
+  }, [initialImages]);
 
   useEffect(() => {
     onImagesChange(images.map(img => img.file));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [images]); // Call onImagesChange whenever 'images' state is updated
+  }, [images]);
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     const currentImageCount = images.length;
@@ -83,7 +81,7 @@ export default function ImageDropzoneSortableCreate({
     }
 
     const newImages = acceptedFiles.slice(0, availableSlots).map(file => ({
-      id: `${file.name}-${Date.now()}-${Math.random()}`, // More unique ID
+      id: `${file.name}-${Date.now()}-${Math.random()}`,
       file,
       preview: URL.createObjectURL(file)
     }));
@@ -105,7 +103,7 @@ export default function ImageDropzoneSortableCreate({
     onDrop,
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] },
     maxSize: MAX_FILE_SIZE_MB * 1024 * 1024,
-    maxFiles: maxImages, // Let dropzone handle the overall maxFiles limit
+    maxFiles: maxImages,
     disabled: images.length >= maxImages,
   });
 
@@ -146,7 +144,7 @@ export default function ImageDropzoneSortableCreate({
           tag="div"
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 py-2"
           animation={150}
-          handle=".drag-handle" // Specify drag handle class
+          // handle option removed: entire item is draggable
         >
           {images.map((img) => (
             <div
@@ -164,13 +162,6 @@ export default function ImageDropzoneSortableCreate({
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
-              <div
-                className="drag-handle absolute bottom-1 left-1 bg-black/50 text-white text-xs p-0.5 rounded-sm flex items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-move"
-                title="Arrastrar para reordenar"
-                onMouseDown={(e) => e.stopPropagation()} // Prevent card drag from interfering
-              >
-                <GripVertical className="h-3 w-3" />
-              </div>
               {images.indexOf(img) === 0 && (
                 <span className="absolute bottom-1 right-1 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-md font-medium">
                   Principal

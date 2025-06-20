@@ -6,7 +6,7 @@ import { useDropzone } from 'react-dropzone';
 import { ReactSortable } from 'react-sortablejs';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, Trash2, GripVertical, AlertTriangle } from 'lucide-react';
+import { UploadCloud, Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -44,10 +44,8 @@ export default function ImageDropzoneSortableEdit({
       originalUrl: url,
     }));
     setManagedImages(initialProcessedImages);
-
-    // No cleanup for existing http/https URLs
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialImageUrls]); // Rerun if initialImageUrls prop changes
+  }, [initialImageUrls]); 
 
   useEffect(() => {
     onManagedImagesChange(managedImages);
@@ -96,7 +94,6 @@ export default function ImageDropzoneSortableEdit({
   const removeImage = (idToRemove: string) => {
     setManagedImages(prevImages => {
       const imageToRemove = prevImages.find(img => img.id === idToRemove);
-      // Revoke blob URL only if it's a new, unsaved image preview
       if (imageToRemove && !imageToRemove.isExisting && imageToRemove.url.startsWith('blob:')) {
         URL.revokeObjectURL(imageToRemove.url);
       }
@@ -149,7 +146,7 @@ export default function ImageDropzoneSortableEdit({
           tag="div"
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 py-2"
           animation={150}
-          handle=".drag-handle"
+          // handle option removed: entire item is draggable
         >
           {managedImages.map((img) => (
             <div
@@ -167,13 +164,6 @@ export default function ImageDropzoneSortableEdit({
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
-              <div
-                className="drag-handle absolute bottom-1 left-1 bg-black/50 text-white text-xs p-0.5 rounded-sm flex items-center opacity-0 group-hover:opacity-100 transition-opacity cursor-move"
-                title="Arrastrar para reordenar"
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <GripVertical className="h-3 w-3" />
-              </div>
               {managedImages.indexOf(img) === 0 && (
                 <span className="absolute bottom-1 right-1 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-md font-medium">
                   Principal
@@ -186,4 +176,3 @@ export default function ImageDropzoneSortableEdit({
     </div>
   );
 }
-
