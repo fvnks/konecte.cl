@@ -37,7 +37,7 @@ export default function ImageUploadDndAreaCreate({
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className="mb-4 flex gap-3 overflow-x-auto py-2"
+            className="mb-4 flex gap-3 overflow-x-auto py-2 min-h-[100px] bg-muted/10 rounded-md"
           >
             {managedImages.map((managedImage, index) => (
               <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
