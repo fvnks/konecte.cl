@@ -1,3 +1,4 @@
+
 // src/app/auth/signup/[accountType]/page.tsx
 'use client';
 
@@ -18,7 +19,7 @@ import { getEditableTextsByGroupAction } from '@/actions/editableTextActions';
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; 
+// RadioGroup imports removed as it's no longer used for experience_selling_properties
 import { Label } from "@/components/ui/label"; 
 import { Separator } from "@/components/ui/separator";
 
@@ -82,7 +83,7 @@ export default function SignUpStep2Page() {
       password: "",
       confirmPassword: "",
       acceptTerms: false,
-      experience_selling_properties: undefined,
+      // experience_selling_properties: undefined, // REMOVED
       company_name: "",
       main_operating_region: "",
       main_operating_commune: "",
@@ -103,6 +104,7 @@ export default function SignUpStep2Page() {
       ...values,
       accountType: accountTypeParam,
     };
+    // experience_selling_properties is no longer in values due to schema change
 
     const result = await signUpAction(submissionValues);
     if (result.success && result.user) {
@@ -140,13 +142,13 @@ export default function SignUpStep2Page() {
     <div className="min-h-[calc(100vh-5rem)] w-full lg:grid lg:grid-cols-2">
       <div className="hidden lg:flex relative h-full bg-primary/10">
         <Image
-          src="https://bukmy.cl/img/register.png" // Imagen unificada
-          alt="Ilustración de registro" // Alt text genérico
+          src="https://bukmy.cl/img/register.png" 
+          alt="Ilustración de registro" 
           fill
           style={{objectFit: "cover", objectPosition: "center"}}
           sizes="50vw"
           priority
-          data-ai-hint="registro personas" // Hint genérico
+          data-ai-hint="registro personas" 
         />
       </div>
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 h-full bg-card lg:bg-background">
@@ -170,36 +172,8 @@ export default function SignUpStep2Page() {
                 <FormField control={form.control} name="phone_number" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_phone_label}</FormLabel> <FormControl><Input type="tel" placeholder="Ej: +56 9 1234 5678" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="rut_tin" render={({ field }) => (<FormItem> <FormLabel>{accountTypeParam === 'broker' ? 'RUT (Empresa o Personal del Corredor) *' : 'RUT (Opcional)'}</FormLabel> <FormControl><Input type="text" placeholder="Ej: 76.123.456-K o 12.345.678-9" {...field} /></FormControl> {accountTypeParam === 'broker' && <ShadFormDescription className="text-xs">El RUT es necesario para corredores e inmobiliarias.</ShadFormDescription>} <FormMessage /> </FormItem> )}/>
 
-                {/* Persona Natural Specific */}
-                {accountTypeParam === 'natural' && (
-                  <FormField
-                    control={form.control}
-                    name="experience_selling_properties"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2 rounded-md border p-3 shadow-sm bg-secondary/30">
-                        <FormLabel className="text-sm">¿Tienes experiencia vendiendo propiedades? (Opcional)</FormLabel>
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            className="flex space-x-4"
-                          >
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl><RadioGroupItem value="yes" id="exp_yes" /></FormControl>
-                              <Label htmlFor="exp_yes" className="font-normal cursor-pointer text-sm">Sí</Label>
-                            </FormItem>
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl><RadioGroupItem value="no" id="exp_no" /></FormControl>
-                              <Label htmlFor="exp_no" className="font-normal cursor-pointer text-sm">No</Label>
-                            </FormItem>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
+                {/* Persona Natural Specific - experience_selling_properties removed */}
+                
                 {/* Broker/Inmobiliaria Specific */}
                 {accountTypeParam === 'broker' && (
                   <div className="space-y-5 pt-3 border-t border-dashed">
@@ -254,3 +228,4 @@ export default function SignUpStep2Page() {
     </div>
   );
 }
+

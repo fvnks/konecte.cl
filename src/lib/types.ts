@@ -60,7 +60,7 @@ export interface User {
   plan_advanced_dashboard_access?: boolean;
 
   // New fields for different account types
-  experience_selling_properties?: boolean | null;
+  // experience_selling_properties?: boolean | null; // REMOVED
   company_name?: string | null;
   main_operating_region?: string | null;
   main_operating_commune?: string | null;
@@ -364,12 +364,11 @@ export const signUpSchema = z.object({
     message: "Debes aceptar los términos y condiciones.",
   }),
 
-  // Common fields for both, made optional here, validated in action
   phone_number: z.string().max(50, "El teléfono no puede exceder los 50 caracteres.").optional().or(z.literal('')),
   rut_tin: z.string().max(20, "El RUT/Tax ID no puede exceder los 20 caracteres.").optional().or(z.literal('')),
 
   // Persona natural specific (optional)
-  experience_selling_properties: z.enum(['yes', 'no'], { invalid_type_error: "Selecciona sí o no."}).optional(),
+  // experience_selling_properties: z.enum(['yes', 'no'], { invalid_type_error: "Selecciona sí o no."}).optional(), // REMOVED
 
   // Broker/Inmobiliaria specific (optional at schema level)
   company_name: z.string().max(255, "El nombre de la empresa no puede exceder los 255 caracteres.").optional().or(z.literal('')),

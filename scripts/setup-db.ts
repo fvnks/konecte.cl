@@ -82,7 +82,7 @@ const SQL_STATEMENTS: string[] = [
 
     phone_number VARCHAR(50) DEFAULT NULL COMMENT 'Teléfono de contacto general.',
     rut_tin VARCHAR(20) DEFAULT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido para Corredor/Inmobiliaria.',
-    experience_selling_properties BOOLEAN DEFAULT NULL COMMENT 'Persona natural: ¿Tiene experiencia vendiendo propiedades?',
+    -- experience_selling_properties BOOLEAN DEFAULT NULL COMMENT 'Persona natural: ¿Tiene experiencia vendiendo propiedades?', -- REMOVED
     company_name VARCHAR(255) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Nombre de la empresa',
     main_operating_region VARCHAR(100) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Región principal de operación',
     main_operating_commune VARCHAR(100) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Comuna principal de operación',
@@ -581,6 +581,7 @@ async function setupDatabase() {
 }
 
 setupDatabase();
+
 
 
 

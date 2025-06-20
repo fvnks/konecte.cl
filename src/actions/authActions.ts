@@ -20,17 +20,16 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
 
   const { 
     accountType, name, email, password, phone_number, rut_tin,
-    experience_selling_properties, company_name, main_operating_region,
+    // experience_selling_properties, // REMOVED
+    company_name, main_operating_region,
     main_operating_commune, properties_in_portfolio_count, website_social_media_link
   } = validation.data;
 
   console.log(`[AuthAction] Attempting sign-up for email: ${email}, type: ${accountType}`);
 
-  // Server-side validation for conditionally required fields
   if (accountType === 'broker' && !rut_tin) {
     return { success: false, message: "El RUT es requerido para corredores/inmobiliarias." };
   }
-  // Could add more checks, e.g., company_name if not independent (but no such flag yet)
 
   try {
     const existingUserRows: any[] = await query('SELECT id FROM users WHERE email = ?', [email]);
@@ -52,21 +51,17 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
     const insertSql = `
       INSERT INTO users (
         id, name, email, password_hash, role_id, 
-        phone_number, rut_tin, experience_selling_properties, 
+        phone_number, rut_tin, 
         company_name, main_operating_region, main_operating_commune, 
         properties_in_portfolio_count, website_social_media_link
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
-    const experienceValue = accountType === 'natural' 
-      ? (experience_selling_properties === 'yes' ? true : (experience_selling_properties === 'no' ? false : null)) 
-      : null;
-
     const params = [
       userId, name, email, hashedPassword, roleId,
       phone_number || null,
       rut_tin || null,
-      experienceValue,
+      // experienceValue removed
       accountType === 'broker' ? (company_name || null) : null,
       accountType === 'broker' ? (main_operating_region || null) : null,
       accountType === 'broker' ? (main_operating_commune || null) : null,
@@ -89,7 +84,7 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
     
     const userWithoutPasswordHash: User = {
       ...userWithoutPasswordHashBase,
-      experience_selling_properties: experienceValue,
+      // experience_selling_properties: null, // REMOVED
       company_name: accountType === 'broker' ? (company_name || null) : null,
       main_operating_region: accountType === 'broker' ? (main_operating_region || null) : null,
       main_operating_commune: accountType === 'broker' ? (main_operating_commune || null) : null,
@@ -135,7 +130,7 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
             p.can_view_contact_data,
             p.automated_alerts_enabled,
             p.advanced_dashboard_access,
-            u.experience_selling_properties, u.company_name, u.main_operating_region,
+            u.company_name, u.main_operating_region, /* experience_selling_properties removed */
             u.main_operating_commune, u.properties_in_portfolio_count, u.website_social_media_link
          FROM users u
          JOIN roles r ON u.role_id = r.id
