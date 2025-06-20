@@ -12,6 +12,9 @@ export default function useHasMounted() {
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
+    // We don't need setTimeout(0) here if we're dynamically importing
+    // the component that uses DND. The dynamic import itself handles the
+    // client-side rendering timing.
     setHasMounted(true);
   }, []);
 

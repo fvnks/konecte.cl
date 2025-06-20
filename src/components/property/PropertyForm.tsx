@@ -22,15 +22,23 @@ import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from '@/lib/types';
-import { Loader2, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react";
-import { useEffect, useState, ChangeEvent, useCallback } from "react";
+import { Loader2, UploadCloud, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react"; // Removed GripVertical, Move, Trash2
+import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
-import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog';
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
-import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
-import useHasMounted from '@/hooks/useHasMounted'; // Import the hook
+import type { DropResult } from 'react-beautiful-dnd';
+import dynamic from 'next/dynamic'; // Import dynamic
+import type { ManagedImageCreate } from './ImageUploadDndAreaCreate'; // Import the specific type
+
+const ImageUploadDndAreaCreateWithNoSSR = dynamic(
+  () => import('./ImageUploadDndAreaCreate'),
+  { 
+    ssr: false,
+    loading: () => <div className="mb-4 flex gap-3 overflow-x-auto py-2 min-h-[112px] items-center justify-center text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2"/>Cargando área de imágenes...</div> 
+  }
+);
+
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -62,23 +70,16 @@ const orientationOptions: { value: OrientationType; label: string }[] = [
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
-interface ManagedImage {
-  id: string;
-  url: string;
-  file: File;
-  isNew: true;
-}
 
 export default function PropertyForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const hasMounted = useHasMounted(); // Use the hook
-
-  const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
+  
+  const [managedImages, setManagedImages] = useState<ManagedImageCreate[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [showAuthAlert, setShowAuthAlert] = useState(false);
+  // AuthRequiredDialog and showAuthAlert state are removed
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
@@ -116,7 +117,6 @@ export default function PropertyForm() {
       try {
         const parsedUser = JSON.parse(userJson);
         setLoggedInUser(parsedUser);
-        console.log("[PropertyForm] User loaded from localStorage:", parsedUser);
       } catch (error) {
         console.error("[PropertyForm] Auth Check Effect: Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
@@ -124,10 +124,8 @@ export default function PropertyForm() {
       }
     } else {
       setLoggedInUser(null);
-      console.log("[PropertyForm] No user found in localStorage.");
     }
     setIsCheckingAuth(false);
-    console.log("[PropertyForm] Auth check finished. isCheckingAuth = false");
   }, []);
 
   useEffect(() => {
@@ -161,7 +159,7 @@ export default function PropertyForm() {
         return true;
       });
 
-      const newManagedImagesFromFile = validFiles.map(file => {
+      const newManagedImagesFromFile: ManagedImageCreate[] = validFiles.map(file => {
         const previewUrl = URL.createObjectURL(file);
         return {
           id: previewUrl, 
@@ -221,11 +219,15 @@ export default function PropertyForm() {
     return uploadedUrls;
   };
 
-  const actualFormSubmit = async (values: PropertyFormValues) => {
+  async function onSubmit(values: PropertyFormValues) {
+    if (isCheckingAuth) {
+      toast({ title: "Verificando sesión...", description: "Por favor espera un momento." });
+      return;
+    }
     if (!loggedInUser || !loggedInUser.id) {
-        console.error("[PropertyForm] actualFormSubmit: loggedInUser or ID missing.");
-        setShowAuthAlert(true);
-        return;
+      toast({ title: "Acción Requerida", description: "Debes iniciar sesión para publicar.", variant: "destructive" });
+      // Potentially redirect or show a modal here
+      return;
     }
 
     const finalImageUrls = await uploadImagesToProxy();
@@ -259,28 +261,8 @@ export default function PropertyForm() {
     } else {
       toast({ title: "Error al Publicar", description: result.message || "No se pudo enviar tu propiedad.", variant: "destructive" });
     }
-  };
+  }
   
-  const handleAttemptToPublish = () => {
-    console.log("[PropertyForm] handleAttemptToPublish called.");
-    console.log("[PropertyForm] isCheckingAuth:", isCheckingAuth);
-    console.log("[PropertyForm] loggedInUser:", loggedInUser);
-
-    if (isCheckingAuth) {
-      toast({ title: "Verificando sesión...", description: "Por favor espera un momento." });
-      console.log("[PropertyForm] Still checking auth, showing toast.");
-      return;
-    }
-    if (!loggedInUser || !loggedInUser.id) {
-      console.log("[PropertyForm] No loggedInUser, calling setShowAuthAlert(true).");
-      setShowAuthAlert(true);
-      return;
-    }
-    console.log("[PropertyForm] User is logged in, proceeding to form.handleSubmit.");
-    form.handleSubmit(actualFormSubmit)();
-  };
-
-
   useEffect(() => {
     return () => {
       managedImages.forEach(img => {
@@ -299,7 +281,7 @@ export default function PropertyForm() {
   return (
     <>
       <Form {...form}>
-        <form onSubmit={(e) => { e.preventDefault(); handleAttemptToPublish(); }} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -365,47 +347,13 @@ export default function PropertyForm() {
               return (
                 <FormItem id={formItemId}>
                   <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
-                  {hasMounted && (
-                    <DragDropContext onDragEnd={onDragEnd}>
-                      <Droppable droppableId="imageDroppableForm" direction="horizontal" isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            className="mb-4 flex gap-3 overflow-x-auto py-2"
-                          >
-                            {managedImages.map((managedImage, index) => (
-                              <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
-                                {(providedDraggable, snapshot) => (
-                                  <div
-                                    ref={providedDraggable.innerRef}
-                                    {...providedDraggable.draggableProps}
-                                    {...providedDraggable.dragHandleProps}
-                                    className={cn(
-                                      "relative group w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 border rounded-lg overflow-hidden shadow-sm bg-slate-100",
-                                      snapshot.isDragging && "ring-2 ring-primary shadow-xl"
-                                    )}
-                                  >
-                                    <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
-                                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-3.5 w-3.5" /> </Button>
-                                    <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs p-0.5 rounded-sm flex items-center opacity-0 group-hover:opacity-100 transition-opacity" title="Arrastrar para reordenar">
-                                      <GripVertical className="h-3 w-3" />
-                                    </div>
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))}
-                            {provided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
-                    </DragDropContext>
-                  )}
-                  {!hasMounted && (
-                    <div className="mb-4 flex gap-3 overflow-x-auto py-2">
-                      <p className="text-sm text-muted-foreground">Cargando previsualización de imágenes...</p>
-                    </div>
-                  )}
+                    <ImageUploadDndAreaCreateWithNoSSR
+                        droppableId="imageDroppableForm"
+                        managedImages={managedImages}
+                        onDragEnd={onDragEnd}
+                        removeImage={removeImage}
+                        isUploading={isUploading}
+                    />
                   {managedImages.length < MAX_IMAGES && (
                     <label
                       htmlFor="image-upload-input-create"
@@ -449,22 +397,16 @@ export default function PropertyForm() {
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
 
           <Button
-            type="button"
-            onClick={handleAttemptToPublish}
+            type="submit" // Changed back to submit for form.handleSubmit
             className="w-full md:w-auto"
-            disabled={form.formState.isSubmitting || isUploading || isCheckingAuth}
+            disabled={isCheckingAuth || !loggedInUser || form.formState.isSubmitting || isUploading}
           >
             {(form.formState.isSubmitting || isUploading || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isCheckingAuth ? 'Verificando...' : (isUploading ? 'Subiendo imágenes...' : 'Publicar Propiedad')}
           </Button>
         </form>
       </Form>
-      <AuthRequiredDialog
-        open={showAuthAlert}
-        onOpenChange={setShowAuthAlert}
-        redirectPath="/properties/submit"
-      />
+      {/* AuthRequiredDialog removed */}
     </>
   );
 }
-

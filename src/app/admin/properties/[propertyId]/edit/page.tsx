@@ -5,25 +5,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation'; 
 import { getPropertyByIdForAdminAction, adminUpdatePropertyAction } from '@/actions/propertyActions';
 import type { PropertyListing, PropertyFormValues, SubmitPropertyResult } from '@/lib/types';
-// import EditPropertyForm from '@/components/property/EditPropertyForm'; // Original static import
-import dynamic from 'next/dynamic';
+import EditPropertyForm from '@/components/property/EditPropertyForm'; // Static import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
-
-const EditPropertyFormWithNoSSR = dynamic(
-  () => import('@/components/property/EditPropertyForm'),
-  { 
-    ssr: false,
-    loading: () => (
-      <div className="flex flex-col items-center justify-center min-h-[300px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-        <p className="text-muted-foreground">Cargando formulario de edición...</p>
-      </div>
-    )
-  }
-);
 
 export default function AdminEditPropertyPage() {
   const params = useParams();
@@ -31,7 +17,7 @@ export default function AdminEditPropertyPage() {
   const propertyId = params.propertyId as string;
 
   const [property, setProperty] = useState<PropertyListing | null>(null);
-  const [isLoadingPropertyData, setIsLoadingPropertyData] = useState(true); // Renamed for clarity
+  const [isLoadingPropertyData, setIsLoadingPropertyData] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,7 +77,6 @@ export default function AdminEditPropertyPage() {
   }
 
   if (!property) {
-    // This case should ideally be handled by the error state, but as a fallback
     return (
        <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-center">
         <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
@@ -121,7 +106,7 @@ export default function AdminEditPropertyPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EditPropertyFormWithNoSSR
+          <EditPropertyForm
             property={property} 
             onSubmitAction={handleAdminSubmit}
             isAdminContext={true}
