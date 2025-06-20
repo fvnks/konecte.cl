@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog';
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
-// import useHasMounted from '@/hooks/useHasMounted'; // No longer needed due to dynamic import of parent
+import useHasMounted from '@/hooks/useHasMounted'; // Import the hook
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -74,7 +74,7 @@ export default function PropertyForm() {
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  // const hasMounted = useHasMounted(); // Removed
+  const hasMounted = useHasMounted(); // Use the hook
 
   const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -116,6 +116,7 @@ export default function PropertyForm() {
       try {
         const parsedUser = JSON.parse(userJson);
         setLoggedInUser(parsedUser);
+        console.log("[PropertyForm] User loaded from localStorage:", parsedUser);
       } catch (error) {
         console.error("[PropertyForm] Auth Check Effect: Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
@@ -123,12 +124,13 @@ export default function PropertyForm() {
       }
     } else {
       setLoggedInUser(null);
+      console.log("[PropertyForm] No user found in localStorage.");
     }
     setIsCheckingAuth(false);
+    console.log("[PropertyForm] Auth check finished. isCheckingAuth = false");
   }, []);
 
   useEffect(() => {
-    // Update form value when managedImages changes
     form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
   }, [managedImages, form]);
 
@@ -219,10 +221,10 @@ export default function PropertyForm() {
     return uploadedUrls;
   };
 
-  const onSubmitLogic = async (values: PropertyFormValues) => {
+  const actualFormSubmit = async (values: PropertyFormValues) => {
     if (!loggedInUser || !loggedInUser.id) {
-        console.error("[PropertyForm] onSubmitLogic: loggedInUser o loggedInUser.id no está definido.");
-        setShowAuthAlert(true); // Ensure popup shows if this somehow gets called without a user
+        console.error("[PropertyForm] actualFormSubmit: loggedInUser or ID missing.");
+        setShowAuthAlert(true);
         return;
     }
 
@@ -275,7 +277,7 @@ export default function PropertyForm() {
       return;
     }
     console.log("[PropertyForm] User is logged in, proceeding to form.handleSubmit.");
-    form.handleSubmit(onSubmitLogic)();
+    form.handleSubmit(actualFormSubmit)();
   };
 
 
@@ -363,37 +365,47 @@ export default function PropertyForm() {
               return (
                 <FormItem id={formItemId}>
                   <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
-                  <DragDropContext onDragEnd={onDragEnd}>
-                    <Droppable droppableId="imageDroppableForm" direction="horizontal" isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className="mb-4 flex gap-3 overflow-x-auto py-2"
-                        >
-                          {managedImages.map((managedImage, index) => (
-                            <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
-                              {(providedDraggable, snapshot) => (
-                                <div
-                                  ref={providedDraggable.innerRef}
-                                  {...providedDraggable.draggableProps}
-                                  {...providedDraggable.dragHandleProps}
-                                  className={cn(
-                                    "relative group w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 border rounded-lg overflow-hidden shadow-sm bg-slate-100",
-                                    snapshot.isDragging && "ring-2 ring-primary shadow-xl"
-                                  )}
-                                >
-                                  <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
-                                  <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-3.5 w-3.5" /> </Button>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </DragDropContext>
+                  {hasMounted && (
+                    <DragDropContext onDragEnd={onDragEnd}>
+                      <Droppable droppableId="imageDroppableForm" direction="horizontal" isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className="mb-4 flex gap-3 overflow-x-auto py-2"
+                          >
+                            {managedImages.map((managedImage, index) => (
+                              <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
+                                {(providedDraggable, snapshot) => (
+                                  <div
+                                    ref={providedDraggable.innerRef}
+                                    {...providedDraggable.draggableProps}
+                                    {...providedDraggable.dragHandleProps}
+                                    className={cn(
+                                      "relative group w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 border rounded-lg overflow-hidden shadow-sm bg-slate-100",
+                                      snapshot.isDragging && "ring-2 ring-primary shadow-xl"
+                                    )}
+                                  >
+                                    <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
+                                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-3.5 w-3.5" /> </Button>
+                                    <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs p-0.5 rounded-sm flex items-center opacity-0 group-hover:opacity-100 transition-opacity" title="Arrastrar para reordenar">
+                                      <GripVertical className="h-3 w-3" />
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  )}
+                  {!hasMounted && (
+                    <div className="mb-4 flex gap-3 overflow-x-auto py-2">
+                      <p className="text-sm text-muted-foreground">Cargando previsualización de imágenes...</p>
+                    </div>
+                  )}
                   {managedImages.length < MAX_IMAGES && (
                     <label
                       htmlFor="image-upload-input-create"
@@ -455,3 +467,4 @@ export default function PropertyForm() {
     </>
   );
 }
+

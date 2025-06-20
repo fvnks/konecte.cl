@@ -29,7 +29,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
-// import useHasMounted from '@/hooks/useHasMounted'; // No longer needed due to dynamic import of parent
+import useHasMounted from '@/hooks/useHasMounted'; // Import the hook
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -87,7 +87,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   const router = useRouter();
   const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  // const hasMounted = useHasMounted(); // Removed
+  const hasMounted = useHasMounted(); // Use the hook
 
   const form = useForm<EditPropertyFormValues>({
     resolver: zodResolver(editPropertyFormSchema),
@@ -129,7 +129,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   }, [property.images]);
 
   useEffect(() => {
-    // Update form value when managedImages changes
     form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
   }, [managedImages, form]);
 
@@ -323,37 +322,47 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
             return (
               <FormItem id={formItemId}>
                 <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
-                  <DragDropContext onDragEnd={onDragEnd}>
-                    <Droppable droppableId="imageDroppableEdit" direction="horizontal" isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className="mb-4 flex gap-3 overflow-x-auto py-2"
-                        >
-                          {managedImages.map((managedImage, index) => (
-                            <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
-                              {(providedDraggable, snapshot) => (
-                                <div
-                                  ref={providedDraggable.innerRef}
-                                  {...providedDraggable.draggableProps}
-                                  {...providedDraggable.dragHandleProps}
-                                  className={cn(
-                                    "relative group w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 border rounded-lg overflow-hidden shadow-sm bg-slate-100",
-                                    snapshot.isDragging && "ring-2 ring-primary shadow-xl"
-                                  )}
-                                >
-                                  <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
-                                  <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-3.5 w-3.5" /> </Button>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </DragDropContext>
+                  {hasMounted && (
+                    <DragDropContext onDragEnd={onDragEnd}>
+                      <Droppable droppableId="imageDroppableEdit" direction="horizontal" isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className="mb-4 flex gap-3 overflow-x-auto py-2"
+                          >
+                            {managedImages.map((managedImage, index) => (
+                              <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
+                                {(providedDraggable, snapshot) => (
+                                  <div
+                                    ref={providedDraggable.innerRef}
+                                    {...providedDraggable.draggableProps}
+                                    {...providedDraggable.dragHandleProps}
+                                    className={cn(
+                                      "relative group w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 border rounded-lg overflow-hidden shadow-sm bg-slate-100",
+                                      snapshot.isDragging && "ring-2 ring-primary shadow-xl"
+                                    )}
+                                  >
+                                    <Image src={managedImage.url} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>
+                                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10" onClick={() => removeImage(managedImage.id)} disabled={isUploading} aria-label="Eliminar imagen" > <Trash2 className="h-3.5 w-3.5" /> </Button>
+                                    <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs p-0.5 rounded-sm flex items-center opacity-0 group-hover:opacity-100 transition-opacity" title="Arrastrar para reordenar">
+                                      <GripVertical className="h-3 w-3" />
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  )}
+                  {!hasMounted && (
+                    <div className="mb-4 flex gap-3 overflow-x-auto py-2">
+                      <p className="text-sm text-muted-foreground">Cargando previsualización de imágenes...</p>
+                    </div>
+                  )}
                 {managedImages.length < MAX_IMAGES && (
                   <label
                     htmlFor="image-upload-input-edit"
@@ -408,3 +417,4 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
     </Form>
   );
 }
+
