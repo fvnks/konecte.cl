@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from "@/lib/types";
-import { Loader2, UserCircle, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, LogIn, UserPlus } from "lucide-react";
+import { Loader2, UserCircle, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, LogIn, UserPlus } from "lucide-react"; // Added BedDouble
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -106,7 +106,7 @@ export default function PropertyForm() {
       bedrooms: '',
       bathrooms: '',
       totalAreaSqMeters: undefined,
-      usefulAreaSqMeters: undefined,
+      usefulAreaSqMeters: '',
       parkingSpaces: '',
       petsAllowed: false,
       furnished: false,
@@ -200,7 +200,6 @@ export default function PropertyForm() {
 
   async function onSubmit(values: PropertyFormValues) {
     if (!loggedInUser || !loggedInUser.id) {
-      // toast({ title: "Acción Requerida", description: "Debes iniciar sesión o registrarte para publicar.", variant: "warning" });
       setShowAuthAlert(true);
       return;
     }
@@ -210,7 +209,10 @@ export default function PropertyForm() {
     const dataToSubmit = {
       ...values,
       images: finalImageUrls,
-      usefulAreaSqMeters: values.usefulAreaSqMeters === '' ? undefined : values.usefulAreaSqMeters,
+      bedrooms: values.bedrooms === '' ? 0 : Number(values.bedrooms),
+      bathrooms: values.bathrooms === '' ? 0 : Number(values.bathrooms),
+      parkingSpaces: values.parkingSpaces === '' ? 0 : Number(values.parkingSpaces),
+      usefulAreaSqMeters: values.usefulAreaSqMeters === '' ? undefined : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
 
@@ -372,10 +374,11 @@ export default function PropertyForm() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center">
                 <UserCircle className="h-6 w-6 mr-2 text-primary" />
-                Acción Requerida
+                Registro Requerido
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Para poder publicar, necesitas estar registrado e iniciar sesión. ¿Deseas crear una cuenta o iniciar sesión ahora?
+              Para publicar tu propiedad, primero necesitas crear una cuenta o iniciar sesión.
+              ¡Es rápido y fácil!
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-2">

@@ -91,7 +91,6 @@ export default function RequestForm() {
 
   async function onSubmit(values: RequestFormValues) {
      if (!loggedInUser || !loggedInUser.id) {
-      // toast({ title: "Acción Requerida", description: "Debes iniciar sesión o registrarte para publicar.", variant: "warning" });
       setShowAuthAlert(true);
       return;
     }
@@ -377,11 +376,11 @@ export default function RequestForm() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center">
                 <UserCircle className="h-6 w-6 mr-2 text-primary" />
-                Acción Requerida
+                Registro Requerido
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Para poder publicar tu solicitud, necesitas estar registrado e iniciar sesión.
-              ¿Deseas crear una cuenta o iniciar sesión ahora?
+              Para publicar tu solicitud, primero necesitas crear una cuenta o iniciar sesión.
+              ¡Es rápido y fácil!
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-2">
