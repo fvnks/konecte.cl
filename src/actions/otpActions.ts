@@ -1,10 +1,13 @@
+
 // src/actions/otpActions.ts
 'use server';
 
 import { query } from '@/lib/db';
 import { z } from 'zod';
 import type { User, SendMessageToBotPayload } from '@/lib/types';
-import { randomBytes } from 'crypto'; // For more secure random generation
+// randomBytes can be kept if a more cryptographically secure OTP is desired later.
+// For a simple 4-digit numeric OTP, Math.random is often sufficient.
+// import { randomBytes } from 'crypto';
 
 const OTP_LENGTH = 4;
 const OTP_EXPIRATION_MINUTES = 5;
@@ -13,7 +16,6 @@ const OTP_EXPIRATION_MINUTES = 5;
  * Generates a random numeric OTP of a specified length.
  */
 function generateOtpCode(length: number = OTP_LENGTH): string {
-  // For a simple 4-digit numeric OTP, Math.random is usually sufficient.
   let otp = '';
   for (let i = 0; i < length; i++) {
     otp += Math.floor(Math.random() * 10).toString();
@@ -24,7 +26,7 @@ function generateOtpCode(length: number = OTP_LENGTH): string {
 /**
  * Sends the OTP via WhatsApp by calling the internal API endpoint
  * which then forwards the message to the external WhatsApp bot.
- * 
+ *
  * @param phoneNumber The user's phone number to send the OTP to.
  * @param otp The One-Time Password.
  * @param userName The user's name, for a personalized message.
@@ -32,7 +34,7 @@ function generateOtpCode(length: number = OTP_LENGTH): string {
  * @returns Promise resolving to an object indicating success or failure.
  */
 async function sendOtpViaWhatsApp(
-  phoneNumber: string, // This is the user's phone number (target for OTP)
+  phoneNumber: string,
   otp: string,
   userName: string,
   userId: string
@@ -41,28 +43,31 @@ async function sendOtpViaWhatsApp(
 
   const otpMessageText = `Hola ${userName}, tu código de verificación para Konecte es: ${otp}. Este código expira en ${OTP_EXPIRATION_MINUTES} minutos.`;
   
-  // This is the WhatsApp number of YOUR BOT that runs on Ubuntu.
-  // The /api/whatsapp-bot/send-message route will use this (or its internal env var for the webhook)
-  // to know where the message effectively originates from Konecte's perspective,
-  // but the actual sending to the *user* is determined by WHATSAPP_BOT_UBUNTU_WEBHOOK_URL
-  // and the targetUserWhatsAppNumber in the payload *that* webhook receives.
   const konecteBotNumber = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER || "+1234567890"; // Fallback if not set
 
   const payload: SendMessageToBotPayload = {
-    telefonoReceptorBot: konecteBotNumber, // Not strictly used by the final bot, but part of the API contract
+    telefonoReceptorBot: konecteBotNumber, // This is used by the API route to know which bot config (if multiple)
     text: otpMessageText,
     telefonoRemitenteUsuarioWeb: phoneNumber, // This is the USER'S phone number, to whom the bot will send the OTP.
     userId: userId,
   };
 
   try {
-    // We need the full URL if calling from a server action to an API route in the same app.
-    // Using NEXT_PUBLIC_BASE_URL or similar would be more robust.
-    // For now, assuming same origin or a correctly configured base URL.
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'; // Ensure this is set correctly
-    const apiEndpoint = `${baseUrl}/api/whatsapp-bot/send-message`;
+    const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!rawBaseUrl) {
+      console.error("[OTP_ACTION_ERROR] CRITICAL: NEXT_PUBLIC_APP_URL is not set. Cannot determine API endpoint URL. Please set this in your Vercel environment variables (e.g., https://yourdomain.com).");
+      return { success: false, message: "Error de configuración del servidor: URL de la aplicación no definida." };
+    }
+    
+    // Ensure baseUrl has a protocol. Default to https if none is present.
+    const ensuredBaseUrl = rawBaseUrl.startsWith('http://') || rawBaseUrl.startsWith('https://') 
+                           ? rawBaseUrl 
+                           : `https://${rawBaseUrl}`;
 
-    console.log(`[OTP_ACTION] Calling internal API endpoint: ${apiEndpoint} with payload:`, JSON.stringify(payload));
+    const apiEndpoint = `${ensuredBaseUrl}/api/whatsapp-bot/send-message`;
+
+    console.log(`[OTP_ACTION] Calling internal API endpoint for OTP: ${apiEndpoint}`);
+    console.log(`[OTP_ACTION] Payload for /api/whatsapp-bot/send-message:`, JSON.stringify(payload));
 
     const response = await fetch(apiEndpoint, {
       method: 'POST',
@@ -76,16 +81,19 @@ async function sendOtpViaWhatsApp(
 
     if (!response.ok) {
       console.error(`[OTP_ACTION_ERROR] Failed to send OTP via internal API. Status: ${response.status}. Response:`, responseData);
-      return { success: false, message: responseData.message || `Error al enviar OTP al servicio de mensajería (status: ${response.status}).` };
+      return { success: false, message: responseData.message || `Error al contactar el servicio de mensajería (estado: ${response.status}).` };
     }
 
     console.log(`[OTP_ACTION_INFO] OTP API call successful for ${phoneNumber}. API response:`, responseData);
-    // The API route's success message might be something like "Mensaje enviado al bot de Ubuntu para procesamiento."
-    // We can adapt the message if needed.
     return { success: true, message: responseData.message || "OTP en proceso de envío." };
 
   } catch (error: any) {
-    console.error(`[OTP_ACTION_ERROR] Exception while calling internal API for OTP send: ${error.message}`);
+     // Catching 'fetch failed' specifically
+    if (error.message && error.message.toLowerCase().includes('fetch failed')) {
+        console.error(`[OTP_ACTION_ERROR] Exception: Fetch failed. This usually means the server couldn't reach the API endpoint. Check network configuration and if the endpoint URL (logged above) is correct and accessible from the server. Error: ${error.message}`);
+        return { success: false, message: `No se pudo contactar el servicio de mensajería. Verifica la configuración del servidor y la red.` };
+    }
+    console.error(`[OTP_ACTION_ERROR] Exception while calling internal API for OTP send: ${error.message}`, error.stack); // Log stack for more detail
     return { success: false, message: `Excepción al contactar el servicio de mensajería: ${error.message}` };
   }
 }
@@ -112,10 +120,11 @@ export async function generateAndSendOtpAction(
       'UPDATE users SET phone_otp = ?, phone_otp_expires_at = ?, phone_verified = FALSE WHERE id = ?',
       [otp, expiresAt, userId]
     );
+    
+    const phoneNumberEnding = user.phone_number.length >= 4 ? user.phone_number.slice(-4) : user.phone_number;
 
     // Attempt to send OTP via WhatsApp (now calling the internal API)
     const sendResult = await sendOtpViaWhatsApp(user.phone_number, otp, user.name, user.id);
-    const phoneNumberEnding = user.phone_number.length >= 4 ? user.phone_number.slice(-4) : user.phone_number;
 
     if (!sendResult.success) {
       console.error(`[OTP_ACTION_ERROR] OTP stored for user ${userId}, but failed to send via API: ${sendResult.message}`);
@@ -128,7 +137,7 @@ export async function generateAndSendOtpAction(
 
     return {
         success: true,
-        message: 'Se está procesando el envío de un código OTP a tu número de teléfono.',
+        message: sendResult.message || 'Se está procesando el envío de un código OTP a tu número de teléfono.',
         phone_number_ending: phoneNumberEnding
     };
 
