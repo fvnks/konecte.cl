@@ -85,7 +85,7 @@ export interface PropertyListing {
   propertyType: PropertyType;
   category: ListingCategory;
   price: number;
-  currency: string;
+  currency: string; // Could be 'CLP' or 'UF'
   address: string;
   city: string;
   country: string;
@@ -388,33 +388,33 @@ export const propertyFormSchema = z.object({
   description: z.string().min(20, "La descripción debe tener al menos 20 caracteres."),
   propertyType: z.enum(["rent", "sale"], { required_error: "Debes seleccionar un tipo de propiedad (arriendo/venta)." }),
   category: z.enum(["apartment", "house", "condo", "land", "commercial", "other"], { required_error: "Debes seleccionar una categoría." }),
-  price: z.coerce.number().positive("El precio debe ser un número positivo."),
-  currency: z.string().min(3, "La moneda debe tener 3 caracteres (ej: CLP, USD).").max(3).toUpperCase(),
+  price: z.coerce.number({invalid_type_error: "El precio debe ser un número."}).positive("El precio debe ser un número positivo."),
+  currency: z.enum(["CLP", "UF"], { required_error: "La moneda es requerida." }),
   address: z.string().min(5, "La dirección es requerida."),
   city: z.string().min(2, "La ciudad es requerida."),
   country: z.string().min(2, "El país es requerido."),
   bedrooms: z.preprocess(
     (val) => (String(val).trim() === "" ? undefined : val),
-    z.coerce.number().int("Debe ser un número entero.").min(0, "El número de dormitorios no puede ser negativo.").default(0)
+    z.coerce.number({invalid_type_error: "Debe ser un número."}).int("Debe ser un número entero.").min(0, "No puede ser negativo.").default(0)
   ),
   bathrooms: z.preprocess(
     (val) => (String(val).trim() === "" ? undefined : val),
-    z.coerce.number().int("Debe ser un número entero.").min(0, "El número de baños no puede ser negativo.").default(0)
+    z.coerce.number({invalid_type_error: "Debe ser un número."}).int("Debe ser un número entero.").min(0, "No puede ser negativo.").default(0)
   ),
-  totalAreaSqMeters: z.coerce.number().positive("El área total (m²) debe ser un número positivo."),
+  totalAreaSqMeters: z.coerce.number({invalid_type_error: "Debe ser un número."}).positive("El área total (m²) debe ser un número positivo."),
   usefulAreaSqMeters: z.preprocess(
     (val) => (String(val).trim() === "" ? undefined : val),
-    z.coerce.number().positive("El área útil (m²) debe ser un número positivo.").optional().nullable() // nullable para permitir que sea explícitamente null si se borra y no se quiere un default
+    z.coerce.number({invalid_type_error: "Debe ser un número."}).positive("El área útil (m²) debe ser un número positivo.").optional().nullable()
   ),
   parkingSpaces: z.preprocess(
     (val) => (String(val).trim() === "" ? undefined : val),
-    z.coerce.number().int("Debe ser un número entero.").min(0, "El número de estacionamientos no puede ser negativo.").default(0)
+    z.coerce.number({invalid_type_error: "Debe ser un número."}).int("Debe ser un número entero.").min(0, "No puede ser negativo.").default(0)
   ),
   petsAllowed: z.boolean().default(false).optional(),
   furnished: z.boolean().default(false).optional(),
   commercialUseAllowed: z.boolean().default(false).optional(),
   hasStorage: z.boolean().default(false).optional(),
-  orientation: z.enum(orientationValues).optional().or(z.literal('')), // Allow empty string to signify 'none' or user hasn't picked
+  orientation: z.enum(orientationValues).optional().or(z.literal('')), 
   images: z.array(z.string().url("Cada imagen debe ser una URL válida.")).min(0).max(5, "Puedes subir un máximo de 5 imágenes.").optional().default([]),
   features: z.string().optional().describe("Características separadas por comas. Ejemplo: Piscina,Estacionamiento"),
 });

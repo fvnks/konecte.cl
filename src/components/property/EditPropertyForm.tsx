@@ -99,7 +99,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       bedrooms: property.bedrooms === 0 ? '' : property.bedrooms,
       bathrooms: property.bathrooms === 0 ? '' : property.bathrooms,
       totalAreaSqMeters: property.totalAreaSqMeters || 0,
-      usefulAreaSqMeters: property.usefulAreaSqMeters === 0 ? '' : property.usefulAreaSqMeters || undefined,
+      usefulAreaSqMeters: property.usefulAreaSqMeters === 0 ? '' : (property.usefulAreaSqMeters ?? undefined),
       parkingSpaces: property.parkingSpaces === 0 ? '' : property.parkingSpaces,
       petsAllowed: property.petsAllowed || false,
       furnished: property.furnished || false,
@@ -110,6 +110,9 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       features: property.features?.join(', ') || "",
     },
   });
+
+  const watchedPropertyType = form.watch("propertyType");
+  const watchedCategory = form.watch("category");
 
   useEffect(() => {
     setImagePreviews(property.images || []);
@@ -152,14 +155,28 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       const currentNewPreviews = imagePreviews.filter(url => url.startsWith('blob:'));
       form.setValue('images', [...updatedExistingUrls, ...currentNewPreviews], { shouldValidate: true, shouldDirty: true });
     } else {
-      const actualFileIndex = imagePreviews.slice(0, indexToRemove).filter(url => url.startsWith('blob:')).length;
-      setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== actualFileIndex));
+      // Calculate the correct index in imageFiles (only contains newly added files)
+      // This assumes imagePreviews contains existing URLs first, then blob URLs for new files.
+      // Count how many blob URLs are before the indexToRemove in imagePreviews.
+      let fileIndexToRemove = -1;
+      let blobUrlCount = 0;
+      for (let i = 0; i < indexToRemove; i++) {
+          if (imagePreviews[i].startsWith('blob:')) {
+              blobUrlCount++;
+          }
+      }
+      if (imagePreviews[indexToRemove].startsWith('blob:')) {
+          fileIndexToRemove = blobUrlCount;
+      }
+
+      if (fileIndexToRemove !== -1) {
+          setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== fileIndexToRemove));
+      }
       
       const newPreviews = [...imagePreviews];
       const removedUrl = newPreviews.splice(indexToRemove, 1)[0];
       if (removedUrl && removedUrl.startsWith('blob:')) URL.revokeObjectURL(removedUrl);
       setImagePreviews(newPreviews);
-      form.setValue('images', newPreviews, { shouldValidate: true, shouldDirty: true });
       form.setValue('images', newPreviews, { shouldValidate: true, shouldDirty: true });
     }
   };
@@ -224,6 +241,12 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
     };
   }, [imagePreviews]);
 
+  // Conditional rendering flags
+  const showPetsAllowed = watchedPropertyType === 'rent' && watchedCategory === 'apartment';
+  const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
+  const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
+  const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -235,7 +258,27 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <FormControl><Input type="number" placeholder="Ej: 85000000" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <FormControl><Input placeholder="Ej: CLP, UF, USD" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField
+            control={form.control}
+            name="currency"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Moneda</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value} defaultValue="CLP">
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona moneda" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="CLP">CLP (Peso Chileno)</SelectItem>
+                    <SelectItem value="UF">UF (Unidad de Fomento)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         
         <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl><AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting} /></FormControl> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
@@ -260,11 +303,14 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         <div className="space-y-4 pt-2">
             <FormLabel className="text-base font-medium">Otras Características</FormLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                <FormField control={form.control} name="petsAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Dog className="mr-2 h-5 w-5 text-primary"/>Se Aceptan Mascotas</FormLabel> </FormItem> )}/>
-                <FormField control={form.control} name="furnished" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Sofa className="mr-2 h-5 w-5 text-primary"/>Amoblado</FormLabel> </FormItem> )}/>
-                <FormField control={form.control} name="commercialUseAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Building className="mr-2 h-5 w-5 text-primary"/>Permite Uso Comercial</FormLabel> </FormItem> )}/>
-                <FormField control={form.control} name="hasStorage" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Warehouse className="mr-2 h-5 w-5 text-primary"/>Tiene Bodega</FormLabel> </FormItem> )}/>
+                {showPetsAllowed && <FormField control={form.control} name="petsAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Dog className="mr-2 h-5 w-5 text-primary"/>Se Aceptan Mascotas</FormLabel> </FormItem> )}/>}
+                {showFurnished && <FormField control={form.control} name="furnished" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Sofa className="mr-2 h-5 w-5 text-primary"/>Amoblado</FormLabel> </FormItem> )}/>}
+                {showCommercialUse && <FormField control={form.control} name="commercialUseAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Building className="mr-2 h-5 w-5 text-primary"/>Permite Uso Comercial</FormLabel> </FormItem> )}/>}
+                {showStorage && <FormField control={form.control} name="hasStorage" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Warehouse className="mr-2 h-5 w-5 text-primary"/>Tiene Bodega</FormLabel> </FormItem> )}/>}
             </div>
+             { !showPetsAllowed && !showFurnished && !showCommercialUse && !showStorage && watchedPropertyType && watchedCategory &&
+                <p className="text-sm text-muted-foreground italic">No hay características adicionales aplicables para el tipo y categoría de propiedad seleccionada.</p>
+            }
         </div>
         
         <FormField

@@ -93,11 +93,11 @@ export default function PropertyForm() {
       address: "",
       city: "",
       country: "Chile",
-      bedrooms: '', // Changed from 0 to ''
-      bathrooms: '', // Changed from 0 to ''
+      bedrooms: '', 
+      bathrooms: '', 
       totalAreaSqMeters: undefined,
       usefulAreaSqMeters: undefined,
-      parkingSpaces: '', // Changed from 0 to ''
+      parkingSpaces: '', 
       petsAllowed: false,
       furnished: false,
       commercialUseAllowed: false,
@@ -105,8 +105,15 @@ export default function PropertyForm() {
       orientation: "none",
       images: [],
       features: "",
+      // PropertyType y Category se inicializarán como undefined por defecto
+      // y el usuario deberá seleccionarlos.
+      propertyType: undefined, 
+      category: undefined,
     },
   });
+
+  const watchedPropertyType = form.watch("propertyType");
+  const watchedCategory = form.watch("category");
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -233,6 +240,13 @@ export default function PropertyForm() {
     );
   }
 
+  // Conditional rendering flags
+  const showPetsAllowed = watchedPropertyType === 'rent' && watchedCategory === 'apartment';
+  const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
+  const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
+  const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
+
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -244,7 +258,27 @@ export default function PropertyForm() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <FormControl><Input type="number" placeholder="Ej: 85000000" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <FormControl><Input placeholder="Ej: CLP, UF, USD" {...field} /></FormControl> <FormDescription>Código de 3 letras para la moneda.</FormDescription> <FormMessage /> </FormItem> )}/>
+          <FormField
+            control={form.control}
+            name="currency"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Moneda</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value} defaultValue="CLP">
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona moneda" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="CLP">CLP (Peso Chileno)</SelectItem>
+                    <SelectItem value="UF">UF (Unidad de Fomento)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         
         <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl><AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting || !loggedInUser} /></FormControl> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
@@ -269,11 +303,14 @@ export default function PropertyForm() {
         <div className="space-y-4 pt-2">
             <FormLabel className="text-base font-medium">Otras Características</FormLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                <FormField control={form.control} name="petsAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Dog className="mr-2 h-5 w-5 text-primary"/>Se Aceptan Mascotas</FormLabel> </FormItem> )}/>
-                <FormField control={form.control} name="furnished" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Sofa className="mr-2 h-5 w-5 text-primary"/>Amoblado</FormLabel> </FormItem> )}/>
-                <FormField control={form.control} name="commercialUseAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Building className="mr-2 h-5 w-5 text-primary"/>Permite Uso Comercial</FormLabel> </FormItem> )}/>
-                <FormField control={form.control} name="hasStorage" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Warehouse className="mr-2 h-5 w-5 text-primary"/>Tiene Bodega</FormLabel> </FormItem> )}/>
+                {showPetsAllowed && <FormField control={form.control} name="petsAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Dog className="mr-2 h-5 w-5 text-primary"/>Se Aceptan Mascotas</FormLabel> </FormItem> )}/>}
+                {showFurnished && <FormField control={form.control} name="furnished" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Sofa className="mr-2 h-5 w-5 text-primary"/>Amoblado</FormLabel> </FormItem> )}/>}
+                {showCommercialUse && <FormField control={form.control} name="commercialUseAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Building className="mr-2 h-5 w-5 text-primary"/>Permite Uso Comercial</FormLabel> </FormItem> )}/>}
+                {showStorage && <FormField control={form.control} name="hasStorage" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Warehouse className="mr-2 h-5 w-5 text-primary"/>Tiene Bodega</FormLabel> </FormItem> )}/>}
             </div>
+             { !showPetsAllowed && !showFurnished && !showCommercialUse && !showStorage && watchedPropertyType && watchedCategory &&
+                <p className="text-sm text-muted-foreground italic">No hay características adicionales aplicables para el tipo y categoría de propiedad seleccionada.</p>
+            }
         </div>
         
         <FormField
@@ -319,9 +356,9 @@ export default function PropertyForm() {
           {isUploading ? 'Subiendo imágenes...' : 'Publicar Propiedad'}
         </Button>
         {!isCheckingAuth && !loggedInUser && (
-          <p className="text-sm text-destructive text-center mt-2">
+           <p className="text-sm text-destructive text-center mt-2">
             <UserCircle className="inline-block h-4 w-4 mr-1 align-text-bottom" />
-            Debes <Link href="/auth/signin" className="underline hover:text-destructive/80">iniciar sesión</Link> o <Link href="/auth/signup" className="underline hover:text-destructive/80">registrarte</Link> para publicar.
+            Debes <Link href={`/auth/signin?redirect=/properties/submit`} className="underline hover:text-destructive/80">iniciar sesión</Link> o <Link href="/auth/signup" className="underline hover:text-destructive/80">registrarte</Link> para publicar.
           </p>
         )}
       </form>
