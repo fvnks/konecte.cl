@@ -20,6 +20,7 @@ export async function closeDbPool(): Promise<void> {
 }
 
 function createPool(): Pool {
+  console.time("[DB_CREATE_POOL_TIME]");
   const requiredEnvVars = ['MYSQL_HOST', 'MYSQL_PORT', 'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE'];
   for (const varName of requiredEnvVars) {
     if (!process.env[varName]) {
@@ -46,11 +47,9 @@ function createPool(): Pool {
     connectionLimit: process.env.MYSQL_CONNECTION_LIMIT ? parseInt(process.env.MYSQL_CONNECTION_LIMIT, 10) : 10,
     queueLimit: 0, // No limit for queued connections
     connectTimeout: process.env.MYSQL_CONNECT_TIMEOUT ? parseInt(process.env.MYSQL_CONNECT_TIMEOUT, 10) : 10000, // 10 seconds default
-    // enableKeepAlive: true, // Consider if persistent issues, helps keep connections from being idled out by firewalls
-    // keepAliveInitialDelay: 0,
   };
 
-  console.log("[DB_INFO] Creating new MySQL pool with config:", {
+  console.log("[DB_INFO] Attempting to create new MySQL pool with config:", {
     host: connectionConfig.host,
     port: connectionConfig.port,
     user: connectionConfig.user,
@@ -62,25 +61,30 @@ function createPool(): Pool {
 
   try {
     const newPool = mysql.createPool(connectionConfig);
+    console.log("[DB_INFO] mysql.createPool called. Attempting test connection...");
     // Test the pool immediately (non-blocking for the return of createPool)
     newPool.getConnection()
       .then(conn => {
-        console.log("[DB_INFO] Successfully obtained a test connection from the new pool.");
+        console.log(`[DB_INFO] Successfully obtained a test connection (ID: ${conn.threadId}) from the new pool.`);
         return conn.ping().then(() => {
-          console.log("[DB_INFO] Test connection ping successful.");
+          console.log(`[DB_INFO] Test connection (ID: ${conn.threadId}) ping successful.`);
           conn.release();
+          console.timeEnd("[DB_CREATE_POOL_TIME]");
         }).catch(pingErr => {
-            console.error("[DB_ERROR] Test connection ping FAILED:", pingErr.message);
+            console.error(`[DB_ERROR] Test connection (ID: ${conn.threadId}) ping FAILED:`, pingErr.message);
             conn.release(); // Still release if ping fails
+            console.timeEnd("[DB_CREATE_POOL_TIME]");
         });
       })
       .catch(err => {
         console.error("[DB_ERROR] Error establishing an initial test connection from the new pool:", err.message);
+        console.timeEnd("[DB_CREATE_POOL_TIME]");
         // Consider if pool should be marked as unhealthy or retried
       });
     return newPool;
   } catch (error: any) {
     console.error("[DB_FATAL] Fatal error during mysql.createPool:", error.message, error.stack);
+    console.timeEnd("[DB_CREATE_POOL_TIME]");
     throw error; // Re-throw if createPool itself fails
   }
 }
@@ -89,54 +93,58 @@ export function getDbPool(): Pool {
   if (!pool) {
     console.log("[DB_INFO] Pool does not exist or was closed. Creating a new one.");
     pool = createPool();
+  } else {
+    // Optional: Log when an existing pool is being reused
+    // console.log("[DB_INFO] Reusing existing MySQL pool.");
   }
   return pool;
 }
 
 export async function query(sql: string, params?: any[]): Promise<any> {
+  const queryId = Math.random().toString(36).substring(2, 7);
+  console.log(`[DB_QUERY_INIT-${queryId}] Attempting to get pool.`);
   const currentPool = getDbPool(); // Ensures pool is initialized if not already
   let connection: PoolConnection | undefined;
+  console.log(`[DB_QUERY_POOL_ACQUIRED-${queryId}] Pool acquired.`);
 
   try {
+    console.time(`[DB_GET_CONNECTION_TIME-${queryId}]`);
+    console.log(`[DB_QUERY_CONN_ATTEMPT-${queryId}] Attempting to get connection...`);
     connection = await currentPool.getConnection();
-    // console.log(`[DB_QUERY_START] Executing SQL (Conn ID: ${connection.threadId}): ${sql.substring(0, 150)}...`); // Log start
+    console.timeEnd(`[DB_GET_CONNECTION_TIME-${queryId}]`);
+    console.log(`[DB_QUERY_CONN_SUCCESS-${queryId}] Connection (ID: ${connection.threadId}) acquired.`);
+
+    console.log(`[DB_QUERY_EXEC_START-${queryId}] Executing SQL (Conn ID: ${connection.threadId}): ${sql.substring(0, 150)}...`);
+    if (params) console.log(`[DB_QUERY_EXEC_PARAMS-${queryId}] Params:`, JSON.stringify(params).substring(0,100));
+    console.time(`[DB_QUERY_EXEC_TIME-${queryId}]`);
     const [rows] = await connection.execute(sql, params);
-    // console.log(`[DB_QUERY_SUCCESS] SQL executed (Conn ID: ${connection.threadId}).`);
+    console.timeEnd(`[DB_QUERY_EXEC_TIME-${queryId}]`);
+    console.log(`[DB_QUERY_EXEC_SUCCESS-${queryId}] SQL executed (Conn ID: ${connection.threadId}). Rows: ${Array.isArray(rows) ? rows.length : 'N/A'}`);
     return rows;
   } catch (error: any) {
-    const errorMessage = `Error executing SQL query: ${error.message} (Code: ${error.code})`;
-    console.error(`[DB_QUERY_ERROR] ${errorMessage}`);
-    console.error(`[DB_QUERY_ERROR] Failed SQL: ${sql}`);
+    const errorMessage = `Error executing SQL query: ${error.message} (Code: ${error.code}, SQLState: ${error.sqlState})`;
+    console.error(`[DB_QUERY_ERROR-${queryId}] ${errorMessage}`);
+    console.error(`[DB_QUERY_ERROR_DETAIL-${queryId}] SQL: ${sql}`);
     if (params && params.length > 0) {
       try {
-        console.error(`[DB_QUERY_ERROR] Failed Params:`, JSON.stringify(params));
+        console.error(`[DB_QUERY_ERROR_PARAMS-${queryId}] Params:`, JSON.stringify(params));
       } catch (e) {
-        console.error(`[DB_QUERY_ERROR] Failed Params (raw):`, params);
+        console.error(`[DB_QUERY_ERROR_PARAMS_RAW-${queryId}] Params (raw):`, params);
       }
     }
-    if (error.code === 'PROTOCOL_CONNECTION_LOST' || error.message.toLowerCase().includes("connection closed")) {
-      console.error("[DB_QUERY_ERROR] 'PROTOCOL_CONNECTION_LOST' or 'Connection closed'. This indicates the connection was terminated. Possibilities: MySQL 'wait_timeout' reached, network issue, or DB restart. Pool should attempt to re-establish.");
-      // Attempt to close the potentially problematic pool so it's recreated on next call.
-      // This is an aggressive strategy for serverless environments.
-      await closeDbPool();
+    if (connection) {
+        console.error(`[DB_QUERY_ERROR_CONN_INFO-${queryId}] Connection Thread ID at error: ${connection.threadId}`);
+    }
+    if (error.code === 'PROTOCOL_CONNECTION_LOST' || error.message.toLowerCase().includes("connection closed") || error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') {
+      console.error(`[DB_QUERY_ERROR_CRITICAL_CONN-${queryId}] Critical connection error: ${error.code}. Pool may be closed and recreated on next call.`);
+      await closeDbPool(); // Close the current (potentially problematic) pool
     }
     throw new Error(errorMessage); // Re-throw the error to be handled by the caller
   } finally {
     if (connection) {
-      // console.log(`[DB_QUERY_FINISH] Releasing connection (Conn ID: ${connection.threadId})`);
+      console.log(`[DB_QUERY_RELEASE-${queryId}] Releasing connection (Conn ID: ${connection.threadId})`);
       connection.release();
     }
   }
 }
-
-// Optional: Add a specific handler if your app needs to gracefully shut down.
-// In Vercel, this is less common as functions are stateless, but good for local dev.
-// process.on('SIGINT', async () => {
-//   await closeDbPool();
-//   process.exit(0);
-// });
-// process.on('SIGTERM', async () => {
-//   await closeDbPool();
-//   process.exit(0);
-// });
     

@@ -12,6 +12,7 @@ const DEFAULT_ANNOUNCEMENT_BG_COLOR = '#FFB74D'; // Accent
 const DEFAULT_ANNOUNCEMENT_TEXT_COLOR = '#18181b'; // Dark foreground
 
 export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' | 'updated_at'>): Promise<{ success: boolean; message?: string }> {
+  console.log("[SiteSettingsAction_Save_Start] Attempting to save site settings:", settings);
   try {
     const { 
         siteTitle, 
@@ -59,6 +60,7 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
         announcement_bar_text_color = VALUES(announcement_bar_text_color),
         updated_at = CURRENT_TIMESTAMP
     `;
+    console.time("[SiteSettingsAction_Save_QueryTime]");
     await query(sql, [
         siteTitle || DEFAULT_SITE_TITLE, 
         logoUrl || null,
@@ -74,20 +76,24 @@ export async function saveSiteSettingsAction(settings: Omit<SiteSettings, 'id' |
         announcement_bar_bg_color || DEFAULT_ANNOUNCEMENT_BG_COLOR,
         announcement_bar_text_color || DEFAULT_ANNOUNCEMENT_TEXT_COLOR
     ]);
+    console.timeEnd("[SiteSettingsAction_Save_QueryTime]");
     
     revalidatePath('/'); 
     revalidatePath('/admin/appearance');
-    
+    console.log("[SiteSettingsAction_Save_Success] Settings saved and paths revalidated.");
     return { success: true, message: "Configuración del sitio guardada exitosamente." };
   } catch (error: any) {
-    console.error("Error al guardar la configuración del sitio en la BD:", error);
+    console.error("[SiteSettingsAction_Save_Error] Error al guardar la configuración del sitio en la BD:", error.message, error.stack);
     return { success: false, message: `Error al guardar la configuración: ${error.message}` };
   }
 }
 
 export async function getSiteSettingsAction(): Promise<SiteSettings> {
+  console.log("[SiteSettingsAction_Get_Start] Attempting to fetch site settings.");
+  console.time("[SiteSettingsAction_Get_TotalTime]");
   let dbSettings: any = null;
   try {
+    console.time("[SiteSettingsAction_Get_QueryTime]");
     const result = await query(`
         SELECT 
             id, site_title as siteTitle, logo_url as logoUrl, 
@@ -98,17 +104,20 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
             updated_at as updatedAt 
         FROM site_settings WHERE id = 1
     `);
+    console.timeEnd("[SiteSettingsAction_Get_QueryTime]");
     if (result && result.length > 0) {
       dbSettings = result[0];
+      console.log("[SiteSettingsAction_Get_DbResult] Successfully fetched settings from DB:", dbSettings);
+    } else {
+      console.log("[SiteSettingsAction_Get_DbResult] No settings found in DB, will use defaults.");
     }
-  } catch (error) {
-    console.error("Error al obtener la configuración del sitio desde la BD:", error);
+  } catch (error: any) {
+    console.error("[SiteSettingsAction_Get_Error] Error al obtener la configuración del sitio desde la BD:", error.message, error.stack);
     // If the query fails (e.g., column not found), dbSettings will remain null
     // and we'll fall back to defaults.
   }
 
   let parsedSectionsOrder: LandingSectionKey[] = DEFAULT_SECTIONS_ORDER;
-  // Use validKeys from types.ts or define locally if types.ts is not easily accessible here
   const validKeys: LandingSectionKey[] = ["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"];
   if (dbSettings && dbSettings.landing_sections_order) {
     try {
@@ -116,14 +125,14 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
       if (Array.isArray(parsed) && parsed.every(s => validKeys.includes(s as LandingSectionKey)) && parsed.length > 0) {
         parsedSectionsOrder = parsed as LandingSectionKey[];
       } else {
-        console.warn("landing_sections_order desde BD es inválido o vacío, usando orden por defecto. Valor:", dbSettings.landing_sections_order);
+        console.warn("[SiteSettingsAction_Get_ParseWarn] landing_sections_order desde BD es inválido o vacío, usando orden por defecto. Valor:", dbSettings.landing_sections_order);
       }
-    } catch (e) {
-      console.error("Error al parsear landing_sections_order desde la BD, usando orden por defecto:", e, "Valor:", dbSettings.landing_sections_order);
+    } catch (e: any) {
+      console.error("[SiteSettingsAction_Get_ParseError] Error al parsear landing_sections_order desde la BD, usando orden por defecto:", e, "Valor:", dbSettings.landing_sections_order);
     }
   }
 
-  return {
+  const finalSettings = {
     id: dbSettings?.id || 1,
     siteTitle: dbSettings?.siteTitle === null || dbSettings?.siteTitle === undefined ? DEFAULT_SITE_TITLE : dbSettings.siteTitle,
     logoUrl: dbSettings?.logoUrl === null || dbSettings?.logoUrl === undefined ? null : dbSettings.logoUrl,
@@ -140,6 +149,9 @@ export async function getSiteSettingsAction(): Promise<SiteSettings> {
     announcement_bar_text_color: dbSettings?.announcement_bar_text_color === null || dbSettings?.announcement_bar_text_color === undefined ? DEFAULT_ANNOUNCEMENT_TEXT_COLOR : dbSettings.announcement_bar_text_color,
     updated_at: dbSettings?.updatedAt ? new Date(dbSettings.updatedAt).toISOString() : undefined,
   };
+  console.log("[SiteSettingsAction_Get_Final] Final settings object:", finalSettings);
+  console.timeEnd("[SiteSettingsAction_Get_TotalTime]");
+  return finalSettings;
 }
 
 // Helper to get a specific setting, falling back to default if not configured
@@ -154,8 +166,3 @@ export async function getSpecificSiteSetting<K extends keyof SiteSettings>(
   }
   return defaultValue;
 }
-
-// Example of use:
-// const shouldShowPlans = await getSpecificSiteSetting('show_featured_plans_section', true);
-// console.log("Should show plans section:", shouldShowPlans);
-
