@@ -1,7 +1,7 @@
 // src/components/property/ImageDropzoneSortableCreate.tsx
 'use client';
 
-import { useCallback, useState, useEffect, useId, useRef } from 'react'; // Added useRef
+import { useCallback, useState, useEffect, useId, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { ReactSortable } from 'react-sortablejs';
 import { Button } from '@/components/ui/button';
@@ -15,12 +15,12 @@ const MAX_FILE_SIZE_MB = 5;
 export interface SortableImageItem {
   id: string;
   file: File;
-  preview: string; // This will be a blob:URL
+  url: string; // This will be a blob:URL
 }
 
 interface ImageDropzoneSortableCreateProps {
   onImagesChange: (filesInOrder: File[]) => void;
-  initialImages?: File[]; // Should ideally be empty for "create" but handled if passed
+  initialImages?: File[]; 
   maxImages?: number;
 }
 
@@ -34,7 +34,6 @@ export default function ImageDropzoneSortableCreate({
   const dropzoneId = useId();
   const createdBlobUrlsRef = useRef<string[]>([]);
 
-  // Effect to handle initialImages (if any) and setup unmount cleanup
   useEffect(() => {
     if (initialImages.length > 0 && images.length === 0) {
       const newInitialSortableImages: SortableImageItem[] = [];
@@ -47,7 +46,7 @@ export default function ImageDropzoneSortableCreate({
           newInitialSortableImages.push({
             id: `initial-${file.name}-${index}-${Date.now()}`,
             file,
-            preview: previewUrl,
+            url: previewUrl,
           });
         }
       });
@@ -55,23 +54,21 @@ export default function ImageDropzoneSortableCreate({
       createdBlobUrlsRef.current = [...createdBlobUrlsRef.current, ...newBlobUrls];
     }
 
-    // Unmount cleanup: revoke all blob URLs created by this instance
     return () => {
       createdBlobUrlsRef.current.forEach(url => {
-        if (url.startsWith('blob:')) { // Ensure it's a blob URL we created
+        if (url.startsWith('blob:')) {
           URL.revokeObjectURL(url);
         }
       });
-      createdBlobUrlsRef.current = []; // Clear the ref
+      createdBlobUrlsRef.current = [];
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialImages, maxImages]); // Rerun if initialImages or maxImages changes (though initialImages should be stable)
+  }, [initialImages, maxImages]); 
 
-  // Effect to notify parent form of changes to the file list
   useEffect(() => {
     onImagesChange(images.map(img => img.file));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [images]); // onImagesChange is memoized by PropertyForm usually
+  }, [images]); 
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     const currentImageCount = images.length;
@@ -108,7 +105,7 @@ export default function ImageDropzoneSortableCreate({
       newSortableImages.push({
         id: `${file.name}-${Date.now()}-${Math.random()}`,
         file,
-        preview: previewUrl
+        url: previewUrl
       });
     });
 
@@ -121,9 +118,9 @@ export default function ImageDropzoneSortableCreate({
   const removeImage = (idToRemove: string) => {
     setImages(prevImages => {
       const imageToRemove = prevImages.find(img => img.id === idToRemove);
-      if (imageToRemove && imageToRemove.preview.startsWith('blob:')) {
-        URL.revokeObjectURL(imageToRemove.preview);
-        createdBlobUrlsRef.current = createdBlobUrlsRef.current.filter(url => url !== imageToRemove.preview);
+      if (imageToRemove && imageToRemove.url.startsWith('blob:')) {
+        URL.revokeObjectURL(imageToRemove.url);
+        createdBlobUrlsRef.current = createdBlobUrlsRef.current.filter(url => url !== imageToRemove.url);
       }
       return prevImages.filter(img => img.id !== idToRemove);
     });
@@ -181,14 +178,17 @@ export default function ImageDropzoneSortableCreate({
           {images.map((img, index) => (
             <div
               key={img.id}
+              data-id={img.id} // react-sortablejs uses data-id internally
               className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100 cursor-grab active:cursor-grabbing"
             >
-              <img
-                src={img.preview}
-                alt={`Previsualización ${img.file.name}`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: 'rgba(0,0,0,0.05)' }}
-                data-ai-hint="propiedad interior"
-              />
+              {img.url && (
+                <img
+                  src={img.url}
+                  alt={`Previsualización ${img.file.name}`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: 'rgba(0,0,0,0.05)' }}
+                  data-ai-hint="propiedad interior"
+                />
+              )}
               <Button
                 type="button"
                 variant="destructive"

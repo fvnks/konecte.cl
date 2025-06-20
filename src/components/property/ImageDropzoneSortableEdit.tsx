@@ -1,7 +1,7 @@
 // src/components/property/ImageDropzoneSortableEdit.tsx
 'use client';
 
-import { useCallback, useState, useEffect, useId, useRef } from 'react'; // Added useRef
+import { useCallback, useState, useEffect, useId, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { ReactSortable } from 'react-sortablejs';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,10 @@ const MAX_FILE_SIZE_MB = 5;
 
 export interface ManagedImageForEdit {
   id: string;
-  url: string; // Can be http(s) URL for existing, or blob:URL for new
-  file?: File; // Only for new files
+  url: string; 
+  file?: File; 
   isExisting: boolean;
-  originalUrl?: string; // Store original http(s) URL for existing images
+  originalUrl?: string; 
 }
 
 interface ImageDropzoneSortableEditProps {
@@ -34,28 +34,24 @@ export default function ImageDropzoneSortableEdit({
   const [managedImages, setManagedImages] = useState<ManagedImageForEdit[]>([]);
   const { toast } = useToast();
   const dropzoneId = useId();
-  const createdBlobUrlsRef = useRef<string[]>([]); // Tracks only blob URLs created by this instance
+  const createdBlobUrlsRef = useRef<string[]>([]); 
 
   useEffect(() => {
-    // Initialize with existing images
     const initialProcessedImages = initialImageUrls.map((url, index) => ({
-      id: `existing-${url.slice(-10)}-${index}-${Date.now()}`, // More unique ID
+      id: `existing-${url.slice(-10)}-${index}-${Date.now()}`,
       url: url,
       isExisting: true,
       originalUrl: url,
     }));
     setManagedImages(initialProcessedImages);
-    // No blob URLs created from initialImageUrls, so createdBlobUrlsRef remains empty here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialImageUrls]); // Rerun only if initialImageUrls fundamentally changes
+  }, [initialImageUrls]); 
 
-  // Effect to notify parent form of changes
   useEffect(() => {
     onManagedImagesChange(managedImages);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [managedImages]); // onManagedImagesChange is memoized usually
+  }, [managedImages]); 
 
-  // Unmount cleanup for blob URLs
   useEffect(() => {
     return () => {
       createdBlobUrlsRef.current.forEach(url => {
@@ -65,7 +61,7 @@ export default function ImageDropzoneSortableEdit({
       });
       createdBlobUrlsRef.current = [];
     };
-  }, []); // Empty dependency array for unmount only
+  }, []); 
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     const currentImageCount = managedImages.length;
@@ -99,7 +95,7 @@ export default function ImageDropzoneSortableEdit({
       newImagesToAdd.push({
         id: `${file.name}-${Date.now()}-${Math.random()}`,
         file,
-        url: previewUrl, // This is the blob:URL
+        url: previewUrl, 
         isExisting: false,
       });
     });
@@ -165,22 +161,25 @@ export default function ImageDropzoneSortableEdit({
       {managedImages.length > 0 && (
         <ReactSortable
           list={managedImages}
-          setList={onSortEnd} // Use the updated handler
+          setList={onSortEnd}
           tag="div"
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 py-2"
           animation={150}
         >
           {managedImages.map((img, index) => (
             <div
-              key={img.id} // Ensure key is stable and unique
+              key={img.id} 
+              data-id={img.id}
               className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100 cursor-grab active:cursor-grabbing"
             >
-              <img
-                src={img.url} // This will be blob URL for new, http URL for existing
-                alt={`Previsualización ${img.id}`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: 'rgba(0,0,0,0.05)' }}
-                data-ai-hint="propiedad interior"
-              />
+              {img.url && (
+                <img
+                  src={img.url} 
+                  alt={`Previsualización ${img.id}`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: 'rgba(0,0,0,0.05)' }}
+                  data-ai-hint="propiedad interior"
+                />
+              )}
               <Button
                 type="button"
                 variant="destructive"
