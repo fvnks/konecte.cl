@@ -20,11 +20,21 @@ import { useToast } from "@/hooks/use-toast";
 import { submitRequestAction } from "@/actions/requestActions";
 import type { PropertyType, ListingCategory, User as StoredUser, RequestFormValues } from "@/lib/types";
 import { requestFormSchema } from "@/lib/types";
-import { Loader2, UserCircle, Handshake, LogIn, UserPlus } from "lucide-react";
+import { Loader2, UserCircle, Handshake, LogIn, UserPlus, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-// AlertDialog ya no es necesario aquí
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -46,7 +56,7 @@ export default function RequestForm() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isBroker, setIsBroker] = useState(false);
-  // const [showAuthAlert, setShowAuthAlert] = useState(false); // Ya no se necesita
+  const [showAuthAlert, setShowAuthAlert] = useState(false);
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -82,8 +92,7 @@ export default function RequestForm() {
 
   async function onSubmit(values: RequestFormValues) {
      if (!loggedInUser || !loggedInUser.id) {
-      // setShowAuthAlert(true); // Ya no se usa
-      toast({ title: "Acción Requerida", description: "Debes iniciar sesión para publicar una solicitud.", variant: "warning"});
+      setShowAuthAlert(true);
       return;
     }
 
@@ -356,12 +365,39 @@ export default function RequestForm() {
             />
           )}
           
-          <Button type="submit" className="w-full md:w-auto" disabled={!loggedInUser || form.formState.isSubmitting || isCheckingAuth}>
+          <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth}>
             {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Publicar Solicitud
           </Button>
         </form>
       </Form>
+
+      <AlertDialog open={showAuthAlert} onOpenChange={setShowAuthAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-6 w-6 text-amber-500" />
+              Acción Requerida
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Para publicar una solicitud, primero debes iniciar sesión o crear una cuenta en PropSpot. ¿Qué te gustaría hacer?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button variant="outline" asChild onClick={() => setShowAuthAlert(false)}>
+              <Link href="/auth/signup" className="flex items-center gap-1.5">
+                <UserPlus className="h-4 w-4" /> Registrarme
+              </Link>
+            </Button>
+            <AlertDialogAction asChild onClick={() => setShowAuthAlert(false)}>
+              <Link href="/auth/signin" className="flex items-center gap-1.5">
+                <LogIn className="h-4 w-4" /> Iniciar Sesión
+              </Link>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
