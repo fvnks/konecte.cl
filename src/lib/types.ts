@@ -91,7 +91,7 @@ export interface PropertyListing {
   country: string;
   bedrooms: number;
   bathrooms: number;
-  totalAreaSqMeters: number; // Renamed from areaSqMeters
+  totalAreaSqMeters: number;
   usefulAreaSqMeters?: number | null;
   parkingSpaces?: number;
   petsAllowed?: boolean;
@@ -188,7 +188,7 @@ export interface SiteSettings {
   show_featured_listings_section?: boolean;
   show_ai_matching_section?: boolean;
   show_google_sheet_section?: boolean;
-  show_featured_plans_section?: boolean; // Nueva propiedad
+  show_featured_plans_section?: boolean; 
   landing_sections_order?: LandingSectionKey[] | null;
   announcement_bar_text?: string | null;
   announcement_bar_link_url?: string | null;
@@ -393,16 +393,28 @@ export const propertyFormSchema = z.object({
   address: z.string().min(5, "La dirección es requerida."),
   city: z.string().min(2, "La ciudad es requerida."),
   country: z.string().min(2, "El país es requerido."),
-  bedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de dormitorios no puede ser negativo."),
-  bathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de baños no puede ser negativo."),
+  bedrooms: z.preprocess(
+    (val) => (String(val).trim() === "" ? undefined : val),
+    z.coerce.number().int("Debe ser un número entero.").min(0, "El número de dormitorios no puede ser negativo.").default(0)
+  ),
+  bathrooms: z.preprocess(
+    (val) => (String(val).trim() === "" ? undefined : val),
+    z.coerce.number().int("Debe ser un número entero.").min(0, "El número de baños no puede ser negativo.").default(0)
+  ),
   totalAreaSqMeters: z.coerce.number().positive("El área total (m²) debe ser un número positivo."),
-  usefulAreaSqMeters: z.coerce.number().positive("El área útil (m²) debe ser un número positivo.").optional().or(z.literal('')),
-  parkingSpaces: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de estacionamientos no puede ser negativo.").optional().default(0),
+  usefulAreaSqMeters: z.preprocess(
+    (val) => (String(val).trim() === "" ? undefined : val),
+    z.coerce.number().positive("El área útil (m²) debe ser un número positivo.").optional().nullable() // nullable para permitir que sea explícitamente null si se borra y no se quiere un default
+  ),
+  parkingSpaces: z.preprocess(
+    (val) => (String(val).trim() === "" ? undefined : val),
+    z.coerce.number().int("Debe ser un número entero.").min(0, "El número de estacionamientos no puede ser negativo.").default(0)
+  ),
   petsAllowed: z.boolean().default(false).optional(),
   furnished: z.boolean().default(false).optional(),
   commercialUseAllowed: z.boolean().default(false).optional(),
   hasStorage: z.boolean().default(false).optional(),
-  orientation: z.enum(orientationValues).optional().or(z.literal('')),
+  orientation: z.enum(orientationValues).optional().or(z.literal('')), // Allow empty string to signify 'none' or user hasn't picked
   images: z.array(z.string().url("Cada imagen debe ser una URL válida.")).min(0).max(5, "Puedes subir un máximo de 5 imágenes.").optional().default([]),
   features: z.string().optional().describe("Características separadas por comas. Ejemplo: Piscina,Estacionamiento"),
 });
