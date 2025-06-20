@@ -90,7 +90,7 @@ CREATE TABLE users (
 
     -- Campos Comunes Opcionales
     phone_number VARCHAR(50) DEFAULT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.',
-    rut_tin VARCHAR(20) DEFAULT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido para Corredor/Inmobiliaria.',
+    rut_tin VARCHAR(20) DEFAULT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido por la aplicación.',
 
     -- Campos Específicos de Corredor/Inmobiliaria
     company_name VARCHAR(255) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Nombre de la empresa',

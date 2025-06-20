@@ -27,8 +27,8 @@ const defaultTexts = {
   auth_signup_page_description: "Únete para listar, encontrar y discutir propiedades.",
   auth_signup_name_label: "Nombre Completo *",
   auth_signup_email_label: "Correo Electrónico *",
-  auth_signup_rut_label: "RUT (Empresa o Persona)",
-  auth_signup_phone_label: "Teléfono de Contacto o WhatsApp *",
+  auth_signup_rut_label: "RUT (Empresa o Persona) *", // Actualizado
+  auth_signup_phone_label: "Teléfono de Contacto o WhatsApp *", // Ya tiene *
   auth_signup_password_label: "Contraseña *",
   auth_signup_confirm_password_label: "Confirmar Contraseña *",
   auth_signup_terms_label_part1: "Declaro conocer y aceptar los",
@@ -61,9 +61,18 @@ export default function SignUpStep2Page() {
     async function fetchTexts() {
       try {
         const fetchedTexts = await getEditableTextsByGroupAction('auth_signup');
-        setTexts(prev => ({ ...prev, ...fetchedTexts }));
+        // Asegurarse que las etiquetas de RUT y teléfono reflejen obligatoriedad si el texto de la DB no lo hace
+        const updatedDefaults = { ...defaultTexts };
+        if (fetchedTexts.auth_signup_rut_label && !fetchedTexts.auth_signup_rut_label.endsWith('*')) {
+            updatedDefaults.auth_signup_rut_label = fetchedTexts.auth_signup_rut_label.trim() + ' *';
+        }
+        if (fetchedTexts.auth_signup_phone_label && !fetchedTexts.auth_signup_phone_label.endsWith('*')) {
+            updatedDefaults.auth_signup_phone_label = fetchedTexts.auth_signup_phone_label.trim() + ' *';
+        }
+        setTexts(prev => ({ ...updatedDefaults, ...fetchedTexts }));
       } catch (error) {
         console.error("Error fetching editable texts for signup page:", error);
+        setTexts(defaultTexts); // Fallback to hardcoded defaults on error
       } finally {
         setIsLoadingTexts(false);
       }
@@ -164,10 +173,10 @@ export default function SignUpStep2Page() {
             <form onSubmit={form.handleSubmit(onSubmit)}>
               <CardContent className="space-y-5 px-0 sm:px-2">
                 {/* Common Fields */}
-                <FormField control={form.control} name="name" render={({ field }) => (<FormItem> <FormLabel>{accountTypeParam === 'broker' ? 'Nombre del Representante *' : texts.auth_signup_name_label}</FormLabel> <FormControl><Input type="text" placeholder={accountTypeParam === 'broker' ? 'Ej: Ana Corredora' : 'Ej: Juan Pérez'} {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="name" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_name_label}</FormLabel> <FormControl><Input type="text" placeholder={accountTypeParam === 'broker' ? 'Ej: Ana Corredora' : 'Ej: Juan Pérez'} {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="email" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_email_label}</FormLabel> <FormControl><Input type="email" placeholder="tu@ejemplo.com" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="phone_number" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_phone_label}</FormLabel> <FormControl><Input type="tel" placeholder="Ej: +56 9 1234 5678" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                <FormField control={form.control} name="rut_tin" render={({ field }) => (<FormItem> <FormLabel>{accountTypeParam === 'broker' ? 'RUT (Empresa o Personal del Corredor) *' : 'RUT (Opcional)'}</FormLabel> <FormControl><Input type="text" placeholder="Ej: 76.123.456-K o 12.345.678-9" {...field} /></FormControl> <ShadFormDescription className="text-xs">{accountTypeParam === 'broker' ? 'El RUT es necesario para corredores e inmobiliarias.' : 'Formato: XX.XXX.XXX-X o XXXXXXXX-X'}</ShadFormDescription> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="rut_tin" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_rut_label}</FormLabel> <FormControl><Input type="text" placeholder="Ej: 76.123.456-K o 12.345.678-9" {...field} /></FormControl> <ShadFormDescription className="text-xs">Formato: XX.XXX.XXX-X o XXXXXXXX-X</ShadFormDescription> <FormMessage /> </FormItem> )}/>
 
                 {/* Broker/Inmobiliaria Specific */}
                 {accountTypeParam === 'broker' && (

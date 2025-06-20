@@ -80,9 +80,8 @@ const SQL_STATEMENTS: string[] = [
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    phone_number VARCHAR(50) DEFAULT NULL COMMENT 'Teléfono de contacto general.',
-    rut_tin VARCHAR(20) DEFAULT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido para Corredor/Inmobiliaria.',
-    -- experience_selling_properties BOOLEAN DEFAULT NULL COMMENT 'Persona natural: ¿Tiene experiencia vendiendo propiedades?', -- REMOVED
+    phone_number VARCHAR(50) DEFAULT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.',
+    rut_tin VARCHAR(20) DEFAULT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido por la aplicación.',
     company_name VARCHAR(255) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Nombre de la empresa',
     main_operating_region VARCHAR(100) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Región principal de operación',
     main_operating_commune VARCHAR(100) DEFAULT NULL COMMENT 'Corredor/Inmobiliaria: Comuna principal de operación',
@@ -290,8 +289,8 @@ const SQL_STATEMENTS: string[] = [
     ('auth_signup_page_description', 'auth_signup', 'Descripción de la página de registro', 'Únete para listar, encontrar y discutir propiedades.', 'Únete para listar, encontrar y discutir propiedades.'),
     ('auth_signup_name_label', 'auth_signup', 'Etiqueta para el campo de nombre en registro', 'Nombre Completo *', 'Nombre Completo *'),
     ('auth_signup_email_label', 'auth_signup', 'Etiqueta para el campo de email en registro', 'Correo Electrónico *', 'Correo Electrónico *'),
-    ('auth_signup_rut_label', 'auth_signup', 'Etiqueta para el campo de RUT en registro', 'RUT (Empresa o Persona)', 'RUT (Empresa o Persona)'),
-    ('auth_signup_phone_label', 'auth_signup', 'Etiqueta para el campo de teléfono en registro', 'Teléfono de Contacto', 'Teléfono de Contacto'),
+    ('auth_signup_rut_label', 'auth_signup', 'Etiqueta para el campo de RUT en registro', 'RUT (Empresa o Persona) *', 'RUT (Empresa o Persona) *'),
+    ('auth_signup_phone_label', 'auth_signup', 'Etiqueta para el campo de teléfono en registro', 'Teléfono de Contacto o WhatsApp *', 'Teléfono de Contacto o WhatsApp *'),
     ('auth_signup_password_label', 'auth_signup', 'Etiqueta para el campo de contraseña en registro', 'Contraseña *', 'Contraseña *'),
     ('auth_signup_confirm_password_label', 'auth_signup', 'Etiqueta para el campo de confirmar contraseña en registro', 'Confirmar Contraseña *', 'Confirmar Contraseña *'),
     ('auth_signup_terms_label_part1', 'auth_signup', 'Texto de términos (parte 1)', 'Declaro conocer y aceptar los', 'Declaro conocer y aceptar los'),
@@ -581,6 +580,8 @@ async function setupDatabase() {
 }
 
 setupDatabase();
+
+
 
 
 

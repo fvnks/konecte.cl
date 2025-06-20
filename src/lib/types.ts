@@ -366,8 +366,8 @@ export const signUpSchema = z.object({
   accountType: z.enum(['natural', 'broker'], { required_error: "Debes seleccionar un tipo de cuenta."}),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
   email: z.string().email("Correo electrónico inválido.").max(255),
-  phone_number: z.string().min(9, "El teléfono debe tener al menos 9 dígitos.").max(50, "El teléfono no puede exceder los 50 caracteres."),
-  rut_tin: z.string().max(20, "El RUT/Tax ID no puede exceder los 20 caracteres.").optional().or(z.literal('')),
+  phone_number: z.string().min(9, "El teléfono debe tener al menos 9 caracteres.").max(50, "El teléfono no puede exceder los 50 caracteres."),
+  rut_tin: z.string().min(1, "El RUT es requerido.").max(20, "El RUT no puede exceder los 20 caracteres."),
   password: passwordValidation,
   confirmPassword: passwordValidation,
   acceptTerms: z.boolean().refine(val => val === true, {
@@ -382,28 +382,26 @@ export const signUpSchema = z.object({
   message: "Las contraseñas no coinciden.",
   path: ["confirmPassword"],
 }).superRefine((data, ctx) => {
+  // La obligatoriedad del RUT ya está cubierta por .min(1) en su definición.
+  // Aquí solo validamos el formato.
+  if (data.rut_tin && data.rut_tin.trim() !== '' && !validarRut(data.rut_tin)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "El RUT ingresado no es válido.",
+      path: ["rut_tin"],
+    });
+  }
+
+  // Validaciones específicas para 'broker' si es necesario, más allá de la obligatoriedad del RUT.
   if (data.accountType === 'broker') {
-    if (!data.rut_tin || data.rut_tin.trim() === '') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "El RUT es requerido para corredores/inmobiliarias.",
-        path: ["rut_tin"],
-      });
-    } else if (!validarRut(data.rut_tin)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "El RUT ingresado no es válido.",
-        path: ["rut_tin"],
-      });
-    }
-  } else if (data.accountType === 'natural') {
-    if (data.rut_tin && data.rut_tin.trim() !== '' && !validarRut(data.rut_tin)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "El RUT ingresado no es válido.",
-        path: ["rut_tin"],
-      });
-    }
+    // Ejemplo: si company_name fuera obligatorio para broker
+    // if (!data.company_name || data.company_name.trim() === '') {
+    //   ctx.addIssue({
+    //     code: z.ZodIssueCode.custom,
+    //     message: "El nombre de la empresa es requerido para corredores/inmobiliarias.",
+    //     path: ["company_name"],
+    //   });
+    // }
   }
 });
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
@@ -793,6 +791,7 @@ export type UserActionLogType =
   | 'unusual_activity_detected' | 'account_locked_temporarily' | 'admin_action';
 
     
+
 
 
 
