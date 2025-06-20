@@ -1,16 +1,29 @@
-
 // src/app/admin/properties/[propertyId]/edit/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation'; // useRouter for back navigation
+import { useParams, useRouter } from 'next/navigation'; 
 import { getPropertyByIdForAdminAction, adminUpdatePropertyAction } from '@/actions/propertyActions';
 import type { PropertyListing, PropertyFormValues, SubmitPropertyResult } from '@/lib/types';
-import EditPropertyForm from '@/components/property/EditPropertyForm'; // Actualizado
+// import EditPropertyForm from '@/components/property/EditPropertyForm'; // Original static import
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+
+const EditPropertyFormWithNoSSR = dynamic(
+  () => import('@/components/property/EditPropertyForm'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center min-h-[300px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+        <p className="text-muted-foreground">Cargando formulario de edición...</p>
+      </div>
+    )
+  }
+);
 
 export default function AdminEditPropertyPage() {
   const params = useParams();
@@ -18,12 +31,12 @@ export default function AdminEditPropertyPage() {
   const propertyId = params.propertyId as string;
 
   const [property, setProperty] = useState<PropertyListing | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPropertyData, setIsLoadingPropertyData] = useState(true); // Renamed for clarity
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (propertyId) {
-      setIsLoading(true);
+      setIsLoadingPropertyData(true);
       setError(null);
       getPropertyByIdForAdminAction(propertyId)
         .then((data) => {
@@ -38,24 +51,22 @@ export default function AdminEditPropertyPage() {
           setError('Error al cargar los datos de la propiedad.');
         })
         .finally(() => {
-          setIsLoading(false);
+          setIsLoadingPropertyData(false);
         });
     } else {
       setError('ID de propiedad no válido.');
-      setIsLoading(false);
+      setIsLoadingPropertyData(false);
     }
   }, [propertyId]);
 
-  // La acción de submit para el contexto de admin
   const handleAdminSubmit = async (
     id: string, 
     data: PropertyFormValues
   ): Promise<SubmitPropertyResult> => {
-    // La acción adminUpdatePropertyAction no necesita userId
     return adminUpdatePropertyAction(id, data);
   };
 
-  if (isLoading) {
+  if (isLoadingPropertyData) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -80,7 +91,19 @@ export default function AdminEditPropertyPage() {
   }
 
   if (!property) {
-    return <p>Propiedad no encontrada.</p>;
+    // This case should ideally be handled by the error state, but as a fallback
+    return (
+       <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-center">
+        <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+        <h2 className="text-2xl font-semibold mb-2">Propiedad No Encontrada</h2>
+        <p className="text-muted-foreground mb-6">No se pudo cargar la propiedad para editar.</p>
+        <Button asChild variant="outline">
+          <Link href="/admin/properties">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Gestión de Propiedades
+          </Link>
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -98,7 +121,7 @@ export default function AdminEditPropertyPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EditPropertyForm 
+          <EditPropertyFormWithNoSSR
             property={property} 
             onSubmitAction={handleAdminSubmit}
             isAdminContext={true}

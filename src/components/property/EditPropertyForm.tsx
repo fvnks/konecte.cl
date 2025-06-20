@@ -29,7 +29,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
-import useHasMounted from '@/hooks/useHasMounted'; // Importar el nuevo hook
+// import useHasMounted from '@/hooks/useHasMounted'; // No longer needed due to dynamic import of parent
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -61,7 +61,7 @@ const orientationOptions: { value: OrientationType; label: string }[] = [
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
-const editPropertyFormSchema = propertyFormSchema; // Re-use the same schema
+const editPropertyFormSchema = propertyFormSchema; 
 type EditPropertyFormValues = z.infer<typeof editPropertyFormSchema>;
 
 interface EditPropertyFormProps {
@@ -70,7 +70,7 @@ interface EditPropertyFormProps {
   onSubmitAction: (
     propertyId: string,
     data: PropertyFormValues,
-    userId?: string
+    userId?: string 
   ) => Promise<SubmitPropertyResult>;
   isAdminContext?: boolean;
 }
@@ -87,7 +87,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   const router = useRouter();
   const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const hasMounted = useHasMounted(); // Usar el hook
+  // const hasMounted = useHasMounted(); // Removed
 
   const form = useForm<EditPropertyFormValues>({
     resolver: zodResolver(editPropertyFormSchema),
@@ -129,12 +129,9 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   }, [property.images]);
 
   useEffect(() => {
-    // Solo actualiza el valor del formulario si el componente está montado y hay cambios.
-    if (hasMounted) {
-      form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [managedImages, form.setValue, hasMounted]);
+    // Update form value when managedImages changes
+    form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+  }, [managedImages, form]);
 
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -251,8 +248,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         }
       });
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [managedImages]); // Only re-run if managedImages identity changes (e.g., content change)
+  }, [managedImages]);
 
   const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
@@ -327,7 +323,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
             return (
               <FormItem id={formItemId}>
                 <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
-                {hasMounted && (
                   <DragDropContext onDragEnd={onDragEnd}>
                     <Droppable droppableId="imageDroppableEdit" direction="horizontal" isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
                       {(provided) => (
@@ -359,8 +354,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                       )}
                     </Droppable>
                   </DragDropContext>
-                )}
-                {!hasMounted && <div className="text-sm text-muted-foreground">Cargando controles de imagen...</div>}
                 {managedImages.length < MAX_IMAGES && (
                   <label
                     htmlFor="image-upload-input-edit"
@@ -401,7 +394,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
           }}
         />
         <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de la propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
-
+        
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => router.back()} disabled={form.formState.isSubmitting || isUploading}>
                 Cancelar
