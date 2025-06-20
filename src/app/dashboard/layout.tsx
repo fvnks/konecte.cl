@@ -1,3 +1,4 @@
+
 // src/app/dashboard/layout.tsx
 'use client';
 
@@ -10,28 +11,21 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { getPlanByIdAction } from '@/actions/planActions';
-import type { Plan } from '@/lib/types';
+import type { Plan, User as StoredUserTypeFull } from '@/lib/types'; // Use StoredUserTypeFull for full type
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import CustomPageLoader from '@/components/ui/CustomPageLoader';
 import StyledLogoutButton from '@/components/ui/StyledLogoutButton';
 import StyledUserProfileWidget from '@/components/ui/StyledUserProfileWidget';
-import AnimatedLetterButton from '@/components/ui/AnimatedLetterButton'; // Import the new button
+import AnimatedLetterButton from '@/components/ui/AnimatedLetterButton';
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-interface StoredUser {
-  id: string;
-  name: string;
-  avatarUrl?: string;
-  role_id: string;
-  plan_id?: string | null;
-  phone_number?: string | null;
-  // Permissions derived at login
-  plan_automated_alerts_enabled?: boolean;
-}
+// StoredUser type within the layout, possibly a subset of the full User type
+interface StoredUser extends Pick<StoredUserTypeFull, 'id' | 'name' | 'avatarUrl' | 'role_id' | 'plan_id' | 'phone_number' | 'phone_verified' | 'email' | 'role_name' | 'plan_name' | 'plan_expires_at' | 'plan_is_pro_or_premium' | 'plan_allows_contact_view' | 'plan_is_premium_broker' | 'plan_automated_alerts_enabled' | 'plan_advanced_dashboard_access'> {}
+
 
 const baseNavItemsDefinition = [
   { href: '/dashboard', label: 'Resumen', icon: <LayoutDashboard /> },
@@ -76,6 +70,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           tempTotalUnreadCount = await getTotalUnreadMessagesCountAction(parsedUser.id);
         }
 
+        // Check for phone verification
+        if (parsedUser.id && !parsedUser.phone_verified) {
+            toast({
+                title: "Verificación Requerida",
+                description: "Debes verificar tu número de teléfono para continuar.",
+                variant: "warning",
+                duration: 7000,
+            });
+            const phoneEnding = parsedUser.phone_number ? parsedUser.phone_number.slice(-4) : '';
+            router.push(`/auth/verify-phone?userId=${parsedUser.id}&phoneEnding=${phoneEnding}`);
+            setIsLoadingSession(false); // Stop further processing if redirecting
+            return; // Exit early
+        }
+
+
         // Broker "Canje Clientes" link
         const brokerItem = { href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> };
         const hasBrokerItem = newNavItemsList.some(item => item.href === brokerItem.href);
@@ -97,15 +106,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         const chatWhatsAppItem = { href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> };
         let hasWhatsAppItem = newNavItemsList.some(item => item.href === chatWhatsAppItem.href);
         
-        // Use the flag from the user object if available, otherwise fetch plan details
-        // This is because plan_automated_alerts_enabled is now part of the StoredUser type and set at login
         let userHasWhatsAppPermission = parsedUser.plan_automated_alerts_enabled === true;
         
-        // Fallback if flag is not on user object (e.g., older session data before the type change)
         if (parsedUser.plan_automated_alerts_enabled === undefined && parsedUser.plan_id && parsedUser.phone_number) {
           try {
             const planDetails: Plan | null = await getPlanByIdAction(parsedUser.plan_id);
-            if (planDetails && planDetails.automated_alerts_enabled === true) { // Check the correct field
+            if (planDetails && planDetails.automated_alerts_enabled === true) { 
               userHasWhatsAppPermission = true;
             }
           } catch (err) {
@@ -133,13 +139,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     } else {
         tempCurrentUser = null;
         tempTotalUnreadCount = 0;
+        toast({
+            title: "Acceso Requerido",
+            description: "Debes iniciar sesión para acceder a tu panel.",
+            variant: "destructive"
+        });
+        router.push('/auth/signin');
     }
 
     setNavItems(newNavItemsList);
     setCurrentUser(tempCurrentUser);
     setTotalUnreadCount(tempTotalUnreadCount);
     setIsLoadingSession(false);
-  }, [isClient, toast]); 
+  }, [isClient, router, toast]); 
 
   useEffect(() => {
     if (isClient) {
@@ -205,12 +217,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  if (!currentUser && isClient) {
+  if (!currentUser && isClient) { // If loading is done but no user (e.g., redirected to signin)
       return (
        <div className="flex flex-col items-center justify-center min-h-screen">
          <CustomPageLoader />
          <p className="mt-4 text-muted-foreground">Verificando sesión...</p>
-          <Button asChild className="mt-4"><Link href="/auth/signin">Ir a Iniciar Sesión</Link></Button>
+          {/* Button removed because redirection should happen */}
        </div>
     );
   }
@@ -283,3 +295,4 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     </div>
   );
 }
+

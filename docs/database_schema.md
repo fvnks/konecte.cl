@@ -320,19 +320,19 @@ CREATE TABLE site_settings (
 ## Sección Colaboración entre Corredores
 ```sql
 -- broker_collaborations
--- (Esta tabla se mantiene como estaban)
+-- (Esta tabla se mantienen como estaban)
 ```
 ---
 ## Tabla: `contact_form_submissions`
 ```sql
 -- contact_form_submissions
--- (Esta tabla se mantiene como estaban)
+-- (Esta tabla se mantienen como estaban)
 ```
 ---
 ## Tabla: `user_listing_interactions`
 ```sql
 -- user_listing_interactions
--- (Esta tabla se mantiene como estaban)
+-- (Esta tabla se mantienen como estaban)
 ```
 ---
 ## Tabla: `user_ai_search_usage` (Reemplazada por user_usage_metrics)

@@ -91,7 +91,7 @@ export async function generateAndSendOtpAction(
 
     // Attempt to send OTP via WhatsApp (using placeholder)
     const sendResult = await sendOtpViaWhatsApp(user.phone_number, otp, user.name);
-    const phoneNumberEnding = user.phone_number.length > 4 ? user.phone_number.slice(-4) : user.phone_number;
+    const phoneNumberEnding = user.phone_number.length >= 4 ? user.phone_number.slice(-4) : user.phone_number;
 
     if (!sendResult.success) {
       // Log the error but don't necessarily fail the whole action if DB update was fine.
@@ -154,3 +154,4 @@ export async function verifyOtpAction(
     return { success: false, message: 'Error al verificar el código OTP.' };
   }
 }
+
