@@ -27,8 +27,8 @@ const defaultTexts = {
   auth_signup_page_description: "Únete para listar, encontrar y discutir propiedades.",
   auth_signup_name_label: "Nombre Completo *",
   auth_signup_email_label: "Correo Electrónico *",
-  auth_signup_rut_label: "RUT (Empresa o Persona) *", // Actualizado
-  auth_signup_phone_label: "Teléfono de Contacto o WhatsApp *", // Ya tiene *
+  auth_signup_rut_label: "RUT (Empresa o Persona) *", // Actualizado con *
+  auth_signup_phone_label: "Teléfono de Contacto o WhatsApp *", // Actualizado con *
   auth_signup_password_label: "Contraseña *",
   auth_signup_confirm_password_label: "Confirmar Contraseña *",
   auth_signup_terms_label_part1: "Declaro conocer y aceptar los",
@@ -61,15 +61,16 @@ export default function SignUpStep2Page() {
     async function fetchTexts() {
       try {
         const fetchedTexts = await getEditableTextsByGroupAction('auth_signup');
-        // Asegurarse que las etiquetas de RUT y teléfono reflejen obligatoriedad si el texto de la DB no lo hace
-        const updatedDefaults = { ...defaultTexts };
-        if (fetchedTexts.auth_signup_rut_label && !fetchedTexts.auth_signup_rut_label.endsWith('*')) {
-            updatedDefaults.auth_signup_rut_label = fetchedTexts.auth_signup_rut_label.trim() + ' *';
+        // Ensure our default texts (which now include asterisks) are used as base
+        const combinedTexts = { ...defaultTexts, ...fetchedTexts };
+        // Specifically ensure asterisks if DB text doesn't have it but should
+        if (combinedTexts.auth_signup_rut_label && !combinedTexts.auth_signup_rut_label.endsWith('*')) {
+            combinedTexts.auth_signup_rut_label = combinedTexts.auth_signup_rut_label.trim() + ' *';
         }
-        if (fetchedTexts.auth_signup_phone_label && !fetchedTexts.auth_signup_phone_label.endsWith('*')) {
-            updatedDefaults.auth_signup_phone_label = fetchedTexts.auth_signup_phone_label.trim() + ' *';
+        if (combinedTexts.auth_signup_phone_label && !combinedTexts.auth_signup_phone_label.endsWith('*')) {
+            combinedTexts.auth_signup_phone_label = combinedTexts.auth_signup_phone_label.trim() + ' *';
         }
-        setTexts(prev => ({ ...updatedDefaults, ...fetchedTexts }));
+        setTexts(combinedTexts);
       } catch (error) {
         console.error("Error fetching editable texts for signup page:", error);
         setTexts(defaultTexts); // Fallback to hardcoded defaults on error
