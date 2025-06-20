@@ -1,4 +1,3 @@
-
 // src/app/auth/signup/[accountType]/page.tsx
 'use client';
 
@@ -83,7 +82,6 @@ export default function SignUpStep2Page() {
       password: "",
       confirmPassword: "",
       acceptTerms: false,
-      // experience_selling_properties: undefined, // REMOVED
       company_name: "",
       main_operating_region: "",
       main_operating_commune: "",
@@ -104,7 +102,6 @@ export default function SignUpStep2Page() {
       ...values,
       accountType: accountTypeParam,
     };
-    // experience_selling_properties is no longer in values due to schema change
 
     const result = await signUpAction(submissionValues);
     if (result.success && result.user) {
@@ -170,10 +167,8 @@ export default function SignUpStep2Page() {
                 <FormField control={form.control} name="name" render={({ field }) => (<FormItem> <FormLabel>{accountTypeParam === 'broker' ? 'Nombre del Representante *' : texts.auth_signup_name_label}</FormLabel> <FormControl><Input type="text" placeholder={accountTypeParam === 'broker' ? 'Ej: Ana Corredora' : 'Ej: Juan Pérez'} {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="email" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_email_label}</FormLabel> <FormControl><Input type="email" placeholder="tu@ejemplo.com" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="phone_number" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_phone_label}</FormLabel> <FormControl><Input type="tel" placeholder="Ej: +56 9 1234 5678" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                <FormField control={form.control} name="rut_tin" render={({ field }) => (<FormItem> <FormLabel>{accountTypeParam === 'broker' ? 'RUT (Empresa o Personal del Corredor) *' : 'RUT (Opcional)'}</FormLabel> <FormControl><Input type="text" placeholder="Ej: 76.123.456-K o 12.345.678-9" {...field} /></FormControl> {accountTypeParam === 'broker' && <ShadFormDescription className="text-xs">El RUT es necesario para corredores e inmobiliarias.</ShadFormDescription>} <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="rut_tin" render={({ field }) => (<FormItem> <FormLabel>{accountTypeParam === 'broker' ? 'RUT (Empresa o Personal del Corredor) *' : 'RUT (Opcional)'}</FormLabel> <FormControl><Input type="text" placeholder="Ej: 76.123.456-K o 12.345.678-9" {...field} /></FormControl> <ShadFormDescription className="text-xs">{accountTypeParam === 'broker' ? 'El RUT es necesario para corredores e inmobiliarias.' : 'Formato: XX.XXX.XXX-X o XXXXXXXX-X'}</ShadFormDescription> <FormMessage /> </FormItem> )}/>
 
-                {/* Persona Natural Specific - experience_selling_properties removed */}
-                
                 {/* Broker/Inmobiliaria Specific */}
                 {accountTypeParam === 'broker' && (
                   <div className="space-y-5 pt-3 border-t border-dashed">
@@ -188,7 +183,7 @@ export default function SignUpStep2Page() {
                 )}
 
                 {/* Password Fields */}
-                <FormField control={form.control} name="password" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_password_label}</FormLabel> <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="password" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_password_label}</FormLabel> <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl> <ShadFormDescription className="text-xs">Mín. 8 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 especial.</ShadFormDescription> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="confirmPassword" render={({ field }) => (<FormItem> <FormLabel>{texts.auth_signup_confirm_password_label}</FormLabel> <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                 
                 <FormField

@@ -1,7 +1,7 @@
-
 // src/lib/types.ts
 import { z } from 'zod';
 import type { AppPermission } from './permissions'; // Import AppPermission
+import { validarRut } from './rutValidator'; // Importar el validador de RUT
 
 export interface Role {
   id: string; // ej: admin, editor_contenido
@@ -205,7 +205,7 @@ const passwordValidation = z
   .regex(/[A-Z]/, "La contraseña debe contener al menos una letra mayúscula.")
   .regex(/[a-z]/, "La contraseña debe contener al menos una letra minúscula.")
   .regex(/[0-9]/, "La contraseña debe contener al menos un número.")
-  .regex(/[^A-Za-z0-9]/, "La contraseña debe contener al menos un carácter especial.");
+  .regex(/[^A-Za-z0-9]/, "La contraseña debe contener al menos un carácter especial (ej: !@#$%^&*).");
 
 export const adminCreateUserFormSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
@@ -383,6 +383,30 @@ export const signUpSchema = z.object({
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Las contraseñas no coinciden.",
   path: ["confirmPassword"],
+}).superRefine((data, ctx) => {
+  if (data.accountType === 'broker') {
+    if (!data.rut_tin || data.rut_tin.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El RUT es requerido para corredores/inmobiliarias.",
+        path: ["rut_tin"],
+      });
+    } else if (!validarRut(data.rut_tin)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El RUT ingresado no es válido.",
+        path: ["rut_tin"],
+      });
+    }
+  } else if (data.accountType === 'natural') {
+    if (data.rut_tin && data.rut_tin.trim() !== '' && !validarRut(data.rut_tin)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El RUT ingresado no es válido.",
+        path: ["rut_tin"],
+      });
+    }
+  }
 });
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
 
@@ -771,4 +795,5 @@ export type UserActionLogType =
   | 'unusual_activity_detected' | 'account_locked_temporarily' | 'admin_action';
 
     
+
 
