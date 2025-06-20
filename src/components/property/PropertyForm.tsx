@@ -81,16 +81,21 @@ export default function PropertyForm() {
   const [showAuthAlert, setShowAuthAlert] = useState(false);
 
   useEffect(() => {
+    console.log('[PropertyForm] useEffect for auth check triggered.');
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
         setLoggedInUser(JSON.parse(userJson));
+        console.log('[PropertyForm] User found in localStorage.');
       } catch (error) {
-        console.error("Error parsing user from localStorage", error);
+        console.error("[PropertyForm] Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
       }
+    } else {
+      console.log('[PropertyForm] No user found in localStorage.');
     }
     setIsCheckingAuth(false);
+    console.log('[PropertyForm] Auth check finished, isCheckingAuth set to false.');
   }, []);
 
   const form = useForm<PropertyFormValues>({
@@ -199,16 +204,23 @@ export default function PropertyForm() {
   };
 
   async function onSubmit(values: PropertyFormValues) {
+    console.log('[PropertyForm] onSubmit triggered.');
+    console.log('[PropertyForm] Current isCheckingAuth state:', isCheckingAuth);
+    console.log('[PropertyForm] Current loggedInUser state:', loggedInUser);
+
     if (isCheckingAuth) {
-      toast({ title: "Verificando...", description: "Por favor, espera mientras se verifica tu sesión.", variant: "default"});
+      console.log('[PropertyForm] Still checking auth, showing toast and returning.');
+      toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
       return;
     }
 
     if (!loggedInUser || !loggedInUser.id) {
+      console.log('[PropertyForm] User not logged in, showing auth alert.');
       setShowAuthAlert(true);
       return;
     }
 
+    console.log('[PropertyForm] User is logged in, proceeding with submission.');
     const finalImageUrls = await uploadImagesToProxy();
 
     const dataToSubmit = {
@@ -357,8 +369,8 @@ export default function PropertyForm() {
 
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
 
-          <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth || isUploading}>
-            {(form.formState.isSubmitting || isCheckingAuth || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isUploading}>
+            {(form.formState.isSubmitting || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isUploading ? 'Subiendo imágenes...' : 'Publicar Propiedad'}
           </Button>
         </form>

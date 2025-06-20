@@ -59,18 +59,23 @@ export default function RequestForm() {
   const [showAuthAlert, setShowAuthAlert] = useState(false);
 
   useEffect(() => {
+    console.log('[RequestForm] useEffect for auth check triggered.');
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
         const user: StoredUser = JSON.parse(userJson);
         setLoggedInUser(user);
         setIsBroker(user.role_id === 'broker');
+        console.log('[RequestForm] User found in localStorage.');
       } catch (error) {
-        console.error("Error parsing user from localStorage", error);
+        console.error("[RequestForm] Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
       }
+    } else {
+      console.log('[RequestForm] No user found in localStorage.');
     }
     setIsCheckingAuth(false);
+    console.log('[RequestForm] Auth check finished, isCheckingAuth set to false.');
   }, []);
 
 
@@ -91,16 +96,23 @@ export default function RequestForm() {
   });
 
   async function onSubmit(values: RequestFormValues) {
+    console.log('[RequestForm] onSubmit triggered.');
+    console.log('[RequestForm] Current isCheckingAuth state:', isCheckingAuth);
+    console.log('[RequestForm] Current loggedInUser state:', loggedInUser);
+
     if (isCheckingAuth) {
-      toast({ title: "Verificando...", description: "Por favor, espera mientras se verifica tu sesión.", variant: "default"});
+      console.log('[RequestForm] Still checking auth, showing toast and returning.');
+      toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
       return;
     }
 
     if (!loggedInUser || !loggedInUser.id) {
+      console.log('[RequestForm] User not logged in, showing auth alert.');
       setShowAuthAlert(true);
       return;
     }
 
+    console.log('[RequestForm] User is logged in, proceeding with submission.');
     const dataToSubmit = {
         ...values,
         minBedrooms: values.minBedrooms === '' ? undefined : values.minBedrooms,
@@ -361,8 +373,8 @@ export default function RequestForm() {
             />
           )}
           
-          <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth}>
-            {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Publicar Solicitud
           </Button>
         </form>
