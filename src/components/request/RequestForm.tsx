@@ -20,21 +20,10 @@ import { useToast } from "@/hooks/use-toast";
 import { submitRequestAction } from "@/actions/requestActions";
 import type { PropertyType, ListingCategory, User as StoredUser, RequestFormValues } from "@/lib/types";
 import { requestFormSchema } from "@/lib/types";
-import { Loader2, UserCircle, Handshake, LogIn, UserPlus, AlertTriangle } from "lucide-react";
+import { Loader2, UserCircle, Handshake } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
+import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog'; // Import the new dialog
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -80,7 +69,6 @@ export default function RequestForm() {
     console.log('[RequestForm] Auth Check Effect: Finished. isCheckingAuth = false');
   }, []);
 
-
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestFormSchema),
     defaultValues: {
@@ -98,8 +86,7 @@ export default function RequestForm() {
   });
 
   async function onSubmit(values: RequestFormValues) {
-    console.log('[RequestForm] onSubmit triggered. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', loggedInUser);
-
+    console.log('[RequestForm] onSubmit: Start. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', !!loggedInUser);
     if (isCheckingAuth) {
       toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
       console.log('[RequestForm] onSubmit: Still checking auth. Returning.');
@@ -107,7 +94,7 @@ export default function RequestForm() {
     }
 
     if (!loggedInUser || !loggedInUser.id) {
-      console.log('[RequestForm] onSubmit: User not logged in. Setting showAuthAlert to true.');
+      console.log('[RequestForm] onSubmit: User not logged in. Calling setShowAuthAlert(true).');
       setShowAuthAlert(true);
       return;
     }
@@ -147,6 +134,7 @@ export default function RequestForm() {
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* ... (resto de los FormFields como estaban) ... */}
           <FormField
             control={form.control}
             name="title"
@@ -379,33 +367,12 @@ export default function RequestForm() {
           </Button>
         </form>
       </Form>
-
-      <AlertDialog open={showAuthAlert} onOpenChange={setShowAuthAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-6 w-6 text-amber-500" />
-              Acción Requerida
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Para publicar una solicitud, primero debes iniciar sesión o crear una cuenta. Es rápido y fácil.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <Button variant="outline" asChild onClick={() => setShowAuthAlert(false)}>
-              <Link href={`/auth/signup?redirect=${encodeURIComponent(router.asPath)}`} className="flex items-center gap-1.5">
-                <UserPlus className="h-4 w-4" /> Registrarme
-              </Link>
-            </Button>
-            <AlertDialogAction asChild onClick={() => setShowAuthAlert(false)}>
-              <Link href={`/auth/signin?redirect=${encodeURIComponent(router.asPath)}`} className="flex items-center gap-1.5">
-                <LogIn className="h-4 w-4" /> Iniciar Sesión
-              </Link>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      
+      <AuthRequiredDialog
+        open={showAuthAlert}
+        onOpenChange={setShowAuthAlert}
+        redirectPath={router.asPath}
+      />
     </>
   );
 }

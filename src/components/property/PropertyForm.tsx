@@ -22,23 +22,13 @@ import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from "@/lib/types";
-import { Loader2, UserCircle, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, LogIn, UserPlus, AlertTriangle } from "lucide-react";
+import { Loader2, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react";
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog'; // Import the new dialog
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -207,8 +197,7 @@ export default function PropertyForm() {
   };
 
   async function onSubmit(values: PropertyFormValues) {
-    console.log('[PropertyForm] onSubmit triggered. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', loggedInUser);
-
+    console.log('[PropertyForm] onSubmit: Start. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', !!loggedInUser);
     if (isCheckingAuth) {
       toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
       console.log('[PropertyForm] onSubmit: Still checking auth. Returning.');
@@ -216,12 +205,12 @@ export default function PropertyForm() {
     }
 
     if (!loggedInUser || !loggedInUser.id) {
-      console.log('[PropertyForm] onSubmit: User not logged in. Setting showAuthAlert to true.');
+      console.log('[PropertyForm] onSubmit: User not logged in. Calling setShowAuthAlert(true).');
       setShowAuthAlert(true);
       return;
     }
 
-    console.log('[PropertyForm] onSubmit: User is logged in. Proceeding with submission.');
+    console.log('[PropertyForm] onSubmit: User is logged in. Proceeding with image upload and submission.');
     const finalImageUrls = await uploadImagesToProxy();
 
     const dataToSubmit = {
@@ -269,6 +258,7 @@ export default function PropertyForm() {
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* ... (resto de los FormFields como estaban) ... */}
           <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -377,32 +367,11 @@ export default function PropertyForm() {
         </form>
       </Form>
 
-      <AlertDialog open={showAuthAlert} onOpenChange={setShowAuthAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-6 w-6 text-amber-500" />
-              Acción Requerida
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Para publicar una propiedad, primero debes iniciar sesión o crear una cuenta. Es rápido y fácil.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <Button variant="outline" asChild onClick={() => setShowAuthAlert(false)}>
-              <Link href={`/auth/signup?redirect=${encodeURIComponent(router.asPath)}`} className="flex items-center gap-1.5">
-                <UserPlus className="h-4 w-4" /> Registrarme
-              </Link>
-            </Button>
-            <AlertDialogAction asChild onClick={() => setShowAuthAlert(false)}>
-              <Link href={`/auth/signin?redirect=${encodeURIComponent(router.asPath)}`} className="flex items-center gap-1.5">
-                <LogIn className="h-4 w-4" /> Iniciar Sesión
-              </Link>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AuthRequiredDialog
+        open={showAuthAlert}
+        onOpenChange={setShowAuthAlert}
+        redirectPath={router.asPath}
+      />
     </>
   );
 }
