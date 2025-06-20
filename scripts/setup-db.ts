@@ -101,7 +101,9 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_users_main_operating_region ON users(main_operating_region);`,
 
   // properties
+  // Intenta renombrar primero, si la columna antigua existe y la nueva no.
   `ALTER TABLE properties RENAME COLUMN area_sq_meters TO total_area_sq_meters;`,
+  // Luego, añade las nuevas columnas, asegurándose de que no existan ya.
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS useful_area_sq_meters DECIMAL(10,2) DEFAULT NULL AFTER total_area_sq_meters;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS parking_spaces INT DEFAULT 0 AFTER useful_area_sq_meters;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS pets_allowed BOOLEAN DEFAULT FALSE AFTER parking_spaces;`,
@@ -109,6 +111,7 @@ const SQL_STATEMENTS: string[] = [
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS commercial_use_allowed BOOLEAN DEFAULT FALSE AFTER furnished;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_storage BOOLEAN DEFAULT FALSE AFTER commercial_use_allowed;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS orientation VARCHAR(50) DEFAULT NULL AFTER has_storage;`,
+  // Finalmente, el CREATE TABLE IF NOT EXISTS con la estructura completa.
   `CREATE TABLE IF NOT EXISTS properties (
     id VARCHAR(36) PRIMARY KEY, 
     user_id VARCHAR(36) NOT NULL, 
@@ -124,14 +127,14 @@ const SQL_STATEMENTS: string[] = [
     country VARCHAR(100) NOT NULL, 
     bedrooms INT NOT NULL DEFAULT 0, 
     bathrooms INT NOT NULL DEFAULT 0, 
-    total_area_sq_meters DECIMAL(10,2) NOT NULL,
-    useful_area_sq_meters DECIMAL(10,2) DEFAULT NULL,
-    parking_spaces INT DEFAULT 0,
-    pets_allowed BOOLEAN DEFAULT FALSE,
-    furnished BOOLEAN DEFAULT FALSE,
-    commercial_use_allowed BOOLEAN DEFAULT FALSE,
-    has_storage BOOLEAN DEFAULT FALSE,
-    orientation VARCHAR(50) DEFAULT NULL,
+    total_area_sq_meters DECIMAL(10,2) NOT NULL,       -- Columna renombrada
+    useful_area_sq_meters DECIMAL(10,2) DEFAULT NULL,  -- Nueva columna
+    parking_spaces INT DEFAULT 0,                      -- Nueva columna
+    pets_allowed BOOLEAN DEFAULT FALSE,                -- Nueva columna
+    furnished BOOLEAN DEFAULT FALSE,                   -- Nueva columna
+    commercial_use_allowed BOOLEAN DEFAULT FALSE,      -- Nueva columna
+    has_storage BOOLEAN DEFAULT FALSE,                 -- Nueva columna
+    orientation VARCHAR(50) DEFAULT NULL,              -- Nueva columna
     images JSON, 
     features JSON, 
     upvotes INT DEFAULT 0, 
@@ -152,6 +155,7 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_properties_orientation ON properties(orientation);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_pets_allowed ON properties(pets_allowed);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_furnished ON properties(furnished);`,
+  `CREATE INDEX IF NOT EXISTS idx_properties_parking_spaces ON properties(parking_spaces);`,
 
 
   // property_requests
@@ -465,13 +469,15 @@ async function setupDatabase() {
              console.log(`  -> Sentencia SQL (no ALTER TABLE) procesada.`);
           }
         } else if (stmt.trim().toUpperCase().startsWith('CREATE TABLE')) {
+            await pool.query(stmt); // Execute CREATE TABLE IF NOT EXISTS
             const tableNameMatch = stmt.match(/CREATE TABLE IF NOT EXISTS (\w+)/i);
             if (tableNameMatch && tableNameMatch[1]) {
-                 console.log(`  -> Tabla ${tableNameMatch[1]} procesada/verificada.`);
+                 console.log(`  -> Tabla ${tableNameMatch[1]} procesada/verificada (CREATE IF NOT EXISTS).`);
             } else {
                  console.log(`  -> Sentencia CREATE TABLE procesada.`);
             }
         } else if (stmt.trim().toUpperCase().startsWith('DROP TABLE')) {
+            await pool.query(stmt);
             const tableNameMatch = stmt.match(/DROP TABLE IF EXISTS (\w+)/i);
             if (tableNameMatch && tableNameMatch[1]) {
                  console.log(`  -> Tabla ${tableNameMatch[1]} eliminada (si existía).`);
@@ -479,6 +485,7 @@ async function setupDatabase() {
                  console.log(`  -> Sentencia DROP TABLE procesada.`);
             }
         } else if (stmt.trim().toUpperCase().startsWith('INSERT INTO') || stmt.trim().toUpperCase().startsWith('INSERT IGNORE INTO')) {
+             await pool.query(stmt);
              const tableNameMatch = stmt.match(/INSERT (?:IGNORE )?INTO (\w+)/i);
              if (tableNameMatch && tableNameMatch[1]) {
                  console.log(`  -> Datos iniciales para ${tableNameMatch[1]} procesados.`);
@@ -486,6 +493,7 @@ async function setupDatabase() {
                   console.log(`  -> Sentencia INSERT procesada.`);
              }
         } else if (stmt.trim().toUpperCase().startsWith('UPDATE')) {
+            await pool.query(stmt);
             const tableNameMatch = stmt.match(/UPDATE (\w+)/i);
             if (tableNameMatch && tableNameMatch[1]) {
                 console.log(`  -> Sentencia UPDATE para ${tableNameMatch[1]} procesada.`);
@@ -493,9 +501,13 @@ async function setupDatabase() {
                  console.log(`  -> Sentencia UPDATE procesada.`);
             }
         } else if (stmt.trim().toUpperCase().startsWith('CREATE INDEX')) {
+            await pool.query(stmt);
             const indexNameMatch = stmt.match(/CREATE INDEX IF NOT EXISTS (\w+)/i) || stmt.match(/INDEX (\w+)/i);
             const indexName = indexNameMatch ? indexNameMatch[1] : 'desconocido';
             console.log(`  -> Índice ${indexName} procesado/verificado.`);
+        } else {
+            await pool.query(stmt); // For any other SQL statements
+            console.log(`  -> Sentencia SQL genérica procesada: ${stmt.substring(0, 50)}...`);
         }
       } catch (err: any) {
         if (err.code === 'ER_DUP_KEYNAME' && stmt.toUpperCase().includes('CREATE INDEX')) {
@@ -569,6 +581,7 @@ async function setupDatabase() {
 }
 
 setupDatabase();
+
 
 
 

@@ -154,17 +154,18 @@ CREATE TABLE properties (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
--- Índices existentes se mantienen
+-- Índices existentes
 CREATE INDEX idx_properties_slug ON properties(slug);
 CREATE INDEX idx_properties_user_id ON properties(user_id);
 CREATE INDEX idx_properties_city ON properties(city);
 CREATE INDEX idx_properties_property_type ON properties(property_type);
 CREATE INDEX idx_properties_category ON properties(category);
 CREATE INDEX idx_properties_upvotes ON properties(upvotes);
--- Nuevos índices potenciales
+-- Nuevos índices
 CREATE INDEX idx_properties_orientation ON properties(orientation);
 CREATE INDEX idx_properties_pets_allowed ON properties(pets_allowed);
 CREATE INDEX idx_properties_furnished ON properties(furnished);
+CREATE INDEX idx_properties_parking_spaces ON properties(parking_spaces);
 ```
 
 ---
@@ -311,7 +312,7 @@ CREATE TABLE site_settings (
 ## Sección Agenda de Visitas
 ```sql
 -- property_visits
--- (Esta tabla se mantiene como estaba)
+-- (Esta tabla se mantiene como estaban)
 ```
 ---
 ## Sección Colaboración entre Corredores
@@ -323,7 +324,7 @@ CREATE TABLE site_settings (
 ## Tabla: `contact_form_submissions`
 ```sql
 -- contact_form_submissions
--- (Esta tabla se mantiene como estaba)
+-- (Esta tabla se mantiene como estaban)
 ```
 ---
 ## Tabla: `user_listing_interactions`
