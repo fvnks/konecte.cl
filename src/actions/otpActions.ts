@@ -1,10 +1,9 @@
-
 // src/actions/otpActions.ts
 'use server';
 
 import { query } from '@/lib/db';
 import { z } from 'zod';
-import type { User } from '@/lib/types';
+import type { User, SendMessageToBotPayload } from '@/lib/types';
 import { randomBytes } from 'crypto'; // For more secure random generation
 
 const OTP_LENGTH = 4;
@@ -15,8 +14,6 @@ const OTP_EXPIRATION_MINUTES = 5;
  */
 function generateOtpCode(length: number = OTP_LENGTH): string {
   // For a simple 4-digit numeric OTP, Math.random is usually sufficient.
-  // For higher security, crypto.randomBytes would be better for longer/alphanumeric codes.
-  // return Math.floor(1000 + Math.random() * 9000).toString(); // For 4 digits
   let otp = '';
   for (let i = 0; i < length; i++) {
     otp += Math.floor(Math.random() * 10).toString();
@@ -25,69 +22,74 @@ function generateOtpCode(length: number = OTP_LENGTH): string {
 }
 
 /**
- * Sends the OTP via WhatsApp (or another chosen method).
- * !!! THIS IS A PLACEHOLDER - REPLACE WITH YOUR ACTUAL SENDING LOGIC !!!
+ * Sends the OTP via WhatsApp by calling the internal API endpoint
+ * which then forwards the message to the external WhatsApp bot.
  * 
  * @param phoneNumber The user's phone number to send the OTP to.
  * @param otp The One-Time Password.
  * @param userName The user's name, for a personalized message.
- * @returns Promise resolving to an object indiquant success or failure.
+ * @param userId The user's ID.
+ * @returns Promise resolving to an object indicating success or failure.
  */
-async function sendOtpViaWhatsApp(phoneNumber: string, otp: string, userName: string): Promise<{ success: boolean; message?: string }> {
-  console.log(`[OTP_ACTION_SIMULATION] Attempting to "send" OTP to ${phoneNumber} for user ${userName}. OTP: ${otp}`);
+async function sendOtpViaWhatsApp(
+  phoneNumber: string, // This is the user's phone number (target for OTP)
+  otp: string,
+  userName: string,
+  userId: string
+): Promise<{ success: boolean; message?: string }> {
+  console.log(`[OTP_ACTION] Attempting to send OTP to user ${userId} (phone: ${phoneNumber}). OTP: ${otp}`);
 
-  // --- BEGIN CRITICAL IMPLEMENTATION AREA FOR THE USER ---
-  //
-  // TODO: Replace the simulation below with your actual WhatsApp bot API call.
-  // This will likely involve an HTTP POST request to your bot's API endpoint.
-  //
-  // Example (conceptual - adapt to your bot's API):
-  //
-  // const WHATSAPP_BOT_API_URL = process.env.WHATSAPP_BOT_API_URL; // e.g., https://your-bot-service.com/api/send-otp
-  // const WHATSAPP_BOT_API_KEY = process.env.WHATSAPP_BOT_API_KEY;
-  //
-  // if (!WHATSAPP_BOT_API_URL || !WHATSAPP_BOT_API_KEY) {
-  //   console.error("[OTP_ACTION_ERROR] WhatsApp Bot API URL or Key is not configured in environment variables.");
-  //   return { success: false, message: "Error de configuración del servidor de mensajería. Contacte al administrador." };
-  // }
-  //
-  // try {
-  //   const response = await fetch(WHATSAPP_BOT_API_URL, {
-  //     method: 'POST',
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //       'Authorization': `Bearer ${WHATSAPP_BOT_API_KEY}`, // Or your bot's auth method
-  //     },
-  //     body: JSON.stringify({
-  //       to: phoneNumber, // The user's phone number
-  //       message: `Hola ${userName}, tu código de verificación para Konecte es: ${otp}. Este código expira en ${OTP_EXPIRATION_MINUTES} minutos.`
-  //     }),
-  //   });
-  //
-  //   if (!response.ok) {
-  //     const errorData = await response.text();
-  //     console.error(`[OTP_ACTION_ERROR] Failed to send OTP via WhatsApp bot. Status: ${response.status}. Response: ${errorData}`);
-  //     // Consider more specific error messages based on response.status
-  //     return { success: false, message: `Error al enviar OTP al servicio de mensajería (status: ${response.status}).` };
-  //   }
-  //
-  //   const responseData = await response.json(); // Assuming your bot API returns JSON
-  //   console.log(`[OTP_ACTION_INFO] OTP API call successful for ${phoneNumber}. Bot response:`, responseData);
-  //   return { success: true, message: "OTP enviado a través del bot." };
-  //
-  // } catch (error: any) {
-  //   console.error(`[OTP_ACTION_ERROR] Exception while calling WhatsApp Bot API: ${error.message}`);
-  //   return { success: false, message: `Excepción al contactar el servicio de mensajería: ${error.message}` };
-  // }
-  //
-  // --- END CRITICAL IMPLEMENTATION AREA ---
+  const otpMessageText = `Hola ${userName}, tu código de verificación para Konecte es: ${otp}. Este código expira en ${OTP_EXPIRATION_MINUTES} minutos.`;
+  
+  // This is the WhatsApp number of YOUR BOT that runs on Ubuntu.
+  // The /api/whatsapp-bot/send-message route will use this (or its internal env var for the webhook)
+  // to know where the message effectively originates from Konecte's perspective,
+  // but the actual sending to the *user* is determined by WHATSAPP_BOT_UBUNTU_WEBHOOK_URL
+  // and the targetUserWhatsAppNumber in the payload *that* webhook receives.
+  const konecteBotNumber = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER || "+1234567890"; // Fallback if not set
 
+  const payload: SendMessageToBotPayload = {
+    telefonoReceptorBot: konecteBotNumber, // Not strictly used by the final bot, but part of the API contract
+    text: otpMessageText,
+    telefonoRemitenteUsuarioWeb: phoneNumber, // This is the USER'S phone number, to whom the bot will send the OTP.
+    userId: userId,
+  };
 
-  // Current simulation:
-  console.warn(`[OTP_ACTION_SIMULATION] THIS IS A SIMULATED OTP SEND. OTP for ${phoneNumber} is ${otp}.`);
-  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-  return { success: true, message: "OTP enviado (simulación)." };
+  try {
+    // We need the full URL if calling from a server action to an API route in the same app.
+    // Using NEXT_PUBLIC_BASE_URL or similar would be more robust.
+    // For now, assuming same origin or a correctly configured base URL.
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'; // Ensure this is set correctly
+    const apiEndpoint = `${baseUrl}/api/whatsapp-bot/send-message`;
+
+    console.log(`[OTP_ACTION] Calling internal API endpoint: ${apiEndpoint} with payload:`, JSON.stringify(payload));
+
+    const response = await fetch(apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      console.error(`[OTP_ACTION_ERROR] Failed to send OTP via internal API. Status: ${response.status}. Response:`, responseData);
+      return { success: false, message: responseData.message || `Error al enviar OTP al servicio de mensajería (status: ${response.status}).` };
+    }
+
+    console.log(`[OTP_ACTION_INFO] OTP API call successful for ${phoneNumber}. API response:`, responseData);
+    // The API route's success message might be something like "Mensaje enviado al bot de Ubuntu para procesamiento."
+    // We can adapt the message if needed.
+    return { success: true, message: responseData.message || "OTP en proceso de envío." };
+
+  } catch (error: any) {
+    console.error(`[OTP_ACTION_ERROR] Exception while calling internal API for OTP send: ${error.message}`);
+    return { success: false, message: `Excepción al contactar el servicio de mensajería: ${error.message}` };
+  }
 }
+
 
 export async function generateAndSendOtpAction(
   userId: string
@@ -111,19 +113,22 @@ export async function generateAndSendOtpAction(
       [otp, expiresAt, userId]
     );
 
-    // Attempt to send OTP via WhatsApp
-    const sendResult = await sendOtpViaWhatsApp(user.phone_number, otp, user.name);
+    // Attempt to send OTP via WhatsApp (now calling the internal API)
+    const sendResult = await sendOtpViaWhatsApp(user.phone_number, otp, user.name, user.id);
     const phoneNumberEnding = user.phone_number.length >= 4 ? user.phone_number.slice(-4) : user.phone_number;
 
     if (!sendResult.success) {
-      console.error(`[OTP_ACTION_ERROR] OTP stored for user ${userId}, but failed to send: ${sendResult.message}`);
-      // Even if sending fails, the OTP is stored. The user can try verifying if they somehow received it or try resending.
-      return { success: false, message: sendResult.message || "No se pudo enviar el código OTP. Intenta reenviar.", phone_number_ending: phoneNumberEnding };
+      console.error(`[OTP_ACTION_ERROR] OTP stored for user ${userId}, but failed to send via API: ${sendResult.message}`);
+      return { 
+        success: false, 
+        message: sendResult.message || "No se pudo procesar el envío del código OTP. Intenta reenviar.", 
+        phone_number_ending: phoneNumberEnding 
+      };
     }
 
     return {
         success: true,
-        message: 'Se ha enviado un código OTP a tu número de teléfono.',
+        message: 'Se está procesando el envío de un código OTP a tu número de teléfono.',
         phone_number_ending: phoneNumberEnding
     };
 
