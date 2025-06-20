@@ -105,43 +105,36 @@ export default function PropertyForm() {
       category: undefined,
     },
   });
-  
+
   const watchedPropertyType = form.watch("propertyType");
   const watchedCategory = form.watch("category");
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const timerId = setTimeout(() => {
-        setMounted(true);
-        console.log(`[PropertyForm] Mounted state set to true.`);
-      }, 0);
-      return () => clearTimeout(timerId);
-    }
+ useEffect(() => {
+    // This effect runs only once on the client after initial mount
+    setMounted(true);
   }, []);
-  
+
   useEffect(() => {
-    console.log("[PropertyForm] Auth Check Effect: Start");
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
         const parsedUser = JSON.parse(userJson);
         setLoggedInUser(parsedUser);
-        console.log("[PropertyForm] Auth Check Effect: User found in localStorage", parsedUser);
       } catch (error) {
         console.error("[PropertyForm] Auth Check Effect: Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
         setLoggedInUser(null);
       }
     } else {
-      console.log("[PropertyForm] Auth Check Effect: No user found in localStorage.");
       setLoggedInUser(null);
     }
     setIsCheckingAuth(false);
-    console.log("[PropertyForm] Auth Check Effect: Finished. isCheckingAuth = false");
   }, []);
-  
+
   useEffect(() => {
-    form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+    if (managedImages.length > 0 || form.formState.dirtyFields.images) {
+        form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+    }
   }, [managedImages, form]);
 
 
@@ -174,7 +167,7 @@ export default function PropertyForm() {
       const newManagedImagesFromFile = validFiles.map(file => {
         const previewUrl = URL.createObjectURL(file);
         return {
-          id: previewUrl, 
+          id: previewUrl,
           url: previewUrl,
           file: file,
           isNew: true as const,
@@ -182,7 +175,7 @@ export default function PropertyForm() {
       });
       
       setManagedImages(prev => [...prev, ...newManagedImagesFromFile]);
-      event.target.value = ''; 
+      event.target.value = '';
     }
   };
 
@@ -197,7 +190,7 @@ export default function PropertyForm() {
   };
 
   const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return; 
+    if (!result.destination) return;
     setManagedImages(prev => {
       const items = Array.from(prev);
       const [reorderedItem] = items.splice(result.source.index, 1);
@@ -232,9 +225,7 @@ export default function PropertyForm() {
   };
 
   const onSubmitLogic = async (values: PropertyFormValues) => {
-    console.log("[PropertyForm] onSubmitLogic: Starting actual form submission logic.");
     const finalImageUrls = await uploadImagesToProxy();
-    console.log("[PropertyForm] onSubmitLogic: Image URLs for server:", finalImageUrls);
     
     const dataToSubmit = {
       ...values,
@@ -247,7 +238,6 @@ export default function PropertyForm() {
                           : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
-    console.log("[PropertyForm] onSubmitLogic: Data to submit to server action:", dataToSubmit);
     const result = await submitPropertyAction(dataToSubmit, loggedInUser!.id);
 
     if (result.success && result.propertyId) {
@@ -267,21 +257,19 @@ export default function PropertyForm() {
       toast({ title: "Error al Publicar", description: result.message || "No se pudo enviar tu propiedad.", variant: "destructive" });
     }
   };
-
+  
   const handleAttemptToPublish = () => {
-    console.log("[PropertyForm] handleAttemptToPublish: Clicked. isCheckingAuth:", isCheckingAuth, "loggedInUser:", !!loggedInUser);
     if (isCheckingAuth) {
       toast({ title: "Verificando sesión...", description: "Por favor espera un momento." });
       return;
     }
     if (!loggedInUser || !loggedInUser.id) {
-      console.log("[PropertyForm] handleAttemptToPublish: User not logged in, setShowAuthAlert(true)");
       setShowAuthAlert(true);
       return;
     }
-    console.log("[PropertyForm] handleAttemptToPublish: User logged in, calling form.handleSubmit.");
     form.handleSubmit(onSubmitLogic)();
   };
+
 
   useEffect(() => {
     return () => {
@@ -362,8 +350,8 @@ export default function PropertyForm() {
           <FormField
             control={form.control}
             name="images"
-            render={() => { 
-              const { formItemId, formDescriptionId, formMessageId, error } = useFormField(); // No usar field aquí directamente para images
+            render={() => {
+              const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
               return (
                 <FormItem id={formItemId}>
                   <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
@@ -374,7 +362,7 @@ export default function PropertyForm() {
                           <div
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className="mb-4 flex gap-3 overflow-x-auto py-2" 
+                            className="mb-4 flex gap-3 overflow-x-auto py-2"
                           >
                             {managedImages.map((managedImage, index) => (
                               <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
@@ -442,11 +430,11 @@ export default function PropertyForm() {
             }}
           />
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
-          
-          <Button 
-            type="button" 
+
+          <Button
+            type="button"
             onClick={handleAttemptToPublish}
-            className="w-full md:w-auto" 
+            className="w-full md:w-auto"
             disabled={form.formState.isSubmitting || isUploading || isCheckingAuth}
           >
             {(form.formState.isSubmitting || isUploading || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

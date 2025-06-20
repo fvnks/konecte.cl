@@ -22,8 +22,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import type { PropertyType, ListingCategory, PropertyListing, PropertyFormValues, SubmitPropertyResult, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from '@/lib/types';
-import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, Move } from "lucide-react";
-import { useRouter } from "next/navigation"; 
+import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, GripVertical, Move } from "lucide-react";
+import { useRouter } from "next/navigation";
 import React, { useState, ChangeEvent, useEffect } from 'react';
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -60,16 +60,16 @@ const orientationOptions: { value: OrientationType; label: string }[] = [
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
-const editPropertyFormSchema = propertyFormSchema;
+const editPropertyFormSchema = propertyFormSchema; // Re-use the same schema
 type EditPropertyFormValues = z.infer<typeof editPropertyFormSchema>;
 
 interface EditPropertyFormProps {
   property: PropertyListing;
-  userId?: string; 
+  userId?: string;
   onSubmitAction: (
     propertyId: string,
     data: PropertyFormValues,
-    userId?: string 
+    userId?: string
   ) => Promise<SubmitPropertyResult>;
   isAdminContext?: boolean;
 }
@@ -77,8 +77,8 @@ interface EditPropertyFormProps {
 interface ManagedImage {
   id: string;
   url: string;
-  file?: File; 
-  isNew: boolean; 
+  file?: File;
+  isNew: boolean;
 }
 
 export default function EditPropertyForm({ property, userId, onSubmitAction, isAdminContext = false }: EditPropertyFormProps) {
@@ -114,32 +114,30 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       features: property.features?.join(', ') || "",
     },
   });
-  
+
   const watchedPropertyType = form.watch("propertyType");
   const watchedCategory = form.watch("category");
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const timerId = setTimeout(() => {
-        setMounted(true);
-        console.log(`[EditPropertyForm] Mounted state set to true.`);
-      }, 0);
-      return () => clearTimeout(timerId);
-    }
+ useEffect(() => {
+    // This effect runs only once on the client after initial mount
+    setMounted(true);
   }, []);
-  
+
   useEffect(() => {
     const initialManagedImages = (property.images || []).map((imgUrl, index) => ({
-      id: `existing-${imgUrl.slice(-10)}-${index}`, 
+      id: `existing-${imgUrl.slice(-10)}-${index}`,
       url: imgUrl,
-      isNew: false, 
+      isNew: false,
     }));
     setManagedImages(initialManagedImages);
   }, [property.images]);
-  
+
   useEffect(() => {
-    form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+    if (managedImages.length > 0 || form.formState.dirtyFields.images) {
+        form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+    }
   }, [managedImages, form]);
+
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -162,14 +160,14 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       const newManagedImagesFromFile = validFiles.map(file => {
         const previewUrl = URL.createObjectURL(file);
         return {
-          id: previewUrl, 
+          id: previewUrl,
           url: previewUrl,
           file: file,
           isNew: true as const,
         };
       });
       setManagedImages(prev => [...prev, ...newManagedImagesFromFile]);
-      event.target.value = ''; 
+      event.target.value = '';
     }
   };
 
@@ -184,7 +182,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   };
 
   const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return; 
+    if (!result.destination) return;
     setManagedImages(prev => {
       const items = Array.from(prev);
       const [reorderedItem] = items.splice(result.source.index, 1);
@@ -195,10 +193,10 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
 
   async function onSubmit(values: EditPropertyFormValues) {
     const finalImageUrlsForServer: string[] = [];
-    setIsUploading(true); 
+    setIsUploading(true);
 
     for (const img of managedImages) {
-      if (img.isNew && img.file) { 
+      if (img.isNew && img.file) {
         const formData = new FormData();
         formData.append("imageFile", img.file);
         try {
@@ -212,7 +210,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         } catch (error: any) {
           toast({ title: "Error de Subida", description: `No se pudo subir ${img.file.name}. Error: ${error.message}`, variant: "destructive" });
         }
-      } else if (!img.isNew) { 
+      } else if (!img.isNew) {
         finalImageUrlsForServer.push(img.url);
       }
     }
@@ -220,7 +218,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
 
     const dataToSubmit: PropertyFormValues = {
       ...values,
-      images: finalImageUrlsForServer, 
+      images: finalImageUrlsForServer,
       bedrooms: values.bedrooms === '' ? 0 : Number(values.bedrooms),
       bathrooms: values.bathrooms === '' ? 0 : Number(values.bathrooms),
       parkingSpaces: values.parkingSpaces === '' ? 0 : Number(values.parkingSpaces),
@@ -229,7 +227,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                             : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
-    
+
     const result = await onSubmitAction(property.id, dataToSubmit, isAdminContext ? undefined : userId);
 
     if (result.success) {
@@ -246,7 +244,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       });
     }
   }
-  
+
   useEffect(() => {
     return () => {
       managedImages.forEach(img => {
@@ -325,7 +323,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         <FormField
           control={form.control}
           name="images"
-          render={() => { 
+          render={() => {
             const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
             return (
               <FormItem id={formItemId}>
@@ -337,7 +335,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className="mb-4 flex gap-3 overflow-x-auto py-2" 
+                          className="mb-4 flex gap-3 overflow-x-auto py-2"
                         >
                           {managedImages.map((managedImage, index) => (
                             <Draggable key={managedImage.id} draggableId={managedImage.id} index={index}>
@@ -366,7 +364,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                 {!mounted && <div className="text-sm text-muted-foreground">Cargando controles de imagen...</div>}
                 {managedImages.length < MAX_IMAGES && (
                   <label
-                    htmlFor="image-upload-input-edit" 
+                    htmlFor="image-upload-input-edit"
                     className={cn(
                       "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors",
                       "bg-muted/30 hover:bg-muted/50 border-muted-foreground/30 hover:border-muted-foreground/50",
@@ -404,7 +402,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
           }}
         />
         <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de la propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
-        
+
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => router.back()} disabled={form.formState.isSubmitting || isUploading}>
                 Cancelar
