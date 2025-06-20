@@ -135,7 +135,14 @@ CREATE TABLE properties (
     country VARCHAR(100) NOT NULL,
     bedrooms INT NOT NULL DEFAULT 0,
     bathrooms INT NOT NULL DEFAULT 0,
-    area_sq_meters DECIMAL(10,2) NOT NULL,
+    total_area_sq_meters DECIMAL(10,2) NOT NULL,       -- Renamed from area_sq_meters
+    useful_area_sq_meters DECIMAL(10,2) DEFAULT NULL,  -- New
+    parking_spaces INT DEFAULT 0,                      -- New
+    pets_allowed BOOLEAN DEFAULT FALSE,                -- New
+    furnished BOOLEAN DEFAULT FALSE,                   -- New
+    commercial_use_allowed BOOLEAN DEFAULT FALSE,      -- New
+    has_storage BOOLEAN DEFAULT FALSE,                 -- New
+    orientation VARCHAR(50) DEFAULT NULL,              -- New (e.g., 'North', 'Southeast')
     images JSON,
     features JSON,
     upvotes INT DEFAULT 0,
@@ -148,6 +155,16 @@ CREATE TABLE properties (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 -- Índices existentes se mantienen
+CREATE INDEX idx_properties_slug ON properties(slug);
+CREATE INDEX idx_properties_user_id ON properties(user_id);
+CREATE INDEX idx_properties_city ON properties(city);
+CREATE INDEX idx_properties_property_type ON properties(property_type);
+CREATE INDEX idx_properties_category ON properties(category);
+CREATE INDEX idx_properties_upvotes ON properties(upvotes);
+-- Nuevos índices potenciales
+CREATE INDEX idx_properties_orientation ON properties(orientation);
+CREATE INDEX idx_properties_pets_allowed ON properties(pets_allowed);
+CREATE INDEX idx_properties_furnished ON properties(furnished);
 ```
 
 ---
@@ -226,7 +243,6 @@ CREATE TABLE user_comment_interactions (
 -- Índices existentes se mantienen
 ```
 ---
-
 ## Tabla: `google_sheet_configs` (Configuración de Google Sheets)
 ```sql
 CREATE TABLE google_sheet_configs (

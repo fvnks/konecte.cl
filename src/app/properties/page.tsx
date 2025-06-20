@@ -1,3 +1,4 @@
+
 // src/app/properties/page.tsx
 'use client';
 
@@ -53,10 +54,11 @@ export default function PropertiesPage() {
   const [filterPropertyType, setFilterPropertyType] = useState<PropertyType | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<ListingCategory | 'all'>('all');
   const [filterCity, setFilterCity] = useState('');
-  const [minBedrooms, setMinBedrooms] = useState<string>('');
-  const [minBathrooms, setMinBathrooms] = useState<string>('');
+  const [minBedrooms, setMinBedrooms] = useState<string>(''); // Use string for input, parse to number in action
+  const [minBathrooms, setMinBathrooms] = useState<string>(''); // Use string for input
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
+
 
   const fetchProperties = useCallback(async () => {
     setIsLoading(true);
@@ -87,9 +89,18 @@ export default function PropertiesPage() {
   }, [searchTerm, filterPropertyType, filterCategory, filterCity, orderBy, minBedrooms, minBathrooms, minPrice, maxPrice, toast]);
 
   useEffect(() => {
-    fetchProperties();
+    // Check if URL contains searchTerm and apply it
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlSearchTerm = urlParams.get('searchTerm');
+    if (urlSearchTerm) {
+      setSearchTerm(urlSearchTerm);
+      // Note: fetchProperties will be called by the dependency change of searchTerm if it's in the dep array of another useEffect
+      // or you can call it directly here if this effect runs once on mount.
+      // For simplicity, assume a main useEffect calls fetchProperties initially.
+    }
+    fetchProperties(); // Initial fetch or fetch based on URL params handled by useCallback
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, []); // Empty dependency array means this effect runs once on mount and cleanup.
 
   const handleApplyFilters = () => {
     startTransition(() => {
@@ -107,6 +118,9 @@ export default function PropertiesPage() {
     setMinBathrooms('');
     setMinPrice('');
     setMaxPrice('');
+    // No need to startTransition here, as fetchProperties will be called by useEffect due to state changes
+    // if fetchProperties is a dependency of such an effect.
+    // However, to ensure immediate fetch on reset, explicitly call it within a transition.
     startTransition(() => {
       fetchProperties(); 
     });

@@ -4,7 +4,7 @@
 
 import type { PropertyFormValues } from "@/lib/types"; 
 import { query } from "@/lib/db";
-import type { PropertyListing, User, PropertyType, ListingCategory, SubmitPropertyResult } from "@/lib/types";
+import type { PropertyListing, User, PropertyType, ListingCategory, SubmitPropertyResult, OrientationType } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { findMatchingRequestsForNewProperty, type NewPropertyInput } from '@/ai/flows/find-matching-requests-for-new-property-flow';
@@ -50,7 +50,14 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     country: row.country,
     bedrooms: Number(row.bedrooms),
     bathrooms: Number(row.bathrooms),
-    areaSqMeters: Number(row.area_sq_meters),
+    totalAreaSqMeters: Number(row.total_area_sq_meters), // Renamed
+    usefulAreaSqMeters: row.useful_area_sq_meters !== null ? Number(row.useful_area_sq_meters) : null,
+    parkingSpaces: row.parking_spaces !== null ? Number(row.parking_spaces) : 0,
+    petsAllowed: Boolean(row.pets_allowed),
+    furnished: Boolean(row.furnished),
+    commercialUseAllowed: Boolean(row.commercial_use_allowed),
+    hasStorage: Boolean(row.has_storage),
+    orientation: row.orientation as OrientationType | null,
     images: parseJsonString(row.images), 
     features: parseJsonString(row.features),
     upvotes: Number(row.upvotes),
@@ -71,10 +78,10 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
       plan_id: row.author_plan_id,
       plan_name: authorPlanName,
       plan_is_pro_or_premium: authorIsBroker && (authorPlanName?.toLowerCase().includes('pro') || authorPlanName?.toLowerCase().includes('premium')),
-      plan_allows_contact_view: !!row.author_plan_can_view_contact_data, // From alias plan_author.can_view_contact_data
+      plan_allows_contact_view: !!row.author_plan_can_view_contact_data,
       plan_is_premium_broker: authorIsBroker && authorPlanName?.toLowerCase().includes('premium'),
-      plan_automated_alerts_enabled: !!row.author_plan_automated_alerts_enabled, // From alias plan_author.automated_alerts_enabled
-      plan_advanced_dashboard_access: !!row.author_plan_advanced_dashboard_access, // From alias plan_author.advanced_dashboard_access
+      plan_automated_alerts_enabled: !!row.author_plan_automated_alerts_enabled,
+      plan_advanced_dashboard_access: !!row.author_plan_advanced_dashboard_access,
     } : undefined,
   };
 }
@@ -101,28 +108,24 @@ export async function submitPropertyAction(
       INSERT INTO properties (
         id, user_id, title, slug, description, property_type, category,
         price, currency, address, city, country, bedrooms, bathrooms,
-        area_sq_meters, images, features, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
+        total_area_sq_meters, useful_area_sq_meters, parking_spaces, 
+        pets_allowed, furnished, commercial_use_allowed, has_storage, orientation,
+        images, features, is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
     `;
 
     const params = [
-      propertyId,
-      userId,
-      data.title,
-      slug,
-      data.description,
-      data.propertyType,
-      data.category,
-      data.price,
-      data.currency,
-      data.address,
-      data.city,
-      data.country,
-      data.bedrooms,
-      data.bathrooms,
-      data.areaSqMeters,
-      imagesJson, 
-      featuresJson
+      propertyId, userId, data.title, slug, data.description, data.propertyType, data.category,
+      data.price, data.currency, data.address, data.city, data.country, data.bedrooms, data.bathrooms,
+      data.totalAreaSqMeters, 
+      data.usefulAreaSqMeters === '' ? null : (data.usefulAreaSqMeters ?? null),
+      data.parkingSpaces ?? 0,
+      data.petsAllowed ?? false,
+      data.furnished ?? false,
+      data.commercialUseAllowed ?? false,
+      data.hasStorage ?? false,
+      data.orientation === '' ? null : (data.orientation ?? null),
+      imagesJson, featuresJson
     ];
 
     await query(sql, params);
@@ -151,7 +154,14 @@ export async function submitPropertyAction(
         country: data.country,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
-        areaSqMeters: data.areaSqMeters,
+        totalAreaSqMeters: data.totalAreaSqMeters,
+        usefulAreaSqMeters: data.usefulAreaSqMeters === '' ? undefined : (data.usefulAreaSqMeters ?? undefined),
+        parkingSpaces: data.parkingSpaces ?? undefined,
+        petsAllowed: data.petsAllowed ?? undefined,
+        furnished: data.furnished ?? undefined,
+        commercialUseAllowed: data.commercialUseAllowed ?? undefined,
+        hasStorage: data.hasStorage ?? undefined,
+        orientation: data.orientation === '' ? undefined : (data.orientation ?? undefined),
         features: data.features ? data.features.split(',').map(f => f.trim()).filter(f => f) : [],
       };
       const autoMatches = await findMatchingRequestsForNewProperty(propertyForAIMatch);
@@ -459,27 +469,25 @@ export async function adminUpdatePropertyAction(
       UPDATE properties SET
         title = ?, description = ?, property_type = ?, category = ?,
         price = ?, currency = ?, address = ?, city = ?, country = ?,
-        bedrooms = ?, bathrooms = ?, area_sq_meters = ?,
+        bedrooms = ?, bathrooms = ?, total_area_sq_meters = ?, useful_area_sq_meters = ?,
+        parking_spaces = ?, pets_allowed = ?, furnished = ?, commercial_use_allowed = ?, has_storage = ?, orientation = ?,
         images = ?, features = ?,
         updated_at = NOW()
       WHERE id = ?
     `;
 
     const params = [
-      data.title,
-      data.description,
-      data.propertyType,
-      data.category,
-      data.price,
-      data.currency,
-      data.address,
-      data.city,
-      data.country,
-      data.bedrooms,
-      data.bathrooms,
-      data.areaSqMeters,
-      imagesJson,
-      featuresJson,
+      data.title, data.description, data.propertyType, data.category,
+      data.price, data.currency, data.address, data.city, data.country,
+      data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
+      data.usefulAreaSqMeters === '' ? null : (data.usefulAreaSqMeters ?? null),
+      data.parkingSpaces ?? 0,
+      data.petsAllowed ?? false,
+      data.furnished ?? false,
+      data.commercialUseAllowed ?? false,
+      data.hasStorage ?? false,
+      data.orientation === '' ? null : (data.orientation ?? null),
+      imagesJson, featuresJson,
       propertyId
     ];
 
@@ -552,7 +560,8 @@ export async function userUpdatePropertyAction(
       UPDATE properties SET
         title = ?, description = ?, property_type = ?, category = ?,
         price = ?, currency = ?, address = ?, city = ?, country = ?,
-        bedrooms = ?, bathrooms = ?, area_sq_meters = ?,
+        bedrooms = ?, bathrooms = ?, total_area_sq_meters = ?, useful_area_sq_meters = ?,
+        parking_spaces = ?, pets_allowed = ?, furnished = ?, commercial_use_allowed = ?, has_storage = ?, orientation = ?,
         images = ?, features = ?,
         updated_at = NOW()
       WHERE id = ? AND user_id = ? 
@@ -561,7 +570,14 @@ export async function userUpdatePropertyAction(
     const params = [
       data.title, data.description, data.propertyType, data.category,
       data.price, data.currency, data.address, data.city, data.country,
-      data.bedrooms, data.bathrooms, data.areaSqMeters,
+      data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
+      data.usefulAreaSqMeters === '' ? null : (data.usefulAreaSqMeters ?? null),
+      data.parkingSpaces ?? 0,
+      data.petsAllowed ?? false,
+      data.furnished ?? false,
+      data.commercialUseAllowed ?? false,
+      data.hasStorage ?? false,
+      data.orientation === '' ? null : (data.orientation ?? null),
       imagesJson, featuresJson,
       propertyId, userId
     ];

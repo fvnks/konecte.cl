@@ -1,3 +1,4 @@
+
 // src/components/property/PropertyListItem.tsx
 import Link from 'next/link';
 import Image from 'next/image';
@@ -66,7 +67,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     author,
     commentsCount,
     propertyType,
-    areaSqMeters,
+    totalAreaSqMeters, // Changed from areaSqMeters
     description,
     createdAt,
   } = property;
@@ -120,7 +121,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
             <div className="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground">
               <span className="flex items-center"><BedDouble className="mr-1 h-4 w-4 text-primary/80" /> {bedrooms} dorms.</span>
               <span className="flex items-center"><Bath className="mr-1 h-4 w-4 text-primary/80" /> {bathrooms} baños</span>
-              <span className="flex items-center"><HomeIcon className="mr-1 h-4 w-4 text-primary/80" /> {areaSqMeters} m²</span>
+              <span className="flex items-center"><HomeIcon className="mr-1 h-4 w-4 text-primary/80" /> {totalAreaSqMeters} m²</span>
             </div>
             <Badge variant="secondary" className="capitalize text-xs mt-2.5 px-2 py-0.5 rounded-md">
               <Tag className="mr-1 h-3 w-3" />

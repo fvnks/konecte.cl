@@ -1,3 +1,4 @@
+
 // src/components/property/PropertyForm.tsx
 'use client';
 
@@ -16,17 +17,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
-import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues } from "@/lib/types";
-import { propertyFormSchema } from "@/lib/types";
-import { Loader2, UserCircle, UploadCloud, Trash2 } from "lucide-react";
+import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
+import { propertyFormSchema, orientationValues } from "@/lib/types";
+import { Loader2, UserCircle, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass } from "lucide-react";
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import AddressAutocompleteInput from "./AddressAutocompleteInput"; // Importar el nuevo componente
+import AddressAutocompleteInput from "./AddressAutocompleteInput"; 
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -40,6 +42,19 @@ const categoryOptions: { value: ListingCategory; label: string }[] = [
   { value: "land", label: "Terreno" },
   { value: "commercial", label: "Comercial" },
   { value: "other", label: "Otro" },
+];
+
+const orientationOptions: { value: OrientationType; label: string }[] = [
+  { value: "north", label: "Norte" },
+  { value: "south", label: "Sur" },
+  { value: "east", label: "Este" },
+  { value: "west", label: "Oeste" },
+  { value: "northeast", label: "Nororiente" },
+  { value: "northwest", label: "Norponiente" },
+  { value: "southeast", label: "Suroriente" },
+  { value: "southwest", label: "Surponiente" },
+  { value: "other", label: "Otra" },
+  { value: "none", label: "No especificada" },
 ];
 
 const MAX_IMAGES = 5;
@@ -79,7 +94,14 @@ export default function PropertyForm() {
       country: "Chile",
       bedrooms: 0,
       bathrooms: 0,
-      areaSqMeters: undefined,
+      totalAreaSqMeters: undefined,
+      usefulAreaSqMeters: undefined,
+      parkingSpaces: 0,
+      petsAllowed: false,
+      furnished: false,
+      commercialUseAllowed: false,
+      hasStorage: false,
+      orientation: "none",
       images: [], 
       features: "",
     },
@@ -171,6 +193,8 @@ export default function PropertyForm() {
     const dataToSubmit = {
       ...values,
       images: finalImageUrls, 
+      usefulAreaSqMeters: values.usefulAreaSqMeters === '' ? undefined : values.usefulAreaSqMeters,
+      orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
 
     const result = await submitPropertyAction(dataToSubmit, loggedInUser.id);
@@ -222,37 +246,33 @@ export default function PropertyForm() {
           <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <Input placeholder="Ej: CLP, UF, USD" {...field} /> <FormDescription>Código de 3 letras para la moneda.</FormDescription> <FormMessage /> </FormItem> )}/>
         </div>
         
-        <FormField
-          control={form.control}
-          name="address"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Dirección Completa</FormLabel>
-              <AddressAutocompleteInput
-                value={field.value}
-                onChange={(address, details) => {
-                  field.onChange(address); // Actualiza el campo de dirección
-                  if (details?.city) form.setValue('city', details.city, { shouldValidate: true });
-                  if (details?.country) form.setValue('country', details.country, { shouldValidate: true });
-                  // Podrías guardar lat/lng si tuvieras campos para ello
-                }}
-                placeholder="Comienza a escribir la dirección..."
-                disabled={form.formState.isSubmitting || !loggedInUser}
-              />
-              <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
+        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting || !loggedInUser} /> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <Input placeholder="Ej: Valparaíso (se autocompletará si es posible)" {...field} /> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <Input placeholder="Ej: Chile (se autocompletará si es posible)" {...field} /> <FormMessage /> </FormItem> )}/>
         </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField control={form.control} name="totalAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Total (m²)</FormLabel> <Input type="number" placeholder="Ej: 120" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="usefulAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Útil (m²) (Opcional)</FormLabel> <Input type="number" placeholder="Ej: 100" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} /> <FormMessage /> </FormItem> )}/>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <Input type="number" placeholder="Ej: 3" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Baños</FormLabel> <Input type="number" placeholder="Ej: 2" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="areaSqMeters" render={({ field }) => ( <FormItem> <FormLabel>Superficie (m²)</FormLabel> <Input type="number" placeholder="Ej: 120" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Bath className="mr-2 h-4 w-4 text-primary"/>N° de Baños</FormLabel> <Input type="number" placeholder="Ej: 2" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="parkingSpaces" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Car className="mr-2 h-4 w-4 text-primary"/>N° Estacionamientos</FormLabel> <Input type="number" placeholder="Ej: 1" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> <FormMessage /> </FormItem> )}/>
+        </div>
+
+        <FormField control={form.control} name="orientation" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Compass className="mr-2 h-4 w-4 text-primary"/>Orientación</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <Input type="hidden" {...field} /> <SelectTrigger> <SelectValue placeholder="Selecciona orientación" /> </SelectTrigger> <SelectContent> {orientationOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+        
+        <div className="space-y-4 pt-2">
+            <FormLabel className="text-base font-medium">Otras Características</FormLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                <FormField control={form.control} name="petsAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Dog className="mr-2 h-5 w-5 text-primary"/>Se Aceptan Mascotas</FormLabel> </FormItem> )}/>
+                <FormField control={form.control} name="furnished" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Sofa className="mr-2 h-5 w-5 text-primary"/>Amoblado</FormLabel> </FormItem> )}/>
+                <FormField control={form.control} name="commercialUseAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Building className="mr-2 h-5 w-5 text-primary"/>Permite Uso Comercial</FormLabel> </FormItem> )}/>
+                <FormField control={form.control} name="hasStorage" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Warehouse className="mr-2 h-5 w-5 text-primary"/>Tiene Bodega</FormLabel> </FormItem> )}/>
+            </div>
         </div>
         
         <FormField

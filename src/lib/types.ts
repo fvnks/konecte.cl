@@ -73,6 +73,9 @@ export interface User {
 
 export type PropertyType = 'rent' | 'sale';
 export type ListingCategory = 'apartment' | 'house' | 'condo' | 'land' | 'commercial' | 'other';
+export const orientationValues = ["north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest", "other", "none"] as const;
+export type OrientationType = typeof orientationValues[number];
+
 
 export interface PropertyListing {
   id: string;
@@ -88,7 +91,14 @@ export interface PropertyListing {
   country: string;
   bedrooms: number;
   bathrooms: number;
-  areaSqMeters: number;
+  totalAreaSqMeters: number; // Renamed from areaSqMeters
+  usefulAreaSqMeters?: number | null;
+  parkingSpaces?: number;
+  petsAllowed?: boolean;
+  furnished?: boolean;
+  commercialUseAllowed?: boolean;
+  hasStorage?: boolean;
+  orientation?: OrientationType | null;
   images: string[];
   features?: string[];
   slug: string;
@@ -385,7 +395,14 @@ export const propertyFormSchema = z.object({
   country: z.string().min(2, "El país es requerido."),
   bedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de dormitorios no puede ser negativo."),
   bathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de baños no puede ser negativo."),
-  areaSqMeters: z.coerce.number().positive("El área (m²) debe ser un número positivo."),
+  totalAreaSqMeters: z.coerce.number().positive("El área total (m²) debe ser un número positivo."),
+  usefulAreaSqMeters: z.coerce.number().positive("El área útil (m²) debe ser un número positivo.").optional().or(z.literal('')),
+  parkingSpaces: z.coerce.number().int("Debe ser un número entero.").min(0, "El número de estacionamientos no puede ser negativo.").optional().default(0),
+  petsAllowed: z.boolean().default(false).optional(),
+  furnished: z.boolean().default(false).optional(),
+  commercialUseAllowed: z.boolean().default(false).optional(),
+  hasStorage: z.boolean().default(false).optional(),
+  orientation: z.enum(orientationValues).optional().or(z.literal('')),
   images: z.array(z.string().url("Cada imagen debe ser una URL válida.")).min(0).max(5, "Puedes subir un máximo de 5 imágenes.").optional().default([]),
   features: z.string().optional().describe("Características separadas por comas. Ejemplo: Piscina,Estacionamiento"),
 });
@@ -739,4 +756,3 @@ export type UserActionLogType =
   | 'unusual_activity_detected' | 'account_locked_temporarily' | 'admin_action';
 
     
-

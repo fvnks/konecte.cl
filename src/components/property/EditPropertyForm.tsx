@@ -1,3 +1,4 @@
+
 // src/components/property/EditPropertyForm.tsx
 'use client';
 
@@ -18,15 +19,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import type { PropertyType, ListingCategory, PropertyListing, PropertyFormValues, SubmitPropertyResult } from "@/lib/types";
-import { Loader2, Save, UploadCloud, Trash2 } from "lucide-react";
+import type { PropertyType, ListingCategory, PropertyListing, PropertyFormValues, SubmitPropertyResult, OrientationType } from "@/lib/types";
+import { propertyFormSchema, orientationValues } from '@/lib/types'; 
+import { Loader2, Save, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState, ChangeEvent, useEffect } from 'react';
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { propertyFormSchema } from '@/lib/types'; 
-import AddressAutocompleteInput from "./AddressAutocompleteInput"; // Importar el nuevo componente
+import AddressAutocompleteInput from "./AddressAutocompleteInput";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -41,6 +43,20 @@ const categoryOptions: { value: ListingCategory; label: string }[] = [
   { value: "commercial", label: "Comercial" },
   { value: "other", label: "Otro" },
 ];
+
+const orientationOptions: { value: OrientationType; label: string }[] = [
+  { value: "north", label: "Norte" },
+  { value: "south", label: "Sur" },
+  { value: "east", label: "Este" },
+  { value: "west", label: "Oeste" },
+  { value: "northeast", label: "Nororiente" },
+  { value: "northwest", label: "Norponiente" },
+  { value: "southeast", label: "Suroriente" },
+  { value: "southwest", label: "Surponiente" },
+  { value: "other", label: "Otra" },
+  { value: "none", label: "No especificada" },
+];
+
 
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
@@ -82,7 +98,14 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       country: property.country || "Chile",
       bedrooms: property.bedrooms || 0,
       bathrooms: property.bathrooms || 0,
-      areaSqMeters: property.areaSqMeters || 0,
+      totalAreaSqMeters: property.totalAreaSqMeters || 0,
+      usefulAreaSqMeters: property.usefulAreaSqMeters || undefined,
+      parkingSpaces: property.parkingSpaces || 0,
+      petsAllowed: property.petsAllowed || false,
+      furnished: property.furnished || false,
+      commercialUseAllowed: property.commercialUseAllowed || false,
+      hasStorage: property.hasStorage || false,
+      orientation: property.orientation || "none",
       images: property.images || [], 
       features: property.features?.join(', ') || "",
     },
@@ -125,17 +148,23 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       const urlToRemove = existingImageUrls[indexToRemove];
       setExistingImageUrls(prevUrls => prevUrls.filter((_, index) => index !== indexToRemove));
       setImagePreviews(prev => prev.filter(url => url !== urlToRemove));
-      form.setValue('images', existingImageUrls.filter((_, index) => index !== indexToRemove), { shouldValidate: true, shouldDirty: true });
+      // Actualizar form.setValue('images') con las URL restantes de existingImageUrls
+      const updatedExistingUrls = existingImageUrls.filter((_, index) => index !== indexToRemove);
+      const currentNewPreviews = imagePreviews.filter(url => url.startsWith('blob:'));
+      form.setValue('images', [...updatedExistingUrls, ...currentNewPreviews], { shouldValidate: true, shouldDirty: true });
     } else {
-      const actualFileIndex = indexToRemove - existingImageUrls.length;
+      // El índice es relativo a imagePreviews. Necesitamos mapearlo al índice de imageFiles.
+      const actualFileIndex = imagePreviews.slice(0, indexToRemove).filter(url => url.startsWith('blob:')).length;
       setImageFiles(prevFiles => prevFiles.filter((_, index) => index !== actualFileIndex));
+      
       const newPreviews = [...imagePreviews];
       const removedUrl = newPreviews.splice(indexToRemove, 1)[0];
-      if (removedUrl) URL.revokeObjectURL(removedUrl);
+      if (removedUrl && removedUrl.startsWith('blob:')) URL.revokeObjectURL(removedUrl);
       setImagePreviews(newPreviews);
       form.setValue('images', newPreviews, { shouldValidate: true, shouldDirty: true });
     }
   };
+
 
   const uploadNewImagesToProxy = async (): Promise<string[]> => {
     if (imageFiles.length === 0) return [];
@@ -168,6 +197,8 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
     const dataToSubmit: PropertyFormValues = {
       ...values,
       images: finalImageUrls,
+      usefulAreaSqMeters: values.usefulAreaSqMeters === '' ? undefined : values.usefulAreaSqMeters,
+      orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
     const result = await onSubmitAction(property.id, dataToSubmit, isAdminContext ? undefined : userId);
     
@@ -192,7 +223,8 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         if (url.startsWith('blob:')) URL.revokeObjectURL(url);
       });
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Solo se ejecuta al desmontar
 
   return (
     <Form {...form}>
@@ -208,36 +240,33 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
           <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <FormControl><Input placeholder="Ej: CLP, UF, USD" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
         
-        <FormField
-          control={form.control}
-          name="address"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Dirección Completa</FormLabel>
-              <AddressAutocompleteInput
-                value={field.value}
-                onChange={(address, details) => {
-                  field.onChange(address);
-                  if (details?.city) form.setValue('city', details.city, { shouldValidate: true });
-                  if (details?.country) form.setValue('country', details.country, { shouldValidate: true });
-                }}
-                placeholder="Comienza a escribir la dirección..."
-                disabled={form.formState.isSubmitting}
-              />
-              <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
+        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting} /> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField control={form.control} name="totalAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Total (m²)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 120" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="usefulAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Útil (m²) (Opcional)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 100" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} /></FormControl> <FormMessage /> </FormItem> )}/>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <FormControl><Input type="number" placeholder="Ej: 3" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Baños</FormLabel> <FormControl><Input type="number" placeholder="Ej: 2" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="areaSqMeters" render={({ field }) => ( <FormItem> <FormLabel>Superficie (m²)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 120" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Bath className="mr-2 h-4 w-4 text-primary"/>N° de Baños</FormLabel> <FormControl><Input type="number" placeholder="Ej: 2" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="parkingSpaces" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Car className="mr-2 h-4 w-4 text-primary"/>N° Estacionamientos</FormLabel> <FormControl><Input type="number" placeholder="Ej: 1" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+        </div>
+        
+        <FormField control={form.control} name="orientation" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Compass className="mr-2 h-4 w-4 text-primary"/>Orientación</FormLabel> <Select onValueChange={field.onChange} value={field.value || "none"}> <FormControl><SelectTrigger> <SelectValue placeholder="Selecciona orientación" /> </SelectTrigger></FormControl> <SelectContent> {orientationOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+        
+        <div className="space-y-4 pt-2">
+            <FormLabel className="text-base font-medium">Otras Características</FormLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                <FormField control={form.control} name="petsAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Dog className="mr-2 h-5 w-5 text-primary"/>Se Aceptan Mascotas</FormLabel> </FormItem> )}/>
+                <FormField control={form.control} name="furnished" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Sofa className="mr-2 h-5 w-5 text-primary"/>Amoblado</FormLabel> </FormItem> )}/>
+                <FormField control={form.control} name="commercialUseAllowed" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Building className="mr-2 h-5 w-5 text-primary"/>Permite Uso Comercial</FormLabel> </FormItem> )}/>
+                <FormField control={form.control} name="hasStorage" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Warehouse className="mr-2 h-5 w-5 text-primary"/>Tiene Bodega</FormLabel> </FormItem> )}/>
+            </div>
         </div>
         
         <FormField
@@ -261,7 +290,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                 {imagePreviews.length > 0 && (
                   <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                     {imagePreviews.map((previewUrl, index) => {
-                      const isExisting = existingImageUrls.includes(previewUrl);
+                      const isExisting = existingImageUrls.includes(previewUrl) && !previewUrl.startsWith('blob:');
                       return (
                         <div key={previewUrl + index} className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100">
                           <Image src={previewUrl} alt={`Previsualización ${index + 1}`} fill style={{ objectFit: 'cover' }} data-ai-hint="propiedad interior"/>

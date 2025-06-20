@@ -1,3 +1,4 @@
+
 // src/components/property/FeaturedPropertyCard.tsx
 'use client';
 
@@ -6,7 +7,7 @@ import Image from 'next/image';
 import type { PropertyListing } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, DollarSign, CalendarDays, UserCircle as UserIcon, ShieldCheck } from 'lucide-react';
+import { MapPin, DollarSign, CalendarDays, UserCircle as UserIcon, ShieldCheck, Home, BedDouble, Bath } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
 import LikeButton from '@/components/ui/LikeButton';
@@ -52,6 +53,9 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
     propertyType,
     author,
     createdAt,
+    bedrooms, // Added
+    bathrooms, // Added
+    totalAreaSqMeters, // Changed from areaSqMeters
   } = property;
 
   const mainImage = images && images.length > 0 ? images[0] : 'https://placehold.co/300x200.png?text=Propiedad';
@@ -93,6 +97,12 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
           <DollarSign className="h-5 w-5 mr-1.5 text-accent/90" />
           {formatPriceCompact(price, currency)}
           {propertyType === 'rent' && <span className="text-xs font-normal text-muted-foreground ml-1.5">/mes</span>}
+        </div>
+        {/* Property Details: Bedrooms, Bathrooms, Area */}
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground mb-2.5">
+            <span className="flex items-center"><BedDouble className="mr-1 h-3.5 w-3.5 text-primary/70"/>{bedrooms} dorms.</span>
+            <span className="flex items-center"><Bath className="mr-1 h-3.5 w-3.5 text-primary/70"/>{bathrooms} baños</span>
+            <span className="flex items-center"><Home className="mr-1 h-3.5 w-3.5 text-primary/70"/>{totalAreaSqMeters} m²</span>
         </div>
         <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3.5">
             <Avatar className="h-7 w-7 mt-0.5">

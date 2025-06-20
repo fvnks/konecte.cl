@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getPropertyByIdForAdminAction, userUpdatePropertyAction } from '@/actions/propertyActions'; // Usamos getPropertyByIdForAdminAction por ahora
+import { getPropertyByIdForAdminAction, userUpdatePropertyAction } from '@/actions/propertyActions'; 
 import type { PropertyListing, User as StoredUser, PropertyFormValues, SubmitPropertyResult } from '@/lib/types';
 import EditPropertyForm from '@/components/property/EditPropertyForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +21,7 @@ export default function UserEditPropertyPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null); // null = no verificado, true = autorizado, false = no autorizado
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null); 
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -44,7 +44,9 @@ export default function UserEditPropertyPage() {
     if (propertyId && loggedInUser) {
       setIsLoading(true);
       setError(null);
-      getPropertyByIdForAdminAction(propertyId) // Esta acción no verifica propiedad, lo haremos aquí
+      // Using getPropertyByIdForAdminAction because it fetches all fields, including inactive ones.
+      // Authorization to edit is checked client-side against loggedInUser.id.
+      getPropertyByIdForAdminAction(propertyId) 
         .then((data) => {
           if (data) {
             if (data.user_id === loggedInUser.id) {
@@ -67,16 +69,15 @@ export default function UserEditPropertyPage() {
         .finally(() => {
           setIsLoading(false);
         });
-    } else if (!loggedInUser && !isLoading) { // Si el chequeo inicial de loggedInUser falla.
+    } else if (!loggedInUser && !isLoading) { 
         setIsLoading(false);
-        // El error ya se habrá seteado en el primer useEffect
     }
-  }, [propertyId, loggedInUser, isLoading]); // Re-ejecutar si loggedInUser cambia (aunque es improbable después de la carga inicial)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId, loggedInUser]); 
 
   const handleUserSubmit = async (
     id: string, 
     data: PropertyFormValues
-    // userId no es necesario pasarlo explícitamente aquí ya que lo tenemos de loggedInUser
   ): Promise<SubmitPropertyResult> => {
     if (!loggedInUser?.id) {
         return { success: false, message: "Error de autenticación."};
@@ -84,7 +85,7 @@ export default function UserEditPropertyPage() {
     return userUpdatePropertyAction(loggedInUser.id, id, data);
   };
 
-  if (isLoading || isAuthorized === null) { // Muestra loader mientras se verifica auth y se cargan datos
+  if (isLoading || isAuthorized === null) { 
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -110,7 +111,7 @@ export default function UserEditPropertyPage() {
     );
   }
 
-  if (!property) { // Debería ser cubierto por !isAuthorized, pero como fallback.
+  if (!property) { 
     return (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-center p-4">
             <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
@@ -141,8 +142,8 @@ export default function UserEditPropertyPage() {
         <CardContent>
           <EditPropertyForm 
             property={property} 
-            userId={loggedInUser.id} // Pasar userId para la acción
-            onSubmitAction={(id, data, uid) => handleUserSubmit(id, data)} // Pasar la acción de usuario
+            userId={loggedInUser.id} 
+            onSubmitAction={handleUserSubmit}
             isAdminContext={false}
           />
         </CardContent>

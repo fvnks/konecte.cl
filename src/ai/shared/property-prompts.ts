@@ -3,7 +3,8 @@
 // This file does NOT use 'use server'
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit'; // Use z from genkit if it's re-exporting zod, otherwise use 'zod'
-import type { PropertyListing, SearchRequest, PropertyType as LibPropertyType, ListingCategory as LibListingCategory } from '@/lib/types';
+import type { PropertyListing, SearchRequest, PropertyType as LibPropertyType, ListingCategory as LibListingCategory, OrientationType as LibOrientationType } from '@/lib/types';
+import { orientationValues } from '@/lib/types';
 
 export const PropertyMatchingInputSchema = z.object({
   propertyDescription: z.string().describe('Description of the property listing.'),
@@ -42,25 +43,9 @@ const BaseMatchSchema = z.object({
   reason: z.string(),
 });
 
-const propertyItemFields = {
-  id: z.string(),
-  title: z.string(),
-  slug: z.string(),
-  propertyType: z.enum(['rent', 'sale']),
-  category: z.enum(['apartment', 'house', 'condo', 'land', 'commercial', 'other']),
-  price: z.number(),
-  currency: z.string(),
-  city: z.string(),
-};
-
-const requestItemFields = {
-  id: z.string(),
-  title: z.string(),
-  slug: z.string(),
-  desiredPropertyType: z.array(z.enum(['rent', 'sale'])),
-  desiredCategories: z.array(z.enum(['apartment', 'house', 'condo', 'land', 'commercial', 'other'])),
-};
-
+// propertyItemFields and requestItemFields are not directly used by the schemas below,
+// but can be useful if we decide to make the `item` schema more specific later.
+// For now, using z.custom<PropertyListing> and z.custom<SearchRequest> is simpler.
 
 export const MatchedPropertySchema = BaseMatchSchema.extend({
   type: z.literal('property'),
@@ -100,7 +85,14 @@ export const NewPropertyInputSchema = z.object({
   country: z.string(),
   bedrooms: z.number().optional(),
   bathrooms: z.number().optional(),
-  areaSqMeters: z.number().optional(),
+  totalAreaSqMeters: z.number().optional(),
+  usefulAreaSqMeters: z.number().optional().nullable(),
+  parkingSpaces: z.number().int().min(0).optional(),
+  petsAllowed: z.boolean().optional(),
+  furnished: z.boolean().optional(),
+  commercialUseAllowed: z.boolean().optional(),
+  hasStorage: z.boolean().optional(),
+  orientation: z.enum(orientationValues).optional().nullable(),
   features: z.array(z.string()).optional(),
 });
 export type NewPropertyInput = z.infer<typeof NewPropertyInputSchema>;

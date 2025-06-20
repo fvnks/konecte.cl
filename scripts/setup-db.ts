@@ -100,10 +100,48 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_users_company_name ON users(company_name);`,
   `CREATE INDEX IF NOT EXISTS idx_users_main_operating_region ON users(main_operating_region);`,
 
-
   // properties
+  `ALTER TABLE properties RENAME COLUMN area_sq_meters TO total_area_sq_meters;`,
+  `ALTER TABLE properties ADD COLUMN IF NOT EXISTS useful_area_sq_meters DECIMAL(10,2) DEFAULT NULL AFTER total_area_sq_meters;`,
+  `ALTER TABLE properties ADD COLUMN IF NOT EXISTS parking_spaces INT DEFAULT 0 AFTER useful_area_sq_meters;`,
+  `ALTER TABLE properties ADD COLUMN IF NOT EXISTS pets_allowed BOOLEAN DEFAULT FALSE AFTER parking_spaces;`,
+  `ALTER TABLE properties ADD COLUMN IF NOT EXISTS furnished BOOLEAN DEFAULT FALSE AFTER pets_allowed;`,
+  `ALTER TABLE properties ADD COLUMN IF NOT EXISTS commercial_use_allowed BOOLEAN DEFAULT FALSE AFTER furnished;`,
+  `ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_storage BOOLEAN DEFAULT FALSE AFTER commercial_use_allowed;`,
+  `ALTER TABLE properties ADD COLUMN IF NOT EXISTS orientation VARCHAR(50) DEFAULT NULL AFTER has_storage;`,
   `CREATE TABLE IF NOT EXISTS properties (
-    id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(255) NOT NULL, slug VARCHAR(255) UNIQUE NOT NULL, description TEXT NOT NULL, property_type ENUM('rent', 'sale') NOT NULL, category ENUM('apartment', 'house', 'condo', 'land', 'commercial', 'other') NOT NULL, price DECIMAL(15,2) NOT NULL, currency VARCHAR(3) NOT NULL, address VARCHAR(255) NOT NULL, city VARCHAR(100) NOT NULL, country VARCHAR(100) NOT NULL, bedrooms INT NOT NULL DEFAULT 0, bathrooms INT NOT NULL DEFAULT 0, area_sq_meters DECIMAL(10,2) NOT NULL, images JSON, features JSON, upvotes INT DEFAULT 0, comments_count INT DEFAULT 0, views_count INT DEFAULT 0, inquiries_count INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    id VARCHAR(36) PRIMARY KEY, 
+    user_id VARCHAR(36) NOT NULL, 
+    title VARCHAR(255) NOT NULL, 
+    slug VARCHAR(255) UNIQUE NOT NULL, 
+    description TEXT NOT NULL, 
+    property_type ENUM('rent', 'sale') NOT NULL, 
+    category ENUM('apartment', 'house', 'condo', 'land', 'commercial', 'other') NOT NULL, 
+    price DECIMAL(15,2) NOT NULL, 
+    currency VARCHAR(3) NOT NULL, 
+    address VARCHAR(255) NOT NULL, 
+    city VARCHAR(100) NOT NULL, 
+    country VARCHAR(100) NOT NULL, 
+    bedrooms INT NOT NULL DEFAULT 0, 
+    bathrooms INT NOT NULL DEFAULT 0, 
+    total_area_sq_meters DECIMAL(10,2) NOT NULL,
+    useful_area_sq_meters DECIMAL(10,2) DEFAULT NULL,
+    parking_spaces INT DEFAULT 0,
+    pets_allowed BOOLEAN DEFAULT FALSE,
+    furnished BOOLEAN DEFAULT FALSE,
+    commercial_use_allowed BOOLEAN DEFAULT FALSE,
+    has_storage BOOLEAN DEFAULT FALSE,
+    orientation VARCHAR(50) DEFAULT NULL,
+    images JSON, 
+    features JSON, 
+    upvotes INT DEFAULT 0, 
+    comments_count INT DEFAULT 0, 
+    views_count INT DEFAULT 0, 
+    inquiries_count INT DEFAULT 0, 
+    is_active BOOLEAN DEFAULT TRUE, 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );`,
   `CREATE INDEX IF NOT EXISTS idx_properties_slug ON properties(slug);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_user_id ON properties(user_id);`,
@@ -111,6 +149,9 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_properties_property_type ON properties(property_type);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_category ON properties(category);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_upvotes ON properties(upvotes);`,
+  `CREATE INDEX IF NOT EXISTS idx_properties_orientation ON properties(orientation);`,
+  `CREATE INDEX IF NOT EXISTS idx_properties_pets_allowed ON properties(pets_allowed);`,
+  `CREATE INDEX IF NOT EXISTS idx_properties_furnished ON properties(furnished);`,
 
 
   // property_requests
@@ -147,13 +188,52 @@ const SQL_STATEMENTS: string[] = [
 
   // site_settings
   `CREATE TABLE IF NOT EXISTS site_settings (
-    id INT PRIMARY KEY DEFAULT 1, site_title VARCHAR(255) DEFAULT 'konecte - Encuentra Tu Próxima Propiedad', logo_url VARCHAR(2048) DEFAULT NULL, show_featured_listings_section BOOLEAN DEFAULT TRUE, show_ai_matching_section BOOLEAN DEFAULT TRUE, show_google_sheet_section BOOLEAN DEFAULT TRUE, landing_sections_order TEXT DEFAULT NULL, announcement_bar_text TEXT DEFAULT NULL, announcement_bar_link_url VARCHAR(2048) DEFAULT NULL, announcement_bar_link_text VARCHAR(255) DEFAULT NULL, announcement_bar_is_active BOOLEAN DEFAULT FALSE, announcement_bar_bg_color VARCHAR(20) DEFAULT '#FFB74D', announcement_bar_text_color VARCHAR(20) DEFAULT '#18181b', updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT id_must_be_1_site_settings CHECK (id = 1)
+    id INT PRIMARY KEY DEFAULT 1,
+    site_title VARCHAR(255) DEFAULT 'konecte - Encuentra Tu Próxima Propiedad',
+    logo_url VARCHAR(2048) DEFAULT NULL,
+    show_featured_listings_section BOOLEAN DEFAULT TRUE,
+    show_featured_plans_section BOOLEAN DEFAULT TRUE,
+    show_ai_matching_section BOOLEAN DEFAULT TRUE,
+    show_google_sheet_section BOOLEAN DEFAULT TRUE,
+    landing_sections_order TEXT DEFAULT NULL,
+    announcement_bar_text TEXT DEFAULT NULL,
+    announcement_bar_link_url VARCHAR(2048) DEFAULT NULL,
+    announcement_bar_link_text VARCHAR(255) DEFAULT NULL,
+    announcement_bar_is_active BOOLEAN DEFAULT FALSE,
+    announcement_bar_bg_color VARCHAR(20) DEFAULT '#FFB74D',
+    announcement_bar_text_color VARCHAR(20) DEFAULT '#18181b',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT id_must_be_1_site_settings CHECK (id = 1)
   );`,
-  `INSERT INTO site_settings (id, site_title, logo_url, show_featured_listings_section, show_ai_matching_section, show_google_sheet_section, landing_sections_order, announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color)
-  VALUES (1, 'konecte - Encuentra Tu Próxima Propiedad', NULL, TRUE, TRUE, TRUE, '["featured_list_requests", "ai_matching", "analisis_whatsbot"]', FALSE, '#FFB74D', '#18181b')
+  `INSERT INTO site_settings (
+    id, site_title, logo_url,
+    show_featured_listings_section, show_featured_plans_section, show_ai_matching_section, show_google_sheet_section,
+    landing_sections_order,
+    announcement_bar_is_active, announcement_bar_bg_color, announcement_bar_text_color
+  )
+  VALUES (
+    1, 'konecte - Encuentra Tu Próxima Propiedad', NULL,
+    TRUE, TRUE, TRUE, TRUE,
+    '["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"]',
+    FALSE, '#FFB74D', '#18181b'
+  )
   ON DUPLICATE KEY UPDATE
-    site_title = VALUES(site_title), logo_url = VALUES(logo_url), show_featured_listings_section = VALUES(show_featured_listings_section), show_ai_matching_section = VALUES(show_ai_matching_section), show_google_sheet_section = VALUES(show_google_sheet_section), landing_sections_order = COALESCE(site_settings.landing_sections_order, VALUES(landing_sections_order)), announcement_bar_text = COALESCE(site_settings.announcement_bar_text, VALUES(announcement_bar_text)), announcement_bar_link_url = COALESCE(site_settings.announcement_bar_link_url, VALUES(announcement_bar_link_url)), announcement_bar_link_text = COALESCE(site_settings.announcement_bar_link_text, VALUES(announcement_bar_link_text)), announcement_bar_is_active = VALUES(announcement_bar_is_active), announcement_bar_bg_color = VALUES(announcement_bar_bg_color), announcement_bar_text_color = VALUES(announcement_bar_text_color), updated_at = CURRENT_TIMESTAMP;`,
-  `UPDATE site_settings SET landing_sections_order = '["featured_list_requests", "ai_matching", "analisis_whatsbot"]' WHERE id = 1 AND (landing_sections_order IS NULL OR landing_sections_order != '["featured_list_requests", "ai_matching", "analisis_whatsbot"]');`,
+    site_title = VALUES(site_title),
+    logo_url = VALUES(logo_url),
+    show_featured_listings_section = VALUES(show_featured_listings_section),
+    show_featured_plans_section = VALUES(show_featured_plans_section),
+    show_ai_matching_section = VALUES(show_ai_matching_section),
+    show_google_sheet_section = VALUES(show_google_sheet_section),
+    landing_sections_order = COALESCE(site_settings.landing_sections_order, VALUES(landing_sections_order)),
+    announcement_bar_text = COALESCE(site_settings.announcement_bar_text, VALUES(announcement_bar_text)),
+    announcement_bar_link_url = COALESCE(site_settings.announcement_bar_link_url, VALUES(announcement_bar_link_url)),
+    announcement_bar_link_text = COALESCE(site_settings.announcement_bar_link_text, VALUES(announcement_bar_link_text)),
+    announcement_bar_is_active = VALUES(announcement_bar_is_active),
+    announcement_bar_bg_color = VALUES(announcement_bar_bg_color),
+    announcement_bar_text_color = VALUES(announcement_bar_text_color),
+    updated_at = CURRENT_TIMESTAMP;`,
+  `UPDATE site_settings SET landing_sections_order = '["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"]'
+   WHERE id = 1 AND (landing_sections_order IS NULL OR landing_sections_order != '["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"]');`,
 
   // contacts (CRM)
   `CREATE TABLE IF NOT EXISTS contacts (
@@ -328,8 +408,63 @@ async function setupDatabase() {
     console.log('\nCreando/Actualizando tablas y datos iniciales...');
     for (const stmt of SQL_STATEMENTS) {
       try {
-        await pool.query(stmt);
-        if (stmt.trim().toUpperCase().startsWith('CREATE TABLE')) {
+        // Check if the statement is an ALTER TABLE statement
+        if (stmt.trim().toUpperCase().startsWith('ALTER TABLE')) {
+          const alterMatch = stmt.match(/ALTER TABLE\s+(\w+)\s+(ADD COLUMN IF NOT EXISTS|RENAME COLUMN)\s+(.+)/i);
+          if (alterMatch) {
+            const tableName = alterMatch[1];
+            const operation = alterMatch[2].toUpperCase();
+            const details = alterMatch[3];
+            
+            if (operation === 'ADD COLUMN IF NOT EXISTS') {
+              // Check if column exists before trying to add
+              const colNameMatch = details.match(/(\w+)\s+/);
+              if (colNameMatch && colNameMatch[1]) {
+                const columnName = colNameMatch[1];
+                const checkColSql = `SELECT COUNT(*) AS count FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?;`;
+                const [colExistsRows]: any = await pool.query(checkColSql, [dbConfig.database, tableName, columnName]);
+                if (colExistsRows[0].count === 0) {
+                  await pool.query(stmt);
+                  console.log(`  -> Columna ${columnName} añadida a tabla ${tableName}.`);
+                } else {
+                  console.log(`  -> Columna ${columnName} ya existe en tabla ${tableName}, omitiendo ADD.`);
+                }
+              } else {
+                await pool.query(stmt); // Fallback if regex fails
+                console.log(`  -> Sentencia ALTER TABLE ADD COLUMN procesada para ${tableName}.`);
+              }
+            } else if (operation === 'RENAME COLUMN') {
+              // Check if old column exists and new one doesn't
+              const renameDetailsMatch = details.match(/(\w+)\s+TO\s+(\w+)/i);
+              if (renameDetailsMatch) {
+                const oldColName = renameDetailsMatch[1];
+                const newColName = renameDetailsMatch[2];
+                const checkOldColSql = `SELECT COUNT(*) AS count FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?;`;
+                const [oldColExistsRows]: any = await pool.query(checkOldColSql, [dbConfig.database, tableName, oldColName]);
+                const [newColExistsRows]: any = await pool.query(checkOldColSql, [dbConfig.database, tableName, newColName]);
+
+                if (oldColExistsRows[0].count > 0 && newColExistsRows[0].count === 0) {
+                  await pool.query(stmt);
+                  console.log(`  -> Columna ${oldColName} renombrada a ${newColName} en tabla ${tableName}.`);
+                } else if (newColExistsRows[0].count > 0) {
+                   console.log(`  -> Columna ${newColName} ya existe en tabla ${tableName}, omitiendo RENAME desde ${oldColName}.`);
+                } else {
+                   console.log(`  -> Columna ${oldColName} no encontrada en tabla ${tableName} para renombrar, omitiendo RENAME.`);
+                }
+              } else {
+                 await pool.query(stmt); // Fallback
+                 console.log(`  -> Sentencia ALTER TABLE RENAME COLUMN procesada para ${tableName}.`);
+              }
+            } else {
+              // For other ALTER statements not explicitly handled
+              await pool.query(stmt);
+              console.log(`  -> Sentencia ALTER TABLE procesada para ${tableName}.`);
+            }
+          } else {
+             await pool.query(stmt); // If not ALTER TABLE or regex fails
+             console.log(`  -> Sentencia SQL (no ALTER TABLE) procesada.`);
+          }
+        } else if (stmt.trim().toUpperCase().startsWith('CREATE TABLE')) {
             const tableNameMatch = stmt.match(/CREATE TABLE IF NOT EXISTS (\w+)/i);
             if (tableNameMatch && tableNameMatch[1]) {
                  console.log(`  -> Tabla ${tableNameMatch[1]} procesada/verificada.`);
@@ -378,6 +513,14 @@ async function setupDatabase() {
             console.log(`  -> Tabla en DROP IF EXISTS no existía o ya fue eliminada.`);
         } else if (err.code === 'ER_CANNOT_DROP_FOREIGN_KEY_CONSTRAINT' || err.code === 'ER_DROP_INDEX_FK') {
             console.warn(`  ⚠️  No se pudo eliminar una FK o índice (posiblemente porque no existe o está en uso). Statement: ${stmt.substring(0,100)}... Error: ${err.message}`);
+        } else if (err.code === 'ER_DUP_FIELDNAME' && stmt.toUpperCase().startsWith('ALTER TABLE') && stmt.toUpperCase().includes('ADD COLUMN')) {
+            const colNameMatch = stmt.match(/ADD COLUMN IF NOT EXISTS (\w+)/i) || stmt.match(/ADD COLUMN (\w+)/i) ;
+            const colName = colNameMatch ? colNameMatch[1] : 'desconocida';
+            console.warn(`  ⚠️  Columna ${colName} ya existe. Se omite ALTER ADD. (Error: ${err.message})`);
+        } else if (err.code === 'ER_BAD_FIELD_ERROR' && stmt.toUpperCase().startsWith('ALTER TABLE') && stmt.toUpperCase().includes('RENAME COLUMN')) {
+            const colNameMatch = stmt.match(/RENAME COLUMN (\w+) TO/i);
+            const colName = colNameMatch ? colNameMatch[1] : 'desconocida';
+            console.warn(`  ⚠️  Columna ${colName} no existe o no se puede renombrar. Se omite ALTER RENAME. (Error: ${err.message})`);
         }
         else {
           console.error(`\n❌ Error ejecutando SQL: \n${stmt.substring(0, 200)}...\nError: ${err.message} (Code: ${err.code})`);
@@ -426,6 +569,8 @@ async function setupDatabase() {
 }
 
 setupDatabase();
+
+
 
 
 

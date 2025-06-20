@@ -1,19 +1,18 @@
 
 import { getPropertyBySlugAction } from "@/actions/propertyActions";
-import type { PropertyListing, ListingCategory, User as StoredUserType } from "@/lib/types";
+import type { PropertyListing, ListingCategory, User as StoredUserType, OrientationType } from "@/lib/types";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, ShieldCheck, Eye, CalendarPlus, Share2 } from "lucide-react";
+import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, ShieldCheck, Eye, CalendarPlus, Share2, Compass, Dog, Sofa, Building as CommercialIcon, Warehouse } from "lucide-react";
 import PropertyComments from "@/components/comments/PropertyComments"; 
 import Link from "next/link";
 import RecordView from '@/components/lead-tracking/RecordView';
 import PropertyInquiryForm from "@/components/property/PropertyInquiryForm";
-// import RequestVisitButtonClient from "@/components/property/RequestVisitButtonClient"; // Replaced by PropertyAuthorContactInfoClient
 import SocialShareButtons from '@/components/ui/SocialShareButtons'; 
 import { headers } from 'next/headers'; 
-import PropertyAuthorContactInfoClient from "@/components/property/PropertyAuthorContactInfoClient"; // Import the new client component
+import PropertyAuthorContactInfoClient from "@/components/property/PropertyAuthorContactInfoClient";
 
 const translatePropertyType = (type: 'rent' | 'sale'): string => {
   if (type === 'rent') return 'En Arriendo';
@@ -44,6 +43,20 @@ const formatPrice = (price: number, currency: string) => {
   }
 };
 
+const orientationLabels: Record<OrientationType, string> = {
+  north: "Norte",
+  south: "Sur",
+  east: "Este",
+  west: "Oeste",
+  northeast: "Nororiente",
+  northwest: "Norponiente",
+  southeast: "Suroriente",
+  southwest: "Surponiente",
+  other: "Otra",
+  none: "No especificada",
+};
+
+
 export default async function PropertyDetailPage({ params }: { params: { slug: string } }) {
   const property = await getPropertyBySlugAction(params.slug);
 
@@ -70,8 +83,11 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
   const featureIcons: Record<string, React.ElementType> = {
     "Estacionamiento": ParkingCircle,
     "Piscina": Trees, 
-    "Bodega": PropertyAreaIcon, 
+    "Bodega": Warehouse, // Corrected
     "Gimnasio": CheckSquare, 
+    "Mascotas": Dog,
+    "Amoblado": Sofa,
+    "Comercial": CommercialIcon,
   };
 
 
@@ -103,21 +119,24 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
               {formatPrice(property.price, property.currency)}
               {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground">/mes</span>}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center mt-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center mt-4 border-t pt-4">
               {[
                 { icon: BedDouble, label: `${property.bedrooms} Dorms` },
                 { icon: Bath, label: `${property.bathrooms} Baños` },
-                { icon: PropertyAreaIcon, label: `${property.areaSqMeters} m²` },
-                { icon: Tag, label: translateCategory(property.category), capitalize: true },
-              ].map(item => (
-                <div key={item.label} className="p-3 bg-secondary/50 rounded-lg text-sm sm:text-base">
+                { icon: PropertyAreaIcon, label: `${property.totalAreaSqMeters} m² Tot.`, tooltip: "Superficie Total" },
+                { icon: PropertyAreaIcon, label: `${property.usefulAreaSqMeters || 'N/A'} m² Útil`, tooltip: "Superficie Útil", condition: property.usefulAreaSqMeters !== null && property.usefulAreaSqMeters !== undefined },
+                { icon: Car, label: `${property.parkingSpaces || 0} Estc.`, tooltip: "Estacionamientos" },
+                { icon: Tag, label: translateCategory(property.category), capitalize: true, tooltip: "Categoría" },
+                { icon: Compass, label: property.orientation ? orientationLabels[property.orientation] : 'N/A', tooltip: "Orientación", condition: property.orientation && property.orientation !== 'none'},
+              ].filter(item => item.condition !== false).map(item => (
+                <div key={item.label} className="p-3 bg-secondary/50 rounded-lg text-sm sm:text-base" title={item.tooltip}>
                   <item.icon className="mx-auto mb-1.5 h-6 w-6 text-primary" />
                   <p className={`font-medium ${item.capitalize ? 'capitalize' : ''}`}>{item.label}</p>
                 </div>
               ))}
             </div>
           </CardHeader>
-          <CardContent className="p-6 md:p-8 pt-0 space-y-5"> 
+          <CardContent className="p-6 md:p-8 pt-0 space-y-6"> 
             <div>
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-xl lg:text-2xl font-semibold font-headline">Descripción de la Propiedad</h3>
@@ -128,7 +147,7 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
 
             {property.features && property.features.length > 0 && (
               <div>
-                <h3 className="text-xl lg:text-2xl font-semibold mb-3 font-headline">Características Destacadas</h3>
+                <h3 className="text-xl lg:text-2xl font-semibold mb-3 font-headline">Características Principales</h3>
                 <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {property.features.map(feature => {
                     const FeatureIcon = featureIcons[feature] || CheckSquare;
@@ -141,6 +160,19 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
                 </ul>
               </div>
             )}
+
+             <div className="space-y-3">
+                <h3 className="text-xl lg:text-2xl font-semibold font-headline">Otras Características</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {property.petsAllowed && (<div className="flex items-center text-sm text-muted-foreground p-2 bg-secondary/30 rounded-md"><Dog className="h-5 w-5 mr-2 text-primary"/>Se aceptan mascotas</div>)}
+                    {property.furnished && (<div className="flex items-center text-sm text-muted-foreground p-2 bg-secondary/30 rounded-md"><Sofa className="h-5 w-5 mr-2 text-primary"/>Amoblado</div>)}
+                    {property.commercialUseAllowed && (<div className="flex items-center text-sm text-muted-foreground p-2 bg-secondary/30 rounded-md"><CommercialIcon className="h-5 w-5 mr-2 text-primary"/>Permite uso comercial</div>)}
+                    {property.hasStorage && (<div className="flex items-center text-sm text-muted-foreground p-2 bg-secondary/30 rounded-md"><Warehouse className="h-5 w-5 mr-2 text-primary"/>Tiene bodega</div>)}
+                </div>
+                {(!property.petsAllowed && !property.furnished && !property.commercialUseAllowed && !property.hasStorage) && (
+                    <p className="text-sm text-muted-foreground italic">No se especificaron otras características.</p>
+                )}
+            </div>
             
             {property.author && (
               <PropertyAuthorContactInfoClient 
@@ -167,4 +199,3 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
   );
 }
 
-    
