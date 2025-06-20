@@ -59,23 +59,25 @@ export default function RequestForm() {
   const [showAuthAlert, setShowAuthAlert] = useState(false);
 
   useEffect(() => {
-    console.log('[RequestForm] useEffect for auth check triggered.');
+    console.log('[RequestForm] Auth Check Effect: Start');
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
         const user: StoredUser = JSON.parse(userJson);
         setLoggedInUser(user);
         setIsBroker(user.role_id === 'broker');
-        console.log('[RequestForm] User found in localStorage.');
+        console.log('[RequestForm] Auth Check Effect: User found in localStorage:', user);
       } catch (error) {
-        console.error("[RequestForm] Error parsing user from localStorage", error);
+        console.error("[RequestForm] Auth Check Effect: Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
+        setLoggedInUser(null);
       }
     } else {
-      console.log('[RequestForm] No user found in localStorage.');
+      console.log('[RequestForm] Auth Check Effect: No user found in localStorage.');
+      setLoggedInUser(null);
     }
     setIsCheckingAuth(false);
-    console.log('[RequestForm] Auth check finished, isCheckingAuth set to false.');
+    console.log('[RequestForm] Auth Check Effect: Finished. isCheckingAuth = false');
   }, []);
 
 
@@ -96,23 +98,21 @@ export default function RequestForm() {
   });
 
   async function onSubmit(values: RequestFormValues) {
-    console.log('[RequestForm] onSubmit triggered.');
-    console.log('[RequestForm] Current isCheckingAuth state:', isCheckingAuth);
-    console.log('[RequestForm] Current loggedInUser state:', loggedInUser);
+    console.log('[RequestForm] onSubmit triggered. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', loggedInUser);
 
     if (isCheckingAuth) {
-      console.log('[RequestForm] Still checking auth, showing toast and returning.');
       toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
+      console.log('[RequestForm] onSubmit: Still checking auth. Returning.');
       return;
     }
 
     if (!loggedInUser || !loggedInUser.id) {
-      console.log('[RequestForm] User not logged in, showing auth alert.');
+      console.log('[RequestForm] onSubmit: User not logged in. Setting showAuthAlert to true.');
       setShowAuthAlert(true);
       return;
     }
 
-    console.log('[RequestForm] User is logged in, proceeding with submission.');
+    console.log('[RequestForm] onSubmit: User is logged in. Proceeding with submission.');
     const dataToSubmit = {
         ...values,
         minBedrooms: values.minBedrooms === '' ? undefined : values.minBedrooms,
@@ -388,7 +388,7 @@ export default function RequestForm() {
               Acción Requerida
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Para publicar una solicitud, primero debes iniciar sesión o crear una cuenta.
+              Para publicar una solicitud, primero debes iniciar sesión o crear una cuenta. Es rápido y fácil.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">

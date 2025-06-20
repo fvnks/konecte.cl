@@ -81,21 +81,24 @@ export default function PropertyForm() {
   const [showAuthAlert, setShowAuthAlert] = useState(false);
 
   useEffect(() => {
-    console.log('[PropertyForm] useEffect for auth check triggered.');
+    console.log('[PropertyForm] Auth Check Effect: Start');
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
-        setLoggedInUser(JSON.parse(userJson));
-        console.log('[PropertyForm] User found in localStorage.');
+        const parsedUser = JSON.parse(userJson);
+        setLoggedInUser(parsedUser);
+        console.log('[PropertyForm] Auth Check Effect: User found in localStorage:', parsedUser);
       } catch (error) {
-        console.error("[PropertyForm] Error parsing user from localStorage", error);
+        console.error("[PropertyForm] Auth Check Effect: Error parsing user from localStorage", error);
         localStorage.removeItem('loggedInUser');
+        setLoggedInUser(null);
       }
     } else {
-      console.log('[PropertyForm] No user found in localStorage.');
+      console.log('[PropertyForm] Auth Check Effect: No user found in localStorage.');
+      setLoggedInUser(null);
     }
     setIsCheckingAuth(false);
-    console.log('[PropertyForm] Auth check finished, isCheckingAuth set to false.');
+    console.log('[PropertyForm] Auth Check Effect: Finished. isCheckingAuth = false');
   }, []);
 
   const form = useForm<PropertyFormValues>({
@@ -204,23 +207,21 @@ export default function PropertyForm() {
   };
 
   async function onSubmit(values: PropertyFormValues) {
-    console.log('[PropertyForm] onSubmit triggered.');
-    console.log('[PropertyForm] Current isCheckingAuth state:', isCheckingAuth);
-    console.log('[PropertyForm] Current loggedInUser state:', loggedInUser);
+    console.log('[PropertyForm] onSubmit triggered. isCheckingAuth:', isCheckingAuth, 'loggedInUser:', loggedInUser);
 
     if (isCheckingAuth) {
-      console.log('[PropertyForm] Still checking auth, showing toast and returning.');
       toast({ title: "Verificando sesión...", description: "Por favor, espera un momento.", variant: "default"});
+      console.log('[PropertyForm] onSubmit: Still checking auth. Returning.');
       return;
     }
 
     if (!loggedInUser || !loggedInUser.id) {
-      console.log('[PropertyForm] User not logged in, showing auth alert.');
+      console.log('[PropertyForm] onSubmit: User not logged in. Setting showAuthAlert to true.');
       setShowAuthAlert(true);
       return;
     }
 
-    console.log('[PropertyForm] User is logged in, proceeding with submission.');
+    console.log('[PropertyForm] onSubmit: User is logged in. Proceeding with submission.');
     const finalImageUrls = await uploadImagesToProxy();
 
     const dataToSubmit = {
@@ -384,7 +385,7 @@ export default function PropertyForm() {
               Acción Requerida
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Para publicar una propiedad, primero debes iniciar sesión o crear una cuenta.
+              Para publicar una propiedad, primero debes iniciar sesión o crear una cuenta. Es rápido y fácil.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">
