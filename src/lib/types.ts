@@ -60,7 +60,6 @@ export interface User {
   plan_advanced_dashboard_access?: boolean;
 
   // New fields for different account types
-  // experience_selling_properties?: boolean | null; // REMOVED
   company_name?: string | null;
   main_operating_region?: string | null;
   main_operating_commune?: string | null;
@@ -199,11 +198,20 @@ export interface SiteSettings {
   updated_at?: string;
 }
 
+const passwordValidation = z
+  .string()
+  .min(8, "La contraseña debe tener al menos 8 caracteres.")
+  .max(100, "La contraseña no puede exceder los 100 caracteres.")
+  .regex(/[A-Z]/, "La contraseña debe contener al menos una letra mayúscula.")
+  .regex(/[a-z]/, "La contraseña debe contener al menos una letra minúscula.")
+  .regex(/[0-9]/, "La contraseña debe contener al menos un número.")
+  .regex(/[^A-Za-z0-9]/, "La contraseña debe contener al menos un carácter especial.");
+
 export const adminCreateUserFormSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
   email: z.string().email("Correo electrónico inválido.").max(255),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").max(100),
-  confirmPassword: z.string().min(6, "La confirmación de contraseña debe tener al menos 6 caracteres."),
+  password: passwordValidation,
+  confirmPassword: passwordValidation,
   role_id: z.string().min(1, "El rol es requerido."),
   plan_id: z.string().optional().nullable(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -358,8 +366,8 @@ export const signUpSchema = z.object({
   accountType: z.enum(['natural', 'broker'], { required_error: "Debes seleccionar un tipo de cuenta."}),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
   email: z.string().email("Correo electrónico inválido.").max(255),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres.").max(100),
-  confirmPassword: z.string().min(6, "La confirmación de contraseña debe tener al menos 6 caracteres."),
+  password: passwordValidation,
+  confirmPassword: passwordValidation,
   acceptTerms: z.boolean().refine(val => val === true, {
     message: "Debes aceptar los términos y condiciones.",
   }),
@@ -367,10 +375,6 @@ export const signUpSchema = z.object({
   phone_number: z.string().max(50, "El teléfono no puede exceder los 50 caracteres.").optional().or(z.literal('')),
   rut_tin: z.string().max(20, "El RUT/Tax ID no puede exceder los 20 caracteres.").optional().or(z.literal('')),
 
-  // Persona natural specific (optional)
-  // experience_selling_properties: z.enum(['yes', 'no'], { invalid_type_error: "Selecciona sí o no."}).optional(), // REMOVED
-
-  // Broker/Inmobiliaria specific (optional at schema level)
   company_name: z.string().max(255, "El nombre de la empresa no puede exceder los 255 caracteres.").optional().or(z.literal('')),
   main_operating_region: z.string().max(100, "La región no puede exceder los 100 caracteres.").optional().or(z.literal('')),
   main_operating_commune: z.string().max(100, "La comuna no puede exceder los 100 caracteres.").optional().or(z.literal('')),
@@ -767,3 +771,4 @@ export type UserActionLogType =
   | 'unusual_activity_detected' | 'account_locked_temporarily' | 'admin_action';
 
     
+
