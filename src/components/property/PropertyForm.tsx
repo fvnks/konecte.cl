@@ -28,11 +28,11 @@ import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import dynamic from 'next/dynamic';
 // Import the new DND component and its types
 import type { SortableImageItem } from './ImageDropzoneSortableCreate'; 
-const ImageDropzoneSortableCreate = dynamic(
+const ImageDropzoneSortableCreateWithNoSSR = dynamic(
   () => import('./ImageDropzoneSortableCreate'),
   { 
     ssr: false,
-    loading: () => <div className="min-h-[10rem] flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary"/> Cargando cargador de imágenes...</div>
+    loading: () => <div className="min-h-[10rem] w-full rounded-lg bg-muted/20 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary"/><span className="ml-2 text-muted-foreground">Cargando cargador...</span></div>
   }
 );
 
@@ -122,8 +122,6 @@ export default function PropertyForm() {
 
   const handleOrderedImagesChange = useCallback((filesInOrder: File[]) => {
     setOrderedImageFiles(filesInOrder);
-    // We don't need to update RHF 'images' field here with File objects,
-    // as it expects URLs for the final submission. The upload process will handle this.
   }, []);
 
 
@@ -157,7 +155,7 @@ export default function PropertyForm() {
     }
     setIsUploading(false);
 
-    if (orderedImageFiles.length > 0 && finalImageUrlsForServer.length === 0) {
+    if (orderedImageFiles.length > 0 && finalImageUrlsForServer.length === 0 && orderedImageFiles.some(file => file.size > 0)) { // Check if there were actual files to upload
         toast({ title: "Error de Imágenes", description: "No se pudieron subir las imágenes. Intenta de nuevo.", variant: "destructive"});
         return;
     }
@@ -263,7 +261,11 @@ export default function PropertyForm() {
           
           <FormItem>
             <FormLabel>Imágenes de la Propiedad</FormLabel>
-            <ImageDropzoneSortableCreate onImagesChange={handleOrderedImagesChange} />
+            <ImageDropzoneSortableCreateWithNoSSR 
+              onImagesChange={handleOrderedImagesChange}
+              initialImages={orderedImageFiles}
+              isSubmittingForm={form.formState.isSubmitting || isUploading}
+            />
             <FormDescription>Sube imágenes claras y de buena calidad. Puedes arrastrarlas para cambiar el orden (la primera será la principal).</FormDescription>
             <FormMessage>{form.formState.errors.images?.message}</FormMessage>
           </FormItem>

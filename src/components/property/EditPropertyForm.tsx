@@ -28,11 +28,11 @@ import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import dynamic from 'next/dynamic';
 // Import the new DND component and its types
 import type { ManagedImageForEdit } from './ImageDropzoneSortableEdit';
-const ImageDropzoneSortableEdit = dynamic(
+const ImageDropzoneSortableEditWithNoSSR = dynamic(
   () => import('./ImageDropzoneSortableEdit'),
   { 
     ssr: false,
-    loading: () => <div className="min-h-[10rem] flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary"/> Cargando cargador de imágenes...</div>
+    loading: () => <div className="min-h-[10rem] w-full rounded-lg bg-muted/20 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary"/><span className="ml-2 text-muted-foreground">Cargando cargador...</span></div>
   }
 );
 
@@ -64,12 +64,12 @@ const orientationOptions: { value: OrientationType; label: string }[] = [
   { value: "none", label: "No especificada" },
 ];
 
-const editPropertyFormSchema = propertyFormSchema; // Re-use the same schema for now
+const editPropertyFormSchema = propertyFormSchema; 
 type EditPropertyFormValues = z.infer<typeof editPropertyFormSchema>;
 
 interface EditPropertyFormProps {
   property: PropertyListing;
-  userId?: string; // For user context edits
+  userId?: string; 
   onSubmitAction: (
     propertyId: string,
     data: PropertyFormValues,
@@ -82,9 +82,9 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   const { toast } = useToast();
   const router = useRouter();
   
-  // State to hold the complete image objects (File or URL) for the DND component
   const [currentManagedImages, setCurrentManagedImages] = useState<ManagedImageForEdit[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  // No need for an internal hasMounted here if the component itself is dynamically imported with ssr:false
 
   const form = useForm<EditPropertyFormValues>({
     resolver: zodResolver(editPropertyFormSchema),
@@ -108,7 +108,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       commercialUseAllowed: property.commercialUseAllowed || false,
       hasStorage: property.hasStorage || false,
       orientation: property.orientation || "none",
-      images: property.images || [], // RHF 'images' field will store final URLs
+      images: property.images || [], 
       features: property.features?.join(', ') || "",
     },
   });
@@ -118,15 +118,14 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   
   const handleManagedImagesChange = useCallback((newManagedImagesState: ManagedImageForEdit[]) => {
     setCurrentManagedImages(newManagedImagesState);
-    // The RHF 'images' field will be updated with final URLs in onSubmit after uploads
   }, []);
 
   async function onSubmit(values: EditPropertyFormValues) {
     setIsUploading(true);
     const finalImageUrlsForServer: string[] = [];
 
-    for (const img of currentManagedImages) { // Process based on state from DND component
-      if (!img.isExisting && img.file) { // It's a new file to upload
+    for (const img of currentManagedImages) { 
+      if (!img.isExisting && img.file) { 
         const formData = new FormData();
         formData.append("imageFile", img.file);
         try {
@@ -140,24 +139,17 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         } catch (error: any) {
           toast({ title: "Error de Subida", description: `No se pudo subir ${img.file.name}. Error: ${error.message}`, variant: "destructive" });
         }
-      } else if (img.isExisting && img.originalUrl) { // It's an existing image, use its original URL
+      } else if (img.isExisting && img.originalUrl) { 
         finalImageUrlsForServer.push(img.originalUrl);
       }
     }
     setIsUploading(false);
 
-    // Check if any new images were supposed to be uploaded but failed
     const newImagesCount = currentManagedImages.filter(img => !img.isExisting && img.file).length;
-    if (newImagesCount > 0 && finalImageUrlsForServer.filter(url => !property.images.includes(url)).length !== newImagesCount) {
-      // This logic is a bit simplistic; a more robust check would be needed if URLs could be identical for new uploads
-      // For now, if there were new files but not enough new URLs were generated (excluding existing ones), assume an issue.
-      const successfullyUploadedNewImages = finalImageUrlsForServer.length - currentManagedImages.filter(img => img.isExisting).length;
-      if (successfullyUploadedNewImages < newImagesCount) {
-        toast({ title: "Error de Imágenes", description: "Algunas imágenes nuevas no se pudieron subir. Intenta de nuevo.", variant: "destructive"});
-        // Don't proceed with submission if critical image uploads failed for NEW images.
-        // If only existing images were reordered, or some new ones failed but others succeeded, admin might still want to save.
-        // This depends on desired behavior. For now, we'll proceed with what was successfully uploaded.
-      }
+    const successfullyUploadedNewImages = finalImageUrlsForServer.length - currentManagedImages.filter(img => img.isExisting).length;
+
+    if (newImagesCount > 0 && successfullyUploadedNewImages < newImagesCount) {
+        toast({ title: "Error de Imágenes", description: "Algunas imágenes nuevas no se pudieron subir. Los cambios en las imágenes existentes (si los hubo) se han guardado.", variant: "warning"});
     }
 
     const dataToSubmit: PropertyFormValues = {
@@ -197,7 +189,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* FormFields for title, description, type, category, price, currency, address, city, country, areas, rooms, etc. (same as PropertyForm) */}
         <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -259,9 +250,10 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
 
         <FormItem>
             <FormLabel>Imágenes de la Propiedad</FormLabel>
-            <ImageDropzoneSortableEdit
+            <ImageDropzoneSortableEditWithNoSSR
               initialImageUrls={property.images || []}
               onManagedImagesChange={handleManagedImagesChange}
+              isSubmittingForm={form.formState.isSubmitting || isUploading}
             />
             <FormDescription>Puedes añadir, eliminar o reordenar las imágenes. Las imágenes existentes se mantendrán a menos que las elimines.</FormDescription>
             <FormMessage>{form.formState.errors.images?.message}</FormMessage>

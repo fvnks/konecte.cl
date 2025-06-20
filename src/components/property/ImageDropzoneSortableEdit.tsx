@@ -5,7 +5,7 @@ import { useCallback, useState, useEffect, useId, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { ReactSortable } from 'react-sortablejs';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, Trash2, AlertTriangle } from 'lucide-react';
+import { UploadCloud, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,19 +24,27 @@ interface ImageDropzoneSortableEditProps {
   initialImageUrls: string[];
   onManagedImagesChange: (images: ManagedImageForEdit[]) => void;
   maxImages?: number;
+  isSubmittingForm?: boolean;
 }
 
 export default function ImageDropzoneSortableEdit({
   initialImageUrls,
   onManagedImagesChange,
   maxImages = MAX_IMAGES,
+  isSubmittingForm = false,
 }: ImageDropzoneSortableEditProps) {
   const [managedImages, setManagedImages] = useState<ManagedImageForEdit[]>([]);
   const { toast } = useToast();
   const dropzoneId = useId();
-  const createdBlobUrlsRef = useRef<string[]>([]); 
+  const createdBlobUrlsRef = useRef<string[]>([]);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasMounted) return;
     const initialProcessedImages = initialImageUrls.map((url, index) => ({
       id: `existing-${url.slice(-10)}-${index}-${Date.now()}`,
       url: url,
@@ -45,12 +53,14 @@ export default function ImageDropzoneSortableEdit({
     }));
     setManagedImages(initialProcessedImages);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialImageUrls]); 
+  }, [initialImageUrls, hasMounted]); // Only re-run if initialImageUrls actually change reference or on mount
 
   useEffect(() => {
-    onManagedImagesChange(managedImages);
+    if (hasMounted) {
+        onManagedImagesChange(managedImages);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [managedImages]); 
+  }, [managedImages, hasMounted]); 
 
   useEffect(() => {
     return () => {
@@ -64,6 +74,7 @@ export default function ImageDropzoneSortableEdit({
   }, []); 
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+    if (!hasMounted) return;
     const currentImageCount = managedImages.length;
     const availableSlots = maxImages - currentImageCount;
 
@@ -78,33 +89,50 @@ export default function ImageDropzoneSortableEdit({
       });
     }
 
-    if (acceptedFiles.length > availableSlots) {
+    if (acceptedFiles.length > availableSlots && availableSlots > 0) {
       toast({
         title: "Límite Excedido",
         description: `Solo puedes subir ${availableSlots} más (máx. ${maxImages}). Se añadieron las primeras ${availableSlots}.`,
         variant: "warning",
       });
+    } else if (acceptedFiles.length > 0 && availableSlots <= 0) {
+       toast({
+        title: "Límite de Imágenes Alcanzado",
+        description: `Ya has alcanzado el máximo de ${maxImages} imágenes.`,
+        variant: "warning",
+      });
+      return;
     }
 
     const newImagesToAdd: ManagedImageForEdit[] = [];
     const newBlobUrlsForThisDrop: string[] = [];
 
     acceptedFiles.slice(0, availableSlots).forEach(file => {
-      const previewUrl = URL.createObjectURL(file);
-      newBlobUrlsForThisDrop.push(previewUrl);
-      newImagesToAdd.push({
-        id: `${file.name}-${Date.now()}-${Math.random()}`,
-        file,
-        url: previewUrl, 
-        isExisting: false,
-      });
+       try {
+        const previewUrl = URL.createObjectURL(file);
+        console.log(`[ImageDropzoneSortableEdit] Created blob URL for ${file.name}: ${previewUrl}`);
+        newBlobUrlsForThisDrop.push(previewUrl);
+        newImagesToAdd.push({
+          id: `${file.name}-${Date.now()}-${Math.random()}`,
+          file,
+          url: previewUrl, 
+          isExisting: false,
+        });
+      } catch (error) {
+        console.error("Error creating blob URL in onDrop (EditForm):", file.name, error);
+        toast({ title: "Error de Previsualización", description: `No se pudo generar la previsualización para ${file.name}.`, variant: "destructive" });
+      }
     });
     
     if (newImagesToAdd.length > 0) {
-      setManagedImages(prev => [...prev, ...newImagesToAdd]);
+      setManagedImages(prev => {
+        const updatedImages = [...prev, ...newImagesToAdd];
+        console.log("[ImageDropzoneSortableEdit] Updated managedImages state:", updatedImages.map(img => ({id:img.id, url:img.url, fileName: img.file?.name, isExisting: img.isExisting})));
+        return updatedImages;
+      });
       createdBlobUrlsRef.current = [...createdBlobUrlsRef.current, ...newBlobUrlsForThisDrop];
     }
-  }, [managedImages.length, maxImages, toast]);
+  }, [managedImages.length, maxImages, toast, hasMounted]);
 
   const removeImage = (idToRemove: string) => {
     setManagedImages(prevImages => {
@@ -125,8 +153,17 @@ export default function ImageDropzoneSortableEdit({
     onDrop,
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] },
     maxSize: MAX_FILE_SIZE_MB * 1024 * 1024,
-    disabled: managedImages.length >= maxImages,
+    disabled: managedImages.length >= maxImages || isSubmittingForm || !hasMounted,
   });
+  
+  if (!hasMounted) {
+    return (
+      <div className="min-h-[10rem] flex items-center justify-center w-full border-2 border-dashed rounded-lg bg-muted/20">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Cargando área de imágenes...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -137,10 +174,10 @@ export default function ImageDropzoneSortableEdit({
             "flex flex-col items-center justify-center w-full min-h-[10rem] border-2 border-dashed rounded-lg cursor-pointer transition-colors",
             "bg-muted/20 hover:bg-muted/40 border-muted-foreground/30 hover:border-primary/70",
             isDragActive && "border-primary ring-2 ring-primary",
-            managedImages.length >= maxImages && "cursor-not-allowed opacity-60 hover:border-muted-foreground/30"
+            (managedImages.length >= maxImages || isSubmittingForm) && "cursor-not-allowed opacity-60 hover:border-muted-foreground/30"
           )}
         >
-          <input {...getInputProps()} id={dropzoneId} />
+          <input {...getInputProps()} id={dropzoneId} disabled={isSubmittingForm}/>
           <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
             <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
             <p className="mb-1 text-base text-muted-foreground">
@@ -163,40 +200,46 @@ export default function ImageDropzoneSortableEdit({
           list={managedImages}
           setList={onSortEnd}
           tag="div"
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 py-2"
+          className="flex flex-wrap gap-3 py-2"
           animation={150}
         >
-          {managedImages.map((img, index) => (
+          {managedImages.map((img, index) => {
+            console.log(`[ImageDropzoneSortableEdit MAP] Rendering img ${index}, id: ${img.id}, url: ${img.url}, isExisting: ${img.isExisting}`);
+            return (
             <div
               key={img.id} 
               data-id={img.id}
-              className="relative group aspect-square border rounded-lg overflow-hidden shadow-sm bg-slate-100 cursor-grab active:cursor-grabbing"
+              className="relative group w-32 h-32 border rounded-lg overflow-hidden shadow-sm bg-slate-100 cursor-grab active:cursor-grabbing inline-block m-1"
             >
               {img.url && (
                 <img
                   src={img.url} 
-                  alt={`Previsualización ${img.id}`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: 'rgba(0,0,0,0.05)' }}
+                  alt={`Previsualización ${img.file?.name || img.originalUrl || img.id}`}
+                  className="w-full h-full object-cover"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
                   data-ai-hint="propiedad interior"
                 />
               )}
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10"
-                onClick={(e) => { e.stopPropagation(); removeImage(img.id);}}
-                aria-label="Eliminar imagen"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {!isSubmittingForm && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-md z-10"
+                  onClick={(e) => { e.stopPropagation(); removeImage(img.id);}}
+                  aria-label="Eliminar imagen"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
               {index === 0 && (
                 <span className="absolute bottom-1 right-1 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-md font-medium">
                   Principal
                 </span>
               )}
             </div>
-          ))}
+            );
+          })}
         </ReactSortable>
       )}
     </div>
