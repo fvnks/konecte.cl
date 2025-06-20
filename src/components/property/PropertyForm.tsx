@@ -7,12 +7,13 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Form,
+  FormControl, // Added missing import
   FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  useFormField, 
+  useFormField,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,7 +29,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import AddressAutocompleteInput from "./AddressAutocompleteInput"; 
+import AddressAutocompleteInput from "./AddressAutocompleteInput";
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -102,7 +103,7 @@ export default function PropertyForm() {
       commercialUseAllowed: false,
       hasStorage: false,
       orientation: "none",
-      images: [], 
+      images: [],
       features: "",
     },
   });
@@ -137,7 +138,7 @@ export default function PropertyForm() {
       const newPreviews = validFiles.map(file => URL.createObjectURL(file));
       setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
       form.setValue('images', [...imagePreviews, ...newPreviews], { shouldValidate: true, shouldDirty: true });
-      event.target.value = ''; 
+      event.target.value = '';
     }
   };
 
@@ -158,7 +159,7 @@ export default function PropertyForm() {
     if (imageFiles.length === 0) return [];
     setIsUploading(true);
     const uploadedUrls: string[] = [];
-    
+
     for (const file of imageFiles) {
       const formData = new FormData();
       formData.append("imageFile", file);
@@ -189,10 +190,10 @@ export default function PropertyForm() {
     }
 
     const finalImageUrls = await uploadImagesToProxy();
-    
+
     const dataToSubmit = {
       ...values,
-      images: finalImageUrls, 
+      images: finalImageUrls,
       usefulAreaSqMeters: values.usefulAreaSqMeters === '' ? undefined : values.usefulAreaSqMeters,
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
@@ -216,13 +217,13 @@ export default function PropertyForm() {
       toast({ title: "Error al Publicar", description: result.message || "No se pudo enviar tu propiedad.", variant: "destructive" });
     }
   }
-  
+
   useEffect(() => {
     return () => {
       imagePreviews.forEach(url => URL.revokeObjectURL(url));
     };
-  }, [imagePreviews]); 
-  
+  }, [imagePreviews]);
+
   if (isCheckingAuth) {
     return (
       <div className="flex justify-center items-center py-10">
@@ -235,36 +236,36 @@ export default function PropertyForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
-        <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /> <FormMessage /> </FormItem> )}/>
+        <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
+        <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField control={form.control} name="propertyType" render={({ field }) => ( <FormItem> <FormLabel>Tipo de Transacción</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <Input type="hidden" {...field} /> <SelectTrigger> <SelectValue placeholder="Selecciona arriendo o venta" /> </SelectTrigger> <SelectContent> {propertyTypeOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría de Propiedad</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <Input type="hidden" {...field} /> <SelectTrigger> <SelectValue placeholder="Selecciona una categoría" /> </SelectTrigger> <SelectContent> {categoryOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="propertyType" render={({ field }) => ( <FormItem> <FormLabel>Tipo de Transacción</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger> <SelectValue placeholder="Selecciona arriendo o venta" /> </SelectTrigger></FormControl> <SelectContent> {propertyTypeOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría de Propiedad</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger> <SelectValue placeholder="Selecciona una categoría" /> </SelectTrigger></FormControl> <SelectContent> {categoryOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <Input type="number" placeholder="Ej: 85000000" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <Input placeholder="Ej: CLP, UF, USD" {...field} /> <FormDescription>Código de 3 letras para la moneda.</FormDescription> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <FormControl><Input type="number" placeholder="Ej: 85000000" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="currency" render={({ field }) => ( <FormItem> <FormLabel>Moneda</FormLabel> <FormControl><Input placeholder="Ej: CLP, UF, USD" {...field} /></FormControl> <FormDescription>Código de 3 letras para la moneda.</FormDescription> <FormMessage /> </FormItem> )}/>
         </div>
-        
-        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting || !loggedInUser} /> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
+
+        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl><AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting || !loggedInUser} /></FormControl> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <Input placeholder="Ej: Valparaíso (se autocompletará si es posible)" {...field} /> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <Input placeholder="Ej: Chile (se autocompletará si es posible)" {...field} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField control={form.control} name="totalAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Total (m²)</FormLabel> <Input type="number" placeholder="Ej: 120" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="usefulAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Útil (m²) (Opcional)</FormLabel> <Input type="number" placeholder="Ej: 100" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="totalAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Total (m²)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 120" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="usefulAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Útil (m²) (Opcional)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 100" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <Input type="number" placeholder="Ej: 3" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Bath className="mr-2 h-4 w-4 text-primary"/>N° de Baños</FormLabel> <Input type="number" placeholder="Ej: 2" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="parkingSpaces" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Car className="mr-2 h-4 w-4 text-primary"/>N° Estacionamientos</FormLabel> <Input type="number" placeholder="Ej: 1" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>N° de Dormitorios</FormLabel> <FormControl><Input type="number" placeholder="Ej: 3" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Bath className="mr-2 h-4 w-4 text-primary"/>N° de Baños</FormLabel> <FormControl><Input type="number" placeholder="Ej: 2" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="parkingSpaces" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Car className="mr-2 h-4 w-4 text-primary"/>N° Estacionamientos</FormLabel> <FormControl><Input type="number" placeholder="Ej: 1" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
 
-        <FormField control={form.control} name="orientation" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Compass className="mr-2 h-4 w-4 text-primary"/>Orientación</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <Input type="hidden" {...field} /> <SelectTrigger> <SelectValue placeholder="Selecciona orientación" /> </SelectTrigger> <SelectContent> {orientationOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
-        
+        <FormField control={form.control} name="orientation" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Compass className="mr-2 h-4 w-4 text-primary"/>Orientación</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl><SelectTrigger> <SelectValue placeholder="Selecciona orientación" /> </SelectTrigger></FormControl> <SelectContent> {orientationOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+
         <div className="space-y-4 pt-2">
             <FormLabel className="text-base font-medium">Otras Características</FormLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
@@ -274,11 +275,11 @@ export default function PropertyForm() {
                 <FormField control={form.control} name="hasStorage" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm hover:bg-accent/50 transition-colors"> <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl> <FormLabel className="font-normal flex items-center"><Warehouse className="mr-2 h-5 w-5 text-primary"/>Tiene Bodega</FormLabel> </FormItem> )}/>
             </div>
         </div>
-        
+
         <FormField
           control={form.control}
           name="images"
-          render={({ field }) => {
+          render={({ field }) => { // field is passed but we manage images state separately for previews
             const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
             return (
               <FormItem id={formItemId}>
@@ -311,8 +312,8 @@ export default function PropertyForm() {
           }}
         />
 
-        <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
-        
+        <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
+
         <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth || !loggedInUser || isUploading}>
           {(form.formState.isSubmitting || isCheckingAuth || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isUploading ? 'Subiendo imágenes...' : 'Publicar Propiedad'}
@@ -327,3 +328,4 @@ export default function PropertyForm() {
     </Form>
   );
 }
+
