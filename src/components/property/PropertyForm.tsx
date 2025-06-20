@@ -22,23 +22,14 @@ import { useToast } from "@/hooks/use-toast";
 import { submitPropertyAction } from "@/actions/propertyActions";
 import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormValues, OrientationType } from "@/lib/types";
 import { propertyFormSchema, orientationValues } from "@/lib/types";
-import { Loader2, UserCircle, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, LogIn, UserPlus } from "lucide-react"; // Added BedDouble
+import { Loader2, UserCircle, UploadCloud, Trash2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble, LogIn, UserPlus } from "lucide-react";
 import { useEffect, useState, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+// AlertDialog ya no es necesario aquí
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -78,7 +69,7 @@ export default function PropertyForm() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [showAuthAlert, setShowAuthAlert] = useState(false);
+  // const [showAuthAlert, setShowAuthAlert] = useState(false); // Ya no se necesita
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -200,7 +191,8 @@ export default function PropertyForm() {
 
   async function onSubmit(values: PropertyFormValues) {
     if (!loggedInUser || !loggedInUser.id) {
-      setShowAuthAlert(true);
+      // setShowAuthAlert(true); // Ya no se usa
+      toast({ title: "Acción Requerida", description: "Debes iniciar sesión para publicar una propiedad.", variant: "warning"});
       return;
     }
 
@@ -251,7 +243,7 @@ export default function PropertyForm() {
     );
   }
 
-  const showPetsAllowed = (watchedPropertyType === 'rent' && watchedCategory === 'apartment') || (watchedPropertyType === 'rent' && watchedCategory === 'house');
+  const showPetsAllowed = (watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house'));
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
   const showCommercialUse = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && (watchedCategory === 'house' || watchedCategory === 'land' || watchedCategory === 'commercial');
   const showStorage = (watchedPropertyType === 'rent' || watchedPropertyType === 'sale') && watchedCategory === 'apartment';
@@ -264,8 +256,8 @@ export default function PropertyForm() {
           <FormField control={form.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Título de la Publicación</FormLabel> <FormControl><Input placeholder="Ej: Lindo departamento con vista al mar en Concón" {...field} /></FormControl> <FormDescription>Un título atractivo y descriptivo para tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
           <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe tu propiedad en detalle..." className="min-h-[120px]" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField control={form.control} name="propertyType" render={({ field }) => ( <FormItem> <FormLabel>Tipo de Transacción</FormLabel> <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value || undefined}> <FormControl><SelectTrigger> <SelectValue placeholder="Selecciona arriendo o venta" /> </SelectTrigger></FormControl> <SelectContent> {propertyTypeOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
-            <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría de Propiedad</FormLabel> <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value || undefined}> <FormControl><SelectTrigger> <SelectValue placeholder="Selecciona una categoría" /> </SelectTrigger></FormControl> <SelectContent> {categoryOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="propertyType" render={({ field }) => ( <FormItem> <FormLabel>Tipo de Transacción</FormLabel> <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value || undefined}> <FormControl><SelectTrigger> <SelectValue placeholder="Selecciona arriendo o venta" /> </SelectTrigger></FormControl> <SelectContent> {propertyTypeOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría de Propiedad</FormLabel> <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value || undefined}> <FormControl><SelectTrigger> <SelectValue placeholder="Selecciona una categoría" /> </SelectTrigger></FormControl> <SelectContent> {categoryOptions.map(option => ( <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField control={form.control} name="price" render={({ field }) => ( <FormItem> <FormLabel>Precio</FormLabel> <FormControl><Input type="number" placeholder="Ej: 85000000" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl> <FormMessage /> </FormItem> )}/>
@@ -362,40 +354,12 @@ export default function PropertyForm() {
 
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
 
-          <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth || isUploading}>
+          <Button type="submit" className="w-full md:w-auto" disabled={!loggedInUser || form.formState.isSubmitting || isCheckingAuth || isUploading}>
             {(form.formState.isSubmitting || isCheckingAuth || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isUploading ? 'Subiendo imágenes...' : 'Publicar Propiedad'}
           </Button>
         </form>
       </Form>
-
-      <AlertDialog open={showAuthAlert} onOpenChange={setShowAuthAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center">
-                <UserCircle className="h-6 w-6 mr-2 text-primary" />
-                Registro Requerido
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Para publicar tu propiedad, primero necesitas crear una cuenta o iniciar sesión.
-              ¡Es rápido y fácil!
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-2">
-            <AlertDialogCancel className="w-full sm:w-auto" onClick={() => setShowAuthAlert(false)}>Cancelar</AlertDialogCancel>
-            <Button asChild className="w-full sm:w-auto" onClick={() => setShowAuthAlert(false)}>
-              <Link href="/auth/signup" className="flex items-center">
-                <UserPlus className="mr-2 h-4 w-4" /> Registrarse
-              </Link>
-            </Button>
-            <Button asChild className="w-full sm:w-auto bg-primary hover:bg-primary/90" onClick={() => setShowAuthAlert(false)}>
-              <Link href="/auth/signin" className="flex items-center">
-                <LogIn className="mr-2 h-4 w-4" /> Iniciar Sesión
-              </Link>
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

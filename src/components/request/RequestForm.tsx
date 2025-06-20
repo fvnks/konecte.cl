@@ -24,16 +24,7 @@ import { Loader2, UserCircle, Handshake, LogIn, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+// AlertDialog ya no es necesario aquí
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -55,7 +46,7 @@ export default function RequestForm() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isBroker, setIsBroker] = useState(false);
-  const [showAuthAlert, setShowAuthAlert] = useState(false);
+  // const [showAuthAlert, setShowAuthAlert] = useState(false); // Ya no se necesita
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -91,7 +82,8 @@ export default function RequestForm() {
 
   async function onSubmit(values: RequestFormValues) {
      if (!loggedInUser || !loggedInUser.id) {
-      setShowAuthAlert(true);
+      // setShowAuthAlert(true); // Ya no se usa
+      toast({ title: "Acción Requerida", description: "Debes iniciar sesión para publicar una solicitud.", variant: "warning"});
       return;
     }
 
@@ -364,40 +356,12 @@ export default function RequestForm() {
             />
           )}
           
-          <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting || isCheckingAuth}>
+          <Button type="submit" className="w-full md:w-auto" disabled={!loggedInUser || form.formState.isSubmitting || isCheckingAuth}>
             {(form.formState.isSubmitting || isCheckingAuth) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Publicar Solicitud
           </Button>
         </form>
       </Form>
-
-      <AlertDialog open={showAuthAlert} onOpenChange={setShowAuthAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center">
-                <UserCircle className="h-6 w-6 mr-2 text-primary" />
-                Registro Requerido
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Para publicar tu solicitud, primero necesitas crear una cuenta o iniciar sesión.
-              ¡Es rápido y fácil!
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-2">
-            <AlertDialogCancel className="w-full sm:w-auto" onClick={() => setShowAuthAlert(false)}>Cancelar</AlertDialogCancel>
-            <Button asChild className="w-full sm:w-auto" onClick={() => setShowAuthAlert(false)}>
-              <Link href="/auth/signup" className="flex items-center">
-                <UserPlus className="mr-2 h-4 w-4" /> Registrarse
-              </Link>
-            </Button>
-            <Button asChild className="w-full sm:w-auto bg-primary hover:bg-primary/90" onClick={() => setShowAuthAlert(false)}>
-              <Link href="/auth/signin" className="flex items-center">
-                <LogIn className="mr-2 h-4 w-4" /> Iniciar Sesión
-              </Link>
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
