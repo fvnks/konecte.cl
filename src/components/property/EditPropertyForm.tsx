@@ -29,6 +29,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
+import useHasMounted from '@/hooks/useHasMounted'; // Importar el nuevo hook
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -86,7 +87,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   const router = useRouter();
   const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const hasMounted = useHasMounted(); // Usar el hook
 
   const form = useForm<EditPropertyFormValues>({
     resolver: zodResolver(editPropertyFormSchema),
@@ -118,11 +119,6 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   const watchedPropertyType = form.watch("propertyType");
   const watchedCategory = form.watch("category");
 
- useEffect(() => {
-    // This effect runs only once on the client after initial mount
-    setMounted(true);
-  }, []);
-
   useEffect(() => {
     const initialManagedImages = (property.images || []).map((imgUrl, index) => ({
       id: `existing-${imgUrl.slice(-10)}-${index}`,
@@ -133,10 +129,12 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
   }, [property.images]);
 
   useEffect(() => {
-    if (managedImages.length > 0 || form.formState.dirtyFields.images) {
-        form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+    // Solo actualiza el valor del formulario si el componente está montado y hay cambios.
+    if (hasMounted) {
+      form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
     }
-  }, [managedImages, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [managedImages, form.setValue, hasMounted]);
 
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -253,7 +251,8 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
         }
       });
     };
-  }, [managedImages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [managedImages]); // Only re-run if managedImages identity changes (e.g., content change)
 
   const showPetsAllowed = watchedPropertyType === 'rent' && (watchedCategory === 'apartment' || watchedCategory === 'house');
   const showFurnished = watchedPropertyType === 'rent' && (watchedCategory === 'house' || watchedCategory === 'apartment');
@@ -328,7 +327,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
             return (
               <FormItem id={formItemId}>
                 <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
-                {mounted && (
+                {hasMounted && (
                   <DragDropContext onDragEnd={onDragEnd}>
                     <Droppable droppableId="imageDroppableEdit" direction="horizontal" isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
                       {(provided) => (
@@ -361,7 +360,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
                     </Droppable>
                   </DragDropContext>
                 )}
-                {!mounted && <div className="text-sm text-muted-foreground">Cargando controles de imagen...</div>}
+                {!hasMounted && <div className="text-sm text-muted-foreground">Cargando controles de imagen...</div>}
                 {managedImages.length < MAX_IMAGES && (
                   <label
                     htmlFor="image-upload-input-edit"

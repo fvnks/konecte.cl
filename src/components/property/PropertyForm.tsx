@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import AuthRequiredDialog from '@/components/auth/AuthRequiredDialog';
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
+import useHasMounted from '@/hooks/useHasMounted'; // Importar el nuevo hook
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
   { value: "rent", label: "Arriendo" },
@@ -73,7 +74,7 @@ export default function PropertyForm() {
   const router = useRouter();
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const hasMounted = useHasMounted(); // Usar el hook
 
   const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -109,11 +110,6 @@ export default function PropertyForm() {
   const watchedPropertyType = form.watch("propertyType");
   const watchedCategory = form.watch("category");
 
- useEffect(() => {
-    // This effect runs only once on the client after initial mount
-    setMounted(true);
-  }, []);
-
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
@@ -131,11 +127,13 @@ export default function PropertyForm() {
     setIsCheckingAuth(false);
   }, []);
 
-  useEffect(() => {
-    if (managedImages.length > 0 || form.formState.dirtyFields.images) {
-        form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
+ useEffect(() => {
+    // Solo actualiza el valor del formulario si el componente está montado y hay cambios.
+    if (hasMounted) {
+      form.setValue('images', managedImages.map(img => img.url), { shouldValidate: true, shouldDirty: true });
     }
-  }, [managedImages, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [managedImages, form.setValue, hasMounted]);
 
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -167,7 +165,7 @@ export default function PropertyForm() {
       const newManagedImagesFromFile = validFiles.map(file => {
         const previewUrl = URL.createObjectURL(file);
         return {
-          id: previewUrl,
+          id: previewUrl, // Usar la URL de objeto como ID único para archivos nuevos
           url: previewUrl,
           file: file,
           isNew: true as const,
@@ -225,6 +223,13 @@ export default function PropertyForm() {
   };
 
   const onSubmitLogic = async (values: PropertyFormValues) => {
+    // Pre-validación para asegurar que `loggedInUser` y su ID estén definidos
+    if (!loggedInUser || !loggedInUser.id) {
+        console.error("[PropertyForm] onSubmitLogic: loggedInUser o loggedInUser.id no está definido. Esto no debería suceder si el botón de submit está correctamente deshabilitado.");
+        toast({ title: "Error de Autenticación", description: "No se pudo verificar tu sesión. Por favor, intenta iniciar sesión de nuevo.", variant: "destructive" });
+        return; // Detener la ejecución si no hay usuario
+    }
+
     const finalImageUrls = await uploadImagesToProxy();
     
     const dataToSubmit = {
@@ -238,7 +243,7 @@ export default function PropertyForm() {
                           : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
-    const result = await submitPropertyAction(dataToSubmit, loggedInUser!.id);
+    const result = await submitPropertyAction(dataToSubmit, loggedInUser.id);
 
     if (result.success && result.propertyId) {
       toast({
@@ -259,14 +264,21 @@ export default function PropertyForm() {
   };
   
   const handleAttemptToPublish = () => {
+    console.log("[PropertyForm] handleAttemptToPublish called.");
+    console.log("[PropertyForm] isCheckingAuth:", isCheckingAuth);
+    console.log("[PropertyForm] loggedInUser:", loggedInUser);
+
     if (isCheckingAuth) {
       toast({ title: "Verificando sesión...", description: "Por favor espera un momento." });
+      console.log("[PropertyForm] Still checking auth, showing toast.");
       return;
     }
     if (!loggedInUser || !loggedInUser.id) {
+      console.log("[PropertyForm] No loggedInUser, calling setShowAuthAlert(true).");
       setShowAuthAlert(true);
       return;
     }
+    console.log("[PropertyForm] User is logged in, proceeding to form.handleSubmit.");
     form.handleSubmit(onSubmitLogic)();
   };
 
@@ -355,7 +367,7 @@ export default function PropertyForm() {
               return (
                 <FormItem id={formItemId}>
                   <FormLabel>Imágenes de la Propiedad (Máx. {MAX_IMAGES})</FormLabel>
-                  {mounted && (
+                  {hasMounted && (
                     <DragDropContext onDragEnd={onDragEnd}>
                       <Droppable droppableId="imageDroppableForm" direction="horizontal" isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
                         {(provided) => (
@@ -388,7 +400,7 @@ export default function PropertyForm() {
                       </Droppable>
                     </DragDropContext>
                   )}
-                  {!mounted && <div className="text-sm text-muted-foreground">Cargando controles de imagen...</div>}
+                  {!hasMounted && <div className="text-sm text-muted-foreground">Cargando controles de imagen...</div>}
                   {managedImages.length < MAX_IMAGES && (
                     <label
                       htmlFor="image-upload-input-create"
@@ -432,8 +444,8 @@ export default function PropertyForm() {
           <FormField control={form.control} name="features" render={({ field }) => ( <FormItem> <FormLabel>Características Adicionales (separadas por comas)</FormLabel> <FormControl><Input placeholder="Ej: Piscina, Quincho, Estacionamiento" {...field} /></FormControl> <FormDescription>Lista características importantes de tu propiedad.</FormDescription> <FormMessage /> </FormItem> )}/>
 
           <Button
-            type="button"
-            onClick={handleAttemptToPublish}
+            type="button" // Cambiado de submit a button
+            onClick={handleAttemptToPublish} // Nuevo handler
             className="w-full md:w-auto"
             disabled={form.formState.isSubmitting || isUploading || isCheckingAuth}
           >
