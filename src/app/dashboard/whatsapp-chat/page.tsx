@@ -326,7 +326,6 @@ export default function WhatsAppChatPage() {
           {messages.map((msg) => (
             <ChatMessageItem key={msg.id} message={msg} currentUserId={loggedInUser!.id} />
           ))}
-          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
       <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t bg-card">
