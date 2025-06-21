@@ -1,11 +1,13 @@
 // src/lib/whatsappBotStore.ts
 import type { WhatsAppMessage } from './types';
-import { randomUUID } from 'crypto';
 
 // In-memory store for chat histories (userPhoneNumber -> messages)
 const chatHistories: Record<string, WhatsAppMessage[]> = {};
 
 console.log('[WhatsAppStore] Store inicializado/reiniciado.');
+
+// Simple unique ID generator that works in both Node and browser environments
+const generateId = () => `msg_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
 
 export const BOT_SENDER_ID = 'KONECTE_WHATSAPP_BOT_ASSISTANT';
 
@@ -24,11 +26,11 @@ export function addMessageToConversation(
 ): WhatsAppMessage {
   if (!userPhoneNumber || typeof userPhoneNumber !== 'string' || userPhoneNumber.trim() === '') {
     console.error(`[WhatsAppStore CRITICAL addMessageToConversation] userPhoneNumber es inválido: '${userPhoneNumber}'. No se guardará en chatHistories.`);
-    return { id: 'error-no-phone-history-' + randomUUID(), telefono: userPhoneNumber, text: '[ERROR: TELÉFONO INVÁLIDO EN HISTORIAL]', sender: messageData.sender, timestamp: Date.now(), status: 'failed' };
+    return { id: 'error-no-phone-history-' + generateId(), telefono: userPhoneNumber, text: '[ERROR: TELÉFONO INVÁLIDO EN HISTORIAL]', sender: messageData.sender, timestamp: Date.now(), status: 'failed' };
   }
   if (!messageData.text || typeof messageData.text !== 'string' || messageData.text.trim() === '') {
     console.error(`[WhatsAppStore CRITICAL addMessageToConversation] texto del mensaje es inválido para ${userPhoneNumber}. No se guardará en chatHistories.`);
-    return { id: 'error-no-text-history-' + randomUUID(), telefono: userPhoneNumber, text: '[ERROR: TEXTO INVÁLIDO EN HISTORIAL]', sender: messageData.sender, timestamp: Date.now(), status: 'failed' };
+    return { id: 'error-no-text-history-' + generateId(), telefono: userPhoneNumber, text: '[ERROR: TEXTO INVÁLIDO EN HISTORIAL]', sender: messageData.sender, timestamp: Date.now(), status: 'failed' };
   }
 
   if (!chatHistories[userPhoneNumber]) {
@@ -36,7 +38,7 @@ export function addMessageToConversation(
   }
 
   const newMessage: WhatsAppMessage = {
-    id: randomUUID(),
+    id: generateId(),
     telefono: userPhoneNumber,
     text: messageData.text,
     sender: messageData.sender,
