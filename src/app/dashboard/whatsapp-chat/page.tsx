@@ -34,8 +34,6 @@ export default function WhatsAppChatPage() {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState(false);
   
-  // DERIVED STATE: This is the key fix. Permission is derived from the user state,
-  // not a separate state variable, which prevents update loops.
   const hasPermission = !!loggedInUser?.plan_automated_alerts_enabled;
 
   useEffect(() => {
@@ -94,9 +92,21 @@ export default function WhatsAppChatPage() {
 
     try {
       const response = await fetch(`/api/whatsapp-bot/conversation/${encodeURIComponent(loggedInUser.phone_number)}`);
+      
       if (!response.ok) {
-        throw new Error("No se pudo cargar la conversación.");
+        let errorDetails = `El servidor respondió con el estado ${response.status}.`;
+        try {
+          const errorJson = await response.json();
+          errorDetails = errorJson.message || JSON.stringify(errorJson);
+        } catch (e) {
+          const textError = await response.text().catch(() => "No se pudo leer el cuerpo de la respuesta.");
+          if (textError) {
+             errorDetails = textError.substring(0, 150); 
+          }
+        }
+        throw new Error(errorDetails);
       }
+
       const fetchedWhatsAppMessages: WhatsAppMessage[] = await response.json();
       const transformedMessages = fetchedWhatsAppMessages.map(msg => transformWhatsAppMessageToUIChatMessage(msg, loggedInUser.id, loggedInUser));
       
@@ -108,8 +118,9 @@ export default function WhatsAppChatPage() {
       });
 
     } catch (error: any) {
-      console.error("[WhatsAppChatPage DEBUG] Error in fetchConversation:", error.message);
-      if (isInitialFetch) toast({ title: "Error de Carga", description: error.message, variant: "destructive" });
+      const errorMessage = error.message || "Ocurrió un error desconocido al cargar la conversación.";
+      console.error("[WhatsAppChatPage DEBUG] Error in fetchConversation:", errorMessage);
+      if (isInitialFetch) toast({ title: "Error de Carga", description: errorMessage, variant: "destructive" });
     } finally {
       if (isInitialFetch) {
         setLoadingStep('idle');
@@ -117,7 +128,6 @@ export default function WhatsAppChatPage() {
     }
   }, [loggedInUser, hasPermission, transformWhatsAppMessageToUIChatMessage, toast]);
 
-  // Effect 1: Load user from local storage and set loading step.
   useEffect(() => {
     if (isClient) {
       const userJson = localStorage.getItem('loggedInUser');
@@ -134,7 +144,6 @@ export default function WhatsAppChatPage() {
     }
   }, [isClient]);
 
-  // Effect 2: Manage fetching, polling, and toasts based on user state.
   useEffect(() => {
     if (loadingStep !== 'idle' || !loggedInUser) {
       return;
@@ -151,7 +160,6 @@ export default function WhatsAppChatPage() {
       return;
     }
 
-    // --- All checks passed, proceed with fetching and polling ---
     setLoadingStep('loadingInitialConversation');
     fetchConversation(true);
     
@@ -159,10 +167,8 @@ export default function WhatsAppChatPage() {
       fetchConversation(false);
     }, 3000);
 
-    // Store interval to clear it on cleanup
     pollingIntervalRef.current = intervalId;
 
-    // Cleanup function for this effect
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -212,7 +218,6 @@ export default function WhatsAppChatPage() {
       const result = await response.json();
       if (!result.success) throw new Error(result.message || 'El sistema no pudo procesar el mensaje para el bot.');
       
-      // Trigger an immediate fetch after sending to get bot's potential quick reply
       setTimeout(() => fetchConversation(false), 500);
 
     } catch (error: any) {
