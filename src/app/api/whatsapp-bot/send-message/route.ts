@@ -16,8 +16,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Error en el formato del payload JSON.' }, { status: 400 });
   }
 
-  // UPDATED VALIDATION as per new instructions
-  const { text, userId, telefonoRemitenteUsuarioWeb } = payload;
+  const { text, userId, telefonoRemitenteUsuarioWeb, telefonoReceptorBot } = payload;
   const missingOrInvalidFields: string[] = [];
 
   if (!text || typeof text !== 'string' || text.trim() === "") {
@@ -28,6 +27,9 @@ export async function POST(request: Request) {
   }
   if (!telefonoRemitenteUsuarioWeb || typeof telefonoRemitenteUsuarioWeb !== 'string' || telefonoRemitenteUsuarioWeb.trim() === "") {
     missingOrInvalidFields.push("telefonoRemitenteUsuarioWeb (debe ser un string no vacío, es el teléfono del usuario web)");
+  }
+   if (!telefonoReceptorBot || typeof telefonoReceptorBot !== 'string' || telefonoReceptorBot.trim() === "") {
+    missingOrInvalidFields.push("telefonoReceptorBot (debe ser un string no vacío, es el número del bot)");
   }
 
   const ubuntuBotWebhookUrl = process.env.WHATSAPP_BOT_UBUNTU_WEBHOOK_URL;
@@ -52,11 +54,11 @@ export async function POST(request: Request) {
     });
     console.log(`[API SendMessage] Mensaje del usuario ${userId} (tel: ${telefonoRemitenteUsuarioWeb}) reflejado en su historial de chat local de Konecte.`);
 
-    // UPDATED PAYLOAD FOR BOTITO as per instructions
+    // **FIXED PAYLOAD** to match what the external bot webhook expects, based on error logs and working OTP logic.
     const webhookPayload = {
-      source: 'konecte-web',
-      userId: userId,
+      targetUserWhatsAppNumber: telefonoReceptorBot,
       messageText: text,
+      konecteUserId: userId, // Pass the Konecte User ID so the bot knows who to reply to.
     };
 
     console.log(`[API SendMessage] Enviando POST al webhook de Ubuntu: ${ubuntuBotWebhookUrl} con payload:`, JSON.stringify(webhookPayload));
@@ -69,13 +71,15 @@ export async function POST(request: Request) {
       body: JSON.stringify(webhookPayload),
     });
 
+    const responseBodyText = await webhookResponse.text();
+
     if (!webhookResponse.ok) {
-      const errorBody = await webhookResponse.text();
-      console.error(`[API SendMessage] Error al enviar al webhook de Ubuntu. Status: ${webhookResponse.status}. Body: ${errorBody}`);
-      return NextResponse.json({ success: false, message: `Error al contactar el webhook del bot: ${webhookResponse.statusText}. Detalle: ${errorBody}` }, { status: webhookResponse.status });
+      const errorMessage = `[API SendMessage] Error al enviar al webhook de Ubuntu. Status: ${webhookResponse.status}. Body: ${responseBodyText}`;
+      console.error(errorMessage);
+      return NextResponse.json({ success: false, message: `Error al contactar el webhook del bot: ${webhookResponse.statusText}. Detalle: ${responseBodyText}` }, { status: webhookResponse.status });
     }
 
-    const webhookResult = await webhookResponse.json();
+    const webhookResult = JSON.parse(responseBodyText);
     console.log('[API SendMessage] Respuesta del webhook de Ubuntu:', webhookResult);
 
     return NextResponse.json({ success: true, message: "Mensaje enviado al bot de Ubuntu para procesamiento.", botResponse: webhookResult });
