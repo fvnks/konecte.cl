@@ -1,3 +1,4 @@
+
 // server.ts
 import { createServer } from 'http';
 import next from 'next';
@@ -6,6 +7,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import { query } from './src/lib/db'; // Import DB query function
 import type { User } from './src/lib/types'; // Import User type for typing
+import { addMessageToConversation } from './src/lib/whatsappBotStore'; // Import function to save message to history
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -75,6 +77,15 @@ expressApp.post('/api/bot-reply', async (req, res) => {
         }
         
         const targetUserWhatsAppNumber = userRows[0].phone_number;
+
+        // FIX: Add bot's message to the conversation history store
+        addMessageToConversation(targetUserWhatsAppNumber, {
+            text: messageText,
+            sender: 'bot',
+            status: 'delivered_to_user'
+        });
+        console.log(`[API /bot-reply] Bot reply for user ${userId} stored in conversation for ${targetUserWhatsAppNumber}.`);
+        
         const clientSocket = connectedClients[targetUserWhatsAppNumber];
 
         if (clientSocket) {
@@ -86,10 +97,9 @@ expressApp.post('/api/bot-reply', async (req, res) => {
             });
             res.status(200).json({ success: true, message: 'Mensaje reenviado al cliente vía WebSocket.' });
         } else {
-            console.warn(`[API /bot-reply] No active socket found for ${targetUserWhatsAppNumber}. Message will not be delivered in real-time.`);
-            // Even if not connected, we can still say we received it. 
-            // The user will get the message history next time they connect.
-            res.status(202).json({ success: true, message: 'Mensaje recibido, pero el cliente no está conectado por WebSocket.' });
+            console.warn(`[API /bot-reply] No active socket found for ${targetUserWhatsAppNumber}. Message stored for history but not delivered in real-time.`);
+            // Acknowledge receipt even if client is not connected for real-time update
+            res.status(202).json({ success: true, message: 'Mensaje recibido y almacenado. El cliente no está conectado por WebSocket para entrega en tiempo real.' });
         }
     } catch(dbError: any) {
         console.error(`[API /bot-reply] Database error for userId ${userId}:`, dbError.message);
@@ -101,6 +111,7 @@ expressApp.post('/api/bot-reply', async (req, res) => {
 app.prepare().then(() => {
     // Handle all other requests with Next.js
     expressApp.all('*', (req, res) => {
+        // We require url for parsing, which is a part of the standard IncomingMessage but not Request
         const parsedUrl = require('url').parse(req.url!, true);
         return handle(req, res, parsedUrl);
     });
