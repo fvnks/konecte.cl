@@ -1,4 +1,3 @@
-
 // src/components/property/FeaturedPropertyCard.tsx
 'use client';
 
@@ -53,9 +52,9 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
     propertyType,
     author,
     createdAt,
-    bedrooms, // Added
-    bathrooms, // Added
-    totalAreaSqMeters, // Changed from areaSqMeters
+    bedrooms,
+    bathrooms,
+    totalAreaSqMeters,
   } = property;
 
   const mainImage = images && images.length > 0 ? images[0] : 'https://placehold.co/300x200.png?text=Propiedad';

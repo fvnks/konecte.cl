@@ -32,7 +32,6 @@ export async function POST(request: Request) {
     missingOrInvalidFields.push("telefonoReceptorBot (debe ser un string no vacío, es el número del bot)");
   }
 
-  // NOTE: This is the correct webhook on the external bot server.
   const ubuntuBotWebhookUrl = 'https://konecte.fedestore.cl/api/webhooks/konecte-incoming';
 
   if (missingOrInvalidFields.length > 0) {
