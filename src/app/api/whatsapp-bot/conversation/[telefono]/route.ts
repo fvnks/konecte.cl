@@ -2,13 +2,12 @@
 import { NextResponse } from 'next/server';
 import { getConversation } from '@/lib/whatsappBotStore';
 
-interface Params {
-  telefono: string;
-}
-
-export async function GET(request: Request, context: { params: Params }) {
+export async function GET(
+  request: Request,
+  { params }: { params: { telefono: string } }
+) {
   try {
-    const { telefono } = context.params;
+    const { telefono } = params;
     console.log(`[API GetConversation] Recibida solicitud GET para telefono: ${telefono}`);
     
     if (!telefono) {

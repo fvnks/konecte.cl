@@ -63,6 +63,12 @@ const nextConfig: NextConfig = {
   compiler: {
     styledComponents: true,
   },
+  // Allow requests from the Firebase Studio development environment
+  experimental: {
+    allowedDevOrigins: [
+        "https://9000-firebase-studio-1749651587478.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev"
+    ],
+  },
 };
 
 export default nextConfig;
