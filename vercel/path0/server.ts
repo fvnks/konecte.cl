@@ -78,7 +78,7 @@ expressApp.post('/api/bot-reply', async (req, res) => {
         
         const targetUserWhatsAppNumber = userRows[0].phone_number;
 
-        // FIX: Add bot's message to the conversation history store
+        // Add bot's message to the conversation history store
         addMessageToConversation(targetUserWhatsAppNumber, {
             text: messageText,
             sender: 'bot',
@@ -109,11 +109,9 @@ expressApp.post('/api/bot-reply', async (req, res) => {
 
 
 app.prepare().then(() => {
-    // Handle all other requests with Next.js
+    // Handle all other requests with Next.js using the modern approach
     expressApp.all('*', (req, res) => {
-        // We require url for parsing, which is a part of the standard IncomingMessage but not Request
-        const parsedUrl = require('url').parse(req.url!, true);
-        return handle(req, res, parsedUrl);
+        return handle(req, res);
     });
 
     server.listen(port, (err?: any) => {
