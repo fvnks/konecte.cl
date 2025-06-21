@@ -1,4 +1,3 @@
-
 // src/app/api/whatsapp-bot/send-message/route.ts
 import { NextResponse } from 'next/server';
 import { addMessageToConversation } from '@/lib/whatsappBotStore';
@@ -7,7 +6,7 @@ import type { SendMessageToBotPayload } from '@/lib/types';
 export async function POST(request: Request) {
   let payload: SendMessageToBotPayload;
 
-  console.log('[API SendMessage] Received POST request.'); // Log de inicio
+  console.log('[API SendMessage] Received POST request.');
 
   try {
     payload = (await request.json()) as SendMessageToBotPayload;
@@ -17,17 +16,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Error en el formato del payload JSON.' }, { status: 400 });
   }
 
-  // Validaciones de campos
-  const { telefonoReceptorBot, text, userId, telefonoRemitenteUsuarioWeb } = payload;
+  // UPDATED VALIDATION as per new instructions
+  const { text, userId, telefonoRemitenteUsuarioWeb } = payload;
   const missingOrInvalidFields: string[] = [];
 
-  // Validar telefonoReceptorBot (número del bot de Ubuntu, aunque ahora se lee de env var)
-  // En realidad, este campo no se usa si WHATSAPP_BOT_UBUNTU_WEBHOOK_URL está presente, pero lo mantenemos por si se revierte.
-  if (!telefonoReceptorBot || typeof telefonoReceptorBot !== 'string' || telefonoReceptorBot.trim() === "") {
-    // Considerar si este campo sigue siendo necesario en el payload si la URL del webhook es fija vía env var.
-    // Por ahora, lo mantenemos para consistencia con la definición de SendMessageToBotPayload.
-    // missingOrInvalidFields.push("telefonoReceptorBot (número del bot de WhatsApp al que la plataforma Konecte enviaría el mensaje, ahora se usa WHATSAPP_BOT_UBUNTU_WEBHOOK_URL)");
-  }
   if (!text || typeof text !== 'string' || text.trim() === "") {
     missingOrInvalidFields.push("text (debe ser un string no vacío)");
   }
@@ -52,25 +44,24 @@ export async function POST(request: Request) {
   console.log(`[API SendMessage] Payload VALIDADO. Intentando enviar a webhook: ${ubuntuBotWebhookUrl}.`);
 
   try {
-    // 1. Guardar mensaje en la UI de Konecte para UX optimista
-    addMessageToConversation(telefonoRemitenteUsuarioWeb, { // telefonoRemitenteUsuarioWeb es la clave para el historial del usuario
+    addMessageToConversation(telefonoRemitenteUsuarioWeb, {
       text: text,
       sender: 'user',
-      status: 'pending_to_whatsapp', // Indica que se está intentando enviar al bot externo
+      status: 'pending_to_whatsapp',
       original_sender_id_if_user: userId,
     });
     console.log(`[API SendMessage] Mensaje del usuario ${userId} (tel: ${telefonoRemitenteUsuarioWeb}) reflejado en su historial de chat local de Konecte.`);
 
-    // 2. Preparar y enviar el payload al webhook de tu bot de Ubuntu
+    // UPDATED PAYLOAD FOR BOTITO as per instructions
     const webhookPayload = {
-      konecteUserId: userId,
-      targetUserWhatsAppNumber: telefonoRemitenteUsuarioWeb, // El número del usuario web, a quien tu bot debe enviar el mensaje en WA
-      messageText: text, // El texto que el usuario web escribió
+      source: 'konecte-web',
+      userId: userId,
+      messageText: text,
     };
 
     console.log(`[API SendMessage] Enviando POST al webhook de Ubuntu: ${ubuntuBotWebhookUrl} con payload:`, JSON.stringify(webhookPayload));
 
-    const webhookResponse = await fetch(ubuntuBotWebhookUrl!, { // '!' es seguro por la validación anterior
+    const webhookResponse = await fetch(ubuntuBotWebhookUrl!, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -81,20 +72,16 @@ export async function POST(request: Request) {
     if (!webhookResponse.ok) {
       const errorBody = await webhookResponse.text();
       console.error(`[API SendMessage] Error al enviar al webhook de Ubuntu. Status: ${webhookResponse.status}. Body: ${errorBody}`);
-      // Aquí podrías actualizar el status del mensaje en chatHistories a 'failed_to_webhook' si lo deseas
       return NextResponse.json({ success: false, message: `Error al contactar el webhook del bot: ${webhookResponse.statusText}. Detalle: ${errorBody}` }, { status: webhookResponse.status });
     }
 
     const webhookResult = await webhookResponse.json();
     console.log('[API SendMessage] Respuesta del webhook de Ubuntu:', webhookResult);
-    // Aquí podrías actualizar el status del mensaje en chatHistories a 'sent_to_webhook' o similar
-    // si el webhookResult indica éxito por parte de tu bot de Ubuntu.
 
     return NextResponse.json({ success: true, message: "Mensaje enviado al bot de Ubuntu para procesamiento.", botResponse: webhookResult });
 
   } catch (error: any) {
     console.error('[API SendMessage CRITICAL RUNTIME ERROR] Error procesando la solicitud:', error.message, error.stack);
-    // Aquí también podrías actualizar el status del mensaje en chatHistories a 'failed_to_webhook'
     return NextResponse.json({ success: false, message: `Error interno del servidor al enviar mensaje al bot: ${error.message}` }, { status: 500 });
   }
 }
