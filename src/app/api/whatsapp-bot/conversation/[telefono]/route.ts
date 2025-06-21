@@ -8,7 +8,7 @@ interface Params {
 
 export async function GET(request: Request, context: { params: Params }) {
   try {
-    const telefono = context.params.telefono;
+    const { telefono } = context.params;
     console.log(`[API GetConversation] Recibida solicitud GET para telefono: ${telefono}`);
     
     if (!telefono) {
@@ -21,7 +21,7 @@ export async function GET(request: Request, context: { params: Params }) {
     return NextResponse.json(conversationMessages);
   } catch (error: any) {
     // Adding more context to the error log
-    console.error(`[API GetConversation] Error procesando la solicitud. Context: ${JSON.stringify(context)}. Error: ${error.message}`);
+    console.error(`[API GetConversation] Error procesando la solicitud. Error: ${error.message}`);
     return NextResponse.json({ success: false, message: error.message || 'Error interno del servidor al obtener conversación.' }, { status: 500 });
   }
 }
