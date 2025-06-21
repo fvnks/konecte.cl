@@ -10,13 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import type { User as StoredUser, ChatMessage, WhatsAppMessage } from '@/lib/types';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-// getPlanByIdAction is no longer needed here as permission comes from StoredUser
 import ChatMessageItem from '@/components/chat/ChatMessageItem';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { BOT_SENDER_ID } from '@/lib/whatsappBotStore';
+import io, { Socket } from 'socket.io-client';
 
 const BOT_DISPLAY_NAME = "Asistente Konecte";
-const BOT_AVATAR_URL = `https://placehold.co/40x40/64B5F6/FFFFFF.png?text=${BOT_DISPLAY_NAME.substring(0,1)}`;
+const BOT_AVATAR_URL = `https://placehold.co/40x40/64B5F6/FFFFFF.png?text=AI`;
 
 type LoadingStep = 'checkingPermissions' | 'loadingInitialConversation' | 'idle';
 
@@ -32,9 +32,9 @@ export default function WhatsAppChatPage() {
   const [hasPermission, setHasPermission] = useState(false);
 
   const { toast } = useToast();
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -42,70 +42,12 @@ export default function WhatsAppChatPage() {
     setIsClient(true);
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    if (!isClient) return;
-
-    setLoadingStep('checkingPermissions');
-    const userJson = localStorage.getItem('loggedInUser');
-
-    const processUser = async () => {
-      if (!userJson) {
-        if (active) {
-            setLoggedInUser(null); setHasPermission(false); setLoadingStep('idle');
-        }
-        return;
-      }
-
-      try {
-        const user: StoredUser = JSON.parse(userJson);
-        if (active) setLoggedInUser(user);
-
-        if (!user.phone_number) {
-          if (active) {
-            toast({ title: "Teléfono Requerido", description: "Necesitas un número de teléfono en tu perfil para usar esta función.", variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/profile">Ir al Perfil</Link></Button> });
-            setHasPermission(false); setLoadingStep('idle');
-          }
-          return;
-        }
-
-        // Directly use the permission flag from the user object
-        if (user.plan_automated_alerts_enabled === true) {
-            if (active) {
-                setHasPermission(true);
-                setLoadingStep('loadingInitialConversation');
-            }
-        } else {
-            // Handle case where flag might be undefined (older session data) or false
-            if (active) {
-                // Determine if we need to show a specific "no plan" message or "plan doesn't include"
-                const reason = user.plan_id ? "El chat con el bot no está incluido en tu plan actual." : "El chat con el bot no está incluido en tu plan (sin plan asignado).";
-                toast({ title: "Función No Habilitada", description: reason, variant: "warning", duration: 7000, action: <Button asChild variant="link"><Link href="/plans">Ver Planes</Link></Button> });
-                setHasPermission(false); setLoadingStep('idle');
-            }
-        }
-      } catch (error) { 
-        if (active) {
-          console.error("[WhatsAppChatPage DEBUG] Error parsing user from localStorage", error);
-          localStorage.removeItem('loggedInUser');
-          setLoggedInUser(null); setHasPermission(false); setLoadingStep('idle');
-        }
-      }
-    };
-
-    processUser();
-    return () => { active = false; };
-  }, [toast, isClient]);
-
-
   const scrollToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    } else if (scrollAreaRef.current) {
-      const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-      if (scrollViewport) {
-        scrollViewport.scrollTop = scrollViewport.scrollHeight;
-      }
+    if (scrollAreaRef.current) {
+        const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+        if (scrollViewport) {
+            scrollViewport.scrollTop = scrollViewport.scrollHeight;
+        }
     }
   }, []);
 
@@ -151,7 +93,7 @@ export default function WhatsAppChatPage() {
     }
 
     if (isInitialFetch) {
-        // setLoadingStep('loadingInitialConversation') is already set by the permission effect
+        setLoadingStep('loadingInitialConversation');
     } else {
         setIsLoadingConversationPoll(true);
     }
@@ -159,17 +101,14 @@ export default function WhatsAppChatPage() {
     try {
       const response = await fetch(`/api/whatsapp-bot/conversation/${encodeURIComponent(loggedInUser.phone_number)}`);
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[WhatsAppChatPage DEBUG] Failed to fetch conversation. Status: ${response.status}. Body: ${errorText}`);
-        if (isInitialFetch) toast({ title: "Error de Carga", description: "No se pudo cargar la conversación inicial.", variant: "destructive" });
-        return; 
+        throw new Error("No se pudo cargar la conversación inicial.");
       }
       const fetchedWhatsAppMessages: WhatsAppMessage[] = await response.json();
       const transformedMessages = fetchedWhatsAppMessages.map(msg => transformWhatsAppMessageToUIChatMessage(msg, loggedInUser.id, loggedInUser));
       setMessages(transformedMessages);
     } catch (error: any) {
       console.error("[WhatsAppChatPage DEBUG] Error in fetchConversation:", error.message);
-       if (isInitialFetch) toast({ title: "Error de Carga", description: "Ocurrió un error al cargar la conversación.", variant: "destructive" });
+       if (isInitialFetch) toast({ title: "Error de Carga", description: error.message, variant: "destructive" });
     } finally {
       if (isInitialFetch) {
         setLoadingStep('idle');
@@ -181,44 +120,88 @@ export default function WhatsAppChatPage() {
 
 
   useEffect(() => {
-    let isMounted = true;
-    if (isClient && loadingStep === 'loadingInitialConversation' && hasPermission && loggedInUser?.phone_number) {
-      fetchConversation(true); // Initial fetch
-    }
+    if (!isClient) return;
 
-    // Setup polling if conditions are met and we are idle (meaning initial load attempt is done)
-    if (isClient && loadingStep === 'idle' && hasPermission && loggedInUser?.phone_number && !intervalRef.current) {
-        intervalRef.current = setInterval(async () => {
-            if (isMounted && loggedInUser?.phone_number && hasPermission) {
-                await fetchConversation(false); // Subsequent poll
-            }
-        }, 7000);
-    } else if (loadingStep !== 'loadingInitialConversation' || !hasPermission || !loggedInUser?.phone_number) {
-      // Clear interval if conditions are no longer met
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+    const userJson = localStorage.getItem('loggedInUser');
+    if (userJson) {
+        const user: StoredUser = JSON.parse(userJson);
+        setLoggedInUser(user);
+        const permission = user.plan_automated_alerts_enabled === true;
+        setHasPermission(permission);
+        
+        if (!permission) {
+             const reason = user.plan_id ? "El chat con el bot no está incluido en tu plan actual." : "Necesitas un plan para usar esta función.";
+             toast({ title: "Función No Habilitada", description: reason, variant: "warning", duration: 7000 });
+             setLoadingStep('idle');
+        } else if (!user.phone_number) {
+            toast({ title: "Teléfono Requerido", description: "Necesitas un número de teléfono en tu perfil para usar el chat.", variant: "warning", duration: 7000 });
+            setHasPermission(false);
+            setLoadingStep('idle');
+        }
+    } else {
+        setLoadingStep('idle');
     }
-    
-    return () => {
-      isMounted = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+  }, [isClient, toast]);
+
+  useEffect(() => {
+    if (hasPermission && loggedInUser?.phone_number && isClient) {
+      if (process.env.NODE_ENV === 'production') {
+          if (socketRef.current) return;
+          console.log(`[Socket.IO Client] Connecting to server for user ${loggedInUser.phone_number}`);
+          socketRef.current = io({
+              query: { userPhone: loggedInUser.phone_number },
+              transports: ['websocket']
+          });
+
+          socketRef.current.on('connect', () => {
+              console.log(`[Socket.IO Client] Connected with id ${socketRef.current?.id}`);
+              fetchConversation(true);
+          });
+
+          socketRef.current.on('bot-response', (message: Omit<ChatMessage, 'id'|'conversation_id'|'sender_id'|'receiver_id'|'read_at'|'sender'> & {timestamp: string}) => {
+              console.log('[Socket.IO Client] Received bot-response:', message);
+              const newBotMessage: ChatMessage = {
+                  id: `bot-${Date.now()}`,
+                  conversation_id: loggedInUser!.phone_number,
+                  sender_id: BOT_SENDER_ID,
+                  receiver_id: loggedInUser!.id,
+                  content: message.text,
+                  created_at: new Date(message.timestamp).toISOString(),
+                  sender: { id: BOT_SENDER_ID, name: BOT_DISPLAY_NAME, avatarUrl: BOT_AVATAR_URL }
+              };
+              setMessages(prev => [...prev, newBotMessage]);
+          });
+          
+          socketRef.current.on('connect_error', (err) => {
+              console.error('[Socket.IO Client] Connection Error:', err);
+              toast({ title: "Error de Conexión en Tiempo Real", description: "No se pudo conectar con el servidor de chat. Intentando con polling.", variant: "warning", });
+          });
+      } else {
+        // Development environment: use polling
+        fetchConversation(true);
+        intervalRef.current = setInterval(() => { fetchConversation(false); }, 7000);
       }
-    };
-  }, [isClient, loadingStep, hasPermission, loggedInUser, fetchConversation]);
+
+      return () => {
+          if (socketRef.current) {
+              socketRef.current.disconnect();
+              socketRef.current = null;
+          }
+          if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+          }
+      };
+    }
+  }, [hasPermission, loggedInUser, fetchConversation, toast, isClient]);
 
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    const localWhatsAppBotNumber = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER;
-    const WHATSAPP_BOT_NUMBER_FALLBACK = "+56946725640"; 
-    let finalBotNumber = localWhatsAppBotNumber || WHATSAPP_BOT_NUMBER_FALLBACK;
+    const finalBotNumber = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER;
     
     if (!loggedInUser?.id || !loggedInUser.phone_number || !finalBotNumber || !hasPermission || !newMessage.trim()) {
-      toast({ title: "No se puede enviar", description: "Asegúrate de haber iniciado sesión, tener un teléfono y permiso para usar el bot.", variant: "warning" });
+      toast({ title: "No se puede enviar", description: "Verifica tu sesión, plan y que hayas escrito un mensaje.", variant: "warning" });
       return;
     }
 
@@ -318,7 +301,7 @@ export default function WhatsAppChatPage() {
     );
   }
   
-  const botNumberForDisplay = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER || "+56946725640 (Fallback)";
+  const botNumberForDisplay = process.env.NEXT_PUBLIC_WHATSAPP_BOT_NUMBER || "N/A";
 
   return (
     <Card className="flex flex-col h-full max-h-[calc(100vh-var(--header-height,6rem)-var(--dashboard-padding-y,3rem)-2rem)] shadow-xl rounded-xl border overflow-hidden">
