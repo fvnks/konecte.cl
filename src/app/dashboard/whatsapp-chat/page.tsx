@@ -27,13 +27,16 @@ export default function WhatsAppChatPage() {
   const [loadingStep, setLoadingStep] = useState<LoadingStep>('checkingPermissions');
   
   const [isSending, setIsSending] = useState(false);
-  const [hasPermission, setHasPermission] = useState(false);
 
   const { toast } = useToast();
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState(false);
+  
+  // DERIVED STATE: This is the key fix. Permission is derived from the user state,
+  // not a separate state variable, which prevents update loops.
+  const hasPermission = !!loggedInUser?.plan_automated_alerts_enabled;
 
   useEffect(() => {
     setIsClient(true);
@@ -114,7 +117,7 @@ export default function WhatsAppChatPage() {
     }
   }, [loggedInUser, hasPermission, transformWhatsAppMessageToUIChatMessage, toast]);
 
-  // Effect 1: Load user from local storage ONCE.
+  // Effect 1: Load user from local storage and set loading step.
   useEffect(() => {
     if (isClient) {
       const userJson = localStorage.getItem('loggedInUser');
@@ -122,58 +125,50 @@ export default function WhatsAppChatPage() {
           try {
               const user: StoredUser = JSON.parse(userJson);
               setLoggedInUser(user);
-              setHasPermission(user.plan_automated_alerts_enabled === true);
           } catch (e) {
               console.error("Error parsing user from localStorage:", e);
               setLoggedInUser(null);
-              setHasPermission(false);
           }
       }
-      setLoadingStep('idle'); // We are done checking auth, move to next step
+      setLoadingStep('idle');
     }
   }, [isClient]);
 
-  // Effect 2: Run checks and start fetching/polling when user state is confirmed.
+  // Effect 2: Manage fetching, polling, and toasts based on user state.
   useEffect(() => {
-    if (loadingStep !== 'idle') {
-        return; // Don't run this effect until initial auth check is done.
-    }
-    
-    // Cleanup previous interval if this effect re-runs
-    if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
+    if (loadingStep !== 'idle' || !loggedInUser) {
+      return;
     }
 
-    if (loggedInUser) {
-        if (!hasPermission) {
-             const reason = loggedInUser.plan_id ? "El chat con el bot no está incluido en tu plan actual." : "Necesitas un plan para usar esta función.";
-             toast({ title: "Función No Habilitada", description: reason, variant: "warning", duration: 7000 });
-             return; // Stop here
-        }
-
-        if (!loggedInUser.phone_number) {
-            toast({ title: "Teléfono Requerido", description: "Necesitas un número de teléfono en tu perfil para usar el chat.", variant: "warning", duration: 7000 });
-            setHasPermission(false); // Revoke permission if no phone
-            return; // Stop here
-        }
-        
-        // All checks passed, start fetching and polling
-        setLoadingStep('loadingInitialConversation');
-        fetchConversation(true); // Initial fetch
-        
-        pollingIntervalRef.current = setInterval(() => {
-          fetchConversation(false);
-        }, 3000);
+    if (!hasPermission) {
+      const reason = loggedInUser.plan_id ? "El chat con el bot no está incluido en tu plan actual." : "Necesitas un plan para usar esta función.";
+      toast({ title: "Función No Habilitada", description: reason, variant: "warning", duration: 7000 });
+      return;
     }
+
+    if (!loggedInUser.phone_number) {
+      toast({ title: "Teléfono Requerido", description: "Necesitas un número de teléfono en tu perfil para usar el chat.", variant: "warning", duration: 7000 });
+      return;
+    }
+
+    // --- All checks passed, proceed with fetching and polling ---
+    setLoadingStep('loadingInitialConversation');
+    fetchConversation(true);
     
+    const intervalId = setInterval(() => {
+      fetchConversation(false);
+    }, 3000);
+
+    // Store interval to clear it on cleanup
+    pollingIntervalRef.current = intervalId;
+
     // Cleanup function for this effect
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loggedInUser, hasPermission, loadingStep, toast]);
+  }, [loggedInUser, loadingStep, toast, hasPermission, fetchConversation]);
 
 
   const handleSendMessage = async (e: FormEvent) => {
