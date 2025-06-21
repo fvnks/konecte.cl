@@ -83,7 +83,7 @@ const SQL_STATEMENTS: string[] = [
     plan_id VARCHAR(36) DEFAULT NULL,
     plan_expires_at TIMESTAMP DEFAULT NULL,
     
-    phone_number VARCHAR(50) NOT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.',
+    phone_number VARCHAR(50) NOT NULL UNIQUE COMMENT 'Teléfono de contacto general o WhatsApp. Requerido y único.',
     phone_verified BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Indica si el número de teléfono ha sido verificado con OTP.',
     phone_otp VARCHAR(10) DEFAULT NULL COMMENT 'Código OTP actual para verificación de teléfono.',
     phone_otp_expires_at TIMESTAMP DEFAULT NULL COMMENT 'Fecha de expiración del OTP actual.',
@@ -104,7 +104,8 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);`,
   `CREATE INDEX IF NOT EXISTS idx_users_plan_id ON users(plan_id);`,
   `CREATE INDEX IF NOT EXISTS idx_users_rut_tin ON users(rut_tin);`,
-  `CREATE INDEX IF NOT EXISTS idx_users_phone_number ON users(phone_number);`,
+  `ALTER TABLE users DROP INDEX IF EXISTS idx_users_phone_number;`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS uq_users_phone_number ON users(phone_number);`,
   `CREATE INDEX IF NOT EXISTS idx_users_phone_verified ON users(phone_verified);`,
   `CREATE INDEX IF NOT EXISTS idx_users_company_name ON users(company_name);`,
   `CREATE INDEX IF NOT EXISTS idx_users_main_operating_region ON users(main_operating_region);`,
@@ -420,7 +421,7 @@ async function setupDatabase() {
       try {
         // Check if the statement is an ALTER TABLE statement
         if (stmt.trim().toUpperCase().startsWith('ALTER TABLE')) {
-          const alterMatch = stmt.match(/ALTER TABLE\s+(\w+)\s+(ADD COLUMN IF NOT EXISTS|RENAME COLUMN|MODIFY COLUMN)\s+(.+)/i); // Added MODIFY COLUMN
+          const alterMatch = stmt.match(/ALTER TABLE\s+(\w+)\s+(ADD COLUMN IF NOT EXISTS|RENAME COLUMN|MODIFY COLUMN|DROP INDEX IF EXISTS)\s*(.+)/i); // Added MODIFY COLUMN and DROP INDEX
           if (alterMatch) {
             const tableName = alterMatch[1];
             const operation = alterMatch[2].toUpperCase();
@@ -463,11 +464,21 @@ async function setupDatabase() {
                  await pool.query(stmt);
                  console.log(`  -> Sentencia ALTER TABLE RENAME COLUMN procesada para ${tableName}.`);
               }
-            } else if (operation === 'MODIFY COLUMN') { // Handle MODIFY COLUMN
+            } else if (operation === 'MODIFY COLUMN') { 
                 await pool.query(stmt);
                 const colNameMatch = details.match(/(\w+)\s+/);
                 const columnName = colNameMatch ? colNameMatch[1] : 'desconocida';
                 console.log(`  -> Columna ${columnName} modificada en tabla ${tableName}.`);
+            } else if (operation === 'DROP INDEX IF EXISTS') {
+                const indexName = details.trim();
+                const checkIndexSql = `SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ?`;
+                const [indexExistsRows]: any = await pool.query(checkIndexSql, [dbConfig.database, tableName, indexName]);
+                if (indexExistsRows[0].count > 0) {
+                    await pool.query(`ALTER TABLE ${tableName} DROP INDEX ${indexName}`);
+                    console.log(`  -> Índice ${indexName} eliminado de tabla ${tableName}.`);
+                } else {
+                     console.log(`  -> Índice ${indexName} no encontrado en tabla ${tableName}, omitiendo DROP.`);
+                }
             } else {
               await pool.query(stmt);
               console.log(`  -> Sentencia ALTER TABLE procesada para ${tableName}.`);
@@ -508,6 +519,17 @@ async function setupDatabase() {
             } else {
                  console.log(`  -> Sentencia UPDATE procesada.`);
             }
+        } else if (stmt.trim().toUpperCase().startsWith('CREATE UNIQUE INDEX')) {
+            const indexNameMatch = stmt.match(/CREATE UNIQUE INDEX IF NOT EXISTS (\w+)/i);
+            const indexName = indexNameMatch ? indexNameMatch[1] : 'desconocido';
+            const checkIndexSql = `SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ?`;
+            const [indexExistsRows]: any = await pool.query(checkIndexSql, [dbConfig.database, 'users', indexName]);
+             if (indexExistsRows[0].count === 0) {
+                await pool.query(stmt);
+                console.log(`  -> Índice único ${indexName} creado.`);
+             } else {
+                 console.log(`  -> Índice único ${indexName} ya existe, omitiendo.`);
+             }
         } else if (stmt.trim().toUpperCase().startsWith('CREATE INDEX')) {
             await pool.query(stmt);
             const indexNameMatch = stmt.match(/CREATE INDEX IF NOT EXISTS (\w+)/i) || stmt.match(/INDEX (\w+)/i);
@@ -519,7 +541,7 @@ async function setupDatabase() {
         }
       } catch (err: any) {
         if (err.code === 'ER_DUP_KEYNAME' && stmt.toUpperCase().includes('CREATE INDEX')) {
-          const indexNameMatch = stmt.match(/CREATE INDEX IF NOT EXISTS (\w+)/i) || stmt.match(/INDEX (\w+)/i);
+          const indexNameMatch = stmt.match(/CREATE (?:UNIQUE )?INDEX IF NOT EXISTS (\w+)/i) || stmt.match(/INDEX (\w+)/i);
           const indexName = indexNameMatch ? indexNameMatch[1] : 'desconocido';
           console.warn(`  ⚠️  Índice ${indexName} ya existe, omitiendo.`);
         } else if (err.code === 'ER_CONSTRAINT_FORMAT_ERROR' && stmt.toUpperCase().includes('CHECK (ID = 1)')) {
@@ -594,4 +616,3 @@ async function setupDatabase() {
 }
 
 setupDatabase();
-

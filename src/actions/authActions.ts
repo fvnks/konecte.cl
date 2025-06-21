@@ -33,6 +33,13 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
       console.log(`[AuthAction] Sign-up failed: Email ${email} already exists.`);
       return { success: false, message: "Ya existe un usuario con este correo electrónico." };
     }
+    
+    // Check for existing phone number
+    const existingPhoneRows: any[] = await query('SELECT id FROM users WHERE phone_number = ?', [phone_number]);
+    if (existingPhoneRows.length > 0) {
+        return { success: false, message: "Este número de teléfono ya está registrado." };
+    }
+
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = randomUUID();
@@ -115,6 +122,9 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
     if (error.code === 'ER_DUP_ENTRY' && error.message.includes('users.email')) {
         return { success: false, message: "Ya existe un usuario con este correo electrónico." };
     }
+    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('uq_users_phone_number')) {
+        return { success: false, message: "Este número de teléfono ya está registrado." };
+    }
     return { success: false, message: `Error al registrar usuario: ${error.message}` };
   }
 }
@@ -167,7 +177,7 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
         can_view_contact_data?: boolean | null;
         automated_alerts_enabled?: boolean | null;
         advanced_dashboard_access?: boolean | null;
-        phone_verified: boolean;
+        phone_verified: boolean | number; // Can be boolean or 0/1 from DB
     };
     console.log(`[AuthAction] User found: ${userFromDb.email}. Stored hash: ${userFromDb.password_hash ? userFromDb.password_hash.substring(0, 10) + "..." : "NOT FOUND"}, Length: ${userFromDb.password_hash?.length}`);
 
@@ -197,7 +207,7 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
       plan_allows_contact_view: !!userFromDb.can_view_contact_data,
       plan_automated_alerts_enabled: !!userFromDb.automated_alerts_enabled,
       plan_advanced_dashboard_access: !!userFromDb.advanced_dashboard_access,
-      phone_verified: !!userFromDb.phone_verified,
+      phone_verified: Number(userFromDb.phone_verified) === 1,
     };
 
     console.log(`[AuthAction] Sign-in successful for ${finalUser.email}. Phone verified: ${finalUser.phone_verified}`);
