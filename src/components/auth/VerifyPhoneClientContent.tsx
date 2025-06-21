@@ -43,6 +43,8 @@ export default function VerifyPhoneClientContent() {
     },
   });
   
+  const otpValue = form.watch('otp');
+
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
@@ -245,7 +247,7 @@ export default function VerifyPhoneClientContent() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full h-12 text-base" disabled={isVerifying || isResending || !canResend && resendCooldown > 0}>
+              <Button type="submit" className="w-full h-12 text-base" disabled={isVerifying || isResending || otpValue.length !== 4}>
                 {isVerifying ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldCheck className="mr-2 h-5 w-5" />}
                 Verificar Código
               </Button>
