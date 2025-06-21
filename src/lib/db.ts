@@ -46,7 +46,7 @@ function createPool(): Pool {
     waitForConnections: true,
     connectionLimit: process.env.MYSQL_CONNECTION_LIMIT ? parseInt(process.env.MYSQL_CONNECTION_LIMIT, 10) : 10,
     queueLimit: 0, // No limit for queued connections
-    connectTimeout: process.env.MYSQL_CONNECT_TIMEOUT ? parseInt(process.env.MYSQL_CONNECT_TIMEOUT, 10) : 10000, // 10 seconds default
+    connectTimeout: process.env.MYSQL_CONNECT_TIMEOUT ? parseInt(process.env.MYSQL_CONNECT_TIMEOUT, 10) : 20000, // Increased to 20 seconds
   };
 
   console.log("[DB_INFO] Attempting to create new MySQL pool with config:", {
