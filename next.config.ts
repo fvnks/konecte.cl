@@ -60,7 +60,7 @@ const nextConfig: NextConfig = {
     'mysql2',
     'bcryptjs',
   ],
-  compiler: { // Add this section
+  compiler: {
     styledComponents: true,
   },
 };
