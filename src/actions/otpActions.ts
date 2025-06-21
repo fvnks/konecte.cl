@@ -39,9 +39,11 @@ async function sendOtpViaWhatsApp(
 
   const otpMessageText = `Hola ${userName}, tu código de verificación para Konecte es: ${otp}. Este código expira en ${OTP_EXPIRATION_MINUTES} minutos.`;
   
-  const ubuntuBotWebhookUrl = process.env.WHATSAPP_BOT_UBUNTU_WEBHOOK_URL;
+  // TODO: Revert this to use process.env.WHATSAPP_BOT_UBUNTU_WEBHOOK_URL once the environment variable is corrected in Vercel.
+  const ubuntuBotWebhookUrl = 'https://konecte.fedestore.cl/api/webhooks/konecte-incoming';
+  
   if (!ubuntuBotWebhookUrl) {
-    const errorMessage = "[OTP_ACTION CRITICAL] WHATSAPP_BOT_UBUNTU_WEBHOOK_URL no está configurado. No se puede contactar al bot externo.";
+    const errorMessage = "[OTP_ACTION CRITICAL] La URL del webhook del bot no está configurada. No se puede contactar al bot externo.";
     console.error(errorMessage);
     return { success: false, message: "Error de configuración del servidor: El endpoint del bot de WhatsApp no está definido." };
   }
@@ -86,13 +88,12 @@ async function sendOtpViaWhatsApp(
   } catch (error: any) {
     let errorMessage = `Excepción al contactar el servicio de mensajería: ${error.message}`;
     
-    // Check for 'fetch failed' and provide a more specific debugging message.
     if (error.cause && typeof error.cause === 'object' && 'code' in error.cause) {
       console.error(`[OTP_ACTION Direct CRITICAL] Network error calling webhook. Error Cause:`, error.cause);
       errorMessage = "Error de red al contactar el servicio de mensajería. Esto es usualmente causado por un firewall en el servidor de destino que bloquea las IPs de Vercel. Por favor, verifica la configuración del firewall de tu bot.";
     } else if (error.message && error.message.toLowerCase().includes('fetch failed')) {
-      console.error(`[OTP_ACTION Direct CRITICAL] fetch failed. This usually means the server couldn't reach the webhook URL. Check network configuration and if the URL (${ubuntuBotWebhookUrl}) is correct and accessible from the server. Error: ${error.message}`);
-       errorMessage = "Error interno del servidor al enviar mensaje al bot. Revisa la configuración del firewall en el servidor de destino.";
+      console.error(`[OTP_ACTION Direct ERROR] Exception: Fetch failed. This usually means the server couldn't reach the webhook URL. Check network configuration and if the URL (${ubuntuBotWebhookUrl}) is correct and accessible from the server. Error: ${error.message}`);
+       errorMessage = `Error interno del servidor al enviar mensaje al bot: ${error.message}. Verifica que tu servidor del bot esté online y que el firewall permita conexiones desde Vercel.`;
     } else {
       console.error(`[OTP_ACTION Direct ERROR] Exception while calling external webhook: ${error.message}`, error.stack);
     }
