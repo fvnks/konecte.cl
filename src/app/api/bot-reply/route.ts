@@ -1,7 +1,8 @@
 // src/app/api/bot-reply/route.ts
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db'; // Import DB query function
+import { query } from '@/lib/db';
 import { addMessageToConversation } from '@/lib/whatsappBotStore';
+import type { User } from '@/lib/types';
 
 interface BotReplyPayload {
   userId: string;
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
     }
 
     // Query DB to find the user's phone number from their ID
-    const userRows: any[] = await query('SELECT phone_number FROM users WHERE id = ?', [userId]);
+    const userRows: User[] = await query('SELECT phone_number FROM users WHERE id = ?', [userId]);
 
     if (userRows.length === 0 || !userRows[0].phone_number) {
       console.error(`[API BotReply] Error: No se encontró usuario o número de teléfono para el userId: ${userId}`);
