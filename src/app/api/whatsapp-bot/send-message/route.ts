@@ -32,10 +32,8 @@ export async function POST(request: Request) {
     missingOrInvalidFields.push("telefonoReceptorBot (debe ser un string no vacío, es el número del bot)");
   }
 
-  const ubuntuBotWebhookUrl = process.env.WHATSAPP_BOT_UBUNTU_WEBHOOK_URL;
-  if (!ubuntuBotWebhookUrl || typeof ubuntuBotWebhookUrl !== 'string' || ubuntuBotWebhookUrl.trim() === "") {
-    missingOrInvalidFields.push("WHATSAPP_BOT_UBUNTU_WEBHOOK_URL (variable de entorno no configurada en el servidor de Konecte para la URL del webhook del bot de Ubuntu)");
-  }
+  // NOTE: This is the correct webhook on the external bot server.
+  const ubuntuBotWebhookUrl = 'https://konecte.fedestore.cl/api/webhooks/konecte-incoming';
 
   if (missingOrInvalidFields.length > 0) {
     const errorMessage = `[API SendMessage VALIDATION FAIL] Faltan datos válidos o requeridos: ${missingOrInvalidFields.join('; ')}. Payload original: ${JSON.stringify(payload)}. Mensaje NO se procesará.`;
@@ -53,8 +51,8 @@ export async function POST(request: Request) {
       original_sender_id_if_user: userId,
     });
     console.log(`[API SendMessage] Mensaje del usuario ${userId} (tel: ${telefonoRemitenteUsuarioWeb}) reflejado en su historial de chat local de Konecte.`);
-
-    // **FIXED PAYLOAD** to match what the external bot webhook expects, based on error logs and working OTP logic.
+    
+    // CORRECTED PAYLOAD to match what the bot's webhook expects (same as OTP flow).
     const webhookPayload = {
       targetUserWhatsAppNumber: telefonoReceptorBot,
       messageText: text,
@@ -63,7 +61,7 @@ export async function POST(request: Request) {
 
     console.log(`[API SendMessage] Enviando POST al webhook de Ubuntu: ${ubuntuBotWebhookUrl} con payload:`, JSON.stringify(webhookPayload));
 
-    const webhookResponse = await fetch(ubuntuBotWebhookUrl!, {
+    const webhookResponse = await fetch(ubuntuBotWebhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
