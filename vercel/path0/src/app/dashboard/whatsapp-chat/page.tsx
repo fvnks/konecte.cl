@@ -1,3 +1,4 @@
+
 // src/app/dashboard/whatsapp-chat/page.tsx
 'use client';
 
@@ -13,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import ChatMessageItem from '@/components/chat/ChatMessageItem';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { BOT_SENDER_ID } from '@/lib/whatsappBotStore';
-import io, { Socket } from 'socket.io-client';
 
 const BOT_DISPLAY_NAME = "Asistente Konecte";
 const BOT_AVATAR_URL = `https://placehold.co/40x40/64B5F6/FFFFFF.png?text=AI`;
@@ -33,7 +33,7 @@ export default function WhatsAppChatPage() {
   const { toast } = useToast();
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const socketRef = useRef<Socket | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function WhatsAppChatPage() {
     };
   }, []);
 
-  const fetchConversation = useCallback(async (isInitialFetch: boolean) => {
+  const fetchConversation = useCallback(async (isInitialFetch: boolean = false) => {
     if (!loggedInUser?.phone_number || !loggedInUser?.id || !hasPermission) {
       if (isInitialFetch) setLoadingStep('idle');
       return;
@@ -93,14 +93,22 @@ export default function WhatsAppChatPage() {
     try {
       const response = await fetch(`/api/whatsapp-bot/conversation/${encodeURIComponent(loggedInUser.phone_number)}`);
       if (!response.ok) {
-        throw new Error("No se pudo cargar la conversación inicial.");
+        throw new Error("No se pudo cargar la conversación.");
       }
       const fetchedWhatsAppMessages: WhatsAppMessage[] = await response.json();
       const transformedMessages = fetchedWhatsAppMessages.map(msg => transformWhatsAppMessageToUIChatMessage(msg, loggedInUser.id, loggedInUser));
-      setMessages(transformedMessages);
+      
+      // Only update if there's a change to avoid re-renders
+      setMessages(prevMessages => {
+        if(JSON.stringify(prevMessages) !== JSON.stringify(transformedMessages)){
+          return transformedMessages;
+        }
+        return prevMessages;
+      });
+
     } catch (error: any) {
       console.error("[WhatsAppChatPage DEBUG] Error in fetchConversation:", error.message);
-       if (isInitialFetch) toast({ title: "Error de Carga", description: error.message, variant: "destructive" });
+      if (isInitialFetch) toast({ title: "Error de Carga", description: error.message, variant: "destructive" });
     } finally {
       if (isInitialFetch) {
         setLoadingStep('idle');
@@ -126,62 +134,28 @@ export default function WhatsAppChatPage() {
             toast({ title: "Teléfono Requerido", description: "Necesitas un número de teléfono en tu perfil para usar el chat.", variant: "warning", duration: 7000 });
             setHasPermission(false);
             setLoadingStep('idle');
+        } else {
+            setLoadingStep('loadingInitialConversation');
+            fetchConversation(true); // Initial fetch
         }
     } else {
         setLoadingStep('idle');
     }
-  }, [isClient, toast]);
+  }, [isClient, toast, fetchConversation]);
 
+  // Polling logic
   useEffect(() => {
     if (hasPermission && loggedInUser?.phone_number) {
-        const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || window.location.origin;
-
-        if (socketRef.current) return;
-
-        console.log(`[Socket.IO Client] Connecting to ${SOCKET_SERVER_URL} for user ${loggedInUser.phone_number}`);
-        socketRef.current = io(SOCKET_SERVER_URL, {
-            query: { userPhone: loggedInUser.phone_number },
-            transports: ['websocket']
-        });
-
-        socketRef.current.on('connect', () => {
-            console.log(`[Socket.IO Client] Connected with id ${socketRef.current?.id}`);
-            setLoadingStep('loadingInitialConversation');
-            fetchConversation(true);
-        });
-
-        socketRef.current.on('bot-response', (message: Omit<ChatMessage, 'id'|'conversation_id'|'sender_id'|'receiver_id'|'read_at'|'sender'> & {timestamp: string}) => {
-            console.log('[Socket.IO Client] Received bot-response:', message);
-            const newBotMessage: ChatMessage = {
-                id: `bot-${Date.now()}`,
-                conversation_id: loggedInUser!.phone_number,
-                sender_id: BOT_SENDER_ID,
-                receiver_id: loggedInUser!.id,
-                content: message.text,
-                created_at: new Date(message.timestamp).toISOString(),
-                sender: { id: BOT_SENDER_ID, name: BOT_DISPLAY_NAME, avatarUrl: BOT_AVATAR_URL }
-            };
-            setMessages(prev => [...prev, newBotMessage]);
-        });
-        
-        socketRef.current.on('connect_error', (err) => {
-            console.error('[Socket.IO Client] Connection Error:', err);
-            setLoadingStep('idle');
-            toast({
-                title: "Error de Conexión en Tiempo Real",
-                description: "No se pudo conectar con el servidor de chat.",
-                variant: "destructive",
-            });
-        });
-
-        return () => {
-            if (socketRef.current) {
-                socketRef.current.disconnect();
-                socketRef.current = null;
-            }
-        };
+      pollingIntervalRef.current = setInterval(() => {
+        fetchConversation(false); // Subsequent fetches are not "initial"
+      }, 3000); // Poll every 3 seconds
     }
-  }, [hasPermission, loggedInUser, fetchConversation, toast]);
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [hasPermission, loggedInUser, fetchConversation]);
 
 
   const handleSendMessage = async (e: FormEvent) => {
@@ -224,6 +198,10 @@ export default function WhatsAppChatPage() {
       
       const result = await response.json();
       if (!result.success) throw new Error(result.message || 'El sistema no pudo procesar el mensaje para el bot.');
+      
+      // Trigger an immediate fetch after sending to get bot's potential quick reply
+      setTimeout(() => fetchConversation(false), 500);
+
     } catch (error: any) {
       console.error("[WhatsAppChatPage DEBUG] Error sending message via API:", error.message);
       toast({ title: 'Error de Envío', description: error.message || 'No se pudo enviar tu mensaje al bot.', variant: 'destructive' });
@@ -251,6 +229,7 @@ export default function WhatsAppChatPage() {
       </div>
     );
   }
+
 
   if (!loggedInUser) { 
     return (
@@ -317,7 +296,6 @@ export default function WhatsAppChatPage() {
           {messages.map((msg) => (
             <ChatMessageItem key={msg.id} message={msg} currentUserId={loggedInUser!.id} />
           ))}
-          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
       <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t bg-card">
