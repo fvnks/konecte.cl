@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI flow to find matching properties for a newly created search request.
@@ -52,7 +53,7 @@ const findMatchingPropertiesForNewRequestFlow = ai.defineFlow(
 
     const matchPromises = activeProperties.map(async (property) => {
       const propertyDescription = `${property.title}. ${property.description} Ubicada en ${property.city}, ${property.region}. Tipo: ${property.category}. Precio: ${property.price} ${property.currency}. Dormitorios: ${property.bedrooms}. Baños: ${property.bathrooms}. Superficie: ${property.totalAreaSqMeters}m².`;
-      const searchRequestDescription = `${newRequest.title}. ${newRequest.description} Busca en ${newRequest.desiredLocationCity}, ${newRequest.desiredLocationRegion}. Presupuesto máximo: ${newRequest.budgetMax || 'N/A'}. Tipos deseados: ${newRequest.desiredCategories.join(', ')}. Para: ${newRequest.desiredPropertyType.join(', ')}.`;
+      const searchRequestDescription = `${newRequest.title}. ${newRequest.description} Busca en ${newRequest.desiredLocationCity}, ${newRequest.desiredLocationRegion}. Presupuesto máximo: ${newRequest.budgetMax || 'N/A'}. Tipos de propiedad deseados: ${newRequest.desiredCategories.join(', ')}. Tipos de transacción deseados: ${newRequest.desiredPropertyType.join(' o ')}.`;
 
       const matchingInput: PropertyMatchingInput = {
         propertyDescription: propertyDescription,
@@ -61,7 +62,7 @@ const findMatchingPropertiesForNewRequestFlow = ai.defineFlow(
 
       try {
         const { output: matchOutput } = await propertyMatchingPrompt(matchingInput);
-        if (matchOutput && matchOutput.matchScore >= 0.5) { // Threshold to save
+        if (matchOutput && matchOutput.matchScore >= 0.65) { // Threshold for notifications
           // Save the match to the database
           await saveOrUpdateAiMatchAction(
             property.id,

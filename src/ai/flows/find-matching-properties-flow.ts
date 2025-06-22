@@ -10,9 +10,10 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { propertyMatchingPrompt, type PropertyMatchingInput } from '@/ai/shared/property-prompts';
-import { getRequestByIdForAdminAction } from '@/actions/requestActions'; // Assuming this fetches enough detail for AI
+import { getRequestByIdForAdminAction } from '@/actions/requestActions';
 import { getPropertiesAction } from '@/actions/propertyActions';
 import type { SearchRequest, PropertyListing } from '@/lib/types';
+import { saveOrUpdateAiMatchAction } from '@/actions/aiMatchingActions';
 
 // Schemas (internal to this file, not exported as objects)
 const FindMatchingPropertiesInputSchema = z.object({
@@ -66,7 +67,7 @@ const findMatchingPropertiesFlow = ai.defineFlow(
 
     const matchPromises = activeProperties.map(async (property) => {
       const propertyDescription = `${property.title}. ${property.description} Ubicada en ${property.city}, ${property.region}. Tipo: ${property.category}. Precio: ${property.price} ${property.currency}. Dormitorios: ${property.bedrooms}. Baños: ${property.bathrooms}. Superficie: ${property.totalAreaSqMeters}m².`;
-      const searchRequestDescription = `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city || 'cualquier ciudad'}, ${request.desiredLocation?.region || 'cualquier región'}. Presupuesto máximo: ${request.budgetMax || 'N/A'}. Tipos deseados: ${request.desiredCategories.join(', ')}. Para: ${request.desiredPropertyType.join(', ')}.`;
+      const searchRequestDescription = `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city || 'cualquier ciudad'}, ${request.desiredLocation?.region || 'cualquier región'}. Presupuesto máximo: ${request.budgetMax || 'N/A'}. Tipos de propiedad deseados: ${request.desiredCategories.join(', ')}. Tipos de transacción deseados: ${request.desiredPropertyType.join(' o ')}.`;
 
       const matchingInput: PropertyMatchingInput = {
         propertyDescription: propertyDescription,
@@ -75,7 +76,14 @@ const findMatchingPropertiesFlow = ai.defineFlow(
 
       try {
         const { output: matchOutput } = await propertyMatchingPrompt(matchingInput);
-        if (matchOutput) {
+        if (matchOutput && matchOutput.matchScore >= 0.5) {
+          // Guardar o actualizar la coincidencia en la base de datos
+          await saveOrUpdateAiMatchAction(
+            property.id,
+            requestId,
+            matchOutput.matchScore,
+            matchOutput.reason
+          );
           return {
             propertyId: property.id,
             propertyTitle: property.title,

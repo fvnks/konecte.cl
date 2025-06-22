@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI flow to find matching property requests for a newly created property.
@@ -53,7 +54,7 @@ const findMatchingRequestsForNewPropertyFlow = ai.defineFlow(
 
     const matchPromises = activeRequests.map(async (request) => {
       const propertyDescription = `${newProperty.title}. ${newProperty.description} Ubicada en ${newProperty.city}, ${newProperty.region}. Tipo: ${newProperty.category}. Precio: ${newProperty.price} ${newProperty.currency}. Dormitorios: ${newProperty.bedrooms}. Baños: ${newProperty.bathrooms}. Superficie: ${newProperty.totalAreaSqMeters}m². Características: ${(newProperty.features || []).join(', ')}.`;
-      const searchRequestDescription = `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city || 'cualquier ciudad'}, ${request.desiredLocation?.region || 'cualquier región'}. Presupuesto máximo: ${request.budgetMax || 'N/A'}. Tipos deseados: ${request.desiredCategories.join(', ')}. Para: ${request.desiredPropertyType.join(', ')}.`;
+      const searchRequestDescription = `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city || 'cualquier ciudad'}, ${request.desiredLocation?.region || 'cualquier región'}. Presupuesto máximo: ${request.budgetMax || 'N/A'}. Tipos de propiedad deseados: ${request.desiredCategories.join(', ')}. Tipos de transacción deseados: ${request.desiredPropertyType.join(' o ')}.`;
 
       const matchingInput: PropertyMatchingInput = {
         propertyDescription: propertyDescription,
@@ -62,7 +63,7 @@ const findMatchingRequestsForNewPropertyFlow = ai.defineFlow(
 
       try {
         const { output: matchOutput } = await propertyMatchingPrompt(matchingInput);
-        if (matchOutput && matchOutput.matchScore >= 0.5) { // Threshold to save
+        if (matchOutput && matchOutput.matchScore >= 0.65) { // Threshold for notifications
           // Save the match to the database
           await saveOrUpdateAiMatchAction(
             newProperty.id,

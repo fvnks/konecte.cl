@@ -13,6 +13,7 @@ import { propertyMatchingPrompt, type PropertyMatchingInput } from '@/ai/shared/
 import { getPropertyByIdForAdminAction } from '@/actions/propertyActions';
 import { getRequestsAction } from '@/actions/requestActions';
 import type { PropertyListing, SearchRequest } from '@/lib/types';
+import { saveOrUpdateAiMatchAction } from '@/actions/aiMatchingActions';
 
 // Schemas (internal to this file, not exported as objects)
 const FindMatchingRequestsInputSchema = z.object({
@@ -67,11 +68,18 @@ const findMatchingRequestsFlow = ai.defineFlow(
     const matchPromises = activeRequests.map(async (request) => {
       const matchingInput: PropertyMatchingInput = {
         propertyDescription: `${property.title}. ${property.description} Ubicada en ${property.city}, ${property.region}. Tipo: ${property.category}. Precio: ${property.price} ${property.currency}. Dormitorios: ${property.bedrooms}. Baños: ${property.bathrooms}. Superficie: ${property.totalAreaSqMeters}m².`,
-        searchRequest: `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city || 'cualquier ciudad'}, ${request.desiredLocation?.region || 'cualquier región'}. Presupuesto máximo: ${request.budgetMax || 'N/A'}. Tipos deseados: ${request.desiredCategories.join(', ')}. Para: ${request.desiredPropertyType.join(', ')}.`,
+        searchRequest: `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city || 'cualquier ciudad'}, ${request.desiredLocation?.region || 'cualquier región'}. Presupuesto máximo: ${request.budgetMax || 'N/A'}. Tipos de propiedad deseados: ${request.desiredCategories.join(', ')}. Tipos de transacción deseados: ${request.desiredPropertyType.join(' o ')}.`,
       };
       try {
         const { output: matchOutput } = await propertyMatchingPrompt(matchingInput); 
-        if (matchOutput) {
+        if (matchOutput && matchOutput.matchScore >= 0.5) {
+           // Guardar o actualizar la coincidencia en la base de datos
+           await saveOrUpdateAiMatchAction(
+            propertyId,
+            request.id,
+            matchOutput.matchScore,
+            matchOutput.reason
+          );
           return {
             requestId: request.id,
             requestTitle: request.title,
