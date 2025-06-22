@@ -66,8 +66,8 @@ const findMatchingRequestsFlow = ai.defineFlow(
 
     const matchPromises = activeRequests.map(async (request) => {
       const matchingInput: PropertyMatchingInput = {
-        propertyDescription: `${property.title}. ${property.description} Ubicada en ${property.city}. Tipo: ${property.category}. Precio: ${property.price} ${property.currency}. Dormitorios: ${property.bedrooms}. Baños: ${property.bathrooms}. Superficie: ${property.areaSqMeters}m².`,
-        searchRequest: `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city || 'cualquier ciudad'}. Presupuesto máximo: ${request.budgetMax || 'N/A'}. Tipos deseados: ${request.desiredCategories.join(', ')}. Para: ${request.desiredPropertyType.join(', ')}.`,
+        propertyDescription: `${property.title}. ${property.description} Ubicada en ${property.city}, ${property.region}. Tipo: ${property.category}. Precio: ${property.price} ${property.currency}. Dormitorios: ${property.bedrooms}. Baños: ${property.bathrooms}. Superficie: ${property.totalAreaSqMeters}m².`,
+        searchRequest: `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city || 'cualquier ciudad'}, ${request.desiredLocation?.region || 'cualquier región'}. Presupuesto máximo: ${request.budgetMax || 'N/A'}. Tipos deseados: ${request.desiredCategories.join(', ')}. Para: ${request.desiredPropertyType.join(', ')}.`,
       };
       try {
         const { output: matchOutput } = await propertyMatchingPrompt(matchingInput); 

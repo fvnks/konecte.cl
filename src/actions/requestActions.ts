@@ -50,6 +50,7 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
     desiredCategories,
     desiredLocation: {
       city: row.desired_location_city,
+      region: row.desired_location_region,
       neighborhood: row.desired_location_neighborhood || undefined,
     },
     minBedrooms: row.min_bedrooms !== null ? Number(row.min_bedrooms) : undefined,
@@ -85,9 +86,9 @@ export async function submitRequestAction(
     const placeholders: string[] = [];
 
     // Campos obligatorios o que siempre se establecen
-    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city', 'is_active', 'created_at', 'updated_at', 'comments_count', 'upvotes');
-    values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity, true, new Date(), new Date(), 0, 0); // upvotes defaults to 0
-    placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
+    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city', 'desired_location_region', 'is_active', 'created_at', 'updated_at', 'comments_count', 'upvotes');
+    values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity, data.desiredLocationRegion, true, new Date(), new Date(), 0, 0); // upvotes defaults to 0
+    placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
 
 
     // Campos booleanos para tipos de transacción y categorías
@@ -150,6 +151,7 @@ export async function submitRequestAction(
         desiredPropertyType: data.desiredPropertyType,
         desiredCategories: data.desiredCategories,
         desiredLocationCity: data.desiredLocationCity,
+        desiredLocationRegion: data.desiredLocationRegion,
         desiredLocationNeighborhood: data.desiredLocationNeighborhood || undefined,
         minBedrooms: minBedroomsValue !== null ? minBedroomsValue : undefined,
         minBathrooms: minBathroomsValue !== null ? minBathroomsValue : undefined,
@@ -365,6 +367,7 @@ export async function adminUpdateRequestAction(
     if (data.title) { columnsToUpdate.push('title = ?'); valuesToUpdate.push(data.title); }
     if (data.description) { columnsToUpdate.push('description = ?'); valuesToUpdate.push(data.description); }
     if (data.desiredLocationCity) { columnsToUpdate.push('desired_location_city = ?'); valuesToUpdate.push(data.desiredLocationCity); }
+    if (data.desiredLocationRegion) { columnsToUpdate.push('desired_location_region = ?'); valuesToUpdate.push(data.desiredLocationRegion); }
     
     columnsToUpdate.push('desired_location_neighborhood = ?');
     valuesToUpdate.push(data.desiredLocationNeighborhood && data.desiredLocationNeighborhood.trim() !== '' ? data.desiredLocationNeighborhood.trim() : null);
@@ -441,9 +444,10 @@ export async function getRequestsCountAction(activeOnly: boolean = false): Promi
     }
     const result: any[] = await query(sql);
     return Number(result[0].count) || 0;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error al obtener el conteo de solicitudes:", error);
     return 0;
   }
 }
     
+

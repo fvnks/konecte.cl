@@ -47,6 +47,7 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     currency: row.currency,
     address: row.address,
     city: row.city,
+    region: row.region,
     country: row.country,
     bedrooms: Number(row.bedrooms),
     bathrooms: Number(row.bathrooms),
@@ -107,16 +108,16 @@ export async function submitPropertyAction(
     const sql = `
       INSERT INTO properties (
         id, user_id, title, slug, description, property_type, category,
-        price, currency, address, city, country, bedrooms, bathrooms,
+        price, currency, address, city, region, country, bedrooms, bathrooms,
         total_area_sq_meters, useful_area_sq_meters, parking_spaces, 
         pets_allowed, furnished, commercial_use_allowed, has_storage, orientation,
         images, features, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
     `;
 
     const params = [
       propertyId, userId, data.title, slug, data.description, data.propertyType, data.category,
-      data.price, data.currency, data.address, data.city, data.country, data.bedrooms, data.bathrooms,
+      data.price, data.currency, data.address, data.city, data.region, data.country, data.bedrooms, data.bathrooms,
       data.totalAreaSqMeters, 
       data.usefulAreaSqMeters === '' ? null : (data.usefulAreaSqMeters ?? null),
       data.parkingSpaces ?? 0,
@@ -151,6 +152,7 @@ export async function submitPropertyAction(
         currency: data.currency,
         address: data.address,
         city: data.city,
+        region: data.region,
         country: data.country,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
@@ -270,9 +272,9 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
     }
 
     if (searchTerm) {
-      whereClauses.push('(p.title LIKE ? OR p.description LIKE ? OR p.city LIKE ? OR p.address LIKE ?)');
+      whereClauses.push('(p.title LIKE ? OR p.description LIKE ? OR p.city LIKE ? OR p.address LIKE ? OR p.region LIKE ?)');
       const searchTermLike = `%${searchTerm}%`;
-      queryParams.push(searchTermLike, searchTermLike, searchTermLike, searchTermLike);
+      queryParams.push(searchTermLike, searchTermLike, searchTermLike, searchTermLike, searchTermLike);
     }
 
     if (propertyType) {
@@ -468,7 +470,7 @@ export async function adminUpdatePropertyAction(
     const sql = `
       UPDATE properties SET
         title = ?, description = ?, property_type = ?, category = ?,
-        price = ?, currency = ?, address = ?, city = ?, country = ?,
+        price = ?, currency = ?, address = ?, city = ?, region = ?, country = ?,
         bedrooms = ?, bathrooms = ?, total_area_sq_meters = ?, useful_area_sq_meters = ?,
         parking_spaces = ?, pets_allowed = ?, furnished = ?, commercial_use_allowed = ?, has_storage = ?, orientation = ?,
         images = ?, features = ?,
@@ -478,7 +480,7 @@ export async function adminUpdatePropertyAction(
 
     const params = [
       data.title, data.description, data.propertyType, data.category,
-      data.price, data.currency, data.address, data.city, data.country,
+      data.price, data.currency, data.address, data.city, data.region, data.country,
       data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
       data.usefulAreaSqMeters === '' ? null : (data.usefulAreaSqMeters ?? null),
       data.parkingSpaces ?? 0,
@@ -559,7 +561,7 @@ export async function userUpdatePropertyAction(
     const updateSql = `
       UPDATE properties SET
         title = ?, description = ?, property_type = ?, category = ?,
-        price = ?, currency = ?, address = ?, city = ?, country = ?,
+        price = ?, currency = ?, address = ?, city = ?, region = ?, country = ?,
         bedrooms = ?, bathrooms = ?, total_area_sq_meters = ?, useful_area_sq_meters = ?,
         parking_spaces = ?, pets_allowed = ?, furnished = ?, commercial_use_allowed = ?, has_storage = ?, orientation = ?,
         images = ?, features = ?,
@@ -569,7 +571,7 @@ export async function userUpdatePropertyAction(
 
     const params = [
       data.title, data.description, data.propertyType, data.category,
-      data.price, data.currency, data.address, data.city, data.country,
+      data.price, data.currency, data.address, data.city, data.region, data.country,
       data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
       data.usefulAreaSqMeters === '' ? null : (data.usefulAreaSqMeters ?? null),
       data.parkingSpaces ?? 0,
@@ -618,5 +620,5 @@ export async function getPropertiesCountAction(activeOnly: boolean = false): Pro
     return 0;
   }
 }
-
     
+

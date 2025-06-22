@@ -55,7 +55,7 @@ const findListingsForFreeTextSearchFlow = ai.defineFlow(
 
     // Match against properties
     const propertyMatchPromises = activeProperties.map(async (property) => {
-      const propertyText = `Título: ${s(property.title)}. Descripción: ${s(property.description)}. Categoría: ${s(property.category)}. Tipo: ${s(property.propertyType)}. Precio: ${s(property.price)} ${s(property.currency)}. Ubicación: ${s(property.city)}, ${s(property.address)}. Dorms: ${s(property.bedrooms, 'N/A')}, Baños: ${s(property.bathrooms, 'N/A')}. Superficie: ${s(property.areaSqMeters, 'N/A')}m². Características: ${sj(property.features)}.`;
+      const propertyText = `Título: ${s(property.title)}. Descripción: ${s(property.description)}. Categoría: ${s(property.category)}. Tipo: ${s(property.propertyType)}. Precio: ${s(property.price)} ${s(property.currency)}. Ubicación: ${s(property.address)}, ${s(property.city)}, ${s(property.region)}. Dorms: ${s(property.bedrooms, 'N/A')}, Baños: ${s(property.bathrooms, 'N/A')}. Superficie: ${s(property.totalAreaSqMeters, 'N/A')}m². Características: ${sj(property.features)}.`;
       const matchingInput: PropertyMatchingInput = {
         propertyDescription: propertyText,
         searchRequest: userSearchDescription,
@@ -77,7 +77,7 @@ const findListingsForFreeTextSearchFlow = ai.defineFlow(
 
     // Match against requests
     const requestMatchPromises = activeRequests.map(async (request) => {
-      const requestText = `Título: ${s(request.title)}. Descripción: ${s(request.description)}. Busca en ${s(request.desiredLocation?.city, 'cualquier ciudad')}. Presupuesto: ${s(request.budgetMax, 'N/A')}. Tipos: ${sj(request.desiredCategories)}. Para: ${sj(request.desiredPropertyType)}.`;
+      const requestText = `Título: ${s(request.title)}. Descripción: ${s(request.description)}. Busca en ${s(request.desiredLocation?.city, 'cualquier ciudad')}, ${s(request.desiredLocation?.region, 'cualquier región')}. Presupuesto: ${s(request.budgetMax, 'N/A')}. Tipos: ${sj(request.desiredCategories)}. Para: ${sj(request.desiredPropertyType)}.`;
       const matchingInput: PropertyMatchingInput = {
         propertyDescription: userSearchDescription, 
         searchRequest: requestText,              
@@ -104,4 +104,3 @@ const findListingsForFreeTextSearchFlow = ai.defineFlow(
     return { matches: allMatches.slice(0, 10) }; 
   }
 );
-

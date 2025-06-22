@@ -82,10 +82,11 @@ export const NewPropertyInputSchema = z.object({
   currency: z.string(),
   address: z.string(),
   city: z.string(),
+  region: z.string(),
   country: z.string(),
   bedrooms: z.number().optional(),
   bathrooms: z.number().optional(),
-  totalAreaSqMeters: z.number().optional(),
+  totalAreaSqMeters: z.number(),
   usefulAreaSqMeters: z.number().optional().nullable(),
   parkingSpaces: z.number().int().min(0).optional(),
   petsAllowed: z.boolean().optional(),
@@ -105,6 +106,7 @@ export const NewRequestInputSchema = z.object({
   desiredPropertyType: z.array(z.enum(['rent', 'sale'] as [LibPropertyType, ...LibPropertyType[]])),
   desiredCategories: z.array(z.enum(['apartment', 'house', 'condo', 'land', 'commercial', 'other'] as [LibListingCategory, ...LibListingCategory[]])),
   desiredLocationCity: z.string(),
+  desiredLocationRegion: z.string(),
   desiredLocationNeighborhood: z.string().optional(),
   minBedrooms: z.number().optional(),
   minBathrooms: z.number().optional(),
@@ -119,4 +121,3 @@ export type MatchedProperty = z.infer<typeof MatchedPropertySchema>;
 export type MatchedRequest = z.infer<typeof MatchedRequestSchema>;
 export type FoundMatch = z.infer<typeof FoundMatchSchema>;
 export type FindListingsForFreeTextSearchOutput = z.infer<typeof FindListingsForFreeTextSearchOutputSchema>;
-

@@ -56,6 +56,7 @@ export default function AdminEditRequestForm({ request }: AdminEditRequestFormPr
       desiredPropertyType: request.desiredPropertyType || [],
       desiredCategories: request.desiredCategories || [],
       desiredLocationCity: request.desiredLocation?.city || "",
+      desiredLocationRegion: request.desiredLocation?.region || "",
       desiredLocationNeighborhood: request.desiredLocation?.neighborhood || "",
       minBedrooms: request.minBedrooms !== undefined ? request.minBedrooms : '',
       minBathrooms: request.minBathrooms !== undefined ? request.minBathrooms : '',
@@ -190,6 +191,19 @@ export default function AdminEditRequestForm({ request }: AdminEditRequestFormPr
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <FormField
+                control={form.control}
+                name="desiredLocationRegion"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Región Deseada</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Ej: V Región de Valparaíso" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
             <FormField
             control={form.control}
             name="desiredLocationCity"
@@ -297,4 +311,3 @@ export default function AdminEditRequestForm({ request }: AdminEditRequestFormPr
     </Form>
   );
 }
-

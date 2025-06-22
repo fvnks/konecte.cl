@@ -1,3 +1,4 @@
+
 // src/components/property/EditPropertyForm.tsx
 'use client';
 
@@ -97,6 +98,7 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
       currency: property.currency || "CLP",
       address: property.address || "",
       city: property.city || "",
+      region: property.region || "",
       country: property.country || "Chile",
       bedrooms: property.bedrooms === 0 ? '' : (property.bedrooms ?? ''),
       bathrooms: property.bathrooms === 0 ? '' : (property.bathrooms ?? ''),
@@ -220,9 +222,10 @@ export default function EditPropertyForm({ property, userId, onSubmitAction, isA
           />
         </div>
         <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl><AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting} /></FormControl> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-          <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="region" render={({ field }) => ( <FormItem> <FormLabel>Región</FormLabel> <FormControl><Input placeholder="Ej: V Región de Valparaíso" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+          <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField control={form.control} name="totalAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Total (m²)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 120" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
