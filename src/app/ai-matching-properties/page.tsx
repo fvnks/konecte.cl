@@ -1,4 +1,3 @@
-
 // src/app/ai-matching-properties/page.tsx
 'use client';
 
@@ -228,4 +227,3 @@ export default function AiMatchPropertiesPage() {
     </Suspense>
   );
 }
-

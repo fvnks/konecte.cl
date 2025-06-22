@@ -92,6 +92,3 @@ const findMatchingRequestsFlow = ai.defineFlow(
     return { propertyName: property.title, propertySlug: property.slug, matches: results };
   }
 );
-
-// Ensure only types are exported besides the main async function for this 'use server' module
-// Types are already exported individually above.

@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper, MailQuestion, CalendarClock, MailWarning, MessageSquare, Bot } from "lucide-react";
+import { Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, FileSearch, Home, ArrowRight, Activity, Palette, ShieldCheck, DollarSign, BarChart3, Newspaper, MailQuestion, CalendarClock, MailWarning, MessageSquare, Bot, Sparkles } from "lucide-react";
 import type { ReactNode } from 'react';
 import { getUnreadContactSubmissionsCountAction } from "@/actions/contactFormActions";
 
@@ -53,6 +53,14 @@ export default async function AdminDashboardPage() {
     icon: <BarChart3 className="h-8 w-8 text-primary" />,
     cta: "Ver Estadísticas",
     colorClass: "from-indigo-500/10 to-indigo-500/5 text-indigo-600 dark:text-indigo-400",
+  },
+  {
+    title: "Búsqueda con IA",
+    description: "Encuentra coincidencias entre propiedades y solicitudes usando IA.",
+    href: "/ai-matching",
+    icon: <Sparkles className="h-8 w-8 text-primary" />,
+    cta: "Buscar Coincidencias",
+    colorClass: "from-fuchsia-500/10 to-fuchsia-500/5 text-fuchsia-600 dark:text-fuchsia-400",
   },
   {
     title: "Apariencia del Sitio",
@@ -190,4 +198,3 @@ export default async function AdminDashboardPage() {
     </div>
   );
 }
-

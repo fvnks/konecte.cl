@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { SearchRequest } from '@/lib/types';
 import { getRequestsAction, updateRequestStatusAction, adminDeleteRequestAction } from '@/actions/requestActions';
-import { Loader2, FileSearch, Trash2, Eye, ToggleLeft, ToggleRight, Sparkles } from 'lucide-react'; // Removed Edit3
+import { Loader2, FileSearch, Trash2, Eye, ToggleLeft, ToggleRight, Sparkles, MoreHorizontal, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -23,18 +23,24 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import StyledEditButton from '@/components/ui/StyledEditButton'; // Import new button
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuSeparator,
+    DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { useRouter } from 'next/navigation';
 
 export default function AdminRequestsPage() {
   const { toast } = useToast();
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
   const [requests, setRequests] = useState<SearchRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
-  
+  const [requestToDelete, setRequestToDelete] = useState<SearchRequest | null>(null);
+
   const fetchRequests = async () => {
     setIsLoading(true);
     try {
@@ -66,15 +72,22 @@ export default function AdminRequestsPage() {
     });
   };
 
-  const handleDeleteRequest = async (requestId: string) => {
+  const openDeleteDialog = (request: SearchRequest) => {
+    setRequestToDelete(request);
+  };
+
+  const confirmDeleteRequest = async () => {
+    if (!requestToDelete) return;
+    
     startTransition(async () => {
-      const result = await adminDeleteRequestAction(requestId);
+      const result = await adminDeleteRequestAction(requestToDelete.id);
       if (result.success) {
         toast({ title: "Solicitud Eliminada", description: result.message });
-        setRequests(prevRequests => prevRequests.filter(r => r.id !== requestId));
+        setRequests(prevRequests => prevRequests.filter(r => r.id !== requestToDelete.id));
       } else {
         toast({ title: "Error al Eliminar Solicitud", description: result.message, variant: "destructive" });
       }
+      setRequestToDelete(null);
     });
   };
   
@@ -108,7 +121,7 @@ export default function AdminRequestsPage() {
                     <TableHead>Ciudad Deseada</TableHead>
                     <TableHead>Fecha Creación</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
-                    <TableHead className="text-right min-w-[260px]">Acciones</TableHead> 
+                    <TableHead className="text-right">Acciones</TableHead> 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -139,44 +152,34 @@ export default function AdminRequestsPage() {
                             </Badge>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" asChild title="Ver solicitud pública">
-                          <Link href={`/requests/${req.slug}`} target="_blank">
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <StyledEditButton
-                           onClick={() => router.push(`/admin/requests/${req.id}/edit`)}
-                           title="Editar solicitud"
-                        />
-                        <Button variant="ghost" size="icon" asChild title="Buscar propiedades coincidentes (IA)" className="text-purple-600 hover:text-purple-700">
-                          <Link href={`/ai-matching-properties?requestId=${req.id}`}>
-                            <Sparkles className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90" disabled={isPending} title="Eliminar solicitud">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción no se puede deshacer. Eliminarás permanentemente la solicitud "{req.title}".
-                                Todos los comentarios asociados también serán eliminados.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteRequest(req.id)} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
-                                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Sí, eliminar solicitud
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                      <TableCell className="text-right">
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Abrir menú de acciones</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/requests/${req.slug}`} target="_blank" className="flex items-center gap-2 cursor-pointer">
+                                        <Eye className="h-4 w-4"/> Ver Solicitud
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/admin/requests/${req.id}/edit`)} className="flex items-center gap-2 cursor-pointer">
+                                    <Edit className="h-4 w-4"/> Editar Solicitud
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/ai-matching-properties?requestId=${req.id}`} className="flex items-center gap-2 cursor-pointer">
+                                        <Sparkles className="h-4 w-4"/> Buscar con IA
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => openDeleteDialog(req)} className="text-destructive focus:text-destructive flex items-center gap-2 cursor-pointer">
+                                    <Trash2 className="h-4 w-4"/> Eliminar
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -188,6 +191,28 @@ export default function AdminRequestsPage() {
           )}
         </CardContent>
       </Card>
+
+      {requestToDelete && (
+         <AlertDialog open={!!requestToDelete} onOpenChange={(open) => !open && setRequestToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción no se puede deshacer. Eliminarás permanentemente la solicitud "{requestToDelete.title}".
+                Todos los comentarios asociados también serán eliminados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setRequestToDelete(null)} disabled={isPending}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteRequest} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Sí, eliminar solicitud
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
     </div>
   );
 }
