@@ -12,6 +12,7 @@ import { z } from 'genkit';
 import { propertyMatchingPrompt, type PropertyMatchingInput, NewPropertyInputSchema } from '@/ai/shared/property-prompts';
 import { getRequestsAction } from '@/actions/requestActions';
 import type { SearchRequest } from '@/lib/types';
+import { saveOrUpdateAiMatchAction } from '@/actions/aiMatchingActions';
 
 // Output type for a single match
 const MatchResultSchema = z.object({
@@ -61,7 +62,15 @@ const findMatchingRequestsForNewPropertyFlow = ai.defineFlow(
 
       try {
         const { output: matchOutput } = await propertyMatchingPrompt(matchingInput);
-        if (matchOutput) {
+        if (matchOutput && matchOutput.matchScore >= 0.5) { // Threshold to save
+          // Save the match to the database
+          await saveOrUpdateAiMatchAction(
+            newProperty.id,
+            request.id,
+            matchOutput.matchScore,
+            matchOutput.reason
+          );
+          // Return the match result for immediate use (like notifications)
           return {
             requestId: request.id,
             requestTitle: request.title,

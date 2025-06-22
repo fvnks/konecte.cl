@@ -803,3 +803,17 @@ export const userProfileFormSchema = z.object({
 });
 
 export type UserProfileFormValues = z.infer<typeof userProfileFormSchema>;
+
+export interface AIMatch {
+  id: string;
+  property_id: string;
+  request_id: string;
+  match_score: number;
+  reason?: string | null;
+  last_calculated_at: string;
+  // Optional joined data
+  property_title?: string;
+  property_slug?: string;
+  request_title?: string;
+  request_slug?: string;
+}

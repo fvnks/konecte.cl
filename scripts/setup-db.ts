@@ -1,4 +1,5 @@
 
+
 // scripts/setup-db.ts
 import mysql, { type Pool, type PoolOptions } from 'mysql2/promise';
 import readline from 'readline/promises';
@@ -399,6 +400,22 @@ const SQL_STATEMENTS: string[] = [
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_action_logs_user_action_time (user_id, action_type, created_at),
     INDEX idx_user_action_logs_target_entity (target_entity_type, target_entity_id)
+  );`,
+  
+  // --- AI Matches Table ---
+  `CREATE TABLE IF NOT EXISTS ai_matches (
+    id VARCHAR(36) PRIMARY KEY,
+    property_id VARCHAR(36) NOT NULL,
+    request_id VARCHAR(36) NOT NULL,
+    match_score DECIMAL(5,4) NOT NULL,
+    reason TEXT,
+    last_calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+    FOREIGN KEY (request_id) REFERENCES property_requests(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_property_request_match (property_id, request_id),
+    INDEX idx_ai_matches_property_id (property_id),
+    INDEX idx_ai_matches_request_id (request_id),
+    INDEX idx_ai_matches_score (match_score)
   );`
 ];
 

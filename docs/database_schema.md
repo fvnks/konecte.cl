@@ -386,4 +386,26 @@ CREATE TABLE user_action_logs (
     INDEX idx_user_action_logs_target_entity (target_entity_type, target_entity_id)
 );
 ```
+---
+## Tabla: `ai_matches` (Coincidencias de IA)
+Almacena las coincidencias generadas por la IA para evitar recalcularlas constantemente y proporcionar resultados consistentes.
 
+```sql
+CREATE TABLE ai_matches (
+    id VARCHAR(36) PRIMARY KEY,
+    property_id VARCHAR(36) NOT NULL,
+    request_id VARCHAR(36) NOT NULL,
+    match_score DECIMAL(5,4) NOT NULL, -- Ej: 0.9500
+    reason TEXT,
+    last_calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+    FOREIGN KEY (request_id) REFERENCES property_requests(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_property_request_match (property_id, request_id),
+    INDEX idx_ai_matches_property_id (property_id),
+    INDEX idx_ai_matches_request_id (request_id),
+    INDEX idx_ai_matches_score (match_score)
+);
+```
+
+```
