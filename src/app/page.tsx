@@ -2,11 +2,9 @@
 'use client'; 
 
 import type { ReactNode } from 'react';
-import { useState, FormEvent, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { PlusCircle, Search as SearchIcon, AlertTriangle, Brain, ListChecks, Bot, ArrowRight, Link as LinkIcon, CreditCard, Loader2 } from "lucide-react";
+import { PlusCircle, AlertTriangle, Brain, ListChecks, Bot, ArrowRight, Link as LinkIcon, CreditCard, Loader2 } from "lucide-react";
 import Link from "next/link";
 import type { PropertyListing, SearchRequest, LandingSectionKey, Plan } from "@/lib/types";
 import { fetchGoogleSheetDataAction, getGoogleSheetConfigAction } from "@/actions/googleSheetActions";
@@ -20,6 +18,7 @@ import PaginatedSheetTable from "@/components/google-sheet/PaginatedSheetTable";
 import FeaturedListingsClient from '@/components/landing/FeaturedListingsClient';
 import InteractiveAIMatching from '@/components/landing/InteractiveAIMatching';
 import PlanDisplayCard from '@/components/plan/PlanDisplayCard';
+import HeroSearchForm from '@/components/landing/HeroSearchForm';
 
 
 async function getFeaturedListingsAndRequestsData() {
@@ -217,15 +216,11 @@ function FeaturedPlansSection({ plans }: FeaturedPlansSectionProps) {
 const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"];
 const DEFAULT_HERO_TITLE = "Encuentra Tu Espacio Ideal en konecte";
 const DEFAULT_HERO_SUBTITLE = "Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!";
-const DEFAULT_SEARCH_PLACEHOLDER = "Buscar por ubicación, tipo, características...";
 const DEFAULT_PUBLISH_PROPERTY_BUTTON = "Publicar Propiedad";
 const DEFAULT_PUBLISH_REQUEST_BUTTON = "Publicar Solicitud";
 
 // --- HomePage Component ---
 export default function HomePage() {
-  const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState('');
-
   const [siteSettings, setSiteSettings] = useState<Awaited<ReturnType<typeof getSiteSettingsAction>> | null>(null);
   const [homeTexts, setHomeTexts] = useState<Awaited<ReturnType<typeof getEditableTextsByGroupAction>> | null>(null);
   const [listingsData, setListingsData] = useState<Awaited<ReturnType<typeof getFeaturedListingsAndRequestsData>> | null>(null);
@@ -277,14 +272,6 @@ export default function HomePage() {
     loadInitialData();
   }, []);
 
-
-  const handleSearchSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    if (searchTerm.trim()) {
-      router.push(`/properties?searchTerm=${encodeURIComponent(searchTerm.trim())}`);
-    }
-  };
-
   if (isLoading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen">
@@ -320,7 +307,6 @@ export default function HomePage() {
 
   const heroTitle = homeTexts.home_hero_title || DEFAULT_HERO_TITLE;
   const heroSubtitle = homeTexts.home_hero_subtitle || DEFAULT_HERO_SUBTITLE;
-  const searchPlaceholder = homeTexts.home_search_placeholder || DEFAULT_SEARCH_PLACEHOLDER;
   const publishPropertyButtonText = homeTexts.home_publish_property_button || DEFAULT_PUBLISH_PROPERTY_BUTTON;
   const publishRequestButtonText = homeTexts.home_publish_request_button || DEFAULT_PUBLISH_REQUEST_BUTTON;
 
@@ -364,21 +350,9 @@ export default function HomePage() {
           <p className="mt-6 max-w-xl mx-auto text-lg text-muted-foreground sm:text-xl md:mt-8 md:text-2xl md:max-w-3xl">
             {heroSubtitle}
           </p>
-          <div className="mt-10 max-w-2xl mx-auto">
-            <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <Input
-                type="search"
-                placeholder={searchPlaceholder}
-                className="flex-grow text-base h-14 rounded-xl shadow-lg focus:ring-2 focus:ring-primary px-6 border-border focus:border-primary transition-all"
-                aria-label="Buscar propiedades y solicitudes"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <Button size="lg" className="h-14 rounded-xl flex items-center gap-2 text-base shadow-lg hover:shadow-xl transition-all px-8 bg-primary hover:bg-primary/90 text-primary-foreground" type="submit">
-                <SearchIcon className="h-5 w-5" /> Buscar
-              </Button>
-            </form>
-          </div>
+          
+          <HeroSearchForm />
+
           <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
             <Button size="lg" variant="default" asChild className="w-full sm:w-auto rounded-xl text-base sm:text-lg h-16 px-8 sm:px-10 shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 bg-accent hover:bg-accent/90 text-accent-foreground">
               <Link href="/properties/submit">
