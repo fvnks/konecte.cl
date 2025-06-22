@@ -784,8 +784,15 @@ export const otpVerificationSchema = z.object({
 });
 export type OtpVerificationFormValues = z.infer<typeof otpVerificationSchema>;
     
+export const userProfileFormSchema = z.object({
+  name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
+  phone_number: z.string().min(9, "El teléfono debe tener al menos 9 caracteres.").max(50, "El teléfono no puede exceder los 50 caracteres.").or(z.literal('')),
+  avatarUrl: z.string().url("Debe ser una URL válida.").max(2048).optional().or(z.literal('')),
+  company_name: z.string().max(255).optional().or(z.literal('')),
+  main_operating_region: z.string().max(100).optional().or(z.literal('')),
+  main_operating_commune: z.string().max(100).optional().or(z.literal('')),
+  properties_in_portfolio_count: z.coerce.number().int().min(0).optional().nullable(),
+  website_social_media_link: z.string().url("Debe ser una URL válida.").max(2048).optional().or(z.literal('')),
+});
 
-
-
-
-
+export type UserProfileFormValues = z.infer<typeof userProfileFormSchema>;

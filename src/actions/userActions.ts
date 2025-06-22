@@ -1,10 +1,9 @@
-
 // src/actions/userActions.ts
 'use server';
 
 import { query } from '@/lib/db';
-import type { User, AdminCreateUserFormValues, AdminEditUserFormValues } from '@/lib/types';
-import { adminCreateUserFormSchema, adminEditUserFormSchema } from '@/lib/types';
+import type { User, AdminCreateUserFormValues, AdminEditUserFormValues, UserProfileFormValues } from '@/lib/types';
+import { adminCreateUserFormSchema, adminEditUserFormSchema, userProfileFormSchema } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
@@ -40,9 +39,11 @@ export async function getUserByIdAction(userId: string): Promise<User | null> {
     const userRows: any[] = await query(
       `SELECT 
          u.id, u.name, u.email, u.avatar_url,
-         u.rut_tin, u.phone_number, 
+         u.rut_tin, u.phone_number, u.phone_verified,
          u.role_id, r.name as role_name,
          u.plan_id, p.name as plan_name, u.plan_expires_at,
+         u.company_name, u.main_operating_region, u.main_operating_commune,
+         u.properties_in_portfolio_count, u.website_social_media_link,
          u.created_at, u.updated_at
        FROM users u
        LEFT JOIN roles r ON u.role_id = r.id
@@ -56,6 +57,7 @@ export async function getUserByIdAction(userId: string): Promise<User | null> {
     const user = userRows[0];
     return {
       ...user,
+      phone_verified: Number(user.phone_verified) === 1,
       created_at: user.created_at ? new Date(user.created_at).toISOString() : undefined,
       updated_at: user.updated_at ? new Date(user.updated_at).toISOString() : undefined,
       plan_expires_at: user.plan_expires_at ? new Date(user.plan_expires_at).toISOString() : null,
@@ -302,3 +304,91 @@ export async function getUsersCountAction(): Promise<number> {
   }
 }
 
+export async function updateUserProfileAction(
+  userId: string,
+  values: UserProfileFormValues
+): Promise<{ success: boolean; message?: string; updatedUser?: User }> {
+  if (!userId) {
+    return { success: false, message: 'Usuario no autenticado.' };
+  }
+
+  const validation = userProfileFormSchema.safeParse(values);
+  if (!validation.success) {
+    const errorMessages = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    return { success: false, message: `Datos inválidos: ${errorMessages}` };
+  }
+
+  const {
+    name,
+    phone_number,
+    avatarUrl,
+    company_name,
+    main_operating_region,
+    main_operating_commune,
+    properties_in_portfolio_count,
+    website_social_media_link
+  } = validation.data;
+
+  try {
+    // Check if phone number is being changed to one that already exists for another user
+    if (phone_number) {
+        const existingPhoneRows: any[] = await query(
+            'SELECT id FROM users WHERE phone_number = ? AND id != ?',
+            [phone_number, userId]
+        );
+        if (existingPhoneRows.length > 0) {
+            return { success: false, message: 'Este número de teléfono ya está en uso por otro usuario.' };
+        }
+    }
+
+    const updateSql = `
+      UPDATE users SET
+        name = ?,
+        phone_number = ?,
+        avatar_url = ?,
+        company_name = ?,
+        main_operating_region = ?,
+        main_operating_commune = ?,
+        properties_in_portfolio_count = ?,
+        website_social_media_link = ?,
+        updated_at = NOW()
+      WHERE id = ?
+    `;
+
+    const params = [
+      name,
+      phone_number,
+      avatarUrl || null,
+      company_name || null,
+      main_operating_region || null,
+      main_operating_commune || null,
+      properties_in_portfolio_count !== undefined && properties_in_portfolio_count !== null ? properties_in_portfolio_count : null,
+      website_social_media_link || null,
+      userId
+    ];
+
+    const result: any = await query(updateSql, params);
+
+    if (result.affectedRows === 0) {
+        return { success: false, message: 'No se pudo actualizar el perfil o no se encontraron cambios.' };
+    }
+    
+    // Fetch the full updated user details to return
+    const updatedUser = await getUserByIdAction(userId);
+    if (!updatedUser) {
+        return { success: false, message: 'Perfil actualizado, pero no se pudo recuperar la información actualizada.' };
+    }
+    
+    revalidatePath('/profile');
+    revalidatePath(`/dashboard`); // User info might be shown on dashboard
+
+    return { success: true, message: 'Perfil actualizado exitosamente.', updatedUser: updatedUser };
+
+  } catch (error: any) {
+    console.error(`[UserAction] Error updating profile for user ${userId}:`, error);
+    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('uq_users_phone_number')) {
+        return { success: false, message: "Este número de teléfono ya está en uso por otro usuario." };
+    }
+    return { success: false, message: `Error al actualizar el perfil: ${error.message}` };
+  }
+}
