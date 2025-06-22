@@ -185,11 +185,6 @@ export default function AdminPropertiesPage() {
                                 <DropdownMenuItem onClick={() => router.push(`/admin/properties/${prop.id}/edit`)} className="flex items-center gap-2 cursor-pointer">
                                     <Edit className="h-4 w-4"/> Editar Propiedad
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href={`/ai-matching?propertyId=${prop.id}`} className="flex items-center gap-2 cursor-pointer">
-                                        <Sparkles className="h-4 w-4"/> Buscar con IA
-                                    </Link>
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onSelect={() => openDeleteDialog(prop)} className="text-destructive focus:text-destructive flex items-center gap-2 cursor-pointer">
                                     <Trash2 className="h-4 w-4"/> Eliminar

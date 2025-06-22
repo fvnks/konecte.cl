@@ -169,11 +169,6 @@ export default function AdminRequestsPage() {
                                 <DropdownMenuItem onClick={() => router.push(`/admin/requests/${req.id}/edit`)} className="flex items-center gap-2 cursor-pointer">
                                     <Edit className="h-4 w-4"/> Editar Solicitud
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href={`/ai-matching-properties?requestId=${req.id}`} className="flex items-center gap-2 cursor-pointer">
-                                        <Sparkles className="h-4 w-4"/> Buscar con IA
-                                    </Link>
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onSelect={() => openDeleteDialog(req)} className="text-destructive focus:text-destructive flex items-center gap-2 cursor-pointer">
                                     <Trash2 className="h-4 w-4"/> Eliminar
