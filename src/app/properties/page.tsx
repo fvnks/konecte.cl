@@ -1,4 +1,3 @@
-
 // src/app/properties/page.tsx
 'use client';
 
@@ -54,11 +53,12 @@ export default function PropertiesPage() {
   const [filterPropertyType, setFilterPropertyType] = useState<PropertyType | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<ListingCategory | 'all'>('all');
   const [filterCity, setFilterCity] = useState('');
-  const [minBedrooms, setMinBedrooms] = useState<string>(''); // Use string for input, parse to number in action
-  const [minBathrooms, setMinBathrooms] = useState<string>(''); // Use string for input
+  const [minBedrooms, setMinBedrooms] = useState<string>('');
+  const [minBathrooms, setMinBathrooms] = useState<string>('');
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
-
+  
+  const [initialParamsLoaded, setInitialParamsLoaded] = useState(false);
 
   const fetchProperties = useCallback(async () => {
     setIsLoading(true);
@@ -88,19 +88,32 @@ export default function PropertiesPage() {
     }
   }, [searchTerm, filterPropertyType, filterCategory, filterCity, orderBy, minBedrooms, minBathrooms, minPrice, maxPrice, toast]);
 
+  // Effect to load initial params from URL
   useEffect(() => {
-    // Check if URL contains searchTerm and apply it
     const urlParams = new URLSearchParams(window.location.search);
     const urlSearchTerm = urlParams.get('searchTerm');
-    if (urlSearchTerm) {
-      setSearchTerm(urlSearchTerm);
-      // Note: fetchProperties will be called by the dependency change of searchTerm if it's in the dep array of another useEffect
-      // or you can call it directly here if this effect runs once on mount.
-      // For simplicity, assume a main useEffect calls fetchProperties initially.
-    }
-    fetchProperties(); // Initial fetch or fetch based on URL params handled by useCallback
+    const urlPropertyType = urlParams.get('propertyType') as PropertyType | 'all' | null;
+    const urlCategory = urlParams.get('category') as ListingCategory | 'all' | null;
+
+    if (urlSearchTerm) setSearchTerm(urlSearchTerm);
+    if (urlPropertyType) setFilterPropertyType(urlPropertyType);
+    if (urlCategory) setFilterCategory(urlCategory);
+    
+    // Signal that initial params have been processed
+    setInitialParamsLoaded(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array means this effect runs once on mount and cleanup.
+  }, []); // Run only once on mount
+
+  // Main effect to fetch data.
+  // It runs when initial params are loaded, or when any filter is changed by the user.
+  useEffect(() => {
+    if (initialParamsLoaded) {
+        startTransition(() => {
+            fetchProperties();
+        });
+    }
+  }, [initialParamsLoaded, fetchProperties]);
+
 
   const handleApplyFilters = () => {
     startTransition(() => {
@@ -109,21 +122,19 @@ export default function PropertiesPage() {
   };
   
   const handleResetFilters = () => {
-    setSearchTerm('');
-    setOrderBy('createdAt_desc');
-    setFilterPropertyType('all');
-    setFilterCategory('all');
-    setFilterCity('');
-    setMinBedrooms('');
-    setMinBathrooms('');
-    setMinPrice('');
-    setMaxPrice('');
-    // No need to startTransition here, as fetchProperties will be called by useEffect due to state changes
-    // if fetchProperties is a dependency of such an effect.
-    // However, to ensure immediate fetch on reset, explicitly call it within a transition.
     startTransition(() => {
-      fetchProperties(); 
+      setSearchTerm('');
+      setOrderBy('createdAt_desc');
+      setFilterPropertyType('all');
+      setFilterCategory('all');
+      setFilterCity('');
+      setMinBedrooms('');
+      setMinBathrooms('');
+      setMinPrice('');
+      setMaxPrice('');
     });
+    // fetchProperties will be called automatically by the useEffect above
+    // because the filter states change.
   };
 
   return (
