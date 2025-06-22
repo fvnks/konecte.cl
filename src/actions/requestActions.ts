@@ -158,20 +158,27 @@ export async function submitRequestAction(
       const autoMatches = await findMatchingPropertiesForNewRequest(requestForAIMatch);
 
       for (const match of autoMatches) {
-        if (match.matchScore >= 0.65 && match.propertyAuthorId && match.propertyAuthorId !== userId && match.propertyAuthorPhoneNumber && requestPublisher?.phone_number) {
+        if (match.matchScore >= 0.65 && match.propertyAuthorId && match.propertyAuthorId !== userId) {
             autoMatchesFoundCount++;
 
             const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://konecte.cl';
             const requestUrl = `${baseUrl}/requests/${slug}`;
             const propertyUrl = `${baseUrl}/properties/${match.propertySlug}`;
 
-            // 1. Message for the property owner
-            const messageToPropertyOwner = `¡Hola ${match.propertyAuthorName}! La solicitud "${data.title}" de ${requestPublisher.name} podría coincidir con tu propiedad. Contacto: ${requestPublisher.phone_number}. Ver solicitud: ${requestUrl}`;
-            await sendGenericWhatsAppMessageAction(match.propertyAuthorPhoneNumber, messageToPropertyOwner, match.propertyAuthorId);
+            const requestPublisherContact = requestPublisher?.phone_number ? `Contacto: ${requestPublisher.phone_number}.` : "Contáctalo/a a través de la plataforma.";
+            const propertyAuthorContact = match.propertyAuthorPhoneNumber ? `Contacto: ${match.propertyAuthorPhoneNumber}.` : "Contáctalo/a a través de la plataforma.";
             
-            // 2. Message for the request publisher (the user who just published)
-            const messageToRequestPublisher = `¡Hola ${requestPublisher.name}! Tu solicitud "${data.title}" coincide con la propiedad "${match.propertyTitle}" de ${match.propertyAuthorName}. Contacto: ${match.propertyAuthorPhoneNumber}. Ver propiedad: ${propertyUrl}`;
-            await sendGenericWhatsAppMessageAction(requestPublisher.phone_number, messageToRequestPublisher, requestPublisher.id);
+            // 1. Notify Property Owner (if they have a phone)
+            if (match.propertyAuthorPhoneNumber) {
+                const messageToPropertyOwner = `¡Hola ${match.propertyAuthorName}! La solicitud "${data.title}" de ${requestPublisher?.name || 'un usuario'} podría coincidir con tu propiedad. ${requestPublisherContact} Ver solicitud: ${requestUrl}`;
+                await sendGenericWhatsAppMessageAction(match.propertyAuthorPhoneNumber, messageToPropertyOwner, match.propertyAuthorId);
+            }
+            
+            // 2. Notify Request Publisher (if they have a phone)
+            if (requestPublisher?.phone_number) {
+                const messageToRequestPublisher = `¡Hola ${requestPublisher.name}! Tu solicitud "${data.title}" coincide con la propiedad "${match.propertyTitle}" de ${match.propertyAuthorName || 'un usuario'}. ${propertyAuthorContact} Ver propiedad: ${propertyUrl}`;
+                await sendGenericWhatsAppMessageAction(requestPublisher.phone_number, messageToRequestPublisher, requestPublisher.id);
+            }
         }
       }
       
@@ -180,7 +187,7 @@ export async function submitRequestAction(
     }
     
     if (autoMatchesFoundCount > 0) {
-      successMessage = `Solicitud publicada. ¡Encontramos ${autoMatchesFoundCount} propiedad(es) que podrían coincidir! Se han enviado notificaciones por WhatsApp a ambas partes.`;
+      successMessage = `Solicitud publicada. ¡Encontramos ${autoMatchesFoundCount} propiedad(es) que podrían coincidir! Se han enviado notificaciones por WhatsApp a las partes con número de teléfono registrado.`;
     }
 
     return { success: true, message: successMessage, requestId, requestSlug: slug, autoMatchesCount: autoMatchesFoundCount };
@@ -451,7 +458,7 @@ export async function getRequestsCountAction(activeOnly: boolean = false): Promi
     }
     const result: any[] = await query(sql);
     return Number(result[0].count) || 0;
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error al obtener el conteo de solicitudes:", error);
     return 0;
   }
