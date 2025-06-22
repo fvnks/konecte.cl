@@ -1,4 +1,3 @@
-
 // src/components/admin/requests/AdminEditRequestForm.tsx
 'use client';
 
@@ -20,10 +19,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { adminUpdateRequestAction } from '@/actions/requestActions';
 import type { PropertyType, ListingCategory, SearchRequest, RequestFormValues } from "@/lib/types"; // Import RequestFormValues
-import { requestFormSchema } from "@/lib/types"; // Import requestFormSchema
+import { requestFormSchema, chileanRegions } from "@/lib/types"; // Import requestFormSchema and regions
 import { Loader2, Save, Handshake } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Reutilizamos las opciones y el esquema del formulario de creación
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
@@ -191,19 +191,28 @@ export default function AdminEditRequestForm({ request }: AdminEditRequestFormPr
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <FormField
-                control={form.control}
-                name="desiredLocationRegion"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Región Deseada *</FormLabel>
+            <FormField
+              control={form.control}
+              name="desiredLocationRegion"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Región Deseada *</FormLabel>
+                   <Select onValueChange={field.onChange} value={field.value || undefined}>
                     <FormControl>
-                        <Input placeholder="Ej: V Región de Valparaíso" {...field} />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona una región" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
+                    <SelectContent>
+                      {chileanRegions.map(region => (
+                        <SelectItem key={region} value={region}>{region}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
             control={form.control}
             name="desiredLocationCity"

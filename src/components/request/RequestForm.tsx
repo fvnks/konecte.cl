@@ -1,4 +1,3 @@
-
 // src/components/request/RequestForm.tsx
 'use client';
 
@@ -24,6 +23,8 @@ import { requestFormSchema } from "@/lib/types";
 import { Loader2, UserCircle, Handshake } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { chileanRegions } from "@/lib/data";
 // AuthRequiredDialog removed
 
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
@@ -74,7 +75,7 @@ export default function RequestForm() {
       desiredPropertyType: [],
       desiredCategories: [],
       desiredLocationCity: "",
-      desiredLocationRegion: "",
+      desiredLocationRegion: undefined,
       desiredLocationNeighborhood: "",
       minBedrooms: undefined,
       minBathrooms: undefined,
@@ -260,9 +261,18 @@ export default function RequestForm() {
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Región Deseada *</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Ej: V Región de Valparaíso" {...field} />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona una región" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {chileanRegions.map(region => (
+                          <SelectItem key={region} value={region}>{region}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -375,7 +385,6 @@ export default function RequestForm() {
           </Button>
         </form>
       </Form>
-      {/* AuthRequiredDialog removed */}
     </>
   );
 }
