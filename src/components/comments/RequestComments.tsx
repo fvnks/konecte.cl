@@ -1,8 +1,7 @@
-
 // src/components/comments/RequestComments.tsx
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useMemo } from 'react';
 import type { Comment as CommentType, User as StoredUserType } from '@/lib/types';
 import { addCommentAction, getCommentsAction } from '@/actions/commentActions';
 import CommentItem from './CommentItem';
@@ -39,24 +38,30 @@ export default function RequestComments({ requestId, requestSlug }: RequestComme
     }
   }, []);
 
-  useEffect(() => {
-    async function fetchComments() {
-      if (!requestId) return;
-      setIsLoading(true);
-      try {
-        const fetchedComments = await getCommentsAction({ requestId });
-        setComments(fetchedComments.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-      } catch (error) {
-        console.error("Error fetching comments for request:", error);
-        toast({ title: "Error", description: "No se pudieron cargar los comentarios.", variant: "destructive" });
-      } finally {
-        setIsLoading(false);
-      }
+  const fetchComments = async () => {
+    if (!requestId) return;
+    setIsLoading(true);
+    try {
+      const fetchedComments = await getCommentsAction({ requestId });
+      setComments(fetchedComments);
+    } catch (error) {
+      console.error("Error fetching comments for request:", error);
+      toast({ title: "Error", description: "No se pudieron cargar los comentarios.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
     }
-    fetchComments();
-  }, [requestId, toast]);
+  }
 
-  const handleAddComment = async () => {
+  useEffect(() => {
+    fetchComments();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId]);
+
+  const handleCommentAdded = (newComment: CommentType) => {
+    setComments(prev => [newComment, ...prev]);
+  };
+
+  const handleAddTopLevelComment = async () => {
      if (!loggedInUser?.id) {
       toast({
         title: "Acción Requerida",
@@ -80,17 +85,39 @@ export default function RequestComments({ requestId, requestSlug }: RequestComme
 
       if (result.success && result.comment) {
         toast({ title: "Comentario Añadido", description: "Tu comentario ha sido publicado." });
-        const newCommentWithAuthor = {
-          ...result.comment,
-          author: { id: loggedInUser.id, name: loggedInUser.name, avatarUrl: loggedInUser.avatarUrl }
-        };
-        setComments(prevComments => [newCommentWithAuthor, ...prevComments]);
+        handleCommentAdded(result.comment);
         setNewCommentContent('');
       } else {
         toast({ title: "Error al Comentar", description: result.message || "No se pudo añadir tu comentario.", variant: "destructive" });
       }
     });
   };
+
+  const commentTree = useMemo(() => {
+    const commentMap: Map<string, CommentType & { children: CommentType[] }> = new Map();
+    const rootComments: (CommentType & { children: CommentType[] })[] = [];
+
+    comments.forEach(comment => {
+        commentMap.set(comment.id, { ...comment, children: [] });
+    });
+
+    comments.forEach(comment => {
+        if (comment.parent_id && commentMap.has(comment.parent_id)) {
+            commentMap.get(comment.parent_id)!.children.push(commentMap.get(comment.id)!);
+        } else {
+            rootComments.push(commentMap.get(comment.id)!);
+        }
+    });
+
+    rootComments.forEach(root => {
+      if (root.children) {
+        root.children.sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      }
+    });
+    
+    return rootComments.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [comments]);
+
 
   const authorName = loggedInUser?.name || 'Tú';
   const authorAvatar = loggedInUser?.avatarUrl;
@@ -101,7 +128,7 @@ export default function RequestComments({ requestId, requestSlug }: RequestComme
       <CardHeader>
         <CardTitle className="text-2xl font-headline flex items-center">
           <MessageCircle className="mr-2 h-6 w-6 text-primary" />
-          Comentarios de la Solicitud ({comments.length})
+          Discusión de la Solicitud ({comments.length})
         </CardTitle>
         <CardDescription>
           Comparte tu opinión o si tienes una propiedad que coincida.
@@ -116,13 +143,13 @@ export default function RequestComments({ requestId, requestSlug }: RequestComme
             </Avatar>
             <div className="flex-1">
               <Textarea
-                placeholder="Escribe tu comentario aquí..."
+                placeholder="Escribe un nuevo comentario aquí..."
                 value={newCommentContent}
                 onChange={(e) => setNewCommentContent(e.target.value)}
                 disabled={isSubmitting}
                 className="min-h-[80px] text-sm"
               />
-              <Button onClick={handleAddComment} disabled={isSubmitting || !newCommentContent.trim()} className="mt-2">
+              <Button onClick={handleAddTopLevelComment} disabled={isSubmitting || !newCommentContent.trim()} className="mt-2">
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Publicar Comentario
               </Button>
@@ -141,10 +168,33 @@ export default function RequestComments({ requestId, requestSlug }: RequestComme
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="ml-2 text-muted-foreground">Cargando comentarios...</p>
           </div>
-        ) : comments.length > 0 ? (
+        ) : commentTree.length > 0 ? (
           <div className="space-y-4">
-            {comments.map(comment => (
-              <CommentItem key={comment.id} comment={comment} loggedInUser={loggedInUser} />
+            {commentTree.map(comment => (
+              <div key={comment.id} className="border-t border-border/50 pt-3">
+                <CommentItem
+                  comment={comment}
+                  loggedInUser={loggedInUser}
+                  onCommentAdded={handleCommentAdded}
+                  requestId={requestId}
+                  requestSlug={requestSlug}
+                />
+                 {comment.children.length > 0 && (
+                  <div className="ml-8 pl-5 border-l-2 border-muted">
+                    {comment.children.map(reply => (
+                      <CommentItem
+                        key={reply.id}
+                        comment={reply}
+                        loggedInUser={loggedInUser}
+                        onCommentAdded={handleCommentAdded}
+                        isReply={true}
+                        requestId={requestId}
+                        requestSlug={requestSlug}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         ) : (
