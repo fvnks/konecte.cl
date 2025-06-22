@@ -13,7 +13,7 @@ import type { User, Role, Plan } from "@/lib/types";
 import { getUsersAction, updateUserRoleAction, updateUserPlanAction, adminDeleteUserAction, adminVerifyUserPhoneAction } from '@/actions/userActions';
 import { getRolesAction } from '@/actions/roleActions';
 import { getPlansAction } from '@/actions/planActions';
-import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon, Trash2, Edit, ShieldCheck as ShieldCheckIcon, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon, Trash2, Edit, ShieldCheck as ShieldCheckIcon, AlertTriangle, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AdminCreateUserDialog from '@/components/admin/users/AdminCreateUserDialog';
 import {
@@ -27,6 +27,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuTrigger, 
+    DropdownMenuSeparator 
+} from '@/components/ui/dropdown-menu';
 
 interface LoggedInAdmin {
   id: string;
@@ -257,7 +264,7 @@ export default function AdminUsersPage() {
                               onValueChange={(newRole: string) => handleRoleChange(user.id, newRole)}
                               disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id}
                               >
-                              <SelectTrigger className="w-full max-w-[160px] h-9 text-xs">
+                              <SelectTrigger className="w-full max-w-[140px] h-9 text-xs">
                                   <ShieldAlert className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
                                   <SelectValue placeholder="Seleccionar rol" />
                               </SelectTrigger>
@@ -285,7 +292,7 @@ export default function AdminUsersPage() {
                               onValueChange={(newPlan: string) => handlePlanChange(user.id, newPlan)}
                               disabled={isPending || isLoadingData}
                               >
-                              <SelectTrigger className="w-full max-w-[160px] h-9 text-xs">
+                              <SelectTrigger className="w-full max-w-[140px] h-9 text-xs">
                                   <CreditCard className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
                                   <SelectValue placeholder="Seleccionar plan" />
                               </SelectTrigger>
@@ -334,27 +341,35 @@ export default function AdminUsersPage() {
                           </TooltipProvider>
                         )}
                       </TableCell>
-                      <TableCell className="text-right space-x-1 whitespace-nowrap">
-                        <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Editar Usuario">
-                            <Link href={`/admin/users/${user.id}/edit`}>
-                                <Edit className="h-4 w-4" />
-                            </Link>
-                        </Button>
-                        <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Ver CRM del Usuario">
-                          <Link href={`/admin/users/${user.id}/crm`}>
-                            <ContactIcon className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="h-8 w-8"
-                          title="Eliminar Usuario"
-                          disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id || !loggedInAdmin}
-                          onClick={() => openDeleteDialog(user)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Abrir menú de acciones</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/users/${user.id}/edit`} className="flex items-center gap-2 cursor-pointer">
+                                <Edit className="h-4 w-4"/> Editar Usuario
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/users/${user.id}/crm`} className="flex items-center gap-2 cursor-pointer">
+                                <ContactIcon className="h-4 w-4"/> Ver CRM
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive flex items-center gap-2 cursor-pointer"
+                              disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id || !loggedInAdmin}
+                              onSelect={(e) => { e.preventDefault(); openDeleteDialog(user); }}
+                            >
+                              <Trash2 className="h-4 w-4"/> Eliminar Usuario
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
