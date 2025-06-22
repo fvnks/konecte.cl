@@ -201,28 +201,30 @@ export default function AdminUsersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[180px]">Usuario</TableHead>
-                    <TableHead className="min-w-[180px]">Email</TableHead>
+                    <TableHead>Usuario</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Rol</TableHead>
-                    <TableHead className="min-w-[200px]">Asignar Rol</TableHead>
+                    <TableHead>Asignar Rol</TableHead>
                     <TableHead>Plan Actual</TableHead>
-                    <TableHead className="min-w-[200px]">Asignar Plan</TableHead>
-                    <TableHead className="text-center min-w-[200px]">Acciones</TableHead>
+                    <TableHead>Asignar Plan</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-8 w-8">
+                        <div className="flex items-center gap-2 max-w-xs">
+                          <Avatar className="h-8 w-8 flex-shrink-0">
                             <AvatarImage src={user.avatarUrl || `https://placehold.co/40x40.png?text=${user.name.substring(0,1)}`} alt={user.name} data-ai-hint="persona"/>
                             <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                           </Avatar>
-                          <span className="font-medium text-sm">{user.name}</span>
+                          <span className="font-medium text-sm truncate" title={user.name}>{user.name}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{user.email}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={user.email}>
+                        {user.email}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={getRoleBadgeVariant(user.role_id)} className="capitalize text-xs">
                           {user.role_name || user.role_id}
@@ -265,7 +267,7 @@ export default function AdminUsersPage() {
                               onValueChange={(newPlan: string) => handlePlanChange(user.id, newPlan)}
                               disabled={isPending || isLoadingData}
                               >
-                              <SelectTrigger className="w-full max-w-[180px] h-9 text-xs">
+                              <SelectTrigger className="w-full max-w-[200px] h-9 text-xs">
                                   <SelectValue placeholder="Seleccionar plan" />
                               </SelectTrigger>
                               <SelectContent>
@@ -280,7 +282,7 @@ export default function AdminUsersPage() {
                           )}
                          </div>
                       </TableCell>
-                      <TableCell className="text-center space-x-1">
+                      <TableCell className="text-right space-x-1 whitespace-nowrap">
                         <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Editar Usuario">
                             <Link href={`/admin/users/${user.id}/edit`}>
                                 <Edit className="h-4 w-4" />
@@ -337,4 +339,3 @@ export default function AdminUsersPage() {
     </div>
   );
 }
-
