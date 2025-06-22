@@ -11,10 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { User, Role, Plan } from "@/lib/types";
-import { getUsersAction, updateUserRoleAction, updateUserPlanAction, adminDeleteUserAction } from '@/actions/userActions';
+import { getUsersAction, updateUserRoleAction, updateUserPlanAction, adminDeleteUserAction, adminVerifyUserPhoneAction } from '@/actions/userActions';
 import { getRolesAction } from '@/actions/roleActions';
 import { getPlansAction } from '@/actions/planActions';
-import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon, Trash2, Edit } from 'lucide-react';
+import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon, Trash2, Edit, Smartphone, ShieldCheck as ShieldCheckIcon, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AdminCreateUserDialog from '@/components/admin/users/AdminCreateUserDialog';
 import {
@@ -51,6 +51,7 @@ export default function AdminUsersPage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToVerify, setUserToVerify] = useState<User | null>(null);
   const [loggedInAdmin, setLoggedInAdmin] = useState<LoggedInAdmin | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -166,6 +167,23 @@ export default function AdminUsersPage() {
     });
   };
 
+  const handleManualVerify = (user: User) => {
+    setUserToVerify(user);
+  };
+
+  const confirmManualVerify = () => {
+    if (!userToVerify) return;
+    startTransition(async () => {
+      const result = await adminVerifyUserPhoneAction(userToVerify.id);
+      if (result.success) {
+        toast({ title: "Verificación Exitosa", description: result.message });
+        fetchData(); // Refetch data to update the UI
+      } else {
+        toast({ title: "Error de Verificación", description: result.message, variant: "destructive" });
+      }
+      setUserToVerify(null); // Close the dialog
+    });
+  };
 
   if (isLoadingData && users.length === 0 && isClient) { // Show loader only if client and initial load
      return (
@@ -207,6 +225,7 @@ export default function AdminUsersPage() {
                     <TableHead>Asignar Rol</TableHead>
                     <TableHead>Plan Actual</TableHead>
                     <TableHead>Asignar Plan</TableHead>
+                    <TableHead>Verificación Teléfono</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -282,6 +301,33 @@ export default function AdminUsersPage() {
                           )}
                          </div>
                       </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {user.phone_verified ? (
+                            <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-xs">
+                              <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                              Verificado
+                            </Badge>
+                          ) : (
+                            <>
+                              <Badge variant="outline" className="border-amber-500 text-amber-600 text-xs">
+                                <Smartphone className="h-3 w-3 mr-1" />
+                                Pendiente
+                              </Badge>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => handleManualVerify(user)}
+                                disabled={isPending}
+                                title="Verificar teléfono manualmente"
+                              >
+                                Verificar
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right space-x-1 whitespace-nowrap">
                         <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Editar Usuario">
                             <Link href={`/admin/users/${user.id}/edit`}>
@@ -331,6 +377,29 @@ export default function AdminUsersPage() {
               <AlertDialogAction onClick={confirmDeleteUser} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Sí, Eliminar Usuario
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {userToVerify && (
+        <AlertDialog open={!!userToVerify} onOpenChange={(open) => !open && setUserToVerify(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-6 w-6 text-amber-500" />
+                  Confirmar Verificación Manual
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Estás seguro de que quieres verificar manualmente el número de teléfono para el usuario <span className="font-semibold">{userToVerify.name}</span>? Esta acción no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setUserToVerify(null)} disabled={isPending}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmManualVerify} disabled={isPending} className="bg-green-600 hover:bg-green-700">
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sí, Verificar Manualmente
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

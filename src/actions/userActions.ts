@@ -1,3 +1,4 @@
+
 // src/actions/userActions.ts
 'use server';
 
@@ -15,6 +16,7 @@ export async function getUsersAction(): Promise<User[]> {
         u.id, u.name, u.email, u.avatar_url, 
         u.role_id, r.name as role_name,
         u.plan_id, p.name as plan_name, u.plan_expires_at,
+        u.phone_verified,
         u.created_at, u.updated_at 
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
@@ -23,6 +25,7 @@ export async function getUsersAction(): Promise<User[]> {
     `);
     return users.map((user: any) => ({
         ...user,
+        phone_verified: Boolean(user.phone_verified),
         created_at: user.created_at ? new Date(user.created_at).toISOString() : undefined,
         updated_at: user.updated_at ? new Date(user.updated_at).toISOString() : undefined,
         plan_expires_at: user.plan_expires_at ? new Date(user.plan_expires_at).toISOString() : null,
@@ -390,5 +393,28 @@ export async function updateUserProfileAction(
         return { success: false, message: "Este número de teléfono ya está en uso por otro usuario." };
     }
     return { success: false, message: `Error al actualizar el perfil: ${error.message}` };
+  }
+}
+
+export async function adminVerifyUserPhoneAction(userId: string): Promise<{ success: boolean; message?: string }> {
+  if (!userId) {
+    return { success: false, message: "ID de usuario no proporcionado." };
+  }
+
+  try {
+    const result: any = await query(
+      'UPDATE users SET phone_verified = TRUE, phone_otp = NULL, phone_otp_expires_at = NULL WHERE id = ?',
+      [userId]
+    );
+
+    if (result.affectedRows > 0) {
+      revalidatePath('/admin/users');
+      return { success: true, message: "El teléfono del usuario ha sido verificado manualmente." };
+    } else {
+      return { success: false, message: "Usuario no encontrado o ya verificado." };
+    }
+  } catch (error: any) {
+    console.error(`Error al verificar manualmente el teléfono para el usuario ${userId}:`, error);
+    return { success: false, message: `Error al verificar teléfono: ${error.message}` };
   }
 }
