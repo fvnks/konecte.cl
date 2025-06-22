@@ -1,4 +1,3 @@
-
 // src/app/admin/users/page.tsx
 'use client';
 
@@ -14,7 +13,7 @@ import type { User, Role, Plan } from "@/lib/types";
 import { getUsersAction, updateUserRoleAction, updateUserPlanAction, adminDeleteUserAction, adminVerifyUserPhoneAction } from '@/actions/userActions';
 import { getRolesAction } from '@/actions/roleActions';
 import { getPlansAction } from '@/actions/planActions';
-import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon, Trash2, Edit, Smartphone, ShieldCheck as ShieldCheckIcon, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon, Trash2, Edit, ShieldCheck as ShieldCheckIcon, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AdminCreateUserDialog from '@/components/admin/users/AdminCreateUserDialog';
 import {
@@ -27,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface LoggedInAdmin {
   id: string;
@@ -225,7 +225,7 @@ export default function AdminUsersPage() {
                     <TableHead>Asignar Rol</TableHead>
                     <TableHead>Plan Actual</TableHead>
                     <TableHead>Asignar Plan</TableHead>
-                    <TableHead>Verificación Teléfono</TableHead>
+                    <TableHead className="text-center">Verif.</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -233,7 +233,7 @@ export default function AdminUsersPage() {
                   {users.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell>
-                        <div className="flex items-center gap-2 max-w-xs">
+                        <div className="flex items-center gap-2 max-w-[200px]">
                           <Avatar className="h-8 w-8 flex-shrink-0">
                             <AvatarImage src={user.avatarUrl || `https://placehold.co/40x40.png?text=${user.name.substring(0,1)}`} alt={user.name} data-ai-hint="persona"/>
                             <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -241,7 +241,7 @@ export default function AdminUsersPage() {
                           <span className="font-medium text-sm truncate" title={user.name}>{user.name}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={user.email}>
+                      <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate" title={user.email}>
                         {user.email}
                       </TableCell>
                       <TableCell>
@@ -251,14 +251,14 @@ export default function AdminUsersPage() {
                       </TableCell>
                       <TableCell>
                          <div className="flex items-center">
-                          <ShieldAlert className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
                           {roles.length > 0 ? (
                               <Select
                               value={user.role_id}
                               onValueChange={(newRole: string) => handleRoleChange(user.id, newRole)}
                               disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id}
                               >
-                              <SelectTrigger className="w-full max-w-[180px] h-9 text-xs">
+                              <SelectTrigger className="w-full max-w-[160px] h-9 text-xs">
+                                  <ShieldAlert className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
                                   <SelectValue placeholder="Seleccionar rol" />
                               </SelectTrigger>
                               <SelectContent>
@@ -279,14 +279,14 @@ export default function AdminUsersPage() {
                       </TableCell>
                        <TableCell>
                          <div className="flex items-center">
-                          <CreditCard className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
                           {plans.length > 0 || !isLoadingData ? (
                               <Select
                               value={user.plan_id || 'none'}
                               onValueChange={(newPlan: string) => handlePlanChange(user.id, newPlan)}
                               disabled={isPending || isLoadingData}
                               >
-                              <SelectTrigger className="w-full max-w-[200px] h-9 text-xs">
+                              <SelectTrigger className="w-full max-w-[160px] h-9 text-xs">
+                                  <CreditCard className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
                                   <SelectValue placeholder="Seleccionar plan" />
                               </SelectTrigger>
                               <SelectContent>
@@ -301,32 +301,38 @@ export default function AdminUsersPage() {
                           )}
                          </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {user.phone_verified ? (
-                            <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-xs">
-                              <ShieldCheckIcon className="h-3 w-3 mr-1" />
-                              Verificado
-                            </Badge>
-                          ) : (
-                            <>
-                              <Badge variant="outline" className="border-amber-500 text-amber-600 text-xs">
-                                <Smartphone className="h-3 w-3 mr-1" />
-                                Pendiente
-                              </Badge>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2 text-xs"
-                                onClick={() => handleManualVerify(user)}
-                                disabled={isPending}
-                                title="Verificar teléfono manualmente"
-                              >
-                                Verificar
-                              </Button>
-                            </>
-                          )}
-                        </div>
+                      <TableCell className="text-center">
+                        {user.phone_verified ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <ShieldCheckIcon className="h-5 w-5 text-green-600" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Teléfono verificado</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
+                                  onClick={() => handleManualVerify(user)}
+                                  disabled={isPending}
+                                >
+                                  <AlertTriangle className="h-5 w-5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Verificación pendiente. Clic para verificar manualmente.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </TableCell>
                       <TableCell className="text-right space-x-1 whitespace-nowrap">
                         <Button variant="outline" size="icon" asChild className="h-8 w-8" title="Editar Usuario">
