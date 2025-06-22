@@ -196,7 +196,7 @@ export default function AdminEditRequestForm({ request }: AdminEditRequestFormPr
                 name="desiredLocationRegion"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Región Deseada</FormLabel>
+                    <FormLabel>Región Deseada *</FormLabel>
                     <FormControl>
                         <Input placeholder="Ej: V Región de Valparaíso" {...field} />
                     </FormControl>
@@ -209,7 +209,7 @@ export default function AdminEditRequestForm({ request }: AdminEditRequestFormPr
             name="desiredLocationCity"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Ciudad/Comuna Deseada</FormLabel>
+                <FormLabel>Ciudad/Comuna Deseada *</FormLabel>
                 <FormControl>
                     <Input placeholder="Ej: Santiago" {...field} />
                 </FormControl>

@@ -51,8 +51,8 @@ const findMatchingRequestsForNewPropertyFlow = ai.defineFlow(
     }
 
     const matchPromises = activeRequests.map(async (request) => {
-      const propertyDescription = `${newProperty.title}. ${newProperty.description} Ubicada en ${newProperty.city}. Tipo: ${newProperty.category}. Precio: ${newProperty.price} ${newProperty.currency}. Dormitorios: ${newProperty.bedrooms}. Baños: ${newProperty.bathrooms}. Superficie: ${newProperty.areaSqMeters}m². Características: ${(newProperty.features || []).join(', ')}.`;
-      const searchRequestDescription = `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city || 'cualquier ciudad'}. Presupuesto máximo: ${request.budgetMax || 'N/A'}. Tipos deseados: ${request.desiredCategories.join(', ')}. Para: ${request.desiredPropertyType.join(', ')}.`;
+      const propertyDescription = `${newProperty.title}. ${newProperty.description} Ubicada en ${newProperty.city}, ${newProperty.region}. Tipo: ${newProperty.category}. Precio: ${newProperty.price} ${newProperty.currency}. Dormitorios: ${newProperty.bedrooms}. Baños: ${newProperty.bathrooms}. Superficie: ${newProperty.totalAreaSqMeters}m². Características: ${(newProperty.features || []).join(', ')}.`;
+      const searchRequestDescription = `${request.title}. ${request.description} Busca en ${request.desiredLocation?.city || 'cualquier ciudad'}, ${request.desiredLocation?.region || 'cualquier región'}. Presupuesto máximo: ${request.budgetMax || 'N/A'}. Tipos deseados: ${request.desiredCategories.join(', ')}. Para: ${request.desiredPropertyType.join(', ')}.`;
 
       const matchingInput: PropertyMatchingInput = {
         propertyDescription: propertyDescription,

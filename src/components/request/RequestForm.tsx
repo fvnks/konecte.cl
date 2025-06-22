@@ -1,3 +1,4 @@
+
 // src/components/request/RequestForm.tsx
 'use client';
 
@@ -73,6 +74,7 @@ export default function RequestForm() {
       desiredPropertyType: [],
       desiredCategories: [],
       desiredLocationCity: "",
+      desiredLocationRegion: "",
       desiredLocationNeighborhood: "",
       minBedrooms: undefined,
       minBathrooms: undefined,
@@ -252,32 +254,45 @@ export default function RequestForm() {
           />
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-              control={form.control}
-              name="desiredLocationCity"
-              render={({ field }) => (
-                  <FormItem>
-                  <FormLabel>Ciudad/Comuna Deseada</FormLabel>
-                  <FormControl>
-                      <Input placeholder="Ej: Santiago, Viña del Mar" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                  </FormItem>
-              )}
-              />
-              <FormField
-              control={form.control}
-              name="desiredLocationNeighborhood"
-              render={({ field }) => (
-                  <FormItem>
-                  <FormLabel>Barrio/Sector Preferido (Opcional)</FormLabel>
-                  <FormControl>
-                      <Input placeholder="Ej: Las Condes, Ñuñoa, Reñaca" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                  </FormItem>
-              )}
-              />
+             <FormField
+                control={form.control}
+                name="desiredLocationRegion"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Región Deseada *</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Ej: V Región de Valparaíso" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            <FormField
+            control={form.control}
+            name="desiredLocationCity"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Ciudad/Comuna Deseada *</FormLabel>
+                <FormControl>
+                    <Input placeholder="Ej: Santiago" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="desiredLocationNeighborhood"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Barrio/Sector Preferido (Opcional)</FormLabel>
+                <FormControl>
+                    <Input placeholder="Ej: Las Condes, Ñuñoa, Reñaca" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
           </div>
 
 

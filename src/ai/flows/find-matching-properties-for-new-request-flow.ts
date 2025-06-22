@@ -50,8 +50,8 @@ const findMatchingPropertiesForNewRequestFlow = ai.defineFlow(
     }
 
     const matchPromises = activeProperties.map(async (property) => {
-      const propertyDescription = `${property.title}. ${property.description} Ubicada en ${property.city}. Tipo: ${property.category}. Precio: ${property.price} ${property.currency}. Dormitorios: ${property.bedrooms}. Baños: ${property.bathrooms}. Superficie: ${property.areaSqMeters}m².`;
-      const searchRequestDescription = `${newRequest.title}. ${newRequest.description} Busca en ${newRequest.desiredLocationCity || 'cualquier ciudad'}. Presupuesto máximo: ${newRequest.budgetMax || 'N/A'}. Tipos deseados: ${newRequest.desiredCategories.join(', ')}. Para: ${newRequest.desiredPropertyType.join(', ')}.`;
+      const propertyDescription = `${property.title}. ${property.description} Ubicada en ${property.city}, ${property.region}. Tipo: ${property.category}. Precio: ${property.price} ${property.currency}. Dormitorios: ${property.bedrooms}. Baños: ${property.bathrooms}. Superficie: ${property.totalAreaSqMeters}m².`;
+      const searchRequestDescription = `${newRequest.title}. ${newRequest.description} Busca en ${newRequest.desiredLocationCity}, ${newRequest.desiredLocationRegion}. Presupuesto máximo: ${newRequest.budgetMax || 'N/A'}. Tipos deseados: ${newRequest.desiredCategories.join(', ')}. Para: ${newRequest.desiredPropertyType.join(', ')}.`;
 
       const matchingInput: PropertyMatchingInput = {
         propertyDescription: propertyDescription,

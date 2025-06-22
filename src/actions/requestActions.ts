@@ -204,10 +204,12 @@ interface GetRequestsActionOptions {
   includeInactive?: boolean;
   userId?: string; 
   onlyOpenForCollaboration?: boolean; 
+  limit?: number; // Added limit
+  orderBy?: 'createdAt_desc'; // Added order by
 }
 
 export async function getRequestsAction(options: GetRequestsActionOptions = {}): Promise<SearchRequest[]> {
-  const { includeInactive = false, userId, onlyOpenForCollaboration = false } = options;
+  const { includeInactive = false, userId, onlyOpenForCollaboration = false, limit, orderBy = 'createdAt_desc' } = options;
   try {
     let sql = `
       SELECT 
@@ -237,7 +239,14 @@ export async function getRequestsAction(options: GetRequestsActionOptions = {}):
         sql += ' WHERE ' + whereClauses.join(' AND ');
     }
     
-    sql += ' ORDER BY pr.created_at DESC';
+    if (orderBy === 'createdAt_desc') {
+        sql += ' ORDER BY pr.created_at DESC';
+    }
+    
+    if (limit) {
+        sql += ' LIMIT ?';
+        queryParams.push(limit);
+    }
 
     const rows = await query(sql, queryParams);
     if (!Array.isArray(rows)) {
@@ -450,4 +459,5 @@ export async function getRequestsCountAction(activeOnly: boolean = false): Promi
   }
 }
     
+
 

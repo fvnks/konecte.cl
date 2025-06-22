@@ -119,6 +119,7 @@ const SQL_STATEMENTS: string[] = [
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS commercial_use_allowed BOOLEAN DEFAULT FALSE AFTER furnished;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_storage BOOLEAN DEFAULT FALSE AFTER commercial_use_allowed;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS orientation VARCHAR(50) DEFAULT NULL AFTER has_storage;`,
+  `ALTER TABLE properties ADD COLUMN IF NOT EXISTS region VARCHAR(100) NOT NULL AFTER country;`,
   `CREATE TABLE IF NOT EXISTS properties (
     id VARCHAR(36) PRIMARY KEY, 
     user_id VARCHAR(36) NOT NULL, 
@@ -132,6 +133,7 @@ const SQL_STATEMENTS: string[] = [
     address VARCHAR(255) NOT NULL, 
     city VARCHAR(100) NOT NULL, 
     country VARCHAR(100) NOT NULL, 
+    region VARCHAR(100) NOT NULL,
     bedrooms INT NOT NULL DEFAULT 0, 
     bathrooms INT NOT NULL DEFAULT 0, 
     total_area_sq_meters DECIMAL(10,2) NOT NULL,
@@ -156,6 +158,7 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_properties_slug ON properties(slug);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_user_id ON properties(user_id);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_city ON properties(city);`,
+  `CREATE INDEX IF NOT EXISTS idx_properties_region ON properties(region);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_property_type ON properties(property_type);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_category ON properties(category);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_upvotes ON properties(upvotes);`,
@@ -166,11 +169,13 @@ const SQL_STATEMENTS: string[] = [
 
 
   // property_requests
+  `ALTER TABLE property_requests ADD COLUMN IF NOT EXISTS desired_location_region VARCHAR(100) NOT NULL AFTER desired_location_city;`,
   `CREATE TABLE IF NOT EXISTS property_requests (
-    id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(255) NOT NULL, slug VARCHAR(255) UNIQUE NOT NULL, description TEXT NOT NULL, desired_property_type_rent BOOLEAN DEFAULT FALSE, desired_property_type_sale BOOLEAN DEFAULT FALSE, desired_category_apartment BOOLEAN DEFAULT FALSE, desired_category_house BOOLEAN DEFAULT FALSE, desired_category_condo BOOLEAN DEFAULT FALSE, desired_category_land BOOLEAN DEFAULT FALSE, desired_category_commercial BOOLEAN DEFAULT FALSE, desired_category_other BOOLEAN DEFAULT FALSE, desired_location_city VARCHAR(100) NOT NULL, desired_location_neighborhood VARCHAR(100) DEFAULT NULL, min_bedrooms INT DEFAULT NULL, min_bathrooms INT DEFAULT NULL, budget_max DECIMAL(15,2) DEFAULT NULL, open_for_broker_collaboration BOOLEAN DEFAULT FALSE, comments_count INT DEFAULT 0, upvotes INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(255) NOT NULL, slug VARCHAR(255) UNIQUE NOT NULL, description TEXT NOT NULL, desired_property_type_rent BOOLEAN DEFAULT FALSE, desired_property_type_sale BOOLEAN DEFAULT FALSE, desired_category_apartment BOOLEAN DEFAULT FALSE, desired_category_house BOOLEAN DEFAULT FALSE, desired_category_condo BOOLEAN DEFAULT FALSE, desired_category_land BOOLEAN DEFAULT FALSE, desired_category_commercial BOOLEAN DEFAULT FALSE, desired_category_other BOOLEAN DEFAULT FALSE, desired_location_city VARCHAR(100) NOT NULL, desired_location_region VARCHAR(100) NOT NULL, desired_location_neighborhood VARCHAR(100) DEFAULT NULL, min_bedrooms INT DEFAULT NULL, min_bathrooms INT DEFAULT NULL, budget_max DECIMAL(15,2) DEFAULT NULL, open_for_broker_collaboration BOOLEAN DEFAULT FALSE, comments_count INT DEFAULT 0, upvotes INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_slug ON property_requests(slug);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_user_id ON property_requests(user_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_property_requests_region ON property_requests(desired_location_region);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_city ON property_requests(desired_location_city);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_broker_collab ON property_requests(open_for_broker_collaboration);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_upvotes ON property_requests(upvotes);`,

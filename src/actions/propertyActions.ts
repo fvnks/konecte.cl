@@ -157,13 +157,13 @@ export async function submitPropertyAction(
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
         totalAreaSqMeters: data.totalAreaSqMeters,
-        usefulAreaSqMeters: data.usefulAreaSqMeters === '' ? undefined : (data.usefulAreaSqMeters ?? undefined),
-        parkingSpaces: data.parkingSpaces ?? undefined,
+        usefulAreaSqMeters: data.usefulAreaSqMeters === '' || data.usefulAreaSqMeters === undefined ? undefined : Number(data.usefulAreaSqMeters),
+        parkingSpaces: data.parkingSpaces === '' || data.parkingSpaces === undefined ? undefined : Number(data.parkingSpaces),
         petsAllowed: data.petsAllowed ?? undefined,
         furnished: data.furnished ?? undefined,
         commercialUseAllowed: data.commercialUseAllowed ?? undefined,
         hasStorage: data.hasStorage ?? undefined,
-        orientation: data.orientation === '' ? undefined : (data.orientation ?? undefined),
+        orientation: data.orientation === '' || data.orientation === undefined ? undefined : data.orientation,
         features: data.features ? data.features.split(',').map(f => f.trim()).filter(f => f) : [],
       };
       const autoMatches = await findMatchingRequestsForNewProperty(propertyForAIMatch);
@@ -482,13 +482,13 @@ export async function adminUpdatePropertyAction(
       data.title, data.description, data.propertyType, data.category,
       data.price, data.currency, data.address, data.city, data.region, data.country,
       data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
-      data.usefulAreaSqMeters === '' ? null : (data.usefulAreaSqMeters ?? null),
-      data.parkingSpaces ?? 0,
+      data.usefulAreaSqMeters === '' || data.usefulAreaSqMeters === undefined ? null : Number(data.usefulAreaSqMeters),
+      data.parkingSpaces === '' || data.parkingSpaces === undefined ? 0 : Number(data.parkingSpaces),
       data.petsAllowed ?? false,
       data.furnished ?? false,
       data.commercialUseAllowed ?? false,
       data.hasStorage ?? false,
-      data.orientation === '' ? null : (data.orientation ?? null),
+      data.orientation === '' || data.orientation === 'none' ? null : (data.orientation ?? null),
       imagesJson, featuresJson,
       propertyId
     ];
@@ -573,13 +573,13 @@ export async function userUpdatePropertyAction(
       data.title, data.description, data.propertyType, data.category,
       data.price, data.currency, data.address, data.city, data.region, data.country,
       data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
-      data.usefulAreaSqMeters === '' ? null : (data.usefulAreaSqMeters ?? null),
-      data.parkingSpaces ?? 0,
+      data.usefulAreaSqMeters === '' || data.usefulAreaSqMeters === undefined ? null : Number(data.usefulAreaSqMeters),
+      data.parkingSpaces === '' || data.parkingSpaces === undefined ? 0 : Number(data.parkingSpaces),
       data.petsAllowed ?? false,
       data.furnished ?? false,
       data.commercialUseAllowed ?? false,
       data.hasStorage ?? false,
-      data.orientation === '' ? null : (data.orientation ?? null),
+      data.orientation === '' || data.orientation === 'none' ? null : (data.orientation ?? null),
       imagesJson, featuresJson,
       propertyId, userId
     ];
@@ -621,4 +621,5 @@ export async function getPropertiesCountAction(activeOnly: boolean = false): Pro
   }
 }
     
+
 
