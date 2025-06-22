@@ -89,6 +89,7 @@ export interface PropertyListing {
   currency: string; 
   address: string;
   city: string;
+  region: string;
   country: string;
   bedrooms: number;
   bathrooms: number;
@@ -121,8 +122,9 @@ export interface SearchRequest {
   description: string;
   desiredPropertyType: PropertyType[];
   desiredCategories: ListingCategory[];
-  desiredLocation?: {
+  desiredLocation: {
     city: string;
+    region: string;
     neighborhood?: string;
   };
   minBedrooms?: number;
@@ -403,6 +405,7 @@ export const propertyFormSchema = z.object({
   currency: z.enum(["CLP", "UF"], { required_error: "La moneda es requerida." }),
   address: z.string().min(5, "La dirección es requerida."),
   city: z.string().min(2, "La ciudad es requerida."),
+  region: z.string().min(2, "La región es requerida."),
   country: z.string().min(2, "El país es requerido."),
   bedrooms: z.preprocess(
     (val) => (String(val).trim() === "" ? undefined : val),
@@ -438,6 +441,7 @@ export const requestFormSchema = z.object({
   desiredPropertyType: z.array(z.enum(["rent", "sale"])).min(1, "Debes seleccionar al menos un tipo de transacción (arriendo/venta)."),
   desiredCategories: z.array(z.enum(["apartment", "house", "condo", "land", "commercial", "other"])).min(1, "Debes seleccionar al menos una categoría de propiedad."),
   desiredLocationCity: z.string().min(2, "La ciudad/comuna deseada es requerida."),
+  desiredLocationRegion: z.string().min(2, "La región es requerida."),
   desiredLocationNeighborhood: z.string().optional(),
   minBedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
   minBathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),

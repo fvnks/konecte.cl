@@ -1,4 +1,3 @@
-
 // src/actions/propertyActions.ts
 'use server';
 
@@ -621,5 +620,6 @@ export async function getPropertiesCountAction(activeOnly: boolean = false): Pro
   }
 }
     
+
 
 

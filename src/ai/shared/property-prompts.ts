@@ -1,4 +1,3 @@
-
 // src/ai/shared/property-prompts.ts
 // This file does NOT use 'use server'
 import { ai } from '@/ai/genkit';
