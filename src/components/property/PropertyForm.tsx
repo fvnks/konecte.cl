@@ -1,4 +1,3 @@
-
 // src/components/property/PropertyForm.tsx
 'use client';
 
@@ -29,6 +28,8 @@ import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import dynamic from 'next/dynamic';
 // Import the new DND component and its types
 import type { SortableImageItem } from './ImageDropzoneSortableCreate'; 
+import { chileanRegions } from "@/lib/data";
+
 const ImageDropzoneSortableCreateWithNoSSR = dynamic(
   () => import('./ImageDropzoneSortableCreate'),
   { 
@@ -83,7 +84,7 @@ export default function PropertyForm() {
       currency: "CLP",
       address: "",
       city: "",
-      region: "",
+      region: undefined,
       country: "Chile",
       bedrooms: '',
       bathrooms: '',
@@ -245,7 +246,7 @@ export default function PropertyForm() {
                     onChange={(address, details) => {
                         field.onChange(address);
                         if (details?.city) form.setValue('city', details.city, { shouldValidate: true });
-                        if (details?.region) form.setValue('region', details.region, { shouldValidate: true });
+                        if (details?.region) form.setValue('region', details.region as any, { shouldValidate: true });
                         if (details?.country) form.setValue('country', details.country, { shouldValidate: true });
                     }}
                     placeholder="Comienza a escribir la dirección..."
@@ -258,9 +259,30 @@ export default function PropertyForm() {
             )}
             />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-            <FormField control={form.control} name="region" render={({ field }) => ( <FormItem> <FormLabel>Región</FormLabel> <FormControl><Input placeholder="Ej: V Región de Valparaíso" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-            <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField
+              control={form.control}
+              name="region"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Región</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || undefined}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona una región" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {chileanRegions.map(region => (
+                        <SelectItem key={region} value={region}>{region}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField control={form.control} name="totalAreaSqMeters" render={({ field }) => ( <FormItem> <FormLabel className="flex items-center"><Home className="mr-2 h-4 w-4 text-primary"/>Superficie Total (m²)</FormLabel> <FormControl><Input type="number" placeholder="Ej: 120" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl> <FormMessage /> </FormItem> )}/>

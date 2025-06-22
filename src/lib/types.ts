@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import type { AppPermission } from './permissions'; // Import AppPermission
 import { validarRut } from './rutValidator'; // Importar el validador de RUT
+import { chileanRegions } from './data'; // Importar la lista de regiones
 
 export interface Role {
   id: string; // ej: admin, editor_contenido
@@ -405,7 +406,7 @@ export const propertyFormSchema = z.object({
   currency: z.enum(["CLP", "UF"], { required_error: "La moneda es requerida." }),
   address: z.string().min(5, "La dirección es requerida."),
   city: z.string().min(2, "La ciudad es requerida."),
-  region: z.string().min(2, "La región es requerida."),
+  region: z.enum(chileanRegions, { required_error: "La región es requerida." }),
   country: z.string().min(2, "El país es requerido."),
   bedrooms: z.preprocess(
     (val) => (String(val).trim() === "" ? undefined : val),
@@ -441,7 +442,7 @@ export const requestFormSchema = z.object({
   desiredPropertyType: z.array(z.enum(["rent", "sale"])).min(1, "Debes seleccionar al menos un tipo de transacción (arriendo/venta)."),
   desiredCategories: z.array(z.enum(["apartment", "house", "condo", "land", "commercial", "other"])).min(1, "Debes seleccionar al menos una categoría de propiedad."),
   desiredLocationCity: z.string().min(2, "La ciudad/comuna deseada es requerida."),
-  desiredLocationRegion: z.string().min(2, "La región es requerida."),
+  desiredLocationRegion: z.enum(chileanRegions, { required_error: "La región deseada es requerida." }),
   desiredLocationNeighborhood: z.string().optional(),
   minBedrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
   minBathrooms: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().or(z.literal('')),
@@ -788,12 +789,14 @@ export const otpVerificationSchema = z.object({
 });
 export type OtpVerificationFormValues = z.infer<typeof otpVerificationSchema>;
     
+const regionsWithEmpty = ['', ...chileanRegions] as const;
+
 export const userProfileFormSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
   phone_number: z.string().min(9, "El teléfono debe tener al menos 9 caracteres.").max(50, "El teléfono no puede exceder los 50 caracteres.").or(z.literal('')),
   avatarUrl: z.string().url("Debe ser una URL válida.").max(2048).optional().or(z.literal('')),
   company_name: z.string().max(255).optional().or(z.literal('')),
-  main_operating_region: z.string().max(100).optional().or(z.literal('')),
+  main_operating_region: z.enum(regionsWithEmpty).optional(),
   main_operating_commune: z.string().max(100).optional().or(z.literal('')),
   properties_in_portfolio_count: z.coerce.number().int().min(0).optional().nullable(),
   website_social_media_link: z.string().url("Debe ser una URL válida.").max(2048).optional().or(z.literal('')),
