@@ -40,7 +40,7 @@ interface GeoapifyFeature {
 
 interface AddressAutocompleteInputProps {
   value: string;
-  onChange: (address: string, details?: { city?: string; country?: string; lat?: number; lng?: number }) => void;
+  onChange: (address: string, details?: { city?: string; region?: string; country?: string; lat?: number; lng?: number }) => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -229,9 +229,9 @@ export default function AddressAutocompleteInput({
     const fullAddress = props.formatted || props.address_line1 || props.name || '';
     console.log("[AddressAutocompleteInput] Suggestion selected:", fullAddress, "Details:", props);
 
-    setInputValue(fullAddress);
     onChange(fullAddress, {
-      city: props.city || props.town || props.village || props.county || props.suburb || props.district || props.state || '',
+      city: props.city || props.town || props.village || props.county || props.suburb || props.district || '',
+      region: props.state || '',
       country: props.country || '',
       lat: props.lat ?? feature.geometry?.coordinates[1],
       lng: props.lon ?? feature.geometry?.coordinates[0]
@@ -331,4 +331,3 @@ export default function AddressAutocompleteInput({
     </div>
   );
 }
-

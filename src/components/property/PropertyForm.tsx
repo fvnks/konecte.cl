@@ -82,6 +82,7 @@ export default function PropertyForm() {
       currency: "CLP",
       address: "",
       city: "",
+      region: "",
       country: "Chile",
       bedrooms: '',
       bathrooms: '',
@@ -231,9 +232,33 @@ export default function PropertyForm() {
               )}
             />
           </div>
-          <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección Completa</FormLabel> <FormControl><AddressAutocompleteInput value={field.value} onChange={(address, details) => { field.onChange(address); if (details?.city) form.setValue('city', details.city, { shouldValidate: true }); if (details?.country) form.setValue('country', details.country, { shouldValidate: true }); }} placeholder="Comienza a escribir la dirección..." disabled={form.formState.isSubmitting || isCheckingAuth} /></FormControl> <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription> <FormMessage /> </FormItem> )}/>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={form.control}
+            name="address"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Dirección Completa</FormLabel>
+                <FormControl>
+                    <AddressAutocompleteInput
+                    value={field.value}
+                    onChange={(address, details) => {
+                        field.onChange(address);
+                        if (details?.city) form.setValue('city', details.city, { shouldValidate: true });
+                        if (details?.region) form.setValue('region', details.region, { shouldValidate: true });
+                        if (details?.country) form.setValue('country', details.country, { shouldValidate: true });
+                    }}
+                    placeholder="Comienza a escribir la dirección..."
+                    disabled={form.formState.isSubmitting || isCheckingAuth}
+                    />
+                </FormControl>
+                <FormDescription>Ingresa la dirección. Las sugerencias aparecerán mientras escribes.</FormDescription>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="region" render={({ field }) => ( <FormItem> <FormLabel>Región</FormLabel> <FormControl><Input placeholder="Ej: V Región de Valparaíso" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
             <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input placeholder="Ej: Chile (se autocompletará si es posible)" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
