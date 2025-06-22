@@ -172,7 +172,7 @@ export async function submitPropertyAction(
       const autoMatches = await findMatchingRequestsForNewProperty(propertyForAIMatch);
       
       for (const match of autoMatches) {
-        if (match.matchScore >= 0.70 && match.requestAuthorId && match.requestAuthorId !== userId && match.requestAuthorPhoneNumber && propertyOwner?.phone_number) {
+        if (match.matchScore >= 0.65 && match.requestAuthorId && match.requestAuthorId !== userId && match.requestAuthorPhoneNumber && propertyOwner?.phone_number) {
             autoMatchesFoundCount++;
             
             const propertyUrl = `${baseUrl}/properties/${slug}`;
@@ -620,7 +620,3 @@ export async function getPropertiesCountAction(activeOnly: boolean = false): Pro
   }
 }
     
-
-
-
-

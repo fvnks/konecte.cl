@@ -159,7 +159,7 @@ export async function submitRequestAction(
       const autoMatches = await findMatchingPropertiesForNewRequest(requestForAIMatch);
 
       for (const match of autoMatches) {
-        if (match.matchScore >= 0.70 && match.propertyAuthorId && match.propertyAuthorId !== userId && match.propertyAuthorPhoneNumber && requestPublisher?.phone_number) {
+        if (match.matchScore >= 0.65 && match.propertyAuthorId && match.propertyAuthorId !== userId && match.propertyAuthorPhoneNumber && requestPublisher?.phone_number) {
             autoMatchesFoundCount++;
 
             const requestUrl = `${baseUrl}/requests/${slug}`;
@@ -451,13 +451,9 @@ export async function getRequestsCountAction(activeOnly: boolean = false): Promi
     }
     const result: any[] = await query(sql);
     return Number(result[0].count) || 0;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error al obtener el conteo de solicitudes:", error);
     return 0;
   }
 }
     
-
-
-
-
