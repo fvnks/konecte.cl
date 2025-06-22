@@ -204,7 +204,7 @@ export default function AdminUsersPage() {
   const activePlans = plans.filter(plan => plan.is_active);
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>

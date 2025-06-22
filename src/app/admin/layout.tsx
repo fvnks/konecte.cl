@@ -227,7 +227,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </Link>
             </div>
         </header>
-        <main className="flex-1 flex flex-col items-center justify-center bg-muted/30">
+        <main className="flex-1 flex flex-col bg-muted/30 p-4 sm:p-6 md:p-8">
           {children}
         </main>
       </div>
