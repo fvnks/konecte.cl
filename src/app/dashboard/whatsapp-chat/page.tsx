@@ -148,7 +148,7 @@ export default function WhatsAppChatPage() {
     if (loadingStep !== 'idle' || !loggedInUser) {
       return;
     }
-
+    
     if (!hasPermission) {
       const reason = loggedInUser.plan_id ? "El chat con el bot no está incluido en tu plan actual." : "Necesitas un plan para usar esta función.";
       toast({ title: "Función No Habilitada", description: reason, variant: "warning", duration: 7000 });
