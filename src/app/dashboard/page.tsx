@@ -1,11 +1,10 @@
-
 // src/app/dashboard/page.tsx
 'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { PlusCircle, ListTree, SearchCheck, Building, UserCircle, Loader2, CreditCard, Users as UsersIcon, LayoutGrid, ArrowRight, Eye, MessageSquare, Briefcase } from 'lucide-react';
+import { PlusCircle, ListTree, SearchCheck, Building, UserCircle, Loader2, CreditCard, Users as UsersIcon, LayoutGrid, ArrowRight, Eye, MessageSquare, Briefcase, Sparkles } from 'lucide-react';
 import PropertyListItem from '@/components/property/PropertyListItem';
 import RequestListItem from '@/components/request/RequestListItem';
 import type { PropertyListing, SearchRequest, User as StoredUserType } from '@/lib/types';
@@ -45,6 +44,34 @@ const StatCard = ({ title, value, icon, description, colorClass = "text-primary"
       )}
       {description && !isLoading && <p className="text-xs text-muted-foreground pt-1">{description}</p>}
     </CardContent>
+  </Card>
+);
+
+interface DashboardActionCardProps {
+  title: string;
+  description: string;
+  href: string;
+  icon: React.ReactNode;
+  cta: string;
+  colorClass?: string;
+}
+
+const DashboardActionCard = ({ title, description, href, icon, cta, colorClass }: DashboardActionCardProps) => (
+  <Card className="shadow-md hover:shadow-lg transition-all duration-300 rounded-xl border flex flex-col group h-full bg-card hover:border-primary/50">
+    <CardHeader className="pb-4">
+      <div className={`mb-3 p-2.5 rounded-lg inline-block bg-gradient-to-br ${colorClass || 'from-primary/10 to-primary/5'}`}>
+        {icon}
+      </div>
+      <CardTitle className="text-lg font-headline text-foreground">{title}</CardTitle>
+      <CardDescription className="text-sm h-10 line-clamp-2 text-muted-foreground">{description}</CardDescription>
+    </CardHeader>
+    <CardFooter className="pt-0 mt-auto">
+      <Button asChild variant="outline" size="sm" className="w-full rounded-md text-primary border-primary/30 hover:bg-primary/10 hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+        <Link href={href} className="flex items-center justify-center">
+          {cta} <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+        </Link>
+      </Button>
+    </CardFooter>
   </Card>
 );
 
@@ -170,21 +197,30 @@ export default function DashboardPage() {
           </div>
         </CardHeader>
         <CardContent className="p-6 md:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Button asChild size="lg" variant="default" className="h-14 text-base rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <Link href="/properties/submit" className="flex items-center gap-2.5">
-              <PlusCircle className="h-5 w-5" /> Publicar Propiedad
-            </Link>
-          </Button>
-          <Button asChild size="lg" variant="secondary" className="h-14 text-base rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <Link href="/requests/submit" className="flex items-center gap-2.5">
-              <PlusCircle className="h-5 w-5" /> Publicar Solicitud
-            </Link>
-          </Button>
-           <Button asChild size="lg" variant="outline" className="h-14 text-base rounded-lg shadow-sm hover:shadow-md transition-shadow">
-            <Link href="/dashboard/crm" className="flex items-center gap-2.5">
-              <UsersIcon className="h-5 w-5" /> Ir a Mi CRM
-            </Link>
-          </Button>
+          <DashboardActionCard
+            title="Publicar Propiedad"
+            description="Añade una nueva propiedad al listado para que otros la encuentren."
+            href="/properties/submit"
+            icon={<PlusCircle className="h-7 w-7 text-primary" />}
+            cta="Publicar Ahora"
+            colorClass="from-green-500/10 to-green-500/5 text-green-600 dark:text-green-400"
+          />
+          <DashboardActionCard
+            title="Publicar Solicitud"
+            description="Describe la propiedad que buscas para que los corredores te encuentren."
+            href="/requests/submit"
+            icon={<PlusCircle className="h-7 w-7 text-primary" />}
+            cta="Crear Solicitud"
+            colorClass="from-blue-500/10 to-blue-500/5 text-blue-600 dark:text-blue-400"
+          />
+          <DashboardActionCard
+            title="Búsqueda con IA"
+            description="Encuentra propiedades para tus solicitudes o viceversa usando nuestra IA."
+            href="/ai-matching"
+            icon={<Sparkles className="h-7 w-7 text-primary" />}
+            cta="Buscar Coincidencias"
+            colorClass="from-fuchsia-500/10 to-fuchsia-500/5 text-fuchsia-600 dark:text-fuchsia-400"
+          />
         </CardContent>
       </Card>
 
@@ -259,7 +295,7 @@ export default function DashboardPage() {
                <CardFooter className="p-6 md:p-8 pt-0">
                   <Button variant="outline" className="w-full rounded-md" asChild>
                       {/* Actualizar este enlace si se crea una página específica para "Mis Propiedades" */}
-                      <Link href="/properties?filter=my" className="flex items-center gap-2">Ver todas mis propiedades <ArrowRight className="h-4 w-4"/></Link>
+                      <Link href="/dashboard/my-listings" className="flex items-center gap-2">Ver todas mis propiedades <ArrowRight className="h-4 w-4"/></Link>
                   </Button>
               </CardFooter>
              )}
@@ -293,7 +329,7 @@ export default function DashboardPage() {
               <CardFooter className="p-6 md:p-8 pt-0">
                   <Button variant="outline" className="w-full rounded-md" asChild>
                        {/* Actualizar este enlace si se crea una página específica para "Mis Solicitudes" */}
-                      <Link href="/requests?filter=my" className="flex items-center gap-2">Ver todas mis solicitudes <ArrowRight className="h-4 w-4"/></Link>
+                      <Link href="/dashboard/my-listings" className="flex items-center gap-2">Ver todas mis solicitudes <ArrowRight className="h-4 w-4"/></Link>
                   </Button>
               </CardFooter>
              )}
