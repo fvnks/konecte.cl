@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, ShieldCheck, Eye, CalendarPlus, Share2, Compass, Dog, Sofa, Building as CommercialIcon, Warehouse } from "lucide-react";
+import { MapPin, BedDouble, Bath, HomeIcon as PropertyAreaIcon, Tag, AlertTriangle, UserCircle, DollarSign, ParkingCircle, Trees, CheckSquare, MessageSquare, CalendarDays, ShieldCheck, Eye, CalendarPlus, Share2, Compass, Dog, Sofa, Building as CommercialIcon, Warehouse, Car } from "lucide-react";
 import PropertyComments from "@/components/comments/PropertyComments"; 
 import Link from "next/link";
 import RecordView from '@/components/lead-tracking/RecordView';
@@ -198,4 +198,3 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
     </>
   );
 }
-
