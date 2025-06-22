@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { PropertyListing } from '@/lib/types';
 import { getPropertiesAction, updatePropertyStatusAction, deletePropertyByAdminAction } from '@/actions/propertyActions';
-import { Loader2, ListOrdered, Trash2, Eye, ToggleLeft, ToggleRight, Sparkles } from 'lucide-react'; // Removed Edit3
+import { Loader2, ListOrdered, Trash2, Eye, ToggleLeft, ToggleRight, Sparkles, MoreHorizontal, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -23,10 +23,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import StyledEditButton from '@/components/ui/StyledEditButton'; // Import new button
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuSeparator,
+    DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { useRouter } from 'next/navigation';
 
 const translatePropertyType = (type: 'rent' | 'sale'): string => {
   if (type === 'rent') return 'Arriendo';
@@ -36,15 +41,15 @@ const translatePropertyType = (type: 'rent' | 'sale'): string => {
 
 export default function AdminPropertiesPage() {
   const { toast } = useToast();
-  const router = useRouter(); // Initialize router
+  const router = useRouter(); 
   const [properties, setProperties] = useState<PropertyListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
-  
+  const [propertyToDelete, setPropertyToDelete] = useState<PropertyListing | null>(null);
+
   const fetchProperties = async () => {
     setIsLoading(true);
     try {
-      // includeInactive: true to show all properties to admin
       const fetchedProperties = await getPropertiesAction({ includeInactive: true, orderBy: 'createdAt_desc' });
       setProperties(fetchedProperties);
     } catch (error) {
@@ -73,15 +78,22 @@ export default function AdminPropertiesPage() {
     });
   };
 
-  const handleDeleteProperty = async (propertyId: string) => {
+  const openDeleteDialog = (property: PropertyListing) => {
+    setPropertyToDelete(property);
+  };
+
+  const confirmDeleteProperty = async () => {
+    if (!propertyToDelete) return;
+
     startTransition(async () => {
-      const result = await deletePropertyByAdminAction(propertyId);
+      const result = await deletePropertyByAdminAction(propertyToDelete.id);
       if (result.success) {
         toast({ title: "Propiedad Eliminada", description: result.message });
-        setProperties(prevProperties => prevProperties.filter(p => p.id !== propertyId));
+        setProperties(prevProperties => prevProperties.filter(p => p.id !== propertyToDelete.id));
       } else {
         toast({ title: "Error al Eliminar Propiedad", description: result.message, variant: "destructive" });
       }
+      setPropertyToDelete(null);
     });
   };
   
@@ -124,13 +136,13 @@ export default function AdminPropertiesPage() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Fecha Creación</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
-                    <TableHead className="text-right min-w-[260px]">Acciones</TableHead> 
+                    <TableHead className="text-right">Acciones</TableHead> 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {properties.map((prop) => (
                     <TableRow key={prop.id}>
-                      <TableCell className="font-medium max-w-xs truncate" title={prop.title}>
+                      <TableCell className="font-medium max-w-[250px] truncate" title={prop.title}>
                         <Link href={`/properties/${prop.slug}`} className="hover:underline" target="_blank">
                             {prop.title}
                         </Link>
@@ -156,44 +168,34 @@ export default function AdminPropertiesPage() {
                             </Badge>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" asChild title="Ver propiedad pública">
-                          <Link href={`/properties/${prop.slug}`} target="_blank">
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <StyledEditButton 
-                          onClick={() => router.push(`/admin/properties/${prop.id}/edit`)}
-                          title="Editar propiedad"
-                        />
-                        <Button variant="ghost" size="icon" asChild title="Buscar solicitudes coincidentes (IA)" className="text-purple-600 hover:text-purple-700">
-                          <Link href={`/ai-matching?propertyId=${prop.id}`}>
-                            <Sparkles className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90" disabled={isPending} title="Eliminar propiedad">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción no se puede deshacer. Eliminarás permanentemente la propiedad "{prop.title}".
-                                Todos los datos asociados, como comentarios, también podrían ser eliminados.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteProperty(prop.id)} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
-                                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Sí, eliminar propiedad
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Abrir menú de acciones</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/properties/${prop.slug}`} target="_blank" className="flex items-center gap-2 cursor-pointer">
+                                        <Eye className="h-4 w-4"/> Ver Propiedad
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/admin/properties/${prop.id}/edit`)} className="flex items-center gap-2 cursor-pointer">
+                                    <Edit className="h-4 w-4"/> Editar Propiedad
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/ai-matching?propertyId=${prop.id}`} className="flex items-center gap-2 cursor-pointer">
+                                        <Sparkles className="h-4 w-4"/> Buscar con IA
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => openDeleteDialog(prop)} className="text-destructive focus:text-destructive flex items-center gap-2 cursor-pointer">
+                                    <Trash2 className="h-4 w-4"/> Eliminar
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -205,6 +207,28 @@ export default function AdminPropertiesPage() {
           )}
         </CardContent>
       </Card>
+      
+      {propertyToDelete && (
+        <AlertDialog open={!!propertyToDelete} onOpenChange={(open) => !open && setPropertyToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción no se puede deshacer. Eliminarás permanentemente la propiedad "{propertyToDelete.title}".
+                Todos los datos asociados, como comentarios, también podrían ser eliminados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setPropertyToDelete(null)} disabled={isPending}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteProperty} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Sí, eliminar propiedad
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
     </div>
   );
 }
