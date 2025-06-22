@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { MapPin, Loader2, AlertTriangle } from 'lucide-react';
+import { regionNameToSpanish } from '@/lib/data';
 
 interface GeoapifyProperty {
   country?: string;
@@ -228,10 +229,13 @@ export default function AddressAutocompleteInput({
     const props = feature.properties;
     const fullAddress = props.formatted || props.address_line1 || props.name || '';
     console.log("[AddressAutocompleteInput] Suggestion selected:", fullAddress, "Details:", props);
+    
+    const englishRegion = props.state || '';
+    const spanishRegion = regionNameToSpanish[englishRegion] || englishRegion; // Fallback to original if not found
 
     onChange(fullAddress, {
       city: props.city || props.town || props.village || props.county || props.suburb || props.district || '',
-      region: props.state || '',
+      region: spanishRegion, // Use translated region
       country: props.country || '',
       lat: props.lat ?? feature.geometry?.coordinates[1],
       lng: props.lon ?? feature.geometry?.coordinates[0]
