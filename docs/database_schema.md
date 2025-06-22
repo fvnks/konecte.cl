@@ -134,6 +134,7 @@ CREATE TABLE properties (
     currency VARCHAR(3) NOT NULL,
     address VARCHAR(255) NOT NULL,
     city VARCHAR(100) NOT NULL,
+    region VARCHAR(100) NOT NULL,
     country VARCHAR(100) NOT NULL,
     bedrooms INT NOT NULL DEFAULT 0,
     bathrooms INT NOT NULL DEFAULT 0,
@@ -160,6 +161,7 @@ CREATE TABLE properties (
 CREATE INDEX idx_properties_slug ON properties(slug);
 CREATE INDEX idx_properties_user_id ON properties(user_id);
 CREATE INDEX idx_properties_city ON properties(city);
+CREATE INDEX idx_properties_region ON properties(region);
 CREATE INDEX idx_properties_property_type ON properties(property_type);
 CREATE INDEX idx_properties_category ON properties(category);
 CREATE INDEX idx_properties_upvotes ON properties(upvotes);
@@ -188,6 +190,7 @@ CREATE TABLE property_requests (
     desired_category_land BOOLEAN DEFAULT FALSE,
     desired_category_commercial BOOLEAN DEFAULT FALSE,
     desired_category_other BOOLEAN DEFAULT FALSE,
+    desired_location_region VARCHAR(100) NOT NULL,
     desired_location_city VARCHAR(100) NOT NULL,
     desired_location_neighborhood VARCHAR(100) DEFAULT NULL,
     min_bedrooms INT DEFAULT NULL,
@@ -202,6 +205,7 @@ CREATE TABLE property_requests (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 -- Índices existentes se mantienen
+CREATE INDEX idx_property_requests_region ON property_requests(desired_location_region);
 ```
 
 ---
@@ -314,7 +318,7 @@ CREATE TABLE site_settings (
 ## Sección Agenda de Visitas
 ```sql
 -- property_visits
--- (Esta tabla se mantiene como estaban)
+-- (Esta tabla se mantienen como estaban)
 ```
 ---
 ## Sección Colaboración entre Corredores

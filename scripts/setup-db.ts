@@ -68,6 +68,8 @@ const SQL_STATEMENTS: string[] = [
     ('${randomUUID()}', 'PREMIUM Corredor', 'Funcionalidad completa, alertas IA y panel avanzado para corredores activos.', 24900.00, NULL, NULL, 90, TRUE, TRUE, NULL, TRUE, 50, TRUE, NULL, 100, TRUE, TRUE, FALSE);`,
 
   // users
+  `ALTER TABLE users MODIFY COLUMN phone_number VARCHAR(50) NOT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.';`,
+  `ALTER TABLE users MODIFY COLUMN rut_tin VARCHAR(20) NOT NULL COMMENT 'RUT (Chile) o Tax ID. Requerido por la aplicación.';`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Indica si el número de teléfono ha sido verificado con OTP.' AFTER phone_number;`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_otp VARCHAR(10) DEFAULT NULL COMMENT 'Código OTP actual para verificación de teléfono.' AFTER phone_verified;`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_otp_expires_at TIMESTAMP DEFAULT NULL COMMENT 'Fecha de expiración del OTP actual.' AFTER phone_otp;`,
@@ -81,7 +83,7 @@ const SQL_STATEMENTS: string[] = [
     plan_id VARCHAR(36) DEFAULT NULL,
     plan_expires_at TIMESTAMP DEFAULT NULL,
     
-    phone_number VARCHAR(50) NOT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.',
+    phone_number VARCHAR(50) NOT NULL UNIQUE COMMENT 'Teléfono de contacto general o WhatsApp. Requerido y único.',
     phone_verified BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Indica si el número de teléfono ha sido verificado con OTP.',
     phone_otp VARCHAR(10) DEFAULT NULL COMMENT 'Código OTP actual para verificación de teléfono.',
     phone_otp_expires_at TIMESTAMP DEFAULT NULL COMMENT 'Fecha de expiración del OTP actual.',
@@ -102,7 +104,8 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);`,
   `CREATE INDEX IF NOT EXISTS idx_users_plan_id ON users(plan_id);`,
   `CREATE INDEX IF NOT EXISTS idx_users_rut_tin ON users(rut_tin);`,
-  `CREATE INDEX IF NOT EXISTS idx_users_phone_number ON users(phone_number);`,
+  `ALTER TABLE users DROP INDEX IF EXISTS idx_users_phone_number;`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS uq_users_phone_number ON users(phone_number);`,
   `CREATE INDEX IF NOT EXISTS idx_users_phone_verified ON users(phone_verified);`,
   `CREATE INDEX IF NOT EXISTS idx_users_company_name ON users(company_name);`,
   `CREATE INDEX IF NOT EXISTS idx_users_main_operating_region ON users(main_operating_region);`,
@@ -116,6 +119,7 @@ const SQL_STATEMENTS: string[] = [
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS commercial_use_allowed BOOLEAN DEFAULT FALSE AFTER furnished;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_storage BOOLEAN DEFAULT FALSE AFTER commercial_use_allowed;`,
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS orientation VARCHAR(50) DEFAULT NULL AFTER has_storage;`,
+  `ALTER TABLE properties ADD COLUMN IF NOT EXISTS region VARCHAR(100) NOT NULL AFTER country;`,
   `CREATE TABLE IF NOT EXISTS properties (
     id VARCHAR(36) PRIMARY KEY, 
     user_id VARCHAR(36) NOT NULL, 
@@ -129,6 +133,7 @@ const SQL_STATEMENTS: string[] = [
     address VARCHAR(255) NOT NULL, 
     city VARCHAR(100) NOT NULL, 
     country VARCHAR(100) NOT NULL, 
+    region VARCHAR(100) NOT NULL,
     bedrooms INT NOT NULL DEFAULT 0, 
     bathrooms INT NOT NULL DEFAULT 0, 
     total_area_sq_meters DECIMAL(10,2) NOT NULL,
@@ -153,6 +158,7 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_properties_slug ON properties(slug);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_user_id ON properties(user_id);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_city ON properties(city);`,
+  `CREATE INDEX IF NOT EXISTS idx_properties_region ON properties(region);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_property_type ON properties(property_type);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_category ON properties(category);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_upvotes ON properties(upvotes);`,
@@ -163,11 +169,13 @@ const SQL_STATEMENTS: string[] = [
 
 
   // property_requests
+  `ALTER TABLE property_requests ADD COLUMN IF NOT EXISTS desired_location_region VARCHAR(100) NOT NULL AFTER desired_location_city;`,
   `CREATE TABLE IF NOT EXISTS property_requests (
-    id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(255) NOT NULL, slug VARCHAR(255) UNIQUE NOT NULL, description TEXT NOT NULL, desired_property_type_rent BOOLEAN DEFAULT FALSE, desired_property_type_sale BOOLEAN DEFAULT FALSE, desired_category_apartment BOOLEAN DEFAULT FALSE, desired_category_house BOOLEAN DEFAULT FALSE, desired_category_condo BOOLEAN DEFAULT FALSE, desired_category_land BOOLEAN DEFAULT FALSE, desired_category_commercial BOOLEAN DEFAULT FALSE, desired_category_other BOOLEAN DEFAULT FALSE, desired_location_city VARCHAR(100) NOT NULL, desired_location_neighborhood VARCHAR(100) DEFAULT NULL, min_bedrooms INT DEFAULT NULL, min_bathrooms INT DEFAULT NULL, budget_max DECIMAL(15,2) DEFAULT NULL, open_for_broker_collaboration BOOLEAN DEFAULT FALSE, comments_count INT DEFAULT 0, upvotes INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(255) NOT NULL, slug VARCHAR(255) UNIQUE NOT NULL, description TEXT NOT NULL, desired_property_type_rent BOOLEAN DEFAULT FALSE, desired_property_type_sale BOOLEAN DEFAULT FALSE, desired_category_apartment BOOLEAN DEFAULT FALSE, desired_category_house BOOLEAN DEFAULT FALSE, desired_category_condo BOOLEAN DEFAULT FALSE, desired_category_land BOOLEAN DEFAULT FALSE, desired_category_commercial BOOLEAN DEFAULT FALSE, desired_category_other BOOLEAN DEFAULT FALSE, desired_location_city VARCHAR(100) NOT NULL, desired_location_region VARCHAR(100) NOT NULL, desired_location_neighborhood VARCHAR(100) DEFAULT NULL, min_bedrooms INT DEFAULT NULL, min_bathrooms INT DEFAULT NULL, budget_max DECIMAL(15,2) DEFAULT NULL, open_for_broker_collaboration BOOLEAN DEFAULT FALSE, comments_count INT DEFAULT 0, upvotes INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_slug ON property_requests(slug);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_user_id ON property_requests(user_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_property_requests_region ON property_requests(desired_location_region);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_city ON property_requests(desired_location_city);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_broker_collab ON property_requests(open_for_broker_collaboration);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_upvotes ON property_requests(upvotes);`,
@@ -418,7 +426,7 @@ async function setupDatabase() {
       try {
         // Check if the statement is an ALTER TABLE statement
         if (stmt.trim().toUpperCase().startsWith('ALTER TABLE')) {
-          const alterMatch = stmt.match(/ALTER TABLE\s+(\w+)\s+(ADD COLUMN IF NOT EXISTS|RENAME COLUMN|MODIFY COLUMN)\s+(.+)/i); // Added MODIFY COLUMN
+          const alterMatch = stmt.match(/ALTER TABLE\s+(\w+)\s+(ADD COLUMN IF NOT EXISTS|RENAME COLUMN|MODIFY COLUMN|DROP INDEX IF EXISTS)\s*(.+)/i); // Added MODIFY COLUMN and DROP INDEX
           if (alterMatch) {
             const tableName = alterMatch[1];
             const operation = alterMatch[2].toUpperCase();
@@ -461,11 +469,21 @@ async function setupDatabase() {
                  await pool.query(stmt);
                  console.log(`  -> Sentencia ALTER TABLE RENAME COLUMN procesada para ${tableName}.`);
               }
-            } else if (operation === 'MODIFY COLUMN') { // Handle MODIFY COLUMN
+            } else if (operation === 'MODIFY COLUMN') { 
                 await pool.query(stmt);
                 const colNameMatch = details.match(/(\w+)\s+/);
                 const columnName = colNameMatch ? colNameMatch[1] : 'desconocida';
                 console.log(`  -> Columna ${columnName} modificada en tabla ${tableName}.`);
+            } else if (operation === 'DROP INDEX IF EXISTS') {
+                const indexName = details.trim();
+                const checkIndexSql = `SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ?`;
+                const [indexExistsRows]: any = await pool.query(checkIndexSql, [dbConfig.database, tableName, indexName]);
+                if (indexExistsRows[0].count > 0) {
+                    await pool.query(`ALTER TABLE ${tableName} DROP INDEX ${indexName}`);
+                    console.log(`  -> Índice ${indexName} eliminado de tabla ${tableName}.`);
+                } else {
+                     console.log(`  -> Índice ${indexName} no encontrado en tabla ${tableName}, omitiendo DROP.`);
+                }
             } else {
               await pool.query(stmt);
               console.log(`  -> Sentencia ALTER TABLE procesada para ${tableName}.`);
@@ -506,6 +524,17 @@ async function setupDatabase() {
             } else {
                  console.log(`  -> Sentencia UPDATE procesada.`);
             }
+        } else if (stmt.trim().toUpperCase().startsWith('CREATE UNIQUE INDEX')) {
+            const indexNameMatch = stmt.match(/CREATE UNIQUE INDEX IF NOT EXISTS (\w+)/i);
+            const indexName = indexNameMatch ? indexNameMatch[1] : 'desconocido';
+            const checkIndexSql = `SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ?`;
+            const [indexExistsRows]: any = await pool.query(checkIndexSql, [dbConfig.database, 'users', indexName]);
+             if (indexExistsRows[0].count === 0) {
+                await pool.query(stmt);
+                console.log(`  -> Índice único ${indexName} creado.`);
+             } else {
+                 console.log(`  -> Índice único ${indexName} ya existe, omitiendo.`);
+             }
         } else if (stmt.trim().toUpperCase().startsWith('CREATE INDEX')) {
             await pool.query(stmt);
             const indexNameMatch = stmt.match(/CREATE INDEX IF NOT EXISTS (\w+)/i) || stmt.match(/INDEX (\w+)/i);
@@ -517,7 +546,7 @@ async function setupDatabase() {
         }
       } catch (err: any) {
         if (err.code === 'ER_DUP_KEYNAME' && stmt.toUpperCase().includes('CREATE INDEX')) {
-          const indexNameMatch = stmt.match(/CREATE INDEX IF NOT EXISTS (\w+)/i) || stmt.match(/INDEX (\w+)/i);
+          const indexNameMatch = stmt.match(/CREATE (?:UNIQUE )?INDEX IF NOT EXISTS (\w+)/i) || stmt.match(/INDEX (\w+)/i);
           const indexName = indexNameMatch ? indexNameMatch[1] : 'desconocido';
           console.warn(`  ⚠️  Índice ${indexName} ya existe, omitiendo.`);
         } else if (err.code === 'ER_CONSTRAINT_FORMAT_ERROR' && stmt.toUpperCase().includes('CHECK (ID = 1)')) {
@@ -555,8 +584,8 @@ async function setupDatabase() {
     const adminPassword = 'ola12345';
     const adminName = 'Administrador konecte';
     const adminRoleId = 'admin';
-    const adminPhoneNumber = '+56900000000'; // Placeholder
-    const adminRut = '1-9'; // Placeholder
+    const adminPhoneNumber = '+56900000000'; // Placeholder for NOT NULL
+    const adminRut = '1-9'; // Placeholder for NOT NULL
 
     const existingAdminResult = await pool.query('SELECT id FROM users WHERE email = ?', [adminEmail]);
     const existingAdmin = Array.isArray(existingAdminResult) && Array.isArray(existingAdminResult[0]) ? existingAdminResult[0] : [];
