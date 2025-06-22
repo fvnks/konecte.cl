@@ -7,7 +7,9 @@ import type { SearchRequest, User, PropertyType, ListingCategory } from "@/lib/t
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { findMatchingPropertiesForNewRequest, type NewRequestInput } from '@/ai/flows/find-matching-properties-for-new-request-flow';
-import { getOrCreateConversationAction, sendMessageAction } from './chatActions';
+import { getUserByIdAction } from './userActions';
+import { sendGenericWhatsAppMessageAction } from './otpActions';
+
 
 // Helper function to generate a slug from a title
 const generateSlug = (title: string): string => {
@@ -36,7 +38,8 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
     id: row.user_id,
     name: row.author_name,
     avatarUrl: row.author_avatar_url || undefined,
-    role_id: row.author_role_id || '', 
+    role_id: row.author_role_id || '',
+    phone_number: row.author_phone_number,
   } : undefined;
 
   return {
@@ -77,7 +80,7 @@ export async function submitRequestAction(
 
   const requestId = randomUUID();
   const slug = generateSlug(data.title);
-  let requestPublisherDetails: User | null = null;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://konecte.cl';
 
   try {
     const columns: string[] = [];
@@ -128,11 +131,6 @@ export async function submitRequestAction(
     await query(sql, values);
     console.log(`[RequestAction] Request submitted successfully. ID: ${requestId}, Slug: ${slug}`);
     
-    const userRows: any[] = await query('SELECT id, name FROM users WHERE id = ?', [userId]);
-    if (userRows.length > 0) {
-      requestPublisherDetails = userRows[0];
-    }
-
     revalidatePath('/');
     revalidatePath('/requests');
     revalidatePath(`/requests/${slug}`);
@@ -143,6 +141,8 @@ export async function submitRequestAction(
     let autoMatchesFoundCount = 0;
 
     try {
+      const requestPublisher = await getUserByIdAction(userId);
+
       const requestForAIMatch: NewRequestInput = {
         id: requestId,
         title: data.title,
@@ -158,33 +158,29 @@ export async function submitRequestAction(
       };
       const autoMatches = await findMatchingPropertiesForNewRequest(requestForAIMatch);
 
-      if (autoMatches && autoMatches.length > 0) {
-        for (const match of autoMatches) {
-          if (match.matchScore >= 0.65 && match.propertyAuthorId && match.propertyAuthorId !== userId) {
+      for (const match of autoMatches) {
+        if (match.matchScore >= 0.70 && match.propertyAuthorId && match.propertyAuthorId !== userId && match.propertyAuthorPhoneNumber && requestPublisher?.phone_number) {
             autoMatchesFoundCount++;
-            const conversationResult = await getOrCreateConversationAction(
-              userId, 
-              match.propertyAuthorId, 
-              { propertyId: match.propertyId, requestId: requestId }
-            );
-            if (conversationResult.success && conversationResult.conversation) {
-              const chatMessage = `¡Hola ${match.propertyAuthorName || 'Usuario'}! Mi solicitud "${requestForAIMatch.title}" podría coincidir con tu propiedad "${match.propertyTitle}".`;
-              await sendMessageAction(
-                conversationResult.conversation.id,
-                userId, // Request publisher (current user) sends the message
-                match.propertyAuthorId,
-                chatMessage
-              );
-            }
-          }
+
+            const requestUrl = `${baseUrl}/requests/${slug}`;
+            const propertyUrl = `${baseUrl}/properties/${match.propertySlug}`;
+
+            // 1. Mensaje para el dueño de la propiedad
+            const messageToPropertyOwner = `¡Hola ${match.propertyAuthorName}! La solicitud "${data.title}" de ${requestPublisher.name} podría coincidir con tu propiedad. Contacto: ${requestPublisher.phone_number}. Ver solicitud: ${requestUrl}`;
+            await sendGenericWhatsAppMessageAction(match.propertyAuthorPhoneNumber, messageToPropertyOwner, match.propertyAuthorId);
+            
+            // 2. Mensaje para el publicador de la solicitud (quien acaba de publicar)
+            const messageToRequestPublisher = `¡Hola ${requestPublisher.name}! Tu solicitud "${data.title}" coincide con la propiedad "${match.propertyTitle}" de ${match.propertyAuthorName}. Contacto: ${match.propertyAuthorPhoneNumber}. Ver propiedad: ${propertyUrl}`;
+            await sendGenericWhatsAppMessageAction(requestPublisher.phone_number, messageToRequestPublisher, requestPublisher.id);
         }
       }
+      
     } catch (aiError: any) {
-      console.error("[RequestAction] Error during auto-match AI flow for new request:", aiError.message);
+      console.error("[RequestAction] Error during auto-match AI flow or WhatsApp notification for new request:", aiError.message);
     }
     
     if (autoMatchesFoundCount > 0) {
-      successMessage = `Solicitud publicada. ¡Encontramos ${autoMatchesFoundCount} propiedad(es) que podrían coincidir! Se han iniciado chats.`;
+      successMessage = `Solicitud publicada. ¡Encontramos ${autoMatchesFoundCount} propiedad(es) que podrían coincidir! Se han enviado notificaciones por WhatsApp a ambas partes.`;
     }
 
     return { success: true, message: successMessage, requestId, requestSlug: slug, autoMatchesCount: autoMatchesFoundCount };
@@ -215,7 +211,8 @@ export async function getRequestsAction(options: GetRequestsActionOptions = {}):
         pr.*, 
         u.name as author_name, 
         u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id
+        u.role_id as author_role_id,
+        u.phone_number as author_phone_number
       FROM property_requests pr
       LEFT JOIN users u ON pr.user_id = u.id
     `;
@@ -266,7 +263,8 @@ export async function getRequestBySlugAction(slug: string): Promise<SearchReques
         pr.*, 
         u.name as author_name, 
         u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id
+        u.role_id as author_role_id,
+        u.phone_number as author_phone_number
       FROM property_requests pr
       LEFT JOIN users u ON pr.user_id = u.id
       WHERE pr.slug = ? AND pr.is_active = TRUE
@@ -340,7 +338,8 @@ export async function getRequestByIdForAdminAction(requestId: string): Promise<S
         pr.*, 
         u.name as author_name, 
         u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id
+        u.role_id as author_role_id,
+        u.phone_number as author_phone_number
       FROM property_requests pr
       LEFT JOIN users u ON pr.user_id = u.id
       WHERE pr.id = ?
@@ -458,6 +457,7 @@ export async function getRequestsCountAction(activeOnly: boolean = false): Promi
   }
 }
     
+
 
 
 

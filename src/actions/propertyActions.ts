@@ -7,7 +7,8 @@ import type { PropertyListing, User, PropertyType, ListingCategory, SubmitProper
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { findMatchingRequestsForNewProperty, type NewPropertyInput } from '@/ai/flows/find-matching-requests-for-new-property-flow';
-import { getOrCreateConversationAction, sendMessageAction } from './chatActions';
+import { getUserByIdAction } from './userActions';
+import { sendGenericWhatsAppMessageAction } from './otpActions';
 
 // Helper function to generate a slug from a title
 const generateSlug = (title: string): string => {
@@ -99,6 +100,7 @@ export async function submitPropertyAction(
 
   const propertyId = randomUUID();
   const slug = generateSlug(data.title);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://konecte.cl';
 
   try {
     const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
@@ -141,6 +143,8 @@ export async function submitPropertyAction(
     let autoMatchesFoundCount = 0;
 
     try {
+      const propertyOwner = await getUserByIdAction(userId);
+      
       const propertyForAIMatch: NewPropertyInput = {
         id: propertyId,
         title: data.title,
@@ -167,33 +171,29 @@ export async function submitPropertyAction(
       };
       const autoMatches = await findMatchingRequestsForNewProperty(propertyForAIMatch);
       
-      if (autoMatches && autoMatches.length > 0) {
-        for (const match of autoMatches) {
-          if (match.matchScore >= 0.65 && match.requestAuthorId && match.requestAuthorId !== userId) {
+      for (const match of autoMatches) {
+        if (match.matchScore >= 0.70 && match.requestAuthorId && match.requestAuthorId !== userId && match.requestAuthorPhoneNumber && propertyOwner?.phone_number) {
             autoMatchesFoundCount++;
-            const conversationResult = await getOrCreateConversationAction(
-              userId, 
-              match.requestAuthorId, 
-              { propertyId: propertyId, requestId: match.requestId }
-            );
-            if (conversationResult.success && conversationResult.conversation) {
-              const chatMessage = `¡Hola ${match.requestAuthorName || 'Usuario'}! Mi propiedad "${propertyForAIMatch.title}" podría interesarte, ya que parece coincidir con tu solicitud "${match.requestTitle}".`;
-              await sendMessageAction(
-                conversationResult.conversation.id,
-                userId, 
-                match.requestAuthorId,
-                chatMessage
-              );
-            }
-          }
+            
+            const propertyUrl = `${baseUrl}/properties/${slug}`;
+            const requestUrl = `${baseUrl}/requests/${match.requestSlug}`;
+
+            // 1. Mensaje para el dueño de la solicitud
+            const messageToRequestOwner = `¡Hola ${match.requestAuthorName}! La propiedad "${data.title}" de ${propertyOwner.name} podría interesarte. Contacto: ${propertyOwner.phone_number}. Ver propiedad: ${propertyUrl}`;
+            await sendGenericWhatsAppMessageAction(match.requestAuthorPhoneNumber, messageToRequestOwner, match.requestAuthorId);
+
+            // 2. Mensaje para el dueño de la propiedad (quien acaba de publicar)
+            const messageToPropertyOwner = `¡Hola ${propertyOwner.name}! Tu propiedad "${data.title}" coincide con la búsqueda de ${match.requestAuthorName}. Contacto: ${match.requestAuthorPhoneNumber}. Ver solicitud: ${requestUrl}`;
+            await sendGenericWhatsAppMessageAction(propertyOwner.phone_number, messageToPropertyOwner, propertyOwner.id);
         }
       }
+
     } catch (aiError: any) {
-      console.error("[PropertyAction] Error during auto-match AI flow for new property:", aiError.message);
+      console.error("[PropertyAction] Error during auto-match AI flow or WhatsApp notification for new property:", aiError.message);
     }
     
     if (autoMatchesFoundCount > 0) {
-        successMessage = `Propiedad publicada. ¡Encontramos ${autoMatchesFoundCount} solicitud(es) que podrían coincidir! Se han iniciado chats.`;
+        successMessage = `Propiedad publicada. ¡Encontramos ${autoMatchesFoundCount} coincidencia(s)! Se han enviado notificaciones por WhatsApp a ambas partes.`;
     }
     
     return { success: true, message: successMessage, propertyId, propertySlug: slug, autoMatchesCount: autoMatchesFoundCount };
@@ -620,6 +620,7 @@ export async function getPropertiesCountAction(activeOnly: boolean = false): Pro
   }
 }
     
+
 
 
 

@@ -21,86 +21,74 @@ function generateOtpCode(length: number = OTP_LENGTH): string {
 }
 
 /**
- * Sends the OTP via WhatsApp by calling the external WhatsApp bot webhook directly.
+ * Sends a generic message via the WhatsApp webhook.
  *
- * @param phoneNumber The user's phone number to send the OTP to.
- * @param otp The One-Time Password.
- * @param userName The user's name, for a personalized message.
- * @param userId The user's ID.
+ * @param phoneNumber The user's phone number to send the message to.
+ * @param messageText The text of the message.
+ * @param userId The Konecte user's ID for context.
  * @returns Promise resolving to an object indicating success or failure.
  */
-async function sendOtpViaWhatsApp(
+export async function sendGenericWhatsAppMessageAction(
   phoneNumber: string,
-  otp: string,
-  userName: string,
+  messageText: string,
   userId: string
 ): Promise<{ success: boolean; message?: string }> {
-  console.log(`[OTP_ACTION Direct] Attempting to send OTP to user ${userId} (phone: ${phoneNumber}). OTP: ${otp}`);
+  console.log(`[WhatsAppAction] Attempting to send message to user ${userId} (phone: ${phoneNumber}).`);
 
-  const otpMessageText = `Hola ${userName}, tu código de verificación para Konecte es: ${otp}. Este código expira en ${OTP_EXPIRATION_MINUTES} minutos.`;
-  
   // TODO: Revert this to use process.env.WHATSAPP_BOT_UBUNTU_WEBHOOK_URL once the environment variable is corrected in Vercel.
   const ubuntuBotWebhookUrl = 'https://konecte.fedestore.cl/api/webhooks/konecte-incoming';
   
   if (!ubuntuBotWebhookUrl) {
-    const errorMessage = "[OTP_ACTION CRITICAL] La URL del webhook del bot no está configurada. No se puede contactar al bot externo.";
+    const errorMessage = "[WhatsAppAction CRITICAL] La URL del webhook del bot no está configurada.";
     console.error(errorMessage);
     return { success: false, message: "Error de configuración del servidor: El endpoint del bot de WhatsApp no está definido." };
   }
 
   try {
+    // Optionally log this system-sent message to the internal store for admin viewing
     addMessageToConversation(phoneNumber, {
-      text: `[SISTEMA] Se envió un código OTP: ${otp}`,
+      text: `[SISTEMA->${phoneNumber}] ${messageText}`,
       sender: 'bot',
       status: 'pending_to_whatsapp',
-      sender_id_override: 'system_otp',
+      sender_id_override: 'system_notification',
     });
-    console.log(`[OTP_ACTION Direct] System message for OTP stored in local chat history for ${phoneNumber}.`);
 
     const webhookPayload = {
       konecteUserId: userId,
       targetUserWhatsAppNumber: phoneNumber,
-      messageText: otpMessageText,
+      messageText: messageText,
     };
 
-    console.log(`[OTP_ACTION Direct] Enviando POST al webhook de Ubuntu: ${ubuntuBotWebhookUrl} con payload:`, JSON.stringify(webhookPayload));
+    console.log(`[WhatsAppAction] Enviando POST al webhook de Ubuntu: ${ubuntuBotWebhookUrl} con payload:`, JSON.stringify(webhookPayload));
 
     const webhookResponse = await fetch(ubuntuBotWebhookUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(webhookPayload),
     });
 
     if (!webhookResponse.ok) {
       const errorBody = await webhookResponse.text();
-      const errorMessage = `Error al enviar al webhook de Ubuntu. Status: ${webhookResponse.status}. Body: ${errorBody}`;
-      console.error(`[OTP_ACTION Direct ERROR] ${errorMessage}`);
+      const errorMessage = `Error al enviar al webhook. Status: ${webhookResponse.status}. Body: ${errorBody}`;
+      console.error(`[WhatsAppAction ERROR] ${errorMessage}`);
       return { success: false, message: `Error al contactar el webhook del bot: ${webhookResponse.statusText}.` };
     }
 
     const webhookResult = await webhookResponse.json();
-    console.log('[OTP_ACTION Direct SUCCESS] Respuesta del webhook de Ubuntu:', webhookResult);
+    console.log('[WhatsAppAction SUCCESS] Respuesta del webhook de Ubuntu:', webhookResult);
     
-    return { success: true, message: "El código OTP ha sido enviado a tu WhatsApp." };
+    return { success: true, message: "Mensaje enviado a WhatsApp." };
 
   } catch (error: any) {
     let errorMessage = `Excepción al contactar el servicio de mensajería: ${error.message}`;
-    
-    if (error.cause && typeof error.cause === 'object' && 'code' in error.cause) {
-      console.error(`[OTP_ACTION Direct CRITICAL] Network error calling webhook. Error Cause:`, error.cause);
-      errorMessage = "Error de red al contactar el servicio de mensajería. Esto es usualmente causado por un firewall en el servidor de destino que bloquea las IPs de Vercel. Por favor, verifica la configuración del firewall de tu bot.";
-    } else if (error.message && error.message.toLowerCase().includes('fetch failed')) {
-      console.error(`[OTP_ACTION Direct ERROR] Exception: Fetch failed. This usually means the server couldn't reach the webhook URL. Check network configuration and if the URL (${ubuntuBotWebhookUrl}) is correct and accessible from the server. Error: ${error.message}`);
-       errorMessage = `Error interno del servidor al enviar mensaje al bot: ${error.message}. Verifica que tu servidor del bot esté online y que el firewall permita conexiones desde Vercel.`;
-    } else {
-      console.error(`[OTP_ACTION Direct ERROR] Exception while calling external webhook: ${error.message}`, error.stack);
+    if (error.cause || (error.message && error.message.toLowerCase().includes('fetch failed'))) {
+        errorMessage = `Error de red al contactar el servicio de mensajería. Esto puede ser un firewall o un problema de red en el servidor del bot. URL: ${ubuntuBotWebhookUrl}`;
     }
-    
+    console.error(`[WhatsAppAction ERROR] ${errorMessage}`, error.stack);
     return { success: false, message: errorMessage };
   }
 }
+
 
 export async function generateAndSendOtpAction(
   userId: string
@@ -126,7 +114,8 @@ export async function generateAndSendOtpAction(
     
     const phoneNumberEnding = user.phone_number.length >= 4 ? user.phone_number.slice(-4) : user.phone_number;
 
-    const sendResult = await sendOtpViaWhatsApp(user.phone_number, otp, user.name, user.id);
+    const otpMessageText = `Hola ${user.name}, tu código de verificación para Konecte es: ${otp}. Este código expira en ${OTP_EXPIRATION_MINUTES} minutos.`;
+    const sendResult = await sendGenericWhatsAppMessageAction(user.phone_number, otpMessageText, user.id);
 
     if (!sendResult.success) {
       console.error(`[OTP_ACTION_ERROR] OTP stored for user ${userId}, but failed to send via webhook: ${sendResult.message}`);
@@ -139,7 +128,7 @@ export async function generateAndSendOtpAction(
 
     return {
         success: true,
-        message: sendResult.message || 'Se está procesando el envío de un código OTP a tu número de teléfono.',
+        message: 'Se está procesando el envío de un código OTP a tu número de teléfono.',
         phone_number_ending: phoneNumberEnding
     };
 

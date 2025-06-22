@@ -20,6 +20,7 @@ const MatchResultSchema = z.object({
   requestSlug: z.string(),
   requestAuthorName: z.string().optional(),
   requestAuthorId: z.string().optional(),
+  requestAuthorPhoneNumber: z.string().optional(),
   matchScore: z.number(),
   reason: z.string(),
 });
@@ -67,6 +68,7 @@ const findMatchingRequestsForNewPropertyFlow = ai.defineFlow(
             requestSlug: request.slug,
             requestAuthorName: request.author?.name,
             requestAuthorId: request.author?.id,
+            requestAuthorPhoneNumber: request.author?.phone_number,
             matchScore: matchOutput.matchScore,
             reason: matchOutput.reason,
           };
