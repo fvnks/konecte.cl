@@ -1,3 +1,4 @@
+
 // src/app/admin/layout.tsx
 'use client';
 
@@ -23,7 +24,7 @@ interface AdminLayoutProps {
 const adminNavItems = [
   { href: '/admin', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
   { href: '/admin/stats', label: 'Estadísticas', icon: <BarChart3 className="h-5 w-5" /> },
-  { href: '/ai-matching', label: 'Búsqueda con IA', icon: <Sparkles className="h-5 w-5" /> },
+  { href: '/ai-matching', label: 'Coincidencias con IA', icon: <Sparkles className="h-5 w-5" /> },
   { href: '/admin/appearance', label: 'Apariencia', icon: <Brush className="h-5 w-5" /> },
   { href: '/admin/content', label: 'Contenido del Sitio', icon: <Newspaper className="h-5 w-5" /> },
   { href: '/admin/contact-submissions', label: 'Mensajes de Contacto', icon: <MailWarning className="h-5 w-5" />, id: 'contactSubmissionsLink' },

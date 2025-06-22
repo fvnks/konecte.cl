@@ -1,3 +1,4 @@
+
 // src/app/dashboard/page.tsx
 'use client';
 
@@ -214,11 +215,11 @@ export default function DashboardPage() {
             colorClass="from-blue-500/10 to-blue-500/5 text-blue-600 dark:text-blue-400"
           />
           <DashboardActionCard
-            title="Búsqueda con IA"
-            description="Encuentra propiedades para tus solicitudes o viceversa usando nuestra IA."
+            title="Coincidencias con IA"
+            description="Revisa las coincidencias que la IA ha encontrado para tus publicaciones."
             href="/ai-matching"
             icon={<Sparkles className="h-7 w-7 text-primary" />}
-            cta="Buscar Coincidencias"
+            cta="Ver Coincidencias"
             colorClass="from-fuchsia-500/10 to-fuchsia-500/5 text-fuchsia-600 dark:text-fuchsia-400"
           />
         </CardContent>

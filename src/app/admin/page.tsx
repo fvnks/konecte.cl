@@ -55,11 +55,11 @@ export default async function AdminDashboardPage() {
     colorClass: "from-indigo-500/10 to-indigo-500/5 text-indigo-600 dark:text-indigo-400",
   },
   {
-    title: "Búsqueda con IA",
-    description: "Encuentra coincidencias entre propiedades y solicitudes usando IA.",
+    title: "Coincidencias con IA",
+    description: "Revisa las coincidencias que la IA ha encontrado para las publicaciones.",
     href: "/ai-matching",
     icon: <Sparkles className="h-8 w-8 text-primary" />,
-    cta: "Buscar Coincidencias",
+    cta: "Ver Coincidencias",
     colorClass: "from-fuchsia-500/10 to-fuchsia-500/5 text-fuchsia-600 dark:text-fuchsia-400",
   },
   {

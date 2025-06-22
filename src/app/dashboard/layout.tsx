@@ -1,3 +1,4 @@
+
 // src/app/dashboard/layout.tsx
 'use client';
 
@@ -32,7 +33,7 @@ const baseNavItemsDefinition = [
   { href: '/dashboard/messages', label: 'Mensajes', icon: <MessageSquare />, id: 'messagesLink' },
   { href: '/dashboard/crm', label: 'Mi CRM', icon: <Users /> },
   { href: '/dashboard/visits', label: 'Mis Visitas', icon: <Edit /> },
-  { href: '/ai-matching', label: 'Búsqueda con IA', icon: <Sparkles /> },
+  { href: '/ai-matching', label: 'Coincidencias con IA', icon: <Sparkles /> },
 ];
 
 
