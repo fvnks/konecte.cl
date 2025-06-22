@@ -100,8 +100,7 @@ export async function submitPropertyAction(
 
   const propertyId = randomUUID();
   const slug = generateSlug(data.title);
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://konecte.cl';
-
+  
   try {
     const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
     const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
@@ -175,14 +174,15 @@ export async function submitPropertyAction(
         if (match.matchScore >= 0.65 && match.requestAuthorId && match.requestAuthorId !== userId && match.requestAuthorPhoneNumber && propertyOwner?.phone_number) {
             autoMatchesFoundCount++;
             
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://konecte.cl';
             const propertyUrl = `${baseUrl}/properties/${slug}`;
             const requestUrl = `${baseUrl}/requests/${match.requestSlug}`;
 
-            // 1. Mensaje para el dueño de la solicitud
+            // 1. Message for the request owner
             const messageToRequestOwner = `¡Hola ${match.requestAuthorName}! La propiedad "${data.title}" de ${propertyOwner.name} podría interesarte. Contacto: ${propertyOwner.phone_number}. Ver propiedad: ${propertyUrl}`;
             await sendGenericWhatsAppMessageAction(match.requestAuthorPhoneNumber, messageToRequestOwner, match.requestAuthorId);
 
-            // 2. Mensaje para el dueño de la propiedad (quien acaba de publicar)
+            // 2. Message for the property owner (the user who just published)
             const messageToPropertyOwner = `¡Hola ${propertyOwner.name}! Tu propiedad "${data.title}" coincide con la búsqueda de ${match.requestAuthorName}. Contacto: ${match.requestAuthorPhoneNumber}. Ver solicitud: ${requestUrl}`;
             await sendGenericWhatsAppMessageAction(propertyOwner.phone_number, messageToPropertyOwner, propertyOwner.id);
         }
