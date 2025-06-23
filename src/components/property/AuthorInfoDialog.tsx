@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Mail, Phone, UserCircle, ShieldCheck, Lock, Loader2 } from 'lucide-react';
 import type { User as StoredUser } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -289,6 +289,12 @@ export default function AuthorInfoDialog({ author, children }: AuthorInfoDialogP
                 {children}
             </DialogTrigger>
             <DialogContent className="sm:max-w-xs p-0 bg-transparent border-none shadow-none">
+                <DialogHeader className="sr-only">
+                    <DialogTitle>Información de Contacto: {authorName}</DialogTitle>
+                    <DialogDescription>
+                       Perfil y detalles de contacto para {authorName}.
+                    </DialogDescription>
+                </DialogHeader>
                 <StyledWrapper>
                     <div className="profile-card group">
                         <div className="avatar">
@@ -297,7 +303,7 @@ export default function AuthorInfoDialog({ author, children }: AuthorInfoDialogP
                                 <div className="avatar-svg-container">
                                     <svg id="avatar" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
                                         <circle fill="hsl(var(--primary))" r="512" cy="512" cx="512" />
-                                        <text x="512" y="580" fontSize="550" fill="hsl(var(--primary-foreground))" textAnchor="middle" dominantBaseline="middle" fontWeight="600">
+                                        <text x="512" y="565" fontSize="550" fill="hsl(var(--primary-foreground))" textAnchor="middle" dominantBaseline="middle" fontWeight="600">
                                             {authorInitials || <UserCircle/>}
                                         </text>
                                     </svg>
