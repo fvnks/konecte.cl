@@ -13,7 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Input } from '@/components/ui/input';
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,7 +23,7 @@ import type { PropertyType, ListingCategory, User as StoredUser, PropertyFormVal
 import { propertyFormSchema, orientationValues } from '@/lib/types';
 import { Loader2, Home, Bath, Car, Dog, Sofa, Building, Warehouse, Compass, BedDouble } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 import AddressAutocompleteInput from "./AddressAutocompleteInput";
 import dynamic from 'next/dynamic';
 // Import the new DND component and its types
@@ -85,6 +85,7 @@ export default function PropertyForm() {
       address: "",
       city: "",
       region: undefined,
+      hideExactAddress: false, // New field
       country: "Chile",
       bedrooms: '',
       bathrooms: '',
@@ -171,6 +172,7 @@ export default function PropertyForm() {
       parkingSpaces: values.parkingSpaces === '' ? 0 : Number(values.parkingSpaces),
       usefulAreaSqMeters: values.usefulAreaSqMeters === '' || values.usefulAreaSqMeters === undefined || values.usefulAreaSqMeters === null
                             ? undefined
+
                             : Number(values.usefulAreaSqMeters),
       orientation: values.orientation === 'none' || values.orientation === '' ? undefined : values.orientation,
     };
@@ -258,6 +260,13 @@ export default function PropertyForm() {
                 </FormItem>
             )}
             />
+          <FormField
+            control={form.control}
+            name="hideExactAddress"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm"> <FormControl> <Checkbox checked={field.value} onCheckedChange={field.onChange} /> </FormControl> <div className="space-y-1 leading-none"> <FormLabel> Ocultar dirección exacta </FormLabel> <FormDescription> Marcar para mostrar solo la comuna o barrio en la publicación pública, manteniendo la dirección exacta privada. </FormDescription> </div> </FormItem>
+            )}
+          />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>Ciudad/Comuna</FormLabel> <FormControl><Input placeholder="Ej: Valparaíso" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
             <FormField
