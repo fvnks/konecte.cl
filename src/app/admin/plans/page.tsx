@@ -1,3 +1,4 @@
+
 // src/app/admin/plans/page.tsx
 'use client';
 
@@ -206,7 +207,7 @@ export default function AdminPlansPage() {
                     <TableHead className="min-w-[150px]">Nombre</TableHead>
                     <TableHead>Precio</TableHead>
                     <TableHead title="Ver Contactos">V.Contact</TableHead>
-                    <TableHead title="Alertas Auto.">A.Auto</TableHead>
+                    <TableHead title="Alertas Automáticas">A.Auto</TableHead>
                     <TableHead title="Panel Avanzado">P.Avanz</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Visibilidad</TableHead>

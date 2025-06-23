@@ -229,4 +229,3 @@ export default function EditPlanDialog({ open, onOpenChange, plan, onPlanUpdated
     </Dialog>
   );
 }
-

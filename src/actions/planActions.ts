@@ -332,4 +332,3 @@ export async function togglePlanVisibilityAction(planId: string, isVisible: bool
     return { success: false, message: `Error al cambiar visibilidad del plan: ${error.message}` };
   }
 }
-

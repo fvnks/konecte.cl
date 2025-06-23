@@ -157,6 +157,7 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
     'crm:view_any': 'Ver Cualquier CRM (Admin)',
     'chat:initiate': 'Iniciar Conversaciones de Chat',
     'chat:use_whatsapp_bot': 'Usar Chat con Bot de WhatsApp (Plan)',
+    'notification:receive_whatsapp_alerts': 'Recibir Alertas de IA por WhatsApp (Plan)',
     'comment:create': 'Crear Comentarios',
     'comment:delete_own': 'Eliminar Sus Propios Comentarios',
     'comment:delete_any': 'Eliminar Cualquier Comentario (Admin)',
@@ -172,7 +173,6 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
     'ai:use_matching_tools': 'Usar Herramientas de Coincidencia IA',
     'ai:use_free_text_search': 'Usar Búsqueda IA por Texto Libre',
     'ai:use_assistant_chat': 'Usar Asistente de Chat IA',
-    'notification:receive_whatsapp_alerts': 'Recibir Alertas de IA por WhatsApp (Plan)',
     'dashboard:view_advanced_stats': 'Ver Panel de Estadísticas Avanzadas (Plan)',
 };
 
