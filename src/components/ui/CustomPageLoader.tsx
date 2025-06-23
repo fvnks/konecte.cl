@@ -40,7 +40,7 @@ const StyledWrapper = styled.div`
     top: 50%;
     width: 35px;
     height: 100px;
-    background: #fff;
+    background: #f5f5f5;
     border: 3px solid #673c63;
     border-bottom: 0px;
     border-radius: 3px;
@@ -143,7 +143,7 @@ const StyledWrapper = styled.div`
     top: 65%;
     width: 42px;
     height: 60px;
-    background: #fff;
+    background: #f5f5f5;
     border: 3px solid #673c63;
     border-bottom: 0px;
     border-radius: 3px;
@@ -192,7 +192,7 @@ const StyledWrapper = styled.div`
     border-radius: 100%;
     z-index: 0;
     transform: translate(-25%, -50%) scale(2.5, 2.5);
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(0, 0, 0, 0.1);
     animation: expand-light 3s infinite linear;
   }
 
@@ -288,7 +288,7 @@ const StyledWrapper = styled.div`
     59%,
     98%,
     100% {
-      background: #fff;
+      background: #f5f5f5;
     }
     61%,
     97% {
@@ -361,7 +361,7 @@ const StyledWrapper = styled.div`
     75% {
       left: 20%;
       transform: scale(1.15, 0.85) translate(60%, -15%);
-      background: #fff;
+      background: #f5f5f5;
       border-color: #673c63;
     }
     91% {
@@ -464,7 +464,7 @@ const StyledWrapper = styled.div`
     58%,
     100% {
       transform: translate(-25%, -50%) scale(2.5, 2.5);
-      border: 2px solid rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(0, 0, 0, 0.1);
     }
   }
   @keyframes dance-fire {
