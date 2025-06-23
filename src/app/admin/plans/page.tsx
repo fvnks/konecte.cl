@@ -1,4 +1,3 @@
-
 // src/app/admin/plans/page.tsx
 'use client';
 
@@ -277,4 +276,3 @@ export default function AdminPlansPage() {
     </div>
   );
 }
-
