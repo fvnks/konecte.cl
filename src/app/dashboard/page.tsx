@@ -1,4 +1,3 @@
-
 // src/app/dashboard/page.tsx
 'use client';
 
@@ -67,7 +66,7 @@ const DashboardActionCard = ({ title, description, href, icon, cta, colorClass }
       <CardDescription className="text-sm h-10 line-clamp-2 text-muted-foreground">{description}</CardDescription>
     </CardHeader>
     <CardFooter className="pt-0 mt-auto">
-      <Button asChild variant="outline" size="sm" className="w-full rounded-md text-primary border-primary/30 hover:bg-primary/10 hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+      <Button asChild variant="outline" className="w-full rounded-md text-primary border-primary/30 hover:bg-primary/10 hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors h-9 px-3 text-xs sm:text-sm">
         <Link href={href} className="flex items-center justify-center">
           {cta} <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
         </Link>
@@ -178,7 +177,7 @@ export default function DashboardPage() {
               </Avatar>
               <div>
                 <CardTitle className="text-3xl md:text-4xl font-headline font-bold">¡Hola, {userName}!</CardTitle>
-                <CardDescription className="text-base md:text-lg text-muted-foreground mt-1">Bienvenido a tu centro de control en konecte.</CardDescription>
+                <CardDescription className="text-base md:text-lg text-muted-foreground mt-1.5">Bienvenido a tu centro de control en konecte.</CardDescription>
               </div>
             </div>
             {loggedInUser && (
