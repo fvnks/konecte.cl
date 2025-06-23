@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogClose } from '@/components/ui/dialog'; // DialogClose importado
 import { Mail, Phone, UserCircle, ShieldCheck, Lock, Loader2, X } from 'lucide-react';
 import type { User as StoredUser } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ const StyledWrapper = styled.div`
         width: 320px;
         border-radius: 0.75rem; /* Matches ShadCN's rounded-md */
         box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05); /* shadow-lg */
-        overflow: hidden;
+        /* overflow: hidden; */ /* REMOVED to allow close button to be visible */
         background-color: hsl(var(--card));
         display: flex;
         flex-direction: column;
@@ -32,7 +32,7 @@ const StyledWrapper = styled.div`
         color: hsl(var(--foreground));
         border: 1px solid hsl(var(--border));
         padding-bottom: 0; /* Remove bottom padding to let hr touch the bottom */
-        position: relative; /* Added for absolute positioning of close button */
+        position: relative;
     }
     
     .avatar {
@@ -54,7 +54,6 @@ const StyledWrapper = styled.div`
         z-index: 40;
     }
 
-    /* The blue animated bars */
     .img_container::before, .img_container::after {
         content: "";
         position: absolute;
@@ -292,7 +291,17 @@ export default function AuthorInfoDialog({ author, children }: AuthorInfoDialogP
             <DialogContent className="sm:max-w-xs p-0 bg-transparent border-none shadow-none">
                 <StyledWrapper>
                     <div className="profile-card group">
-                        {/* Custom Close button removed. The default one from DialogContent will be used. */}
+                        <DialogClose asChild>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-2 right-2 h-8 w-8 rounded-full z-50 text-white bg-black/40 hover:bg-black/60 focus:ring-2 focus:ring-ring"
+                                aria-label="Cerrar"
+                            >
+                                <X className="h-5 w-5" />
+                            </Button>
+                        </DialogClose>
                         <div className="avatar">
                             <div className="img_container">
                                 <div className="avatar-bg-effect" />
