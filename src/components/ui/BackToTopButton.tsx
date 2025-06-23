@@ -32,7 +32,7 @@ const StyledWrapper = styled.div`
     transition: transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, visibility 0.3s;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     border: 1px solid hsl(var(--border));
-    z-index: 60; /* Below assistant button (z-70) */
+    z-index: 80; /* Above assistant button (z-70) */
     opacity: 0;
     transform: scale(0.8);
     visibility: hidden;
