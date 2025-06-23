@@ -9,12 +9,13 @@ import Link from 'next/link'; // Assuming the button might link somewhere
 
 const StyledWrapper = styled.div`
   width: 100%; /* Make the wrapper take the full width of its parent container. */
+  height: 100%; /* Make wrapper take full height */
 
   .pack-container {
     position: relative;
     display: flex;
     width: 100%; /* This will now be 100% of StyledWrapper's width */
-    min-height: 380px; /* Minimum height to maintain consistency */
+    height: 100%; /* This will now be 100% of StyledWrapper's height */
     flex-direction: column;
     border-radius: 12px;
     background-color: #2c2c2c; /* Slightly lighter dark */
