@@ -1,3 +1,4 @@
+
 // src/app/page.tsx
 'use client'; 
 
@@ -58,7 +59,7 @@ function AIMatchingSection() {
             <LinkIcon className="h-4 w-4 text-primary flex-shrink-0" />
             <strong>¿Buscas propiedades para una solicitud ya publicada?</strong>
             <Button variant="link" asChild className="p-0 h-auto text-sm text-left">
-              <Link href="/ai-matching-properties">Usa la herramienta de búsqueda de propiedades para solicitudes (IA)</Link>
+              <Link href="/ai-matching">Usa la herramienta de búsqueda de propiedades para solicitudes (IA)</Link>
             </Button>
           </p>
           <p className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
@@ -198,7 +199,7 @@ function FeaturedPlansSection({ plans }: FeaturedPlansSectionProps) {
         {/* Grid for plan cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-center">
           {plans.map((plan) => (
-            <div key={plan.id} className="flex justify-center"> {/* Center each card in its grid cell */}
+            <div key={plan.id} className="flex"> {/* Removed justify-center, added flex */}
               <PlanDisplayCard plan={plan} />
             </div>
           ))}

@@ -1,3 +1,4 @@
+
 // src/components/plan/PlanDisplayCard.tsx
 'use client';
 
@@ -7,10 +8,12 @@ import type { Plan } from '@/lib/types';
 import Link from 'next/link'; // Assuming the button might link somewhere
 
 const StyledWrapper = styled.div`
+  width: 100%; /* Make the wrapper take the full width of its parent container. */
+
   .pack-container {
     position: relative;
     display: flex;
-    width: 100%; /* Ensure it takes full width of its grid cell */
+    width: 100%; /* This will now be 100% of StyledWrapper's width */
     min-height: 380px; /* Minimum height to maintain consistency */
     flex-direction: column;
     border-radius: 12px;
