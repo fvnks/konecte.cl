@@ -7,6 +7,7 @@ import Footer from './Footer';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import FloatingAssistantButton from './FloatingAssistantButton';
+import BackToTopButton from '@/components/ui/BackToTopButton';
 import React, { useState, useEffect } from 'react';
 import LoadingScreen from './LoadingScreen'; // Import the new loading screen
 
@@ -55,7 +56,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {children}
         </main>
         {showFooter && <Footer />}
-        {showFloatingAssistant && <FloatingAssistantButton />}
+        {showFloatingAssistant && (
+          <>
+            <FloatingAssistantButton />
+            <BackToTopButton />
+          </>
+        )}
       </div>
     </>
   );
