@@ -52,31 +52,21 @@ export default function PropertyAuthorContactInfoClient({
   }, []);
 
   useEffect(() => {
-    if (!author || isLoadingViewer) return;
+    if (isLoadingViewer) return;
 
-    let shouldShow = false;
-    const authorIsPayingBroker = author.role_id === 'broker' && author.plan_is_pro_or_premium;
-    const authorIsPersonaNatural = author.role_id === 'user' && !author.plan_is_pro_or_premium;
-
-    if (authorIsPayingBroker) { // Rule 1: Publisher is PRO/PREMIUM Broker
-      shouldShow = true;
-    } else if (authorIsPersonaNatural) {
-      if (!viewerUser) { // Non-logged-in user viewing a persona natural
-        shouldShow = false; 
-      } else {
-        const viewerIsPersonaNatural = viewerUser.role_id === 'user' && !viewerUser.plan_is_pro_or_premium;
-        const viewerIsPremiumBroker = viewerUser.role_id === 'broker' && viewerUser.plan_is_premium_broker;
-
-        if (viewerIsPersonaNatural) { // Rule 2: Both are Persona Natural
-          shouldShow = true;
-        } else if (viewerIsPremiumBroker) { // Rule 3: Viewer is PREMIUM Broker AND Publisher is Persona Natural
-          shouldShow = true;
-        }
-      }
+    // The author should always see their own contact info on their own listing.
+    if (viewerUser && author && viewerUser.id === author.id) {
+        setCanViewContact(true);
+        return;
     }
-    setCanViewContact(shouldShow);
 
-  }, [author, viewerUser, isLoadingViewer]);
+    // Check if the viewer's plan allows them to see contact info.
+    if (viewerUser && viewerUser.plan_allows_contact_view) {
+        setCanViewContact(true);
+    } else {
+        setCanViewContact(false);
+    }
+  }, [viewerUser, author, isLoadingViewer]);
 
   const authorName = author?.name || "Anunciante";
   const authorAvatar = author?.avatarUrl;
@@ -140,7 +130,7 @@ export default function PropertyAuthorContactInfoClient({
                     Información de contacto protegida.
                   </p>
                   <p className="text-xs text-amber-600 dark:text-amber-500">
-                    {viewerUser ? "Tu plan actual no permite ver estos datos, o el anunciante es un particular." : "Inicia sesión para ver si puedes acceder a los datos de contacto."}
+                    {viewerUser ? "Tu plan actual no permite ver estos datos." : "Inicia sesión para ver si puedes acceder a los datos de contacto."}
                   </p>
                 </div>
               </div>

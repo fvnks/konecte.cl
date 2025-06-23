@@ -65,4 +65,3 @@ export function DatePicker({ value, onChange, placeholder = "Selecciona una fech
     </Popover>
   )
 }
-

@@ -1,3 +1,4 @@
+
 // src/lib/types.ts
 import { z } from 'zod';
 import type { AppPermission } from './permissions'; // Import AppPermission
