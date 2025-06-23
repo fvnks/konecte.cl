@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Mail, Phone, UserCircle, ShieldCheck, Lock, Loader2, X } from 'lucide-react';
 import type { User as StoredUser } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -292,14 +292,7 @@ export default function AuthorInfoDialog({ author, children }: AuthorInfoDialogP
             <DialogContent className="sm:max-w-xs p-0 bg-transparent border-none shadow-none">
                 <StyledWrapper>
                     <div className="profile-card group">
-                        <DialogClose asChild>
-                            <button 
-                                className="absolute top-3 right-3 z-50 h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground bg-card/50 hover:bg-black/10 hover:text-foreground transition-colors"
-                                aria-label="Cerrar"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </DialogClose>
+                        {/* Custom Close button removed. The default one from DialogContent will be used. */}
                         <div className="avatar">
                             <div className="img_container">
                                 <div className="avatar-bg-effect" />
