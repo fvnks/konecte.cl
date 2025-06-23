@@ -1,3 +1,4 @@
+
 // src/app/ai-matching/page.tsx
 'use client';
 
@@ -14,7 +15,7 @@ import { getUserPropertiesAction } from '@/actions/propertyActions';
 import { getUserRequestsAction } from '@/actions/requestActions';
 import { getMatchesForPropertyAction, getMatchesForRequestAction } from '@/actions/aiMatchingActions';
 import type { User as StoredUser, PropertyListing, SearchRequest, AIMatch } from '@/lib/types';
-import { Loader2, Sparkles, MessageSquareText, AlertTriangle, Building, FileSearch, RefreshCw } from "lucide-react";
+import { Loader2, Sparkles, MessageSquareText, AlertTriangle, Building, FileSearch, RefreshCw, ArrowLeft } from "lucide-react";
 
 // Types for aggregated results
 interface PropertyWithMatches extends PropertyListing {
@@ -119,6 +120,8 @@ function AiMatchingPageContent() {
     });
   };
 
+  const dashboardLink = loggedInUser?.role_id === 'admin' ? '/admin' : '/dashboard';
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-20rem)]">
@@ -147,10 +150,18 @@ function AiMatchingPageContent() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex">
+        <Button variant="outline" size="sm" asChild>
+          <Link href={dashboardLink} className="flex items-center">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver al Panel
+          </Link>
+        </Button>
+      </div>
       <Card className="shadow-xl">
         <CardHeader>
-          <CardTitle className="text-3xl font-headline text-center flex items-center justify-center"><Sparkles className="h-8 w-8 mr-3 text-primary" />Panel de Coincidencias (IA)</CardTitle>
+          <CardTitle className="text-3xl font-headline text-center flex items-center justify-center"><Sparkles className="h-8 w-8 mr-3 text-primary" />Panel de Coincidencias con IA</CardTitle>
           <CardDescription className="text-center text-lg">Aquí la IA muestra las coincidencias guardadas para tus publicaciones activas.</CardDescription>
         </CardHeader>
       </Card>
@@ -248,3 +259,4 @@ export default function AiMatchingPage() {
     </Suspense>
   );
 }
+    
