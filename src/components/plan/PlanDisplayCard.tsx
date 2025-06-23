@@ -10,7 +10,6 @@ const StyledWrapper = styled.div`
   .pack-container {
     position: relative;
     display: flex;
-    max-width: 350px; /* Max width for the card */
     width: 100%; /* Ensure it takes full width of its grid cell */
     min-height: 380px; /* Minimum height to maintain consistency */
     flex-direction: column;
@@ -195,7 +194,7 @@ function getDisplayableFeatures(plan: Plan): { text: string; included: boolean }
 export default function PlanDisplayCard({ plan }: PlanDisplayCardProps) {
   const isFreePlan = plan.price_monthly === 0;
   const formattedPrice = isFreePlan ? 'Gratis' : plan.price_monthly.toLocaleString('es-CL');
-  const priceSuffix = plan.price_currency?.toUpperCase() === 'UF' ? 'UF' : 'CLP';
+  const priceSuffix = plan.price_currency?.toUpperCase() === 'UF' ? 'UF' : 'mes';
   
   const displayFeatures = getDisplayableFeatures(plan);
 
