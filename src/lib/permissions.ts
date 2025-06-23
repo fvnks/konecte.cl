@@ -17,6 +17,7 @@ export const ALL_APP_PERMISSIONS = [
   'property:delete_any',        // Admin can delete any property
   'property:set_active_status',// Admin can activate/deactivate any property
   'property:view_details_contact_info_if_rules_met', // General users can see contact if rules met
+  'property:set_featured_own', // NEW: User can feature their own property (if plan allows)
 
   // Request Management
   'request:create',
@@ -88,6 +89,10 @@ export const ALL_APP_PERMISSIONS = [
   'ai:use_free_text_search',                // Access to free-text AI search
   'ai:use_assistant_chat',                  // Access to the AI assistant chat widget
 
+  // NEW Permissions for Plans
+  'notification:receive_whatsapp_alerts',   // Receive automated WhatsApp alerts for new matches
+  'dashboard:view_advanced_stats',          // Access to an advanced personal statistics dashboard
+  
   // Special "all permissions" wildcard, typically only for 'superadmin' type roles
   '*',
 ] as const;
@@ -120,6 +125,7 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
     'property:delete_any': 'Eliminar Cualquier Propiedad (Admin)',
     'property:set_active_status': 'Activar/Desactivar Propiedades (Admin)',
     'property:view_details_contact_info_if_rules_met': 'Ver Info de Contacto (si cumple reglas)',
+    'property:set_featured_own': 'Destacar Sus Propias Propiedades (Plan)',
     'request:create': 'Publicar Solicitudes de Búsqueda',
     'request:edit_own': 'Editar Sus Propias Solicitudes',
     'request:edit_any': 'Editar Cualquier Solicitud (Admin)',
@@ -166,6 +172,8 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
     'ai:use_matching_tools': 'Usar Herramientas de Coincidencia IA',
     'ai:use_free_text_search': 'Usar Búsqueda IA por Texto Libre',
     'ai:use_assistant_chat': 'Usar Asistente de Chat IA',
+    'notification:receive_whatsapp_alerts': 'Recibir Alertas de IA por WhatsApp (Plan)',
+    'dashboard:view_advanced_stats': 'Ver Panel de Estadísticas Avanzadas (Plan)',
 };
 
 // Group permissions for UI presentation
@@ -174,7 +182,7 @@ export const PERMISSION_GROUPS = {
         'admin:access_dashboard', 'admin:view_stats', 'admin:view_whatsapp_viewer'
     ],
     'Gestión de Propiedades': [
-        'property:create', 'property:edit_own', 'property:edit_any', 'property:delete_own', 'property:delete_any', 'property:set_active_status', 'property:view_details_contact_info_if_rules_met'
+        'property:create', 'property:edit_own', 'property:edit_any', 'property:delete_own', 'property:delete_any', 'property:set_active_status', 'property:view_details_contact_info_if_rules_met', 'property:set_featured_own'
     ],
     'Gestión de Solicitudes': [
         'request:create', 'request:edit_own', 'request:edit_any', 'request:delete_own', 'request:delete_any', 'request:set_active_status'
@@ -200,6 +208,9 @@ export const PERMISSION_GROUPS = {
     'Mensajería y Chat': [
         'chat:initiate', 'chat:use_whatsapp_bot'
     ],
+    'Notificaciones (Plan)': [
+      'notification:receive_whatsapp_alerts'
+    ],
     'Comentarios': [
         'comment:create', 'comment:delete_own', 'comment:delete_any'
     ],
@@ -215,9 +226,11 @@ export const PERMISSION_GROUPS = {
     'Funcionalidades de IA': [
         'ai:use_matching_tools', 'ai:use_free_text_search', 'ai:use_assistant_chat'
     ],
+    'Paneles Especiales (Plan)': [
+        'dashboard:view_advanced_stats'
+    ],
     'Permisos Especiales': [
         '*'
     ]
 };
 export type PermissionGroupName = keyof typeof PERMISSION_GROUPS;
-
