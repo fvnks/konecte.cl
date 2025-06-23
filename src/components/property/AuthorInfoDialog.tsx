@@ -2,8 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Mail, Phone, UserCircle, ShieldCheck, Lock, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Mail, Phone, UserCircle, ShieldCheck, Lock, Loader2, X } from 'lucide-react';
 import type { User as StoredUser } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -32,6 +32,7 @@ const StyledWrapper = styled.div`
         color: hsl(var(--foreground));
         border: 1px solid hsl(var(--border));
         padding-bottom: 0; /* Remove bottom padding to let hr touch the bottom */
+        position: relative; /* Added for absolute positioning of close button */
     }
     
     .avatar {
@@ -291,6 +292,14 @@ export default function AuthorInfoDialog({ author, children }: AuthorInfoDialogP
             <DialogContent className="sm:max-w-xs p-0 bg-transparent border-none shadow-none">
                 <StyledWrapper>
                     <div className="profile-card group">
+                        <DialogClose asChild>
+                            <button 
+                                className="absolute top-3 right-3 z-50 h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground bg-card/50 hover:bg-black/10 hover:text-foreground transition-colors"
+                                aria-label="Cerrar"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </DialogClose>
                         <div className="avatar">
                             <div className="img_container">
                                 <div className="avatar-bg-effect" />
