@@ -1,4 +1,3 @@
-
 // src/app/admin/layout.tsx
 'use client';
 
@@ -10,12 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import CustomPageLoader from '@/components/ui/CustomPageLoader'; 
+import LoadingScreen from '@/components/layout/LoadingScreen'; // Import the new loading screen
 import { Badge } from '@/components/ui/badge';
 import { getUnreadContactSubmissionsCountAction } from '@/actions/contactFormActions';
 import StyledLogoutButton from '@/components/ui/StyledLogoutButton';
 import StyledUserProfileWidget from '@/components/ui/StyledUserProfileWidget';
-import AnimatedLetterButton from '@/components/ui/AnimatedLetterButton'; // Import the new button
+import AnimatedLetterButton from '@/components/ui/AnimatedLetterButton';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -96,7 +95,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         router.push('/auth/signin');
         setAdminUser(null);
       }
-      setIsLoadingSession(false);
+      
+      const timer = setTimeout(() => {
+        setIsLoadingSession(false);
+      }, 1500); // Simulate loading time
+
+      return () => clearTimeout(timer);
     }
   }, [isClient, router, toast, fetchUnreadCounts]);
   
@@ -112,7 +116,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   }, [isClient, fetchUnreadCounts]);
 
-
   const handleAdminLogout = () => {
     localStorage.removeItem('loggedInUser');
     setAdminUser(null);
@@ -127,44 +130,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const adminName = adminUser?.name || 'Admin';
 
   if (isLoadingSession && isClient) {
-    return (
-       <div className="flex min-h-screen flex-col bg-muted/40">
-            <aside className="w-72 bg-background border-r p-5 space-y-6 hidden md:flex flex-col shadow-md">
-                <div className="flex items-center gap-3 px-2 py-1">
-                    <Skeleton className="h-8 w-8 rounded-lg" />
-                    <Skeleton className="h-7 w-40 rounded-md" />
-                </div>
-                <Separator/>
-                <div className="flex-grow space-y-1.5">
-                    {adminNavItems.map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-md"/>)}
-                </div>
-                <Separator/>
-                <div className="mt-auto space-y-4">
-                    <Skeleton className="h-[50px] w-full rounded-lg"/> 
-                    <Skeleton className="h-10 w-full rounded-md"/>
-                    <Skeleton className="h-10 w-full rounded-md"/>
-                </div>
-            </aside>
-            <div className="flex-1 flex flex-col">
-                <header className="bg-background border-b p-4 shadow-sm md:hidden">
-                    <div className="flex items-center justify-between"> <Skeleton className="h-7 w-28 rounded-md" /></div>
-                </header>
-                <main className="flex-1 flex flex-col items-center justify-center bg-muted/30">
-                    <CustomPageLoader />
-                    <p className="mt-4 text-muted-foreground">Cargando panel de administración...</p>
-                </main>
-            </div>
-        </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!adminUser && isClient) {
-      return (
-       <div className="flex flex-col items-center justify-center min-h-screen">
-         <CustomPageLoader />
-         <p className="mt-4 text-muted-foreground">Verificando permisos de administrador...</p>
-       </div>
-    );
+      return <LoadingScreen />; // Show loader while redirecting
   }
 
   return (
@@ -211,7 +181,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <StyledUserProfileWidget userName={adminName} userRole="Administrador" />
             )}
           <StyledLogoutButton onClick={handleAdminLogout} />
-          {/* Se mantiene el botón original para "Ir al Sitio" en admin por ahora */}
           <Button variant="outline" asChild className="w-full text-base py-2.5 h-auto rounded-md border-primary/50 text-primary hover:bg-primary/5 hover:text-primary">
             <Link href="/" className="flex items-center gap-2">
                 <Home className="h-4 w-4 transform"/> Ir al Sitio

@@ -1,4 +1,3 @@
-
 // src/app/dashboard/layout.tsx
 'use client';
 
@@ -11,10 +10,9 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { getTotalUnreadMessagesCountAction } from '@/actions/chatActions';
 import { getPlanByIdAction } from '@/actions/planActions';
-import type { Plan, User as StoredUserTypeFull } from '@/lib/types'; // Use StoredUserTypeFull for full type
+import type { Plan, User as StoredUserTypeFull } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import CustomPageLoader from '@/components/ui/CustomPageLoader';
+import LoadingScreen from '@/components/layout/LoadingScreen'; // Import the new loader
 import StyledLogoutButton from '@/components/ui/StyledLogoutButton';
 import StyledUserProfileWidget from '@/components/ui/StyledUserProfileWidget';
 import AnimatedLetterButton from '@/components/ui/AnimatedLetterButton';
@@ -23,7 +21,6 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-// StoredUser type within the layout, possibly a subset of the full User type
 interface StoredUser extends Pick<StoredUserTypeFull, 'id' | 'name' | 'avatarUrl' | 'role_id' | 'plan_id' | 'phone_number' | 'phone_verified' | 'email' | 'role_name' | 'plan_name' | 'plan_expires_at' | 'plan_is_pro_or_premium' | 'plan_allows_contact_view' | 'plan_is_premium_broker' | 'plan_automated_alerts_enabled' | 'plan_advanced_dashboard_access'> {}
 
 
@@ -56,7 +53,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       if (isLoadingSession) setIsLoadingSession(false);
       return;
     }
-    setIsLoadingSession(true);
+    
     let tempCurrentUser: StoredUser | null = null;
     let tempTotalUnreadCount = 0;
     let newNavItemsList = [...baseNavItemsDefinition];
@@ -70,8 +67,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         if (parsedUser.id) {
           tempTotalUnreadCount = await getTotalUnreadMessagesCountAction(parsedUser.id);
         }
-
-        // Check for phone verification
+        
         if (parsedUser.id && !parsedUser.phone_verified) {
             toast({
                 title: "Verificación Requerida",
@@ -81,12 +77,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             });
             const phoneEnding = parsedUser.phone_number ? parsedUser.phone_number.slice(-4) : '';
             router.push(`/auth/verify-phone?userId=${parsedUser.id}&phoneEnding=${phoneEnding}`);
-            setIsLoadingSession(false); // Stop further processing if redirecting
-            return; // Exit early
+            setIsLoadingSession(false); 
+            return; 
         }
 
-
-        // Broker "Canje Clientes" link
         const brokerItem = { href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> };
         const hasBrokerItem = newNavItemsList.some(item => item.href === brokerItem.href);
         if (parsedUser.role_id === 'broker' && !hasBrokerItem) {
@@ -103,7 +97,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           }
         }
 
-        // WhatsApp Chat link based on plan_automated_alerts_enabled
         const chatWhatsAppItem = { href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> };
         let hasWhatsAppItem = newNavItemsList.some(item => item.href === chatWhatsAppItem.href);
         
@@ -151,7 +144,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     setNavItems(newNavItemsList);
     setCurrentUser(tempCurrentUser);
     setTotalUnreadCount(tempTotalUnreadCount);
-    setIsLoadingSession(false);
+    
+    // Set loading to false after a delay
+    const timer = setTimeout(() => setIsLoadingSession(false), 1500);
+    return () => clearTimeout(timer);
+
   }, [isClient, router, toast]); 
 
   useEffect(() => {
@@ -187,45 +184,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const userName = currentUser?.name || "Usuario";
 
   if (isLoadingSession && isClient) {
-    return (
-       <div className="flex min-h-screen flex-col bg-muted/40">
-            <aside className="w-72 bg-background border-r p-5 space-y-6 hidden md:flex flex-col shadow-md">
-                <div className="flex items-center gap-3 px-2 py-1">
-                    <Skeleton className="h-8 w-8 rounded-lg" />
-                    <Skeleton className="h-7 w-40 rounded-md" />
-                </div>
-                <Separator/>
-                <div className="flex-grow space-y-1.5">
-                    {baseNavItemsDefinition.map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-md"/>)}
-                </div>
-                <Separator/>
-                <div className="mt-auto space-y-4">
-                    <Skeleton className="h-[50px] w-full rounded-lg"/>
-                    <Skeleton className="h-10 w-full rounded-md"/>
-                    <Skeleton className="h-10 w-full rounded-md"/>
-                </div>
-            </aside>
-            <div className="flex-1 flex flex-col">
-                <header className="bg-background border-b p-4 shadow-sm md:hidden">
-                    <div className="flex items-center justify-between"> <Skeleton className="h-7 w-28 rounded-md" /></div>
-                </header>
-                <main className="flex-1 flex flex-col items-center justify-center bg-muted/30">
-                    <CustomPageLoader />
-                    <p className="mt-4 text-muted-foreground">Cargando tu panel...</p>
-                </main>
-            </div>
-        </div>
-    );
+    return <LoadingScreen />;
   }
 
-  if (!currentUser && isClient) { // If loading is done but no user (e.g., redirected to signin)
-      return (
-       <div className="flex flex-col items-center justify-center min-h-screen">
-         <CustomPageLoader />
-         <p className="mt-4 text-muted-foreground">Verificando sesión...</p>
-          {/* Button removed because redirection should happen */}
-       </div>
-    );
+  if (!currentUser && isClient) {
+      return <LoadingScreen />;
   }
   
   const showUnreadBadge = isClient && currentUser && totalUnreadCount > 0;
