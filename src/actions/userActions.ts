@@ -118,13 +118,23 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
     return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const { name, email, password, role_id, plan_id } = validation.data;
+  const {
+    name, email, password, role_id, plan_id, phone_number, rut_tin,
+    company_name, main_operating_region, main_operating_commune,
+    properties_in_portfolio_count, website_social_media_link
+  } = validation.data;
 
   try {
     const existingUserRows: any[] = await query('SELECT id FROM users WHERE email = ?', [email]);
     if (existingUserRows.length > 0) {
       return { success: false, message: "Ya existe un usuario con este correo electrónico." };
     }
+    
+    const existingPhoneRows: any[] = await query('SELECT id FROM users WHERE phone_number = ?', [phone_number]);
+    if (existingPhoneRows.length > 0) {
+      return { success: false, message: "Este número de teléfono ya está en uso." };
+    }
+
 
     const roleExistsRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [role_id]);
     if (roleExistsRows.length === 0) {
@@ -141,10 +151,26 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = randomUUID();
 
-    await query(
-      'INSERT INTO users (id, name, email, password_hash, role_id, plan_id) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, name, email, hashedPassword, role_id, plan_id || null]
-    );
+    const insertSql = `
+      INSERT INTO users (
+        id, name, email, password_hash, role_id, plan_id, phone_number, rut_tin,
+        company_name, main_operating_region, main_operating_commune,
+        properties_in_portfolio_count, website_social_media_link,
+        phone_verified
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+    `;
+
+     const params = [
+      userId, name, email, hashedPassword, role_id, plan_id || null,
+      phone_number, rut_tin,
+      role_id === 'broker' ? (company_name || null) : null,
+      role_id === 'broker' ? (main_operating_region || null) : null,
+      role_id === 'broker' ? (main_operating_commune || null) : null,
+      role_id === 'broker' ? (properties_in_portfolio_count ?? null) : null,
+      role_id === 'broker' ? (website_social_media_link || null) : null
+    ];
+
+    await query(insertSql, params);
     
     const newUserRows: any[] = await query(
         `SELECT u.id, u.name, u.email, u.avatar_url, 
@@ -175,8 +201,13 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
 
   } catch (error: any) {
     console.error("[UserAction Admin] Error in adminCreateUserAction:", error);
-    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('users.email')) {
-        return { success: false, message: "Ya existe un usuario con este correo electrónico." };
+    if (error.code === 'ER_DUP_ENTRY') {
+        if (error.message.includes('users.email')) {
+            return { success: false, message: "Ya existe un usuario con este correo electrónico." };
+        }
+        if (error.message.includes('uq_users_phone_number')) {
+            return { success: false, message: "Este número de teléfono ya está registrado." };
+        }
     }
     return { success: false, message: `Error al crear usuario: ${error.message}` };
   }

@@ -216,13 +216,28 @@ const passwordValidation = z
 export const adminCreateUserFormSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres.").max(255),
   email: z.string().email("Correo electrónico inválido.").max(255),
+  phone_number: z.string().min(9, "El teléfono debe tener al menos 9 caracteres.").max(50),
+  rut_tin: z.string().min(1, "El RUT es requerido.").max(20),
   password: passwordValidation,
   confirmPassword: passwordValidation,
   role_id: z.string().min(1, "El rol es requerido."),
   plan_id: z.string().optional().nullable(),
+  company_name: z.string().max(255).optional().or(z.literal('')),
+  main_operating_region: z.string().max(100).optional().or(z.literal('')),
+  main_operating_commune: z.string().max(100).optional().or(z.literal('')),
+  properties_in_portfolio_count: z.coerce.number().int("Debe ser un número entero.").min(0, "No puede ser negativo.").optional().nullable(),
+  website_social_media_link: z.string().url("Debe ser una URL válida.").max(2048).optional().or(z.literal('')),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Las contraseñas no coinciden.",
   path: ["confirmPassword"],
+}).superRefine((data, ctx) => {
+  if (data.rut_tin && !validarRut(data.rut_tin)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "El RUT ingresado no es válido.",
+      path: ["rut_tin"],
+    });
+  }
 });
 export type AdminCreateUserFormValues = z.infer<typeof adminCreateUserFormSchema>;
 
