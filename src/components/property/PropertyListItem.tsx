@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays, ShieldCheck, Eye } from 'lucide-react';
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
 import LikeButton from '@/components/ui/LikeButton';
+import AuthorInfoDialog from './AuthorInfoDialog';
 
 interface PropertyListItemProps {
   property: PropertyListing;
@@ -77,6 +78,28 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   const authorRoleDisplay = getRoleDisplayName(author?.role_id, author?.role_name);
 
+  const authorDisplay = (
+    <div className="flex items-center gap-2 self-start sm:self-center cursor-pointer group/author rounded-md p-1 -ml-1 hover:bg-accent/50 transition-colors">
+        <Avatar className="h-7 w-7 sm:h-8 sm:w-8 border">
+          <AvatarImage src={authorAvatar || `https://placehold.co/32x32.png?text=${authorInitials}`} alt={authorName} data-ai-hint="agente inmobiliario" />
+          <AvatarFallback className="text-xs bg-muted">{authorInitials}</AvatarFallback>
+        </Avatar>
+        <div className="text-xs">
+          <span className="text-muted-foreground line-clamp-1 group-hover/author:text-primary transition-colors">Por {authorName}</span>
+          {authorRoleDisplay && (
+            <p className="text-muted-foreground/80 flex items-center capitalize">
+              <ShieldCheck className="h-3 w-3 mr-1 text-primary/70"/>
+              {authorRoleDisplay}
+            </p>
+          )}
+          <p className="text-muted-foreground/70 flex items-center mt-0.5">
+            <CalendarDays className="h-3 w-3 mr-1" />
+            {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}
+          </p>
+        </div>
+      </div>
+  );
+
   return (
     <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full flex flex-col md:flex-row group border border-border hover:border-primary/30">
       <Link href={`/properties/${slug}`} className="md:w-[240px] lg:w-[280px] xl:w-[320px] block flex-shrink-0 relative">
@@ -129,25 +152,11 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
           </CardContent>
         </div>
         <CardFooter className="p-0 pt-2.5 sm:pt-3 border-t flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-2 self-start sm:self-center">
-            <Avatar className="h-7 w-7 sm:h-8 sm:w-8 border">
-              <AvatarImage src={authorAvatar || `https://placehold.co/32x32.png?text=${authorInitials}`} alt={authorName} data-ai-hint="agente inmobiliario" />
-              <AvatarFallback className="text-xs bg-muted">{authorInitials}</AvatarFallback>
-            </Avatar>
-            <div className="text-xs">
-              <span className="text-muted-foreground line-clamp-1">Por {authorName}</span>
-              {authorRoleDisplay && (
-                <p className="text-muted-foreground/80 flex items-center capitalize">
-                  <ShieldCheck className="h-3 w-3 mr-1 text-primary/70"/>
-                  {authorRoleDisplay}
-                </p>
-              )}
-              <p className="text-muted-foreground/70 flex items-center mt-0.5">
-                <CalendarDays className="h-3 w-3 mr-1" />
-                {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}
-              </p>
-            </div>
-          </div>
+          {author ? (
+            <AuthorInfoDialog author={author}>
+                {authorDisplay}
+            </AuthorInfoDialog>
+          ) : <div />}
           <div className="flex flex-wrap items-center gap-1.5 self-end sm:self-center w-full sm:w-auto justify-end">
             <LikeButton listingId={id} listingType="property" />
             <Link href={`/properties/${slug}#comments`} aria-label={`${commentsCount} comentarios`} className="flex items-center">

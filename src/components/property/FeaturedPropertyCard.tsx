@@ -10,6 +10,7 @@ import { MapPin, DollarSign, CalendarDays, UserCircle as UserIcon, ShieldCheck, 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
 import LikeButton from '@/components/ui/LikeButton';
+import AuthorInfoDialog from './AuthorInfoDialog'; // Import new component
 
 interface FeaturedPropertyCardProps {
   property: PropertyListing;
@@ -63,6 +64,27 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   const authorRoleDisplay = getRoleDisplayName(author?.role_id, author?.role_name);
 
+  const authorDisplay = (
+    <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3.5 cursor-pointer group/author">
+        <Avatar className="h-7 w-7 mt-0.5">
+          <AvatarImage src={authorAvatar || `https://placehold.co/28x28.png?text=${authorInitials}`} alt={authorName} data-ai-hint="agente inmobiliario"/>
+          <AvatarFallback className="text-[10px] bg-muted">{authorInitials || <UserIcon className="h-3.5 w-3.5"/>}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+            <span className="block font-medium text-foreground/90 truncate line-clamp-1 group-hover/author:text-primary transition-colors" title={authorName}>{authorName}</span>
+            {authorRoleDisplay && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5 border-primary/30 text-primary/80 capitalize">
+                    <ShieldCheck className="h-2.5 w-2.5 mr-0.5"/>{authorRoleDisplay}
+                </Badge>
+            )}
+        </div>
+         <span className="text-muted-foreground/80 ml-auto whitespace-nowrap flex items-center self-start pt-1">
+            <CalendarDays className="h-3.5 w-3.5 inline-block mr-1"/>
+            {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}
+        </span>
+    </div>
+  );
+
   return (
     <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl flex flex-col h-full group border border-border hover:border-primary/30">
       <Link href={`/properties/${slug}`} className="block">
@@ -97,30 +119,18 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
           {formatPriceCompact(price, currency)}
           {propertyType === 'rent' && <span className="text-xs font-normal text-muted-foreground ml-1.5">/mes</span>}
         </div>
-        {/* Property Details: Bedrooms, Bathrooms, Area */}
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground mb-2.5">
             <span className="flex items-center"><BedDouble className="mr-1 h-3.5 w-3.5 text-primary/70"/>{bedrooms} dorms.</span>
             <span className="flex items-center"><Bath className="mr-1 h-3.5 w-3.5 text-primary/70"/>{bathrooms} baños</span>
             <span className="flex items-center"><Home className="mr-1 h-3.5 w-3.5 text-primary/70"/>{totalAreaSqMeters} m²</span>
         </div>
-        <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3.5">
-            <Avatar className="h-7 w-7 mt-0.5">
-              <AvatarImage src={authorAvatar || `https://placehold.co/28x28.png?text=${authorInitials}`} alt={authorName} data-ai-hint="agente inmobiliario"/>
-              <AvatarFallback className="text-[10px] bg-muted">{authorInitials || <UserIcon className="h-3.5 w-3.5"/>}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-                <span className="block font-medium text-foreground/90 truncate line-clamp-1" title={authorName}>{authorName}</span>
-                {authorRoleDisplay && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5 border-primary/30 text-primary/80 capitalize">
-                        <ShieldCheck className="h-2.5 w-2.5 mr-0.5"/>{authorRoleDisplay}
-                    </Badge>
-                )}
-            </div>
-             <span className="text-muted-foreground/80 ml-auto whitespace-nowrap flex items-center self-start pt-1">
-                <CalendarDays className="h-3.5 w-3.5 inline-block mr-1"/>
-                {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}
-            </span>
-        </div>
+        {author ? (
+            <AuthorInfoDialog author={author}>
+                {authorDisplay}
+            </AuthorInfoDialog>
+        ) : (
+            <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3.5 h-[41px]"></div>
+        )}
       </CardContent>
       <CardFooter className="p-4 sm:p-5 pt-0 mt-auto flex flex-wrap items-center justify-center gap-2">
         <LikeButton listingId={propertyId} listingType="property" />

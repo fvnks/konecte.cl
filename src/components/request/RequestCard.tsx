@@ -1,4 +1,3 @@
-
 // src/components/request/RequestCard.tsx
 'use client';
 
@@ -10,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, UserCircle as UserIcon, Handshake, Eye, BedDouble, Bath, ShieldCheck } from 'lucide-react'; // Added BedDouble, Bath, ShieldCheck
 import LikeButton from '@/components/ui/LikeButton';
+import AuthorInfoDialog from '../property/AuthorInfoDialog';
 
 interface RequestCardProps {
   request: SearchRequest;
@@ -66,33 +66,45 @@ export default function RequestCard({ request }: RequestCardProps) {
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   const authorRoleDisplay = getRoleDisplayName(author?.role_id, author?.role_name);
 
+  const authorDisplay = (
+    <div className="flex items-start gap-2.5 mb-2.5 cursor-pointer group/author">
+        <Avatar className="h-10 w-10 sm:h-11 sm:w-11 border">
+          <AvatarImage src={authorAvatar || `https://placehold.co/44x44.png?text=${authorInitials}`} alt={authorName} data-ai-hint="usuario buscando"/>
+          <AvatarFallback className="text-sm bg-muted">{authorInitials || <UserIcon className="h-5 w-5"/>}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm sm:text-base font-semibold line-clamp-1 group-hover/author:text-primary transition-colors" title={authorName}>{authorName}</p>
+          {authorRoleDisplay && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5 border-primary/30 text-primary/80 capitalize">
+                <ShieldCheck className="h-2.5 w-2.5 mr-0.5"/>{authorRoleDisplay}
+            </Badge>
+          )}
+          <p className="text-xs text-muted-foreground flex items-center mt-0.5">
+            <CalendarDays className="h-3 w-3 mr-1" />
+            Publicado el {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short', year:'numeric'})}
+          </p>
+        </div>
+    </div>
+  );
+
   return (
     <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl h-full group border border-border hover:border-primary/30">
        <CardHeader className="p-4 sm:p-5">
-        <div className="flex items-start gap-2.5 mb-2.5">
-            <Avatar className="h-10 w-10 sm:h-11 sm:w-11 border">
-              <AvatarImage src={authorAvatar || `https://placehold.co/44x44.png?text=${authorInitials}`} alt={authorName} data-ai-hint="usuario buscando"/>
-              <AvatarFallback className="text-sm bg-muted">{authorInitials || <UserIcon className="h-5 w-5"/>}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm sm:text-base font-semibold line-clamp-1" title={authorName}>{authorName}</p>
-              {authorRoleDisplay && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5 border-primary/30 text-primary/80 capitalize">
-                    <ShieldCheck className="h-2.5 w-2.5 mr-0.5"/>{authorRoleDisplay}
-                </Badge>
-              )}
-              <p className="text-xs text-muted-foreground flex items-center mt-0.5">
-                <CalendarDays className="h-3 w-3 mr-1" />
-                Publicado el {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short', year:'numeric'})}
-              </p>
-            </div>
+        <div className="flex items-start justify-between">
+            {author ? (
+                <AuthorInfoDialog author={author}>
+                    {authorDisplay}
+                </AuthorInfoDialog>
+            ) : (
+                <div className="flex items-start gap-2.5 mb-2.5"></div>
+            )}
              {open_for_broker_collaboration && (
-                <Badge variant="outline" className="text-xs py-1 px-2.5 border-purple-500 text-purple-600 h-fit rounded-md whitespace-nowrap">
+                <Badge variant="outline" className="text-xs py-1 px-2.5 border-purple-500 text-purple-600 h-fit rounded-md whitespace-nowrap self-start">
                     <Handshake className="h-3.5 w-3.5 mr-1.5" /> Colaboración
                 </Badge>
             )}
         </div>
-        <Link href={`/requests/${slug}`} className="block">
+        <Link href={`/requests/${slug}`} className="block mt-1">
           <CardTitle className="text-base sm:text-lg font-headline leading-snug hover:text-primary transition-colors line-clamp-2 h-[48px] sm:h-[56px]" title={title}>
             <SearchIcon className="inline-block h-4 w-4 sm:h-4 sm:w-4 mr-1.5 text-primary align-text-bottom" />
             {title}
