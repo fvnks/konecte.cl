@@ -216,7 +216,7 @@ function FeaturedPlansSection({ plans }: FeaturedPlansSectionProps) {
 
 const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"];
 const DEFAULT_HERO_TITLE = "Encuentra Tu Espacio Ideal en konecte";
-const DEFAULT_HERO_SUBTITLE = "Descubre, publica y comenta sobre propiedades en arriendo o venta. ¡O publica lo que estás buscando!";
+const DEFAULT_HERO_SUBTITLE = "Descubre, publica y comenta sobre propiedades en arriendo o venta. Publicaciones ilimitadas, sin costo. ¡O publica lo que estás buscando!";
 const DEFAULT_PUBLISH_PROPERTY_BUTTON = "Publicar Propiedad";
 const DEFAULT_PUBLISH_REQUEST_BUTTON = "Publicar Solicitud";
 
