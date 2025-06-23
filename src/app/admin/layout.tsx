@@ -96,11 +96,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         setAdminUser(null);
       }
       
-      const timer = setTimeout(() => {
-        setIsLoadingSession(false);
-      }, 1500); // Simulate loading time
-
-      return () => clearTimeout(timer);
+      setIsLoadingSession(false);
     }
   }, [isClient, router, toast, fetchUnreadCounts]);
   

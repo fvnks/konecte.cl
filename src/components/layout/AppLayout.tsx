@@ -31,12 +31,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading for aesthetic purposes
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2500); // 2.5 seconds loading time
-
-    return () => clearTimeout(timer);
+    // Set loading to false once the component has mounted on the client.
+    // This removes the artificial delay.
+    setLoading(false);
   }, []);
 
   return (
@@ -44,7 +41,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {loading && <LoadingScreen />}
       <div
         className={cn(
-          "flex min-h-screen flex-col bg-background text-foreground transition-opacity duration-700 ease-in-out",
+          "flex min-h-screen flex-col bg-background text-foreground transition-opacity duration-500 ease-in-out",
           loading ? 'opacity-0' : 'opacity-100'
         )}
       >

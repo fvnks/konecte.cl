@@ -144,10 +144,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     setNavItems(newNavItemsList);
     setCurrentUser(tempCurrentUser);
     setTotalUnreadCount(tempTotalUnreadCount);
-    
-    // Set loading to false after a delay
-    const timer = setTimeout(() => setIsLoadingSession(false), 1500);
-    return () => clearTimeout(timer);
+    setIsLoadingSession(false);
 
   }, [isClient, router, toast]); 
 
