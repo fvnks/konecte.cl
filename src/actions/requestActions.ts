@@ -206,12 +206,21 @@ interface GetRequestsActionOptions {
   includeInactive?: boolean;
   userId?: string; 
   onlyOpenForCollaboration?: boolean; 
-  limit?: number; // Added limit
-  orderBy?: 'createdAt_desc'; // Added order by
+  limit?: number;
+  orderBy?: 'createdAt_desc' | 'relevance';
+  searchTerm?: string;
 }
 
 export async function getRequestsAction(options: GetRequestsActionOptions = {}): Promise<SearchRequest[]> {
-  const { includeInactive = false, userId, onlyOpenForCollaboration = false, limit, orderBy = 'createdAt_desc' } = options;
+  const { 
+    includeInactive = false, 
+    userId, 
+    onlyOpenForCollaboration = false, 
+    limit, 
+    orderBy = 'createdAt_desc', 
+    searchTerm 
+  } = options;
+
   try {
     let sql = `
       SELECT 
@@ -237,12 +246,28 @@ export async function getRequestsAction(options: GetRequestsActionOptions = {}):
     if (onlyOpenForCollaboration) {
         whereClauses.push('pr.open_for_broker_collaboration = TRUE');
     }
+    if (searchTerm) {
+        whereClauses.push('(pr.title LIKE ? OR pr.description LIKE ? OR pr.desired_location_city LIKE ?)');
+        const searchTermLike = `%${searchTerm}%`;
+        queryParams.push(searchTermLike, searchTermLike, searchTermLike);
+    }
     
     if (whereClauses.length > 0) {
         sql += ' WHERE ' + whereClauses.join(' AND ');
     }
     
-    if (orderBy === 'createdAt_desc') {
+    if (orderBy === 'relevance' && searchTerm) {
+      sql += ` ORDER BY 
+        CASE 
+          WHEN pr.desired_location_city = ? THEN 1
+          WHEN pr.desired_location_city LIKE ? THEN 2
+          WHEN pr.title LIKE ? THEN 3
+          ELSE 4
+        END, 
+        pr.created_at DESC`;
+      const searchTermLike = `%${searchTerm}%`;
+      queryParams.push(searchTerm, searchTermLike, searchTermLike);
+    } else {
         sql += ' ORDER BY pr.created_at DESC';
     }
     

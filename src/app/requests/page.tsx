@@ -1,16 +1,19 @@
-
 // src/app/requests/page.tsx
-import RequestListItem from "@/components/request/RequestListItem"; // Actualizado
+import RequestListItem from "@/components/request/RequestListItem";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { SearchRequest } from "@/lib/types"; 
-import { Filter, ListFilter, Search as SearchIconLucide, FileSearch } from "lucide-react"; // Icono cambiado
+import { FileSearch } from "lucide-react";
 import Link from "next/link";
 import { getRequestsAction } from "@/actions/requestActions";
+import SearchAndFilterControls from "@/components/search/SearchAndFilterControls"; // Reusable component
+import type { SearchParams } from "@/lib/types";
 
-export default async function RequestsPage() {
-  const requests: SearchRequest[] = await getRequestsAction(); 
+export default async function RequestsPage({ searchParams }: { searchParams: SearchParams }) {
+  const searchTerm = searchParams?.searchTerm || '';
+
+  const requests = await getRequestsAction({
+    searchTerm: searchTerm,
+    orderBy: searchTerm ? 'relevance' : 'createdAt_desc',
+  });
 
   return (
     <div className="space-y-8">
@@ -24,40 +27,29 @@ export default async function RequestsPage() {
         </Button>
       </section>
 
-      <div className="p-4 bg-card rounded-lg shadow space-y-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-grow">
-            <SearchIconLucide className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input type="search" placeholder="Buscar solicitudes por ubicación, tipo..." className="pl-10 w-full" />
-          </div>
-          <Button variant="outline" className="flex items-center gap-2">
-            <Filter className="h-4 w-4" /> Filtros
-          </Button>
-          <Select defaultValue="latest">
-            <SelectTrigger className="w-full md:w-[180px]">
-              <ListFilter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Ordenar por" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="latest">Más Recientes</SelectItem>
-              <SelectItem value="oldest">Más Antiguos</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <SearchAndFilterControls 
+        searchTarget="requests"
+        initialSearchTerm={searchTerm}
+        showPropertyTypeFilter
+        showCategoryFilter
+        showSortBy
+      />
 
       {requests.length > 0 ? (
-        <div className="space-y-6"> {/* Cambiado de grid a space-y-6 para formato de lista */}
+        <div className="space-y-6">
           {requests.map((request) => (
-            <RequestListItem key={request.id} request={request} /> // Usando RequestListItem
+            <RequestListItem key={request.id} request={request} />
           ))}
         </div>
       ) : (
         <div className="text-center py-12">
-          <FileSearch className="mx-auto h-12 w-12 text-muted-foreground" /> {/* Icono cambiado */}
+          <FileSearch className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-2 text-xl font-semibold">No se Encontraron Solicitudes</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Actualmente no hay solicitudes publicadas. ¡O sé el primero en publicar una!
+            {searchTerm 
+              ? "No se encontraron solicitudes que coincidan con tu búsqueda. Intenta con otros términos."
+              : "Actualmente no hay solicitudes publicadas. ¡O sé el primero en publicar una!"
+            }
           </p>
           <Button className="mt-6" asChild>
             <Link href="/requests/submit">Publicar una Solicitud</Link>
@@ -65,6 +57,7 @@ export default async function RequestsPage() {
         </div>
       )}
 
+      {/* Placeholder for pagination */}
       {requests.length > 10 && ( 
         <div className="flex justify-center mt-8">
           <Button variant="outline" className="mr-2" disabled>Anterior</Button>
