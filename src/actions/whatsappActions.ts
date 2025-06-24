@@ -39,7 +39,7 @@ export async function getWhatsappConversationAction(userId: string): Promise<Act
       FROM whatsapp_messages
       WHERE telefono = ?
       ORDER BY timestamp DESC
-      LIMIT 50
+      LIMIT 5
     `;
     const messages: WhatsAppMessage[] = await query(sql, [user.phone_number]);
 
