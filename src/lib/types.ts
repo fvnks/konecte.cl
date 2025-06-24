@@ -62,6 +62,7 @@ export interface User {
   plan_is_premium_broker?: boolean; 
   plan_automated_alerts_enabled?: boolean;
   plan_advanced_dashboard_access?: boolean;
+  plan_whatsapp_integration_enabled?: boolean;
 
   company_name?: string | null;
   main_operating_region?: string | null;

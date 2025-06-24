@@ -38,11 +38,13 @@ export async function getWhatsappConversationAction(userId: string): Promise<Act
       SELECT id, telefono, text, sender, timestamp, status, sender_id_override
       FROM whatsapp_messages
       WHERE telefono = ?
-      ORDER BY timestamp ASC
+      ORDER BY timestamp DESC
+      LIMIT 50
     `;
     const messages: WhatsAppMessage[] = await query(sql, [user.phone_number]);
 
-    return { success: true, data: messages };
+    // Devolvemos los mensajes en orden cronológico (los más antiguos primero)
+    return { success: true, data: messages.reverse() };
 
   } catch (error) {
     console.error(`[WHATSAPP_ACTION_ERROR] getConversation:`, error);
