@@ -17,7 +17,13 @@ export function getConversation(userPhoneNumber: string): WhatsAppMessage[] {
     return [];
   }
   const conversation = chatHistories[userPhoneNumber] || [];
-  return JSON.parse(JSON.stringify(conversation)); // Deep copy
+  
+  // SOLUCIÓN TEMPORAL: Limitar el historial para evitar crash del navegador.
+  // Esto previene que una conversación larga en memoria colapse el frontend.
+  // La solución a largo plazo es migrar esto a una base de datos con paginación.
+  const limitedConversation = conversation.slice(-50);
+
+  return JSON.parse(JSON.stringify(limitedConversation)); // Deep copy
 }
 
 export function addMessageToConversation(
