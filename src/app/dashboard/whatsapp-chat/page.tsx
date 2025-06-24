@@ -67,10 +67,6 @@ export default function WhatsAppChatPage() {
         return;
     }
     
-    if (status !== 'ready') {
-        setStatus('loading');
-    }
-
     const result = await getWhatsappConversationAction(loggedInUserRef.current.id);
 
     if (result.success && result.data) {
@@ -82,7 +78,7 @@ export default function WhatsAppChatPage() {
       setErrorMessage(result.message || 'Error desconocido.');
       setStatus(result.message?.includes('plan') || result.message?.includes('teléfono') ? 'permission_denied' : 'error');
     }
-  }, [transformToChatMessage, scrollToBottom, status]);
+  }, [transformToChatMessage, scrollToBottom]);
   
   const handleRefresh = () => {
       startRefreshingTransition(async () => {
@@ -96,11 +92,13 @@ export default function WhatsAppChatPage() {
     if (userJson) {
       const user = JSON.parse(userJson);
       loggedInUserRef.current = user;
+      setStatus('loading');
       loadConversation();
     } else {
       setStatus('permission_denied');
       setErrorMessage('Debes iniciar sesión para ver esta página.');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSendMessage = async (e: FormEvent) => {
