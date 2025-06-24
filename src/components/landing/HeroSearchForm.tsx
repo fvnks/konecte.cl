@@ -12,10 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
 import { Search, Tag, Building, Home, FileText } from 'lucide-react';
 import type { PropertyType, ListingCategory } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 // Opciones para los dropdowns
 const propertyTypeOptions: { value: PropertyType; label: string }[] = [
@@ -55,86 +54,92 @@ export default function HeroSearchForm() {
   };
 
   return (
-    <div className="p-4 bg-card/80 backdrop-blur-sm border rounded-xl max-w-4xl mx-auto shadow-lg">
-      <RadioGroup
-        defaultValue="properties"
-        onValueChange={(value: 'properties' | 'requests') => setSearchMode(value)}
-        className="flex items-center space-x-4 mb-4 justify-center"
-      >
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="properties" id="r-properties" />
-          <Label htmlFor="r-properties" className="flex items-center gap-2 text-base cursor-pointer">
-            <Home className="h-5 w-5 text-primary" />
-            Buscar Propiedades
-          </Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="requests" id="r-requests" />
-          <Label htmlFor="r-requests" className="flex items-center gap-2 text-base cursor-pointer">
-            <FileText className="h-5 w-5 text-primary" />
-            Buscar Solicitudes
-          </Label>
-        </div>
-      </RadioGroup>
+    <div className="p-2 bg-card/60 backdrop-blur-lg border rounded-2xl max-w-4xl mx-auto shadow-2xl">
+      {/* Segmented Control */}
+      <div className="flex items-center justify-center p-1 bg-muted rounded-xl">
+        <button
+          onClick={() => setSearchMode('properties')}
+          className={cn(
+            "w-full text-center px-4 py-2 rounded-lg text-sm sm:text-base font-semibold transition-colors duration-200 flex items-center justify-center gap-2",
+            searchMode === 'properties' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-background/50'
+          )}
+        >
+          <Home className="h-5 w-5" />
+          Buscar Propiedades
+        </button>
+        <button
+          onClick={() => setSearchMode('requests')}
+          className={cn(
+            "w-full text-center px-4 py-2 rounded-lg text-sm sm:text-base font-semibold transition-colors duration-200 flex items-center justify-center gap-2",
+            searchMode === 'requests' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-background/50'
+          )}
+        >
+          <FileText className="h-5 w-5" />
+          Buscar Solicitudes
+        </button>
+      </div>
 
+      {/* Unified Search Bar */}
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col sm:flex-row items-center gap-2 p-3 bg-background/50 border-t"
+        className="mt-2 flex flex-col md:flex-row items-center gap-0.5 p-2 bg-background/50 rounded-xl"
       >
-        <Select
-          value={propertyType}
-          onValueChange={(value) => setPropertyType(value as PropertyType)}
-        >
-          <SelectTrigger className="h-12 text-sm w-full sm:w-auto sm:min-w-[120px]">
-            <div className="flex items-center gap-2">
-              <Tag className="h-4 w-4 text-primary/80" />
-              <SelectValue placeholder="Tipo" />
-            </div>
-          </SelectTrigger>
-          <SelectContent>
-            {propertyTypeOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex w-full md:w-auto items-center border-r-0 md:border-r border-border">
+          <Select
+            value={propertyType}
+            onValueChange={(value) => setPropertyType(value as PropertyType)}
+          >
+            <SelectTrigger className="h-14 text-sm w-full md:w-[130px] bg-transparent border-0 rounded-l-lg focus:ring-0">
+              <div className="flex items-center gap-2">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Tipo" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {propertyTypeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select
-          value={category}
-          onValueChange={(value) => setCategory(value as ListingCategory)}
-        >
-          <SelectTrigger className="h-12 text-sm w-full sm:w-auto sm:min-w-[150px]">
-            <div className="flex items-center gap-2">
-              <Building className="h-4 w-4 text-primary/80" />
-              <SelectValue placeholder="Categoría" />
-            </div>
-          </SelectTrigger>
-          <SelectContent>
-            {categoryOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select
+            value={category}
+            onValueChange={(value) => setCategory(value as ListingCategory)}
+          >
+            <SelectTrigger className="h-14 text-sm w-full md:w-[150px] bg-transparent border-0 rounded-r-lg md:rounded-r-none focus:ring-0">
+              <div className="flex items-center gap-2">
+                <Building className="h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Categoría" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {categoryOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="relative w-full flex-grow">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
           <Input
             type="text"
             placeholder="Ingresa comuna o ciudad..."
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            className="h-12 text-sm pl-4"
+            className="h-14 text-base pl-12 bg-transparent border-0 w-full focus:ring-0"
           />
         </div>
 
         <Button
           type="submit"
           size="lg"
-          className="h-12 text-base font-bold w-full sm:w-auto flex items-center gap-2"
+          className="h-14 text-base font-bold w-full md:w-auto rounded-xl md:rounded-l-none"
         >
-          <Search className="h-5 w-5"/>
           Buscar
         </Button>
       </form>
