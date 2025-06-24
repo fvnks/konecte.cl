@@ -20,7 +20,6 @@ const BOT_AVATAR_URL = `https://placehold.co/40x40/64B5F6/FFFFFF.png?text=AI`;
 type PageStatus = 'loading' | 'error' | 'ready' | 'permission_denied';
 
 export default function WhatsAppChatPage() {
-  const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [status, setStatus] = useState<PageStatus>('loading');
@@ -31,6 +30,7 @@ export default function WhatsAppChatPage() {
   
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const loggedInUserRef = useRef<StoredUser | null>(null);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -60,12 +60,21 @@ export default function WhatsAppChatPage() {
     };
   }, []);
 
-  const loadConversation = useCallback(async (user: StoredUser) => {
-    setStatus('loading');
-    const result = await getWhatsappConversationAction(user.id);
+  const loadConversation = useCallback(async () => {
+    if (!loggedInUserRef.current) {
+        setStatus('permission_denied');
+        setErrorMessage('Debes iniciar sesión para ver esta página.');
+        return;
+    }
+    
+    if (status !== 'ready') {
+        setStatus('loading');
+    }
+
+    const result = await getWhatsappConversationAction(loggedInUserRef.current.id);
 
     if (result.success && result.data) {
-      const transformed = result.data.map(m => transformToChatMessage(m, user));
+      const transformed = result.data.map(m => transformToChatMessage(m, loggedInUserRef.current!));
       setMessages(transformed);
       setStatus('ready');
       scrollToBottom();
@@ -73,12 +82,11 @@ export default function WhatsAppChatPage() {
       setErrorMessage(result.message || 'Error desconocido.');
       setStatus(result.message?.includes('plan') || result.message?.includes('teléfono') ? 'permission_denied' : 'error');
     }
-  }, [transformToChatMessage, scrollToBottom]);
+  }, [transformToChatMessage, scrollToBottom, status]);
   
   const handleRefresh = () => {
-      if (!loggedInUser) return;
       startRefreshingTransition(async () => {
-          await loadConversation(loggedInUser);
+          await loadConversation();
           toast({ title: "Conversación actualizada" });
       });
   };
@@ -87,29 +95,30 @@ export default function WhatsAppChatPage() {
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       const user = JSON.parse(userJson);
-      setLoggedInUser(user);
-      loadConversation(user);
+      loggedInUserRef.current = user;
+      loadConversation();
     } else {
       setStatus('permission_denied');
       setErrorMessage('Debes iniciar sesión para ver esta página.');
     }
-  }, [loadConversation]);
+  }, []);
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (!loggedInUser || !newMessage.trim()) return;
+    const currentUser = loggedInUserRef.current;
+    if (!currentUser || !newMessage.trim()) return;
 
     const optimisticMessage: ChatMessage = {
       id: `temp-${Date.now()}`,
-      conversation_id: loggedInUser.phone_number!,
-      sender_id: loggedInUser.id,
+      conversation_id: currentUser.phone_number!,
+      sender_id: currentUser.id,
       receiver_id: BOT_SENDER_ID,
       content: newMessage,
       created_at: new Date().toISOString(),
       sender: {
-        id: loggedInUser.id,
-        name: loggedInUser.name,
-        avatarUrl: loggedInUser.avatarUrl
+        id: currentUser.id,
+        name: currentUser.name,
+        avatarUrl: currentUser.avatarUrl
       }
     };
 
@@ -119,14 +128,13 @@ export default function WhatsAppChatPage() {
     scrollToBottom();
 
     startSendingTransition(async () => {
-      const result = await sendWhatsappMessageAction(loggedInUser.id, messageToSend);
+      const result = await sendWhatsappMessageAction(currentUser.id, messageToSend);
       if (!result.success) {
         toast({ title: 'Error al enviar', description: result.message, variant: 'destructive' });
         setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
         setNewMessage(messageToSend);
       } else {
-        // Opcional: refrescar la conversación para obtener el mensaje real desde la DB
-        await loadConversation(loggedInUser);
+        await loadConversation();
       }
     });
   };
@@ -166,7 +174,7 @@ export default function WhatsAppChatPage() {
             </header>
             <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
               <div className="space-y-4">
-                {messages.map(msg => <ChatMessageItem key={msg.id} message={msg} currentUserId={loggedInUser!.id} />)}
+                {messages.map(msg => <ChatMessageItem key={msg.id} message={msg} currentUserId={loggedInUserRef.current!.id} />)}
               </div>
             </ScrollArea>
             <div className="border-t p-4">
