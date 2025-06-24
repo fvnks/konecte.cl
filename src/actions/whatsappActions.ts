@@ -87,7 +87,26 @@ export async function sendWhatsappMessageAction(senderUserId: string, messageTex
         // 2. Aquí iría la lógica para comunicarse con la API de WhatsApp (Meta)
         // Por ahora, simulamos que la API externa fue llamada exitosamente.
         // En una implementación real, aquí se haría una llamada a `https://graph.facebook.com/...`
-        console.log(`Simulando envío a la API de WhatsApp: De ${user.phone_number} a ${botPhoneNumber}: "${messageText}"`);
+        // console.log(`Simulando envío a la API de WhatsApp: De ${user.phone_number} a ${botPhoneNumber}: "${messageText}"`);
+
+        // Llamada directa al webhook del bot
+        const webhookUrl = 'https://konecte.fedestore.cl/api/webhooks/konecte-incoming';
+        console.log(`[WEB_CHAT] Enviando mensaje al webhook del bot: ${webhookUrl}`);
+        
+        try {
+            await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    source: 'konecte-web',
+                    userId: senderUserId,
+                    messageText: messageText
+                })
+            });
+        } catch (webhookError) {
+            console.error('[WEB_CHAT] Error al llamar al webhook del bot:', webhookError);
+            // No bloqueamos al usuario si el webhook falla, pero lo registramos.
+        }
 
         // 3. Insertar el mensaje saliente en nuestra propia DB para mantener el historial
         const insertSql = `
