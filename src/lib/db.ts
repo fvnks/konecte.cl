@@ -1,4 +1,3 @@
-
 // src/lib/db.ts
 import mysql from 'mysql2/promise';
 import type { Pool, PoolConnection } from 'mysql2/promise';
@@ -43,6 +42,10 @@ function createPool(): Pool {
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE,
+    ssl: {
+      // Required for secure connections, especially with cloud-based databases
+      rejectUnauthorized: true,
+    },
     waitForConnections: true,
     connectionLimit: process.env.MYSQL_CONNECTION_LIMIT ? parseInt(process.env.MYSQL_CONNECTION_LIMIT, 10) : 10,
     queueLimit: 0, // No limit for queued connections
