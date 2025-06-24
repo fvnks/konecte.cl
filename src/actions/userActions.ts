@@ -45,7 +45,6 @@ export async function getUserByIdAction(userId: string): Promise<User | null> {
          u.role_id, r.name as role_name,
          u.plan_id, p.name as plan_name, u.plan_expires_at,
          p.whatsapp_integration as plan_whatsapp_integration_enabled,
-         p.automated_alerts as plan_automated_alerts_enabled,
          u.company_name, u.main_operating_region, u.main_operating_commune,
          u.properties_in_portfolio_count, u.website_social_media_link,
          u.created_at, u.updated_at
@@ -63,7 +62,6 @@ export async function getUserByIdAction(userId: string): Promise<User | null> {
       ...user,
       phone_verified: Number(user.phone_verified) === 1,
       plan_whatsapp_integration_enabled: Number(user.plan_whatsapp_integration_enabled) === 1,
-      plan_automated_alerts_enabled: Number(user.plan_automated_alerts_enabled) === 1,
       created_at: user.created_at ? new Date(user.created_at).toISOString() : undefined,
       updated_at: user.updated_at ? new Date(user.updated_at).toISOString() : undefined,
       plan_expires_at: user.plan_expires_at ? new Date(user.plan_expires_at).toISOString() : null,
