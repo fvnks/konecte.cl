@@ -98,8 +98,7 @@ export default function WhatsAppChatPage() {
       setStatus('permission_denied');
       setErrorMessage('Debes iniciar sesión para ver esta página.');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadConversation]);
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
