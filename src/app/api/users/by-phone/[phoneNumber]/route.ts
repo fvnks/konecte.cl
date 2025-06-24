@@ -2,81 +2,47 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { users, plans, roles, permissions } from '@/lib/db/schema';
+import { query } from '@/lib/db';
+import type { User } from '@/lib/types';
+
+interface UserWithPlan extends User {
+    plan_whatsapp_integration_enabled?: boolean;
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { phoneNumber: string } }
 ) {
+  const phoneNumber = params.phoneNumber;
+
+  if (!phoneNumber) {
+    return NextResponse.json({ success: false, reason: 'Número de teléfono no proporcionado.' }, { status: 400 });
+  }
+
   try {
-    const phoneNumber = params.phoneNumber;
-
-    if (!phoneNumber) {
-      return NextResponse.json(
-        { error: 'Phone number is required' },
-        { status: 400 }
-      );
-    }
-
-    // 1. Find the user by phone number
-    const userResult = await db
-      .select({
-        id: users.id,
-        roleId: users.roleId,
-        planId: users.planId,
-        isActive: users.isActive,
-      })
-      .from(users)
-      .where(eq(users.phone, phoneNumber))
-      .limit(1);
-
-    const user = userResult[0];
-
-    if (!user || !user.isActive) {
-      return NextResponse.json(
-        { hasWhatsAppAccess: false, reason: 'User not found or is inactive' },
-        { status: 404 }
-      );
-    }
-
-    // 2. Get the user's plan details to check for WhatsApp permission
-    if (!user.planId) {
-        return NextResponse.json(
-            { hasWhatsAppAccess: false, reason: 'User does not have an active plan' },
-            { status: 403 }
-        );
-    }
+    const sql = `
+      SELECT u.*, p.whatsapp_integration as plan_whatsapp_integration_enabled
+      FROM users u
+      LEFT JOIN plans p ON u.plan_id = p.id
+      WHERE u.phone_number = ?
+    `;
     
-    const planResult = await db
-        .select({
-            whatsAppIntegration: plans.whatsAppIntegration
-        })
-        .from(plans)
-        .where(eq(plans.id, user.planId))
-        .limit(1);
+    const users: UserWithPlan[] = await query(sql, [phoneNumber]);
 
-    const plan = planResult[0];
-
-    if (!plan) {
-        return NextResponse.json(
-            { hasWhatsAppAccess: false, reason: 'Plan not found for user' },
-            { status: 404 }
-        );
+    if (users.length === 0) {
+      return NextResponse.json({ success: false, hasWhatsAppAccess: false, reason: 'Usuario no encontrado con ese número de teléfono.' }, { status: 404 });
     }
 
-    const hasWhatsAppAccess = plan.whatsAppIntegration === true;
+    const user = users[0];
 
-    return NextResponse.json({
-      userId: user.id,
-      roleId: user.roleId,
-      planId: user.planId,
-      hasWhatsAppAccess: hasWhatsAppAccess,
-    });
-    
+    if (user.plan_whatsapp_integration_enabled) {
+      return NextResponse.json({ success: true, hasWhatsAppAccess: true, userId: user.id });
+    } else {
+      return NextResponse.json({ success: false, hasWhatsAppAccess: false, reason: 'El plan del usuario no incluye acceso a WhatsApp.' }, { status: 403 });
+    }
+
   } catch (error) {
-    console.error('[API_USER_BY_PHONE] Error fetching user by phone number:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
+    console.error(`[API_USER_BY_PHONE] Error al verificar el usuario ${phoneNumber}:`, error);
+    return NextResponse.json({ success: false, reason: 'Error interno del servidor al verificar permisos.' }, { status: 500 });
   }
 } 
