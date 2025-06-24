@@ -19,7 +19,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { adminUpdateRequestAction } from '@/actions/requestActions';
 import type { PropertyType, ListingCategory, SearchRequest, RequestFormValues } from "@/lib/types"; // Import RequestFormValues
-import { requestFormSchema, chileanRegions } from "@/lib/types"; // Import requestFormSchema and regions
+import { requestFormSchema } from "@/lib/types"; // Import requestFormSchema
+import { chileanRegions } from "@/lib/data"; // Import regions from data
 import { Loader2, Save, Handshake } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from 'react';

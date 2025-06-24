@@ -1,6 +1,7 @@
 // src/lib/db.ts
 import mysql from 'mysql2/promise';
 import type { Pool, PoolConnection } from 'mysql2/promise';
+import { drizzle } from 'drizzle-orm/mysql2';
 // dotenv.config() is removed as Next.js handles .env files automatically.
 
 let pool: Pool | undefined; // Allow pool to be undefined initially
@@ -42,10 +43,6 @@ function createPool(): Pool {
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE,
-    ssl: {
-      // Required for secure connections, especially with cloud-based databases
-      rejectUnauthorized: true,
-    },
     waitForConnections: true,
     connectionLimit: process.env.MYSQL_CONNECTION_LIMIT ? parseInt(process.env.MYSQL_CONNECTION_LIMIT, 10) : 10,
     queueLimit: 0, // No limit for queued connections
@@ -102,6 +99,9 @@ export function getDbPool(): Pool {
   }
   return pool;
 }
+
+// Export the Drizzle instance
+export const db = drizzle(getDbPool());
 
 export async function query(sql: string, params?: any[]): Promise<any> {
   const queryId = Math.random().toString(36).substring(2, 7);

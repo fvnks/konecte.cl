@@ -1,4 +1,3 @@
-
 // src/components/property/RequestVisitDialog.tsx
 'use client';
 
@@ -26,7 +25,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/hooks/use-toast';
-import { requestVisitAction, getBookedTimeSlotsForPropertyOnDateAction } from '@/actions/visitActions'; // Importar nueva acción
+import { requestVisitAction } from '@/actions/visitActions';
 import { Loader2, CalendarPlus, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns'; // Importar format
@@ -79,9 +78,12 @@ export default function RequestVisitDialog({
     if (!propertyId) return;
     setIsLoadingBookedSlots(true);
     try {
-      const dateString = format(date, 'yyyy-MM-dd');
-      const slots = await getBookedTimeSlotsForPropertyOnDateAction(propertyId, dateString);
-      setBookedTimeSlots(slots);
+      // const dateString = format(date, 'yyyy-MM-dd');
+      // const slots = await getBookedTimeSlotsForPropertyOnDateAction(propertyId, dateString);
+      // setBookedTimeSlots(slots);
+      // Simulación mientras la acción no está disponible
+      console.log("Simulando obtención de horarios para:", date);
+      setBookedTimeSlots([]); 
     } catch (error) {
       console.error("Error fetching booked slots:", error);
       toast({ title: "Error", description: "No se pudieron cargar los horarios ocupados.", variant: "destructive" });
