@@ -33,24 +33,18 @@ export async function getWhatsappConversationAction(userId: string): Promise<Act
         return { success: false, message: 'Debes tener un número de teléfono verificado en tu perfil.' };
     }
 
-    // Temporalmente deshabilitado para prevenir el crash del navegador.
-    // El problema parece estar en el frontend al procesar y renderizar los datos de los mensajes.
-    return { success: true, data: [] };
-
-    /* CÓDIGO ORIGINAL COMENTADO
     // 2. Obtener la conversación de la base de datos
     const sql = `
       SELECT id, telefono, text, sender, timestamp, status, sender_id_override
       FROM whatsapp_messages
       WHERE telefono = ?
       ORDER BY timestamp DESC
-      LIMIT 5
+      LIMIT 50
     `;
     const messages: WhatsAppMessage[] = await query(sql, [user.phone_number]);
 
     // Devolvemos los mensajes en orden cronológico (los más antiguos primero)
     return { success: true, data: messages.reverse() };
-    */
 
   } catch (error) {
     console.error(`[WHATSAPP_ACTION_ERROR] getConversation:`, error);
