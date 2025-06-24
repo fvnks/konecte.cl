@@ -53,22 +53,6 @@ function AIMatchingSection() {
       </CardHeader>
       <CardContent className="p-6 md:p-8 pt-0 md:pt-0">
         <InteractiveAIMatching />
-        <div className="mt-8 text-sm text-muted-foreground space-y-3 pt-6 border-t border-border/70">
-          <p className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
-            <LinkIcon className="h-4 w-4 text-primary flex-shrink-0" />
-            <strong>¿Buscas propiedades para una solicitud ya publicada?</strong>
-            <Button variant="link" asChild className="p-0 h-auto text-sm text-left">
-              <Link href="/ai-matching">Usa la herramienta de búsqueda de propiedades para solicitudes (IA)</Link>
-            </Button>
-          </p>
-          <p className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
-            <LinkIcon className="h-4 w-4 text-primary flex-shrink-0" />
-            <strong>¿Tienes una propiedad y buscas solicitudes compatibles?</strong>
-            <Button variant="link" asChild className="p-0 h-auto text-sm text-left">
-              <Link href="/ai-matching">Prueba la búsqueda de solicitudes para propiedades (IA)</Link>
-            </Button>
-          </p>
-        </div>
       </CardContent>
     </Card>
   );
