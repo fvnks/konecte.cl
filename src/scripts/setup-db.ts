@@ -1,5 +1,3 @@
-
-
 // scripts/setup-db.ts
 import mysql, { type Pool, type PoolOptions } from 'mysql2/promise';
 import readline from 'readline/promises';
@@ -60,13 +58,20 @@ const SQL_STATEMENTS: string[] = [
     is_active BOOLEAN DEFAULT TRUE,
     is_publicly_visible BOOLEAN DEFAULT TRUE,
     is_enterprise_plan BOOLEAN DEFAULT FALSE,
+    whatsapp_integration BOOLEAN NOT NULL DEFAULT FALSE,
+    can_view_contact_info BOOLEAN NOT NULL DEFAULT FALSE,
+    can_use_ai_assistant BOOLEAN NOT NULL DEFAULT FALSE,
+    max_requests_per_month INT DEFAULT NULL,
+    automated_alerts BOOLEAN NOT NULL DEFAULT FALSE,
+    max_alerts_per_month INT DEFAULT NULL,
+    dashboard_analytics_access BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   );`,
-  `INSERT IGNORE INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, can_feature_properties, can_view_contact_data, manual_searches_daily_limit, automated_alerts_enabled, max_ai_searches_monthly, advanced_dashboard_access, daily_profile_views_limit, weekly_matches_reveal_limit, is_active, is_publicly_visible, is_enterprise_plan) VALUES
-    ('${randomUUID()}', 'Gratis Corredor', 'Publicación gratuita de propiedades y solicitudes. Sin acceso a datos de contacto de personas naturales y funcionalidades limitadas.', 0.00, 5, 5, 30, FALSE, FALSE, 5, FALSE, 0, FALSE, 20, 5, TRUE, TRUE, FALSE),
-    ('${randomUUID()}', 'PRO Corredor', 'Ideal para corredores que inician. Acceso limitado a datos y búsquedas.', 14900.00, 20, 20, 60, TRUE, TRUE, 50, FALSE, 10, FALSE, 100, 20, TRUE, TRUE, FALSE),
-    ('${randomUUID()}', 'PREMIUM Corredor', 'Funcionalidad completa, alertas IA y panel avanzado para corredores activos.', 24900.00, NULL, NULL, 90, TRUE, TRUE, NULL, TRUE, 50, TRUE, NULL, 100, TRUE, TRUE, FALSE);`,
+  `INSERT IGNORE INTO plans (id, name, description, price_monthly, max_properties_allowed, max_requests_allowed, property_listing_duration_days, can_feature_properties, can_view_contact_data, manual_searches_daily_limit, automated_alerts_enabled, max_ai_searches_monthly, advanced_dashboard_access, daily_profile_views_limit, weekly_matches_reveal_limit, is_active, is_publicly_visible, is_enterprise_plan, whatsapp_integration, can_view_contact_info, can_use_ai_assistant, max_requests_per_month, automated_alerts, max_alerts_per_month, dashboard_analytics_access) VALUES
+    ('${randomUUID()}', 'Gratis Corredor', 'Publicación gratuita de propiedades y solicitudes. Sin acceso a datos de contacto de personas naturales y funcionalidades limitadas.', 0.00, 5, 5, 30, FALSE, FALSE, 5, FALSE, 0, FALSE, 20, 5, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, NULL, FALSE, NULL, FALSE),
+    ('${randomUUID()}', 'PRO Corredor', 'Ideal para corredores que inician. Acceso limitado a datos y búsquedas.', 14900.00, 20, 20, 60, TRUE, TRUE, 50, FALSE, 10, FALSE, 100, 20, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, NULL, FALSE, NULL, FALSE),
+    ('${randomUUID()}', 'PREMIUM Corredor', 'Funcionalidad completa, alertas IA y panel avanzado para corredores activos.', 24900.00, NULL, NULL, 90, TRUE, TRUE, NULL, TRUE, 50, TRUE, NULL, 100, TRUE, TRUE, TRUE, TRUE, TRUE, 50, TRUE, NULL, 100, TRUE, FALSE);`,
 
   // users
   `ALTER TABLE users MODIFY COLUMN phone_number VARCHAR(50) NOT NULL COMMENT 'Teléfono de contacto general o WhatsApp. Requerido por la aplicación.';`,

@@ -26,7 +26,7 @@ export async function getWhatsappConversationAction(userId: string): Promise<Act
     if (!user) {
       return { success: false, message: 'Usuario no encontrado.' };
     }
-    if (!user.plan_automated_alerts_enabled) {
+    if (user.plan_whatsapp_integration_enabled !== true) {
       return { success: false, message: 'Tu plan actual no incluye acceso al chat de WhatsApp.' };
     }
     if (!user.phone_number) {
@@ -69,7 +69,7 @@ export async function sendWhatsappMessageAction(senderUserId: string, messageTex
         if (!user) {
             return { success: false, message: 'Usuario no encontrado.' };
         }
-        if (!user.plan_automated_alerts_enabled) {
+        if (user.plan_whatsapp_integration_enabled !== true) {
             return { success: false, message: 'Tu plan no te permite enviar mensajes.' };
         }
         if (!user.phone_number) {
