@@ -1,4 +1,3 @@
-
 // src/app/page.tsx
 'use client'; 
 
@@ -345,14 +344,18 @@ export default function HomePage() {
       <section className="text-center py-16 md:py-24 lg:py-32 bg-card rounded-3xl shadow-2xl overflow-hidden relative border">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-60"></div>
         <div className="container mx-auto px-4 relative z-10">
-          <h1 className="text-4xl font-headline font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl !leading-tight text-foreground">
-            {heroTitle}
-          </h1>
-          <p className="mt-6 max-w-xl mx-auto text-lg text-muted-foreground sm:text-xl md:mt-8 md:text-2xl md:max-w-3xl">
-            {heroSubtitle}
-          </p>
-          
-          <HeroSearchForm />
+          <div className="text-center">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold font-headline tracking-tight">
+              {heroTitle}
+            </h1>
+            <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto">
+              {heroSubtitle}
+            </p>
+          </div>
+
+          <div className="mt-12">
+            <HeroSearchForm />
+          </div>
 
           <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
             <Button size="lg" variant="default" asChild className="w-full sm:w-auto rounded-xl text-base sm:text-lg h-16 px-8 sm:px-10 shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 bg-accent hover:bg-accent/90 text-accent-foreground">
