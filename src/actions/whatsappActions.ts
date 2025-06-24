@@ -126,4 +126,35 @@ export async function sendWhatsappMessageAction(senderUserId: string, messageTex
         console.error(`[WHATSAPP_ACTION_ERROR] sendMessage:`, error);
         return { success: false, message: 'Ocurrió un error en el servidor al enviar el mensaje.' };
     }
+}
+
+/**
+ * Elimina toda la conversación de WhatsApp para un usuario específico.
+ * @param userId - El ID del usuario cuya conversación será eliminada.
+ */
+export async function deleteWhatsappConversationAction(userId: string): Promise<ActionResult<{ deletedCount: number }>> {
+    if (!userId) {
+        return { success: false, message: 'ID de usuario no proporcionado.' };
+    }
+
+    try {
+        // 1. Obtener el número de teléfono del usuario para asegurar que solo borramos sus mensajes.
+        const user = await getUserByIdAction(userId);
+        if (!user?.phone_number) {
+            return { success: false, message: 'Usuario o número de teléfono no encontrado.' };
+        }
+
+        // 2. Ejecutar la sentencia DELETE
+        const sql = 'DELETE FROM whatsapp_messages WHERE telefono = ?';
+        const result: any = await query(sql, [user.phone_number]);
+
+        const deletedCount = result.affectedRows || 0;
+        console.log(`[WHATSAPP_ACTION] Conversación eliminada para el usuario ${userId} (teléfono: ${user.phone_number}). Mensajes eliminados: ${deletedCount}`);
+
+        return { success: true, data: { deletedCount } };
+
+    } catch (error) {
+        console.error(`[WHATSAPP_ACTION_ERROR] deleteConversation:`, error);
+        return { success: false, message: 'Ocurrió un error en el servidor al eliminar la conversación.' };
+    }
 } 

@@ -4,7 +4,7 @@
 import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, Handshake, Bot, ListTree, Sparkles } from 'lucide-react';
+import { Home, LayoutDashboard, UserCircle, MessageSquare, Users, Edit, Handshake, Bot, ListTree, Sparkles, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
@@ -81,25 +81,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             return; 
         }
 
-        const brokerItem = { href: '/dashboard/broker/open-requests', label: 'Canje Clientes', icon: <Handshake /> };
-        const hasBrokerItem = newNavItemsList.some(item => item.href === brokerItem.href);
-        if (parsedUser.role_id === 'broker' && !hasBrokerItem) {
-          const myListingIndex = newNavItemsList.findIndex(item => item.href === '/dashboard/my-listings');
-          if (myListingIndex !== -1) {
-            newNavItemsList.splice(myListingIndex + 1, 0, brokerItem);
-          } else {
-             const messagesIndex = newNavItemsList.findIndex(item => item.href === '/dashboard/messages');
-             if (messagesIndex !== -1) {
-                newNavItemsList.splice(messagesIndex, 0, brokerItem);
-             } else {
-                newNavItemsList.push(brokerItem); 
-             }
-          }
-        }
-
+        const myVisitsItem = { href: '/dashboard/visits', label: 'Mis Visitas', icon: <CalendarClock /> };
+        const crmItem = { href: '/dashboard/crm', label: 'CRM', icon: <Users /> };
+        const messagesItem = { href: '/dashboard/messages', label: 'Mensajes', icon: <MessageSquare /> };
         const chatWhatsAppItem = { href: '/dashboard/whatsapp-chat', label: 'Chat WhatsApp', icon: <Bot /> };
-        let hasWhatsAppItem = newNavItemsList.some(item => item.href === chatWhatsAppItem.href);
-        
+
         let userHasWhatsAppPermission = parsedUser.plan_automated_alerts_enabled === true;
         
         if (parsedUser.plan_automated_alerts_enabled === undefined && parsedUser.plan_id && parsedUser.phone_number) {
@@ -113,14 +99,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           }
         }
         
-        if (userHasWhatsAppPermission && !hasWhatsAppItem) {
+        if (userHasWhatsAppPermission) {
             const visitsIndex = newNavItemsList.findIndex(item => item.href === '/dashboard/visits');
             if (visitsIndex !== -1) {
                  newNavItemsList.splice(visitsIndex + 1, 0, chatWhatsAppItem);
             } else {
                  newNavItemsList.push(chatWhatsAppItem);
             }
-        } else if (!userHasWhatsAppPermission && hasWhatsAppItem) {
+        } else if (!userHasWhatsAppPermission) {
             newNavItemsList = newNavItemsList.filter(item => item.href !== chatWhatsAppItem.href);
         }
 
@@ -202,6 +188,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </Link>
         </div>
         
+        {currentUser && (
+            <Link href="/profile" className="block p-2 rounded-lg hover:bg-muted transition-colors">
+                <StyledUserProfileWidget userName={userName} userRole={currentUser.role_id} />
+            </Link>
+        )}
+
         <Separator />
 
         <nav className="flex-grow space-y-1.5">
@@ -232,11 +224,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <Separator />
         
         <div className="mt-auto space-y-4">
-            {currentUser && (
-                <StyledUserProfileWidget userName={userName} userRole={currentUser.role_id} />
-            )}
-          <StyledLogoutButton onClick={handleLogout} />
-          <AnimatedLetterButton href="/profile" text="MI PERFIL" />
+            {/* Botones movidos a page.tsx */}
         </div>
       </aside>
       

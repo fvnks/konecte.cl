@@ -13,6 +13,8 @@ import { getUserPropertiesAction } from '@/actions/propertyActions';
 import { getUserRequestsAction } from '@/actions/requestActions';
 import { getUserTotalPropertyViewsAction, getUserTotalPropertyInquiriesAction } from '@/actions/leadTrackingActions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import StyledLogoutButton from '@/components/ui/StyledLogoutButton';
+import AnimatedLetterButton from '@/components/ui/AnimatedLetterButton';
 
 interface DashboardUser extends StoredUserType {
   planId?: string | null;
@@ -78,8 +80,6 @@ const DashboardActionCard = ({ title, description, href, icon, cta, colorClass }
 
 export default function DashboardPage() {
   const [loggedInUser, setLoggedInUser] = useState<DashboardUser | null>(null);
-  const [userProperties, setUserProperties] = useState<PropertyListing[]>([]);
-  const [userRequests, setUserRequests] = useState<SearchRequest[]>([]);
   
   const [userTotalProperties, setUserTotalProperties] = useState(0);
   const [userTotalRequests, setUserTotalRequests] = useState(0);
@@ -116,8 +116,6 @@ export default function DashboardPage() {
               getUserTotalPropertyViewsAction(loggedInUser.id),
               getUserTotalPropertyInquiriesAction(loggedInUser.id)
             ]);
-            setUserProperties(properties);
-            setUserRequests(requests);
             setUserTotalProperties(properties.length);
             setUserTotalRequests(requests.length);
             setUserTotalPropertyViews(views);
@@ -131,8 +129,6 @@ export default function DashboardPage() {
       } else if (isClient && localStorage.getItem('loggedInUser') === null) {
         setIsLoading(false);
         setIsLoadingStats(false);
-        setUserProperties([]);
-        setUserRequests([]);
       }
     }
     if (isClient) {
@@ -180,20 +176,30 @@ export default function DashboardPage() {
                 <CardDescription className="text-base md:text-lg text-muted-foreground mt-1.5">Bienvenido a tu centro de control en konecte.</CardDescription>
               </div>
             </div>
-            {loggedInUser && (
-                 <div className="text-sm bg-card p-4 rounded-lg shadow-sm border text-right sm:text-left min-w-[220px] self-start sm:self-center">
-                    <p className="font-semibold text-foreground mb-0.5">Tu Plan Actual:</p>
-                    <p className="text-primary font-medium flex items-center sm:items-start md:items-center gap-1.5 text-lg">
-                        <CreditCard className="h-5 w-5 mt-0.5" />
-                        {loggedInUser.planName || "Básico"}
-                    </p>
-                    <Button variant="link" size="sm" className="p-0 h-auto mt-1 text-xs text-accent hover:text-accent/80" asChild>
-                        <Link href="/profile">
-                            {loggedInUser.planName ? "Gestionar Plan" : "Ver Planes"} <ArrowRight className="h-3 w-3 ml-1"/>
-                        </Link>
-                    </Button>
+            <div className="flex flex-col sm:flex-row-reverse items-center gap-4 self-start sm:self-center">
+                {loggedInUser && (
+                     <div className="text-sm bg-card p-4 rounded-lg shadow-sm border text-left min-w-[220px] w-full sm:w-auto">
+                        <p className="font-semibold text-foreground mb-0.5">Tu Plan Actual:</p>
+                        <p className="text-primary font-medium flex items-center gap-1.5 text-lg">
+                            <CreditCard className="h-5 w-5 mt-0.5" />
+                            {loggedInUser.planName || "Básico"}
+                        </p>
+                        <Button variant="link" size="sm" className="p-0 h-auto mt-1 text-xs text-accent hover:text-accent/80" asChild>
+                            <Link href="/profile">
+                                {loggedInUser.planName ? "Gestionar Plan" : "Ver Planes"} <ArrowRight className="h-3 w-3 ml-1"/>
+                            </Link>
+                        </Button>
+                    </div>
+                )}
+                <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
+                    <StyledLogoutButton onClick={() => {
+                      localStorage.removeItem('loggedInUser');
+                      window.dispatchEvent(new Event('userSessionChanged'));
+                      // Idealmente, usar el router de Next para navegar
+                      window.location.href = '/';
+                    }} />
                 </div>
-            )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-6 md:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -265,77 +271,6 @@ export default function DashboardPage() {
             </div>
         </CardContent>
       </Card>
-
-
-      {(!isLoading && loggedInUser) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10">
-          <Card className="rounded-xl shadow-lg border">
-            <CardHeader className="p-6 md:p-8">
-              <CardTitle className="text-2xl font-headline flex items-center gap-3">
-                <ListTree className="h-7 w-7 text-primary" /> Mis Propiedades ({userProperties.length})
-              </CardTitle>
-              <CardDescription>Gestiona las propiedades que has listado.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 md:p-8 pt-0 space-y-6">
-              {userProperties.length > 0 ? (
-                userProperties.slice(0,2).map(property => (
-                  <PropertyListItem key={property.id} property={property} />
-                ))
-              ) : (
-                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                  <Briefcase className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p className="text-lg">Aún no has publicado ninguna propiedad.</p>
-                  <Button asChild variant="link" className="mt-2 text-primary">
-                    <Link href="/properties/submit">¡Publica tu primera propiedad!</Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-             {userProperties.length > 0 && (
-               <CardFooter className="p-6 md:p-8 pt-0">
-                  <Button variant="outline" className="w-full rounded-md" asChild>
-                      {/* Actualizar este enlace si se crea una página específica para "Mis Propiedades" */}
-                      <Link href="/dashboard/my-listings" className="flex items-center gap-2">Ver todas mis propiedades <ArrowRight className="h-4 w-4"/></Link>
-                  </Button>
-              </CardFooter>
-             )}
-          </Card>
-
-          <Card className="rounded-xl shadow-lg border">
-            <CardHeader className="p-6 md:p-8">
-              <CardTitle className="text-2xl font-headline flex items-center gap-3">
-                <SearchCheck className="h-7 w-7 text-primary" /> Mis Solicitudes ({userRequests.length})
-              </CardTitle>
-              <CardDescription>Revisa tus solicitudes de búsqueda de propiedades.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 md:p-8 pt-0 space-y-6">
-              {userRequests.length > 0 ? (
-                 <div className="space-y-6">
-                  {userRequests.slice(0,2).map(request => (
-                    <RequestListItem key={request.id} request={request} />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                  <SearchCheck className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p className="text-lg">No tienes solicitudes de propiedad activas.</p>
-                   <Button asChild variant="link" className="mt-2 text-primary">
-                    <Link href="/requests/submit">¡Crea tu primera solicitud!</Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-             {userRequests.length > 0 && (
-              <CardFooter className="p-6 md:p-8 pt-0">
-                  <Button variant="outline" className="w-full rounded-md" asChild>
-                       {/* Actualizar este enlace si se crea una página específica para "Mis Solicitudes" */}
-                      <Link href="/dashboard/my-listings" className="flex items-center gap-2">Ver todas mis solicitudes <ArrowRight className="h-4 w-4"/></Link>
-                  </Button>
-              </CardFooter>
-             )}
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

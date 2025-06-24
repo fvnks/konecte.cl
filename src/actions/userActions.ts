@@ -44,7 +44,7 @@ export async function getUserByIdAction(userId: string): Promise<User | null> {
          u.rut_tin, u.phone_number, u.phone_verified,
          u.role_id, r.name as role_name,
          u.plan_id, p.name as plan_name, u.plan_expires_at,
-         p.whatsapp_integration as plan_whatsapp_integration_enabled,
+         p.automated_alerts_enabled as plan_whatsapp_integration_enabled,
          u.company_name, u.main_operating_region, u.main_operating_commune,
          u.properties_in_portfolio_count, u.website_social_media_link,
          u.created_at, u.updated_at
