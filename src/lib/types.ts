@@ -1,4 +1,3 @@
-
 // src/lib/types.ts
 import { z } from 'zod';
 import type { AppPermission } from './permissions'; // Import AppPermission
@@ -583,8 +582,8 @@ export const PropertyVisitStatusLabels: Record<PropertyVisitStatus, string> = {
 export interface PropertyVisit {
   id: string;
   property_id: string;
-  visitor_user_id: string;
-  property_owner_user_id: string;
+  visitor_id: string;
+  owner_id: string;
   proposed_datetime: string;
   confirmed_datetime?: string | null;
   status: PropertyVisitStatus;
@@ -593,6 +592,7 @@ export interface PropertyVisit {
   cancellation_reason?: string | null;
   created_at: string;
   updated_at: string;
+  created_by_admin?: boolean;
   property_title?: string;
   property_slug?: string;
   visitor_name?: string;
@@ -602,33 +602,21 @@ export interface PropertyVisit {
 }
 
 export const requestVisitFormSchema = z.object({
-  proposed_datetime: z.string().refine((date) => date && !isNaN(Date.parse(date)), {
-    message: "La fecha y hora propuestas son inválidas o no han sido seleccionadas.",
-  }),
-  visitor_notes: z.string().max(1000, "Las notas no pueden exceder los 1000 caracteres.").optional().or(z.literal('')),
+  propertyId: z.string().uuid(),
+  userId: z.string().uuid(),
+  ownerId: z.string().uuid(),
+  proposedDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Fecha inválida" }),
+  proposedTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido (HH:mm)"),
+  visitorNotes: z.string().max(500, "Las notas no pueden exceder los 500 caracteres.").optional(),
 });
 export type RequestVisitFormValues = z.infer<typeof requestVisitFormSchema>;
 
-export type PropertyVisitAction =
-  | 'confirm_original_proposal' 
-  | 'reschedule_proposal'       
-  | 'cancel_pending_request'    
-  | 'cancel_confirmed_visit'    
-  | 'mark_completed'            
-  | 'mark_visitor_no_show'      
-  | 'mark_owner_no_show'        
-  | 'accept_owner_reschedule'   
-  | 'reject_owner_reschedule'   
-  | 'cancel_own_request';       
-
 export const updateVisitStatusFormSchema = z.object({
-  new_status: z.enum(propertyVisitStatusValues, { required_error: "El nuevo estado es requerido." }),
-  confirmed_datetime: z.string().optional().nullable().refine(
-    (date) => date === null || date === undefined || date === '' || !isNaN(Date.parse(date)), {
-    message: "La fecha confirmada es inválida si se proporciona.",
-  }),
-  owner_notes: z.string().max(1000).optional().or(z.literal('')),
-  cancellation_reason: z.string().max(500).optional().or(z.literal('')),
+    visitId: z.string().uuid(),
+    newStatus: z.enum(propertyVisitStatusValues),
+    userRole: z.enum(['visitor', 'owner']),
+    notes: z.string().max(500).optional(),
+    confirmed_datetime: z.date().optional().nullable(),
 });
 export type UpdateVisitStatusFormValues = z.infer<typeof updateVisitStatusFormSchema>;
 
@@ -833,3 +821,12 @@ export interface AIMatch {
   request_title?: string;
   request_slug?: string;
 }
+
+// Esquema para el formulario de agendamiento de visitas por parte de un administrador
+export const adminScheduleVisitFormSchema = z.object({
+  userId: z.string().uuid("ID de usuario inválido"),
+  propertyId: z.string().uuid("ID de propiedad inválido"),
+  visitDate: z.date({ required_error: "La fecha es requerida." }),
+  visitTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato de hora inválido (HH:mm)"),
+});
+export type AdminScheduleVisitFormValues = z.infer<typeof adminScheduleVisitFormSchema>;

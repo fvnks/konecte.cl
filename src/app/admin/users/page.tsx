@@ -13,7 +13,7 @@ import type { User, Role, Plan } from "@/lib/types";
 import { getUsersAction, updateUserRoleAction, updateUserPlanAction, adminDeleteUserAction, adminVerifyUserPhoneAction } from '@/actions/userActions';
 import { getRolesAction } from '@/actions/roleActions';
 import { getPlansAction } from '@/actions/planActions';
-import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon, Trash2, Edit, ShieldCheck as ShieldCheckIcon, AlertTriangle, MoreHorizontal } from 'lucide-react';
+import { PlusCircle, Users, Loader2, ShieldAlert, CreditCard, Contact as ContactIcon, Trash2, Edit, ShieldCheck as ShieldCheckIcon, AlertTriangle, MoreHorizontal, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AdminCreateUserDialog from '@/components/admin/users/AdminCreateUserDialog';
 import {
@@ -34,6 +34,8 @@ import {
     DropdownMenuTrigger, 
     DropdownMenuSeparator 
 } from '@/components/ui/dropdown-menu';
+import { Input } from "@/components/ui/input";
+import { searchUsersAction } from '@/actions/userActions';
 
 interface LoggedInAdmin {
   id: string;
@@ -61,6 +63,9 @@ export default function AdminUsersPage() {
   const [userToVerify, setUserToVerify] = useState<User | null>(null);
   const [loggedInAdmin, setLoggedInAdmin] = useState<LoggedInAdmin | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<User[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -192,6 +197,25 @@ export default function AdminUsersPage() {
     });
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+
+    if (term.trim().length === 0) {
+      setSearchResults(null); // Limpiar resultados si la búsqueda está vacía
+      return;
+    }
+
+    if (term.trim().length >= 2) {
+      startTransition(async () => {
+        setIsSearching(true);
+        const results = await searchUsersAction(term);
+        setSearchResults(results);
+        setIsSearching(false);
+      });
+    }
+  };
+
   if (isLoadingData && users.length === 0 && isClient) { // Show loader only if client and initial load
      return (
       <div className="flex justify-center items-center h-full">
@@ -203,25 +227,40 @@ export default function AdminUsersPage() {
 
   const activePlans = plans.filter(plan => plan.is_active);
 
+  const usersToDisplay = searchResults !== null ? searchResults : users;
+
   return (
     <div className="w-full space-y-6">
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex-1">
             <CardTitle className="text-2xl font-headline flex items-center">
               <Users className="h-6 w-6 mr-2 text-primary" /> Gestión de Usuarios
             </CardTitle>
-            <CardDescription>Administra los usuarios, sus roles y planes en la plataforma.</CardDescription>
+            <CardDescription>Busca, administra y asigna roles o planes a los usuarios de la plataforma.</CardDescription>
+            
+            <div className="relative mt-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Buscar por nombre o email..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="w-full max-w-sm pl-10"
+                disabled={isLoadingData && !searchTerm}
+              />
+            </div>
           </div>
           <AdminCreateUserDialog roles={roles} plans={activePlans} onUserCreated={handleUserCreated}>
-            <Button disabled={isLoadingData || roles.length === 0 || !loggedInAdmin}>
-              <PlusCircle className="h-4 w-4 mr-2" /> Añadir Nuevo Usuario
+            <Button disabled={isLoadingData || roles.length === 0 || !loggedInAdmin} className="mt-2 sm:mt-0">
+              <PlusCircle className="h-4 w-4 mr-2" /> Añadir Usuario
             </Button>
           </AdminCreateUserDialog>
         </CardHeader>
         <CardContent>
-          {isLoadingData && users.length > 0 && <p className="text-sm text-muted-foreground mb-2">Actualizando lista de usuarios...</p>}
-          {users.length > 0 ? (
+          {isSearching ? (
+            <div className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /><p className="mt-2">Buscando...</p></div>
+          ) : usersToDisplay.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -237,7 +276,7 @@ export default function AdminUsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => (
+                  {usersToDisplay.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex items-center gap-2 max-w-[200px]">
@@ -248,125 +287,80 @@ export default function AdminUsersPage() {
                           <span className="font-medium text-sm truncate" title={user.name}>{user.name}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate" title={user.email}>
-                        {user.email}
+                      <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate" title={user.email}>{user.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleBadgeVariant(user.role_id)} className="capitalize text-xs">{user.role_name || user.role_id}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role_id)} className="capitalize text-xs">
-                          {user.role_name || user.role_id}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                         <div className="flex items-center">
+                        <div className="flex items-center">
                           {roles.length > 0 ? (
-                              <Select
+                            <Select
                               value={user.role_id}
                               onValueChange={(newRole: string) => handleRoleChange(user.id, newRole)}
                               disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id}
-                              >
+                            >
                               <SelectTrigger className="w-full max-w-[140px] h-9 text-xs">
-                                  <ShieldAlert className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
-                                  <SelectValue placeholder="Seleccionar rol" />
+                                <ShieldAlert className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+                                <SelectValue placeholder="Seleccionar rol" />
                               </SelectTrigger>
                               <SelectContent>
-                                  {roles.map(role => (
+                                {roles.map(role => (
                                   <SelectItem key={role.id} value={role.id} className="text-xs">{role.name}</SelectItem>
-                                  ))}
+                                ))}
                               </SelectContent>
-                              </Select>
-                          ) : (
-                              <span className="text-xs text-muted-foreground">Cargando...</span>
-                          )}
-                         </div>
+                            </Select>
+                          ) : <span className="text-xs text-muted-foreground">Cargando...</span>}
+                        </div>
                       </TableCell>
-                       <TableCell>
-                        <Badge variant={getPlanBadgeVariant(user.plan_id)} className="capitalize text-xs">
-                          {user.plan_name || (user.plan_id ? user.plan_id : 'Sin Plan')}
-                        </Badge>
+                      <TableCell>
+                        <Badge variant={getPlanBadgeVariant(user.plan_id)} className="capitalize text-xs">{user.plan_name || (user.plan_id ? user.plan_id : 'Sin Plan')}</Badge>
                       </TableCell>
-                       <TableCell>
-                         <div className="flex items-center">
-                          {plans.length > 0 || !isLoadingData ? (
-                              <Select
+                      <TableCell>
+                        <div className="flex items-center">
+                          {(plans.length > 0 || !isLoadingData) ? (
+                            <Select
                               value={user.plan_id || 'none'}
                               onValueChange={(newPlan: string) => handlePlanChange(user.id, newPlan)}
                               disabled={isPending || isLoadingData}
-                              >
+                            >
                               <SelectTrigger className="w-full max-w-[140px] h-9 text-xs">
-                                  <CreditCard className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
-                                  <SelectValue placeholder="Seleccionar plan" />
+                                <CreditCard className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+                                <SelectValue placeholder="Seleccionar plan" />
                               </SelectTrigger>
                               <SelectContent>
-                                  <SelectItem value="none" className="text-xs italic">Sin Plan</SelectItem>
-                                  {activePlans.map(plan => (
-                                    <SelectItem key={plan.id} value={plan.id} className="text-xs">{plan.name} (${plan.price_monthly.toLocaleString('es-CL')})</SelectItem>
-                                  ))}
+                                <SelectItem value="none" className="text-xs italic">Sin Plan</SelectItem>
+                                {activePlans.map(plan => (
+                                  <SelectItem key={plan.id} value={plan.id} className="text-xs">{plan.name} (${plan.price_monthly.toLocaleString('es-CL')})</SelectItem>
+                                ))}
                               </SelectContent>
-                              </Select>
-                          ) : (
-                              <span className="text-xs text-muted-foreground">Cargando...</span>
-                          )}
-                         </div>
+                            </Select>
+                          ) : <span className="text-xs text-muted-foreground">Cargando...</span>}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
                         {user.phone_verified ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <ShieldCheckIcon className="h-5 w-5 text-green-600" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Teléfono verificado</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                          <TooltipProvider><Tooltip><TooltipTrigger>
+                            <ShieldCheckIcon className="h-5 w-5 text-green-600" />
+                          </TooltipTrigger><TooltipContent><p>Teléfono verificado</p></TooltipContent></Tooltip></TooltipProvider>
                         ) : (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
-                                  onClick={() => handleManualVerify(user)}
-                                  disabled={isPending}
-                                >
-                                  <AlertTriangle className="h-5 w-5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Verificación pendiente. Clic para verificar manualmente.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                          <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10" onClick={() => handleManualVerify(user)} disabled={isPending}>
+                              <AlertTriangle className="h-5 w-5" />
+                            </Button>
+                          </TooltipTrigger><TooltipContent><p>Verificación pendiente. Clic para verificar manualmente.</p></TooltipContent></Tooltip></TooltipProvider>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menú de acciones</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
+                            <Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Abrir menú</span><MoreHorizontal className="h-4 w-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/admin/users/${user.id}/edit`} className="flex items-center gap-2 cursor-pointer">
-                                <Edit className="h-4 w-4"/> Editar Usuario
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/admin/users/${user.id}/crm`} className="flex items-center gap-2 cursor-pointer">
-                                <ContactIcon className="h-4 w-4"/> Ver CRM
-                              </Link>
-                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild><Link href={`/admin/users/${user.id}/edit`} className="flex items-center gap-2 cursor-pointer"><Edit className="h-4 w-4"/> Editar</Link></DropdownMenuItem>
+                            <DropdownMenuItem asChild><Link href={`/admin/users/${user.id}/crm`} className="flex items-center gap-2 cursor-pointer"><ContactIcon className="h-4 w-4"/> Ver CRM</Link></DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-destructive focus:text-destructive flex items-center gap-2 cursor-pointer"
-                              disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id || !loggedInAdmin}
-                              onSelect={(e) => { e.preventDefault(); openDeleteDialog(user); }}
-                            >
-                              <Trash2 className="h-4 w-4"/> Eliminar Usuario
+                            <DropdownMenuItem className="text-destructive focus:text-destructive flex items-center gap-2 cursor-pointer" disabled={isPending || isLoadingData || user.id === loggedInAdmin?.id} onSelect={(e) => { e.preventDefault(); openDeleteDialog(user); }}>
+                              <Trash2 className="h-4 w-4"/> Eliminar
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -377,55 +371,48 @@ export default function AdminUsersPage() {
               </Table>
             </div>
           ) : (
-            !isLoadingData && <p className="text-muted-foreground text-center py-4">No hay usuarios para mostrar.</p>
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                {searchTerm ? `No se encontraron usuarios para "${searchTerm}".` : "No hay usuarios para mostrar."}
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
+      
+      <AlertDialog open={!!userToDelete} onOpenChange={(isOpen) => !isOpen && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro de que quieres eliminar a este usuario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción es irreversible. Se eliminará permanentemente al usuario "{userToDelete?.name}" y todos sus datos asociados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteUser} className="bg-destructive hover:bg-destructive/90" disabled={isPending}>
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {userToDelete && (
-        <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar Eliminación de Usuario</AlertDialogTitle>
-              <AlertDialogDescription>
-                ¿Estás seguro de que quieres eliminar al usuario <span className="font-semibold">{userToDelete.name} ({userToDelete.email})</span>?
-                <br />
-                <strong className="text-destructive">¡Advertencia!</strong> Esta acción es irreversible y eliminará permanentemente al usuario junto con todas sus propiedades, solicitudes, comentarios y datos del CRM.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setUserToDelete(null)} disabled={isPending}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeleteUser} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sí, Eliminar Usuario
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-
-      {userToVerify && (
-        <AlertDialog open={!!userToVerify} onOpenChange={(open) => !open && setUserToVerify(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-6 w-6 text-amber-500" />
-                  Confirmar Verificación Manual
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                ¿Estás seguro de que quieres verificar manualmente el número de teléfono para el usuario <span className="font-semibold">{userToVerify.name}</span>? Esta acción no se puede deshacer.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setUserToVerify(null)} disabled={isPending}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmManualVerify} disabled={isPending} className="bg-green-600 hover:bg-green-700">
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sí, Verificar Manualmente
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <AlertDialog open={!!userToVerify} onOpenChange={(isOpen) => !isOpen && setUserToVerify(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Verificar Teléfono Manualmente</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro de que quieres marcar el teléfono del usuario "{userToVerify?.name}" como verificado?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmManualVerify} disabled={isPending}>
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sí, verificar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

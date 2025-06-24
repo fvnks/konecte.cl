@@ -20,7 +20,13 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
-const adminNavItems = [
+const adminNavItems: {
+  href: string;
+  label: string;
+  icon: React.ReactElement;
+  id?: string;
+  isSubItem?: boolean;
+}[] = [
   { href: '/admin', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
   { href: '/admin/stats', label: 'Estadísticas', icon: <BarChart3 className="h-5 w-5" /> },
   { href: '/ai-matching', label: 'Coincidencias con IA', icon: <Sparkles className="h-5 w-5" /> },
@@ -35,6 +41,7 @@ const adminNavItems = [
   { href: '/admin/properties', label: 'Propiedades', icon: <ListOrdered className="h-5 w-5" /> },
   { href: '/admin/requests', label: 'Solicitudes', icon: <FileSearch className="h-5 w-5" /> },
   { href: '/admin/visits', label: 'Gestión de Visitas', icon: <CalendarClock className="h-5 w-5" /> },
+  { href: '/admin/visits/schedule', label: 'Agendar Visita', icon: <span className="w-5 h-5" />, isSubItem: true },
 ];
 
 interface StoredAdminUser {
@@ -153,7 +160,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               key={item.label}
               variant="ghost"
               asChild
-              className="w-full justify-start text-base py-2.5 h-auto rounded-md hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
+              className={`w-full justify-start text-base py-2.5 h-auto rounded-md hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary ${item.isSubItem ? 'pl-8' : ''}`}
             >
               <Link href={item.href} className="flex items-center justify-between gap-3 px-3">
                 <span className="flex items-center gap-3">

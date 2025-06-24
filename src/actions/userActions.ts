@@ -1,4 +1,3 @@
-
 // src/actions/userActions.ts
 'use server';
 
@@ -431,21 +430,58 @@ export async function adminVerifyUserPhoneAction(userId: string): Promise<{ succ
   if (!userId) {
     return { success: false, message: "ID de usuario no proporcionado." };
   }
-
   try {
-    const result: any = await query(
-      'UPDATE users SET phone_verified = TRUE, phone_otp = NULL, phone_otp_expires_at = NULL WHERE id = ?',
-      [userId]
-    );
-
+    const result: any = await query('UPDATE users SET phone_verified = TRUE WHERE id = ?', [userId]);
     if (result.affectedRows > 0) {
       revalidatePath('/admin/users');
-      return { success: true, message: "El teléfono del usuario ha sido verificado manualmente." };
-    } else {
-      return { success: false, message: "Usuario no encontrado o ya verificado." };
+      return { success: true, message: 'Teléfono verificado.' };
     }
+    return { success: false, message: 'Usuario no encontrado.' };
   } catch (error: any) {
-    console.error(`Error al verificar manualmente el teléfono para el usuario ${userId}:`, error);
-    return { success: false, message: `Error al verificar teléfono: ${error.message}` };
+    return { success: false, message: `Error al verificar: ${error.message}` };
+  }
+}
+
+/**
+ * Busca usuarios por nombre o email.
+ * @param searchTerm El término de búsqueda.
+ * @returns Una promesa que resuelve a un array de usuarios que coinciden.
+ */
+export async function searchUsersAction(searchTerm: string): Promise<User[]> {
+  if (!searchTerm || searchTerm.trim().length < 2) {
+    // No buscar si el término es muy corto para evitar resultados masivos
+    return [];
+  }
+
+  const trimmedSearchTerm = searchTerm.trim();
+  const likePattern = `%${trimmedSearchTerm}%`;
+
+  try {
+    const users = await query(
+      `
+      SELECT 
+        u.id, u.name, u.email, u.avatar_url, 
+        u.role_id, r.name as role_name,
+        u.plan_id, p.name as plan_name,
+        u.created_at
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN plans p ON u.plan_id = p.id
+      WHERE u.name LIKE ? OR u.email LIKE ?
+      ORDER BY u.name ASC
+      LIMIT 20
+    `,
+      [likePattern, likePattern]
+    );
+
+    return users.map((user: any) => ({
+      ...user,
+      phone_verified: Boolean(user.phone_verified), // Asegurar que sea booleano, aunque no se seleccione
+      created_at: user.created_at ? new Date(user.created_at).toISOString() : undefined,
+    })) as User[];
+
+  } catch (error) {
+    console.error("Error al buscar usuarios:", error);
+    return [];
   }
 }

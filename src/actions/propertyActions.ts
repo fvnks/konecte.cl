@@ -614,16 +614,85 @@ export async function userUpdatePropertyAction(
 
 
 export async function getPropertiesCountAction(activeOnly: boolean = false): Promise<number> {
+  const statusCondition = activeOnly ? "WHERE is_active = TRUE" : "";
+  const sql = `SELECT COUNT(*) as count FROM properties ${statusCondition}`;
+  const result = await query(sql);
+  return result[0].count;
+}
+
+/**
+ * Searches for properties by title or address (for admin usage).
+ * Returns a simplified list for autocomplete fields.
+ */
+export async function searchPropertiesAction(
+  searchTerm: string
+): Promise<{ id: string; title: string; address: string }[]> {
+  if (!searchTerm.trim()) {
+    return [];
+  }
+
   try {
-    let sql = 'SELECT COUNT(*) as count FROM properties';
-    if (activeOnly) {
-      sql += ' WHERE is_active = TRUE';
-    }
-    const result: any[] = await query(sql);
-    return Number(result[0].count) || 0;
+    const sql = `
+      SELECT id, title, address
+      FROM properties
+      WHERE (title LIKE ? OR address LIKE ?) AND is_active = TRUE
+      ORDER BY title
+      LIMIT 15
+    `;
+    
+    const searchTermWithWildcards = `%${searchTerm}%`;
+    const rows = await query(sql, [searchTermWithWildcards, searchTermWithWildcards]);
+    
+    return rows.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      address: row.address,
+    }));
+
   } catch (error) {
-    console.error("Error al obtener el conteo de propiedades:", error);
-    return 0;
+    console.error("[searchPropertiesAction] Error searching properties:", error);
+    return [];
+  }
+}
+
+/**
+ * Searches for properties owned by a specific user by title or address.
+ * Returns a simplified list for autocomplete fields.
+ */
+export async function searchMyPropertiesAction(
+  userId: string,
+  searchTerm: string
+): Promise<{ id: string; title: string; address: string }[]> {
+  if (!userId) {
+    console.error("[searchMyPropertiesAction] Error: userId is required.");
+    return [];
+  }
+  
+  if (!searchTerm.trim()) {
+    return [];
+  }
+
+  try {
+    const sql = `
+      SELECT id, title, address
+      FROM properties
+      WHERE user_id = ? AND (title LIKE ? OR address LIKE ?) AND is_active = TRUE
+      ORDER BY title
+      LIMIT 15
+    `;
+    
+    const searchTermWithWildcards = `%${searchTerm}%`;
+    const rows = await query(sql, [userId, searchTermWithWildcards, searchTermWithWildcards]);
+    
+    return rows.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      address: row.address,
+    }));
+
+  } catch (error) {
+    console.error("[searchMyPropertiesAction] Error searching user's properties:", error);
+    return [];
   }
 }
     
