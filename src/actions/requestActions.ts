@@ -44,6 +44,7 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
 
   return {
     id: row.id,
+    pub_id: row.pub_id,
     user_id: row.user_id,
     title: row.title,
     slug: row.slug,
@@ -80,6 +81,7 @@ export async function submitRequestAction(
 
   const requestId = randomUUID();
   const slug = generateSlug(data.title);
+  const pubId = `S-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   
   try {
     const columns: string[] = [];
@@ -87,9 +89,9 @@ export async function submitRequestAction(
     const placeholders: string[] = [];
 
     // Campos obligatorios o que siempre se establecen
-    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city', 'desired_location_region', 'is_active', 'created_at', 'updated_at', 'comments_count', 'upvotes');
-    values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity, data.desiredLocationRegion, true, new Date(), new Date(), 0, 0); // upvotes defaults to 0
-    placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
+    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city', 'desired_location_region', 'is_active', 'created_at', 'updated_at', 'comments_count', 'upvotes', 'pub_id');
+    values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity, data.desiredLocationRegion, true, new Date(), new Date(), 0, 0, pubId); // upvotes defaults to 0
+    placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
 
 
     // Campos booleanos para tipos de transacción y categorías
@@ -128,7 +130,7 @@ export async function submitRequestAction(
     console.log(`[RequestAction DEBUG] Params:`, values);
 
     await query(sql, values);
-    console.log(`[RequestAction] Request submitted successfully. ID: ${requestId}, Slug: ${slug}`);
+    console.log(`[RequestAction] Request submitted successfully. ID: ${requestId}, Slug: ${slug}, PubID: ${pubId}`);
     
     revalidatePath('/');
     revalidatePath('/requests');
@@ -197,6 +199,8 @@ export async function submitRequestAction(
     let message = `Error al publicar solicitud: ${error.message}`; 
      if (error.code === 'ER_DUP_ENTRY' && error.message.includes('property_requests.slug')) {
         message = "Ya existe una solicitud con un título muy similar (slug duplicado). Intenta con un título ligeramente diferente.";
+    } else if (error.code === 'ER_DUP_ENTRY' && error.message.includes('property_requests.pub_id')) {
+        message = "Error al generar el ID público único. Por favor, intenta de nuevo.";
     }
     return { success: false, message, autoMatchesCount: 0 };
   }

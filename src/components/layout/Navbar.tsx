@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus, MailQuestion, Sun, Moon } from 'lucide-react';
+import { Home, Briefcase, Search, PlusCircle, UserCircle, LogIn, Menu, ShieldCheck, LogOut, CreditCard, Users, LayoutDashboard, MessageSquare, UserPlus, MailQuestion, Sun, Moon, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnnouncementBar from './AnnouncementBar';
 import { useTheme } from "next-themes";
+import EditModeToggle from './EditModeToggle';
 
 
 const navItems = [
@@ -28,6 +29,7 @@ const navItems = [
   { href: '/requests', label: 'Solicitudes', icon: <Search /> },
   { href: '/plans', label: 'Planes', icon: <CreditCard /> },
   { href: '/contact', label: 'Contacto', icon: <MailQuestion /> },
+  { href: '/reportar-fallas', label: 'Reportar Fallas', icon: <Bug /> },
 ];
 
 interface StoredUser {
@@ -275,6 +277,12 @@ export default function Navbar() {
                     {currentTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 </Button>
              )}
+            {isClient && isUserAdmin && (
+              <>
+                <Separator orientation="vertical" className="h-6" />
+                <EditModeToggle />
+              </>
+            )}
             {isClient ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

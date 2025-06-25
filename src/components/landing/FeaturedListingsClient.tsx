@@ -9,6 +9,7 @@ import FeaturedPropertyCard from '@/components/property/FeaturedPropertyCard';
 import RequestCard from '@/components/request/RequestCard';
 import { Building, FileSearch, ArrowRight } from 'lucide-react';
 import AnimatedLinkButton from '@/components/ui/AnimatedLinkButton';
+import EditableText from '@/components/ui/EditableText';
 
 interface FeaturedListingsClientProps {
   featuredProperties: PropertyListing[];
@@ -29,14 +30,18 @@ export default function FeaturedListingsClient({ featuredProperties, recentReque
           onClick={() => setActiveView('properties')}
           className="w-full py-3 text-base rounded-lg shadow-sm hover:shadow-md transition-shadow h-12"
         >
-          Propiedades Destacadas
+          <EditableText id="landing:properties-tab-button" textType="span">
+            Propiedades Destacadas
+          </EditableText>
         </Button>
         <Button
           variant={activeView === 'requests' ? 'default' : 'outline'}
           onClick={() => setActiveView('requests')}
           className="w-full py-3 text-base rounded-lg shadow-sm hover:shadow-md transition-shadow h-12"
         >
-          Solicitudes Recientes
+          <EditableText id="landing:requests-tab-button" textType="span">
+            Solicitudes Recientes
+          </EditableText>
         </Button>
       </div>
 
@@ -51,13 +56,19 @@ export default function FeaturedListingsClient({ featuredProperties, recentReque
           ) : (
             <div className="text-center py-12 text-muted-foreground bg-muted/50 rounded-lg">
               <Building className="h-16 w-16 mx-auto mb-3 text-gray-400" />
-              <p className="text-xl">Aún no hay propiedades destacadas.</p>
+              <p className="text-xl">
+                <EditableText id="landing:no-properties-message" textType="span">
+                  Aún no hay propiedades destacadas.
+                </EditableText>
+              </p>
             </div>
           )}
           {featuredProperties.length > 0 && (
             <div className="mt-10 text-center">
               <AnimatedLinkButton href="/properties">
-                Ver todas las propiedades
+                <EditableText id="landing:view-all-properties-button" textType="span">
+                  Ver todas las propiedades
+                </EditableText>
               </AnimatedLinkButton>
             </div>
           )}
@@ -75,13 +86,19 @@ export default function FeaturedListingsClient({ featuredProperties, recentReque
           ) : (
             <div className="text-center py-12 text-muted-foreground bg-muted/50 rounded-lg">
               <FileSearch className="h-16 w-16 mx-auto mb-3 text-gray-400" />
-              <p className="text-xl">Aún no hay solicitudes recientes.</p>
+              <p className="text-xl">
+                <EditableText id="landing:no-requests-message" textType="span">
+                  Aún no hay solicitudes recientes.
+                </EditableText>
+              </p>
             </div>
           )}
            {recentRequests.length > 0 && (
             <div className="mt-10 text-center">
               <AnimatedLinkButton href="/requests">
-                Ver Todas
+                <EditableText id="landing:view-all-requests-button" textType="span">
+                  Ver Todas
+                </EditableText>
               </AnimatedLinkButton>
             </div>
            )}

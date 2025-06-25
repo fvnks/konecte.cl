@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -6,6 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from "next-themes";
 import StyledComponentsRegistry from '@/lib/styled-components-registry';
+import { EditModeProvider } from '@/lib/EditModeContext';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -41,9 +41,11 @@ export default function RootLayout({
               enableSystem
               disableTransitionOnChange
           >
-            <AppLayout>
-              {children}
-            </AppLayout>
+            <EditModeProvider>
+              <AppLayout>
+                {children}
+              </AppLayout>
+            </EditModeProvider>
             <Toaster />
           </ThemeProvider>
         </StyledComponentsRegistry>

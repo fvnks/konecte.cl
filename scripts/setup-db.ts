@@ -1,5 +1,3 @@
-
-
 // scripts/setup-db.ts
 import mysql, { type Pool, type PoolOptions } from 'mysql2/promise';
 import readline from 'readline/promises';
@@ -123,6 +121,7 @@ const SQL_STATEMENTS: string[] = [
   `ALTER TABLE properties ADD COLUMN IF NOT EXISTS region VARCHAR(100) NOT NULL AFTER country;`,
   `CREATE TABLE IF NOT EXISTS properties (
     id VARCHAR(36) PRIMARY KEY, 
+    pub_id VARCHAR(30) UNIQUE NOT NULL,
     user_id VARCHAR(36) NOT NULL, 
     title VARCHAR(255) NOT NULL, 
     slug VARCHAR(255) UNIQUE NOT NULL, 
@@ -156,6 +155,7 @@ const SQL_STATEMENTS: string[] = [
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );`,
+  `CREATE INDEX IF NOT EXISTS idx_properties_pub_id ON properties(pub_id);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_slug ON properties(slug);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_user_id ON properties(user_id);`,
   `CREATE INDEX IF NOT EXISTS idx_properties_city ON properties(city);`,
@@ -172,8 +172,9 @@ const SQL_STATEMENTS: string[] = [
   // property_requests
   `ALTER TABLE property_requests ADD COLUMN IF NOT EXISTS desired_location_region VARCHAR(100) NOT NULL AFTER desired_location_city;`,
   `CREATE TABLE IF NOT EXISTS property_requests (
-    id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(255) NOT NULL, slug VARCHAR(255) UNIQUE NOT NULL, description TEXT NOT NULL, desired_property_type_rent BOOLEAN DEFAULT FALSE, desired_property_type_sale BOOLEAN DEFAULT FALSE, desired_category_apartment BOOLEAN DEFAULT FALSE, desired_category_house BOOLEAN DEFAULT FALSE, desired_category_condo BOOLEAN DEFAULT FALSE, desired_category_land BOOLEAN DEFAULT FALSE, desired_category_commercial BOOLEAN DEFAULT FALSE, desired_category_other BOOLEAN DEFAULT FALSE, desired_location_city VARCHAR(100) NOT NULL, desired_location_region VARCHAR(100) NOT NULL, desired_location_neighborhood VARCHAR(100) DEFAULT NULL, min_bedrooms INT DEFAULT NULL, min_bathrooms INT DEFAULT NULL, budget_max DECIMAL(15,2) DEFAULT NULL, open_for_broker_collaboration BOOLEAN DEFAULT FALSE, comments_count INT DEFAULT 0, upvotes INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    id VARCHAR(36) PRIMARY KEY, pub_id VARCHAR(30) UNIQUE NOT NULL, user_id VARCHAR(36) NOT NULL, title VARCHAR(255) NOT NULL, slug VARCHAR(255) UNIQUE NOT NULL, description TEXT NOT NULL, desired_property_type_rent BOOLEAN DEFAULT FALSE, desired_property_type_sale BOOLEAN DEFAULT FALSE, desired_category_apartment BOOLEAN DEFAULT FALSE, desired_category_house BOOLEAN DEFAULT FALSE, desired_category_condo BOOLEAN DEFAULT FALSE, desired_category_land BOOLEAN DEFAULT FALSE, desired_category_commercial BOOLEAN DEFAULT FALSE, desired_category_other BOOLEAN DEFAULT FALSE, desired_location_city VARCHAR(100) NOT NULL, desired_location_region VARCHAR(100) NOT NULL, desired_location_neighborhood VARCHAR(100) DEFAULT NULL, min_bedrooms INT DEFAULT NULL, min_bathrooms INT DEFAULT NULL, budget_max DECIMAL(15,2) DEFAULT NULL, open_for_broker_collaboration BOOLEAN DEFAULT FALSE, comments_count INT DEFAULT 0, upvotes INT DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );`,
+  `CREATE INDEX IF NOT EXISTS idx_property_requests_pub_id ON property_requests(pub_id);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_slug ON property_requests(slug);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_user_id ON property_requests(user_id);`,
   `CREATE INDEX IF NOT EXISTS idx_property_requests_region ON property_requests(desired_location_region);`,
@@ -189,6 +190,17 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_comments_property_id ON comments(property_id);`,
   `CREATE INDEX IF NOT EXISTS idx_comments_request_id ON comments(request_id);`,
   `CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON comments(parent_id);`,
+
+  // editable_texts
+  `CREATE TABLE IF NOT EXISTS editable_texts (
+    id VARCHAR(255) PRIMARY KEY COMMENT 'Unique identifier for the text, format: page_path:component_id',
+    text TEXT NOT NULL COMMENT 'The current text content',
+    page_path VARCHAR(255) NOT NULL COMMENT 'Path of the page where the text appears',
+    component_id VARCHAR(255) NOT NULL COMMENT 'ID of the component within the page',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'When this text was first created',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'When this text was last updated'
+  );`,
+  `CREATE INDEX IF NOT EXISTS idx_editable_texts_page_path ON editable_texts(page_path);`,
 
   // user_comment_interactions
   `CREATE TABLE IF NOT EXISTS user_comment_interactions (
@@ -278,43 +290,6 @@ const SQL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_created ON chat_messages(conversation_id, created_at DESC);`,
   `CREATE INDEX IF NOT EXISTS idx_chat_messages_sender ON chat_messages(sender_id);`,
   `CREATE INDEX IF NOT EXISTS idx_chat_messages_receiver_read ON chat_messages(receiver_id, read_at);`,
-
-  // editable_texts
-  `CREATE TABLE IF NOT EXISTS editable_texts (
-    id VARCHAR(255) PRIMARY KEY, page_group VARCHAR(100) NOT NULL, description TEXT NOT NULL, content_default TEXT, content_current TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  );`,
-  `CREATE INDEX IF NOT EXISTS idx_editable_texts_page_group ON editable_texts(page_group);`,
-  `INSERT IGNORE INTO editable_texts (id, page_group, description, content_default, content_current) VALUES
-    ('home_hero_title', 'home', 'Título principal de la página de inicio', 'Encuentra Tu Espacio Ideal en konecte', 'Encuentra Tu Espacio Ideal en konecte'),
-    ('home_hero_subtitle', 'home', 'Subtítulo de la página de inicio', 'Descubre, publica y comenta sobre propiedades en arriendo o venta. Publicaciones ilimitadas, sin costo. ¡O publica lo que estás buscando!', 'Descubre, publica y comenta sobre propiedades en arriendo o venta. Publicaciones ilimitadas, sin costo. ¡O publica lo que estás buscando!'),
-    ('home_search_placeholder', 'home', 'Placeholder para la barra de búsqueda en la página de inicio', 'Buscar por ubicación, tipo, características...', 'Buscar por ubicación, tipo, características...'),
-    ('home_publish_property_button', 'home', 'Texto del botón "Publicar Propiedad" en el hero', 'Publicar Propiedad', 'Publicar Propiedad'),
-    ('home_publish_request_button', 'home', 'Texto del botón "Publicar Solicitud" en el hero', 'Publicar Solicitud', 'Publicar Solicitud'),
-    ('plans_page_main_title', 'plans_page', 'Título principal de la página de planes', '¡Contratación 100% online!', '¡Contratación 100% online!'),
-    ('auth_signin_page_title', 'auth_signin', 'Título de la página de inicio de sesión', '¡Bienvenido de Nuevo!', '¡Bienvenido de Nuevo!'),
-    ('auth_signin_page_description', 'auth_signin', 'Descripción de la página de inicio de sesión', 'Inicia sesión para acceder a tu cuenta de konecte.', 'Inicia sesión para acceder a tu cuenta de konecte.'),
-    ('auth_signin_email_label', 'auth_signin', 'Etiqueta para el campo de email en inicio de sesión', 'Correo Electrónico', 'Correo Electrónico'),
-    ('auth_signin_password_label', 'auth_signin', 'Etiqueta para el campo de contraseña en inicio de sesión', 'Contraseña', 'Contraseña'),
-    ('auth_signin_forgot_password_link', 'auth_signin', 'Texto del enlace "¿Olvidaste tu contraseña?"', '¿Olvidaste tu contraseña?', '¿Olvidaste tu contraseña?'),
-    ('auth_signin_button_text', 'auth_signin', 'Texto del botón de inicio de sesión', 'Iniciar Sesión', 'Iniciar Sesión'),
-    ('auth_signin_signup_prompt', 'auth_signin', 'Texto del prompt para registrarse', '¿No tienes una cuenta?', '¿No tienes una cuenta?'),
-    ('auth_signin_signup_link_text', 'auth_signin', 'Texto del enlace para registrarse', 'Regístrate', 'Regístrate'),
-    ('auth_signup_page_title', 'auth_signup', 'Título de la página de registro', 'Crear una Cuenta en konecte', 'Crear una Cuenta en konecte'),
-    ('auth_signup_page_description', 'auth_signup', 'Descripción de la página de registro', 'Únete para listar, encontrar y discutir propiedades.', 'Únete para listar, encontrar y discutir propiedades.'),
-    ('auth_signup_name_label', 'auth_signup', 'Etiqueta para el campo de nombre en registro', 'Nombre Completo *', 'Nombre Completo *'),
-    ('auth_signup_email_label', 'auth_signup', 'Etiqueta para el campo de email en registro', 'Correo Electrónico *', 'Correo Electrónico *'),
-    ('auth_signup_rut_label', 'auth_signup', 'Etiqueta para el campo de RUT en registro', 'RUT (Empresa o Persona) *', 'RUT (Empresa o Persona) *'),
-    ('auth_signup_phone_label', 'auth_signup', 'Etiqueta para el campo de teléfono en registro', 'Teléfono de Contacto o WhatsApp *', 'Teléfono de Contacto o WhatsApp *'),
-    ('auth_signup_password_label', 'auth_signup', 'Etiqueta para el campo de contraseña en registro', 'Contraseña *', 'Contraseña *'),
-    ('auth_signup_confirm_password_label', 'auth_signup', 'Etiqueta para el campo de confirmar contraseña en registro', 'Confirmar Contraseña *', 'Confirmar Contraseña *'),
-    ('auth_signup_terms_label_part1', 'auth_signup', 'Texto de términos (parte 1)', 'Declaro conocer y aceptar los', 'Declaro conocer y aceptar los'),
-    ('auth_signup_terms_link_terms', 'auth_signup', 'Texto del enlace a Términos y Condiciones', 'Términos y Condiciones', 'Términos y Condiciones'),
-    ('auth_signup_terms_label_part2', 'auth_signup', 'Texto de términos (parte 2)', 'y la', 'y la'),
-    ('auth_signup_terms_link_privacy', 'auth_signup', 'Texto del enlace a Política de Privacidad', 'Política de Privacidad', 'Política de Privacidad'),
-    ('auth_signup_terms_label_part3', 'auth_signup', 'Texto de términos (parte 3)', '. *', '. *'),
-    ('auth_signup_button_text', 'auth_signup', 'Texto del botón de registro', 'Registrarse', 'Registrarse'),
-    ('auth_signup_signin_prompt', 'auth_signup', 'Texto del prompt para iniciar sesión', '¿Ya tienes una cuenta?', '¿Ya tienes una cuenta?'),
-    ('auth_signup_signin_link_text', 'auth_signup', 'Texto del enlace para iniciar sesión', 'Inicia sesión', 'Inicia sesión');`,
 
   // --- Lead Tracking Tables ---
   `CREATE TABLE IF NOT EXISTS property_views (

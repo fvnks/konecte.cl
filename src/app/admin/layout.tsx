@@ -4,7 +4,7 @@
 import React, { type ReactNode, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, Newspaper, BarChart3, CalendarClock, MailWarning, MessageSquare, Bot, Sparkles } from 'lucide-react'; 
+import { Home, Settings, Users, LayoutDashboard, ShieldAlert, CreditCard, ListOrdered, Brush, FileSearch, Newspaper, BarChart3, CalendarClock, MailWarning, MessageSquare, Bot, Sparkles, FileText, Bug } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +42,7 @@ const adminNavItems: {
   { href: '/admin/requests', label: 'Solicitudes', icon: <FileSearch className="h-5 w-5" /> },
   { href: '/admin/visits', label: 'Gestión de Visitas', icon: <CalendarClock className="h-5 w-5" /> },
   { href: '/admin/visits/schedule', label: 'Agendar Visita', icon: <span className="w-5 h-5" />, isSubItem: true },
+  { href: '/admin/bug-reports', label: 'Reportes de Fallas', icon: <Bug className="h-5 w-5" /> },
 ];
 
 interface StoredAdminUser {

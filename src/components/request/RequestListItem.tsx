@@ -45,6 +45,7 @@ export default function RequestListItem({ request }: RequestListItemProps) {
     minBedrooms,
     minBathrooms,
     open_for_broker_collaboration,
+    pub_id,
   } = request;
 
   const locationCity = desiredLocation?.city || 'N/A';
@@ -90,6 +91,7 @@ export default function RequestListItem({ request }: RequestListItemProps) {
               <CardTitle className="text-lg sm:text-xl font-headline leading-tight hover:text-primary transition-colors line-clamp-2">
                 <SearchIcon className="inline-block h-4 w-4 sm:h-5 sm:w-5 mr-1.5 text-primary align-middle" />
                 {title}
+                {pub_id && <Badge variant="outline" className="ml-2 align-middle text-xs">{pub_id}</Badge>}
               </CardTitle>
             </Link>
           </CardHeader>

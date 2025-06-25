@@ -1,4 +1,3 @@
-
 // src/actions/editableTextActions.ts
 'use server';
 
@@ -9,10 +8,9 @@ import { revalidatePath } from 'next/cache';
 function mapDbRowToEditableText(row: any): EditableText {
   return {
     id: row.id,
-    page_group: row.page_group,
-    description: row.description,
-    content_default: row.content_default,
-    content_current: row.content_current,
+    text: row.text,
+    page_path: row.page_path,
+    component_id: row.component_id,
     created_at: row.created_at ? new Date(row.created_at).toISOString() : undefined,
     updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : undefined,
   };
@@ -20,7 +18,7 @@ function mapDbRowToEditableText(row: any): EditableText {
 
 export async function getEditableTextsAction(): Promise<EditableText[]> {
   try {
-    const rows = await query('SELECT * FROM editable_texts ORDER BY page_group ASC, id ASC');
+    const rows = await query('SELECT * FROM editable_texts ORDER BY page_path ASC, id ASC');
     return rows.map(mapDbRowToEditableText);
   } catch (error) {
     console.error("Error al obtener textos editables:", error);
@@ -28,59 +26,92 @@ export async function getEditableTextsAction(): Promise<EditableText[]> {
   }
 }
 
-export async function updateEditableTextAction(id: string, contentCurrent: string): Promise<{ success: boolean; message?: string }> {
-  if (!id) {
-    return { success: false, message: "ID del texto no proporcionado." };
-  }
-
+export async function updateEditableTextAction(id: string, text: string): Promise<boolean> {
   try {
-    const result: any = await query(
-      'UPDATE editable_texts SET content_current = ?, updated_at = NOW() WHERE id = ?',
-      [contentCurrent, id]
+    console.log(`Actualizando texto editable: ${id} con valor: ${text}`);
+    
+    // Check if the text already exists in the database
+    const existingText = await query(
+      'SELECT * FROM editable_texts WHERE id = ?',
+      [id]
     );
 
-    if (result.affectedRows > 0) {
-      revalidatePath('/admin/content'); // Revalida la página de administración de contenido
-      // Deberíamos considerar revalidar las páginas públicas que usan este texto,
-      // pero eso dependerá de cómo se integren. Por ahora, solo revalidamos el admin.
-      return { success: true, message: "Texto actualizado exitosamente." };
+    if (Array.isArray(existingText) && existingText.length > 0) {
+      // Update existing text
+      await query(
+        'UPDATE editable_texts SET text = ?, updated_at = NOW() WHERE id = ?',
+        [text, id]
+      );
+      console.log(`Texto actualizado: ${id}`);
     } else {
-      return { success: false, message: "Texto no encontrado o el contenido era el mismo." };
+      // Extract page path and component ID from the ID (format: page_path:component_id)
+      const [pagePath, componentId] = id.split(':');
+      
+      // Insert new text
+      await query(
+        'INSERT INTO editable_texts (id, text, page_path, component_id, updated_at) VALUES (?, ?, ?, ?, NOW())',
+        [id, text, pagePath || '', componentId || id]
+      );
+      console.log(`Texto creado: ${id}`);
     }
-  } catch (error: any) {
-    console.error(`Error al actualizar texto editable ${id}:`, error);
-    return { success: false, message: `Error al actualizar texto: ${error.message}` };
+
+    // Revalidate all paths to ensure the changes are visible
+    revalidatePath('/');
+    revalidatePath('/admin/content');
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating editable text:', error);
+    return false;
   }
 }
 
 export async function getEditableTextAction(id: string): Promise<string | null> {
   try {
-    const rows = await query('SELECT content_current FROM editable_texts WHERE id = ?', [id]);
-    if (rows.length > 0) {
-      return rows[0].content_current;
+    const result = await query(
+      'SELECT text FROM editable_texts WHERE id = ?',
+      [id]
+    );
+
+    if (Array.isArray(result) && result.length > 0) {
+      return result[0].text;
     }
-    // Si no se encuentra, intentar devolver el content_default
-    const defaultRows = await query('SELECT content_default FROM editable_texts WHERE id = ?', [id]);
-     if (defaultRows.length > 0) {
-      return defaultRows[0].content_default;
-    }
+    
     return null;
   } catch (error) {
-    console.error(`Error al obtener texto editable ${id}:`, error);
-    return null; // Devolver null o un string vacío en caso de error
+    console.error('Error getting editable text:', error);
+    return null;
   }
 }
 
-export async function getEditableTextsByGroupAction(group: string): Promise<Record<string, string>> {
+export async function getEditableTextsByGroupAction(page_path: string): Promise<Record<string, string>> {
   const texts: Record<string, string> = {};
   try {
-    const rows = await query('SELECT id, content_current, content_default FROM editable_texts WHERE page_group = ?', [group]);
+    const rows = await query('SELECT id, text FROM editable_texts WHERE page_path = ?', [page_path]);
     rows.forEach((row: any) => {
-      texts[row.id] = row.content_current ?? row.content_default ?? '';
+      texts[row.id] = row.text || '';
     });
     return texts;
   } catch (error) {
-    console.error(`Error al obtener textos editables para el grupo ${group}:`, error);
+    console.error(`Error al obtener textos editables para la página ${page_path}:`, error);
     return {}; // Devolver objeto vacío en caso de error
+  }
+}
+
+export async function getPageEditableTextsAction(pagePath: string): Promise<EditableText[]> {
+  try {
+    const result = await query(
+      'SELECT * FROM editable_texts WHERE page_path = ?',
+      [pagePath]
+    );
+
+    if (Array.isArray(result)) {
+      return result.map(mapDbRowToEditableText);
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error getting page editable texts:', error);
+    return [];
   }
 }

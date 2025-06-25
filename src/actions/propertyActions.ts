@@ -37,6 +37,7 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
 
   return {
     id: row.id,
+    pub_id: row.pub_id,
     user_id: row.user_id,
     title: row.title,
     slug: row.slug,
@@ -100,6 +101,7 @@ export async function submitPropertyAction(
 
   const propertyId = randomUUID();
   const slug = generateSlug(data.title);
+  const pubId = `P-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   
   try {
     const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
@@ -111,8 +113,8 @@ export async function submitPropertyAction(
         price, currency, address, city, region, country, bedrooms, bathrooms,
         total_area_sq_meters, useful_area_sq_meters, parking_spaces, 
         pets_allowed, furnished, commercial_use_allowed, has_storage, orientation,
-        images, features, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW())
+        images, features, is_active, created_at, updated_at, pub_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW(), ?)
     `;
 
     const params = [
@@ -126,11 +128,11 @@ export async function submitPropertyAction(
       data.commercialUseAllowed ?? false,
       data.hasStorage ?? false,
       data.orientation === '' ? null : (data.orientation ?? null),
-      imagesJson, featuresJson
+      imagesJson, featuresJson, pubId
     ];
 
     await query(sql, params);
-    console.log(`[PropertyAction] Property submitted successfully. ID: ${propertyId}, Slug: ${slug}`);
+    console.log(`[PropertyAction] Property submitted successfully. ID: ${propertyId}, Slug: ${slug}, PubID: ${pubId}`);
 
     revalidatePath('/');
     revalidatePath('/properties');
@@ -210,6 +212,8 @@ export async function submitPropertyAction(
     let message = "Ocurrió un error desconocido al publicar la propiedad.";
     if (error.code === 'ER_DUP_ENTRY' && error.message.includes('properties.slug')) {
         message = "Ya existe una propiedad con un título muy similar (slug duplicado). Intenta con un título ligeramente diferente.";
+    } else if (error.code === 'ER_DUP_ENTRY' && error.message.includes('properties.pub_id')) {
+        message = "Error al generar el ID público único. Por favor, intenta de nuevo.";
     } else if (error.message) {
       message = error.message;
     }

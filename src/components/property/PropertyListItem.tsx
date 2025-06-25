@@ -70,6 +70,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     totalAreaSqMeters,
     description,
     createdAt,
+    pub_id,
   } = property;
 
   const mainImage = images && images.length > 0 ? images[0] : 'https://placehold.co/320x240.png?text=Propiedad';
@@ -115,6 +116,11 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
           <Badge variant="default" className="absolute top-2.5 left-2.5 capitalize text-xs px-2.5 py-1 shadow-md bg-primary/90 text-primary-foreground rounded-md">
             {translatePropertyTypeBadge(propertyType)}
           </Badge>
+          {pub_id && (
+            <Badge variant="secondary" className="absolute top-2.5 right-2.5 text-xs px-2 py-0.5 shadow-md rounded-md">
+              {pub_id}
+            </Badge>
+          )}
         </div>
       </Link>
 

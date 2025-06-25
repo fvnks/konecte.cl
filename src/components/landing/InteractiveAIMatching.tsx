@@ -27,6 +27,7 @@ import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Buildi
 import FeaturedPropertyCard from '@/components/property/FeaturedPropertyCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from "@/components/ui/button"; // Necesario para el botón de Iniciar Sesión
+import EditableText from '@/components/ui/EditableText';
 
 const formSchema = z.object({
   userSearchDescription: z.string().min(10, "La descripción de tu búsqueda debe tener al menos 10 caracteres.").max(1000, "Máximo 1000 caracteres."),
@@ -177,7 +178,11 @@ export default function InteractiveAIMatching() {
             name="userSearchDescription"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-md font-medium">Describe la propiedad que buscas:</FormLabel>
+                <FormLabel className="text-md font-medium">
+                  <EditableText id="landing:ai-search-label" textType="span">
+                    Describe la propiedad que buscas:
+                  </EditableText>
+                </FormLabel>
                 <FormControl>
                   <Textarea
                     placeholder="Ej: Busco un departamento para arriendo en la V Región, mínimo 2 dormitorios, que acepte mascotas y tenga buena conexión a internet. Presupuesto máximo $700.000..."
@@ -193,7 +198,9 @@ export default function InteractiveAIMatching() {
           <div className="text-center">
             <GenerateAIButton type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-              Buscar Propiedades con IA
+              <EditableText id="landing:ai-search-button" textType="span">
+                Buscar Propiedades con IA
+              </EditableText>
             </GenerateAIButton>
           </div>
         </form>
@@ -202,7 +209,11 @@ export default function InteractiveAIMatching() {
       {isLoading && (
         <div className="text-center py-6">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="mt-2 text-muted-foreground">Analizando y buscando propiedades en la plataforma...</p>
+          <p className="mt-2 text-muted-foreground">
+            <EditableText id="landing:ai-search-loading" textType="span">
+              Analizando y buscando propiedades en la plataforma...
+            </EditableText>
+          </p>
         </div>
       )}
 
@@ -211,7 +222,9 @@ export default function InteractiveAIMatching() {
           <CardHeader>
             <CardTitle className="text-destructive flex items-center text-lg">
               <AlertTriangle className="mr-2 h-5 w-5" />
-              Error al Procesar
+              <EditableText id="landing:ai-search-error-title" textType="span">
+                Error al Procesar
+              </EditableText>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -227,13 +240,19 @@ export default function InteractiveAIMatching() {
                 <div className="w-full flex justify-between items-start mb-2">
                     <Badge variant={'default'} className="capitalize text-xs">
                     <Building className="mr-1.5 h-3.5 w-3.5"/>
-                    Propiedad Sugerida ({currentIndex + 1} de {propertiesToShow.length})
+                    <EditableText id="landing:ai-search-property-suggested" textType="span">
+                      Propiedad Sugerida
+                    </EditableText> ({currentIndex + 1} de {propertiesToShow.length})
                     </Badge>
                     <div className="text-right">
                     <span className="text-lg font-bold text-accent">
                         {(currentPropertyMatch.matchScore * 100).toFixed(0)}%
                     </span>
-                    <p className="text-xs text-muted-foreground -mt-1">Coincidencia</p>
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      <EditableText id="landing:ai-search-match" textType="span">
+                        Coincidencia
+                      </EditableText>
+                    </p>
                     </div>
                 </div>
                 <Progress value={currentPropertyMatch.matchScore * 100} className="w-full h-1.5 [&>div]:bg-accent mb-3" />
@@ -243,63 +262,101 @@ export default function InteractiveAIMatching() {
                 <div className="mt-3 pt-3 border-t border-dashed w-full">
                     <h4 className="text-xs font-semibold flex items-center mb-1 text-muted-foreground">
                     <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
-                    IA Dice:
+                    <EditableText id="landing:ai-search-ia-says" textType="span">
+                      IA Dice:
+                    </EditableText>
                     </h4>
                     <p className="text-xs text-muted-foreground/80 bg-secondary/30 p-2 rounded-md whitespace-pre-line italic max-h-20 overflow-y-auto">
                     {currentPropertyMatch.reason}
                     </p>
                 </div>
-                <div className="flex justify-around w-full mt-4 pt-4 border-t">
+                
+                <div className="flex gap-2 mt-4 w-full">
                     <Button 
-                        variant="outline" 
-                        size="lg" 
-                        className="text-red-500 border-red-500 hover:bg-red-50 hover:text-red-600 h-12 w-28"
-                        onClick={() => handleInteraction(currentPropertyMatch.item.id, 'dislike')}
-                        disabled={!loggedInUser || isInteracting}
-                        title={!loggedInUser ? "Inicia sesión para interactuar" : "No me gusta"}
+                        onClick={() => handleInteraction(currentPropertyMatch.item.id, 'like')} 
+                        className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                        disabled={isInteracting}
                     >
-                        {isInteracting ? <Loader2 className="h-6 w-6 animate-spin"/> : <ThumbsDown className="h-6 w-6" />}
+                        <ThumbsUp className="mr-1.5 h-4 w-4" />
+                        <EditableText id="landing:ai-search-like-button" textType="span">
+                          Me Gusta
+                        </EditableText>
                     </Button>
                     <Button 
-                        variant="outline" 
-                        size="lg" 
-                        className="text-green-500 border-green-500 hover:bg-green-50 hover:text-green-600 h-12 w-28"
-                        onClick={() => handleInteraction(currentPropertyMatch.item.id, 'like')}
-                        disabled={!loggedInUser || isInteracting}
-                        title={!loggedInUser ? "Inicia sesión para interactuar" : "Me gusta"}
+                        onClick={() => handleInteraction(currentPropertyMatch.item.id, 'dislike')} 
+                        className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                        disabled={isInteracting}
                     >
-                         {isInteracting ? <Loader2 className="h-6 w-6 animate-spin"/> : <ThumbsUp className="h-6 w-6" />}
+                        <ThumbsDown className="mr-1.5 h-4 w-4" />
+                        <EditableText id="landing:ai-search-dislike-button" textType="span">
+                          No Me Gusta
+                        </EditableText>
+                    </Button>
+                    <Button 
+                        onClick={() => setCurrentIndex(prevIndex => prevIndex + 1)} 
+                        className="flex-1"
+                        variant="outline"
+                        disabled={isInteracting}
+                    >
+                        <EditableText id="landing:ai-search-skip-button" textType="span">
+                          Omitir
+                        </EditableText>
                     </Button>
                 </div>
-                {!loggedInUser && (
-                    <p className="text-xs text-muted-foreground text-center mt-3">
-                        <UserIconLucide className="inline-block h-3 w-3 mr-1 align-text-bottom" />
-                        <Link href="/auth/signin" className="underline hover:text-primary">Inicia sesión</Link> para guardar tus preferencias.
-                    </p>
-                )}
             </Card>
-          ) : ( 
-            <Card>
-                <CardContent className="px-0 pt-4 text-center">
-                <HeartHandshake className="mx-auto h-16 w-16 text-primary mb-4" />
-                <h3 className="text-xl font-semibold mb-2">
-                    {propertiesToShow.length > 0 && currentIndex >= propertiesToShow.length 
-                    ? "¡Has revisado todas las sugerencias!" 
-                    : "No encontramos propiedades para tu búsqueda."}
-                </h3>
-                <p className="text-muted-foreground text-base mb-4">
-                    {propertiesToShow.length > 0 && currentIndex >= propertiesToShow.length 
-                    ? "Esperamos que hayas encontrado algo interesante. Puedes refinar tu búsqueda o publicarla." 
-                    : "Intenta ser más específico o publica tu búsqueda para que otros te encuentren."}
+          ) : (
+            aiSearchResults.length > 0 ? (
+              <Card className="bg-card p-6 rounded-xl border shadow-lg text-center">
+                <div className="mb-4">
+                  <Sparkles className="h-12 w-12 text-primary mx-auto mb-2" />
+                  <h3 className="text-xl font-bold">
+                    <EditableText id="landing:ai-search-complete-title" textType="span">
+                      ¡Búsqueda Completada!
+                    </EditableText>
+                  </h3>
+                </div>
+                <p className="text-muted-foreground mb-4">
+                  <EditableText id="landing:ai-search-complete-description" textType="span">
+                    Has visto todas las propiedades sugeridas. ¿Quieres buscar algo más?
+                  </EditableText>
                 </p>
-                <Button asChild variant="default" size="lg">
-                    <Link href="/requests/submit">
-                    <PlusCircle className="mr-2 h-5 w-5" />
-                    Publicar Mi Búsqueda
-                    </Link>
+                <Button onClick={() => {
+                  form.reset();
+                  setHasSearched(false);
+                  setAiSearchResults([]);
+                  setPropertiesToShow([]);
+                  setCurrentIndex(0);
+                }} variant="outline" className="w-full">
+                  <EditableText id="landing:ai-search-new-search-button" textType="span">
+                    Nueva Búsqueda
+                  </EditableText>
                 </Button>
-                </CardContent>
-            </Card>
+              </Card>
+            ) : (
+              <Card className="bg-card p-6 rounded-xl border shadow-lg text-center">
+                <div className="mb-4">
+                  <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
+                  <h3 className="text-xl font-bold">
+                    <EditableText id="landing:ai-search-no-results-title" textType="span">
+                      No Se Encontraron Coincidencias
+                    </EditableText>
+                  </h3>
+                </div>
+                <p className="text-muted-foreground mb-4">
+                  <EditableText id="landing:ai-search-no-results-description" textType="span">
+                    No pudimos encontrar propiedades que coincidan con tu descripción. Intenta modificar tu búsqueda o usar términos más generales.
+                  </EditableText>
+                </p>
+                <Button onClick={() => {
+                  form.reset();
+                  setHasSearched(false);
+                }} variant="outline" className="w-full">
+                  <EditableText id="landing:ai-search-try-again-button" textType="span">
+                    Intentar Nuevamente
+                  </EditableText>
+                </Button>
+              </Card>
+            )
           )}
         </div>
       )}

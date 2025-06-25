@@ -510,10 +510,9 @@ export interface ChatConversationListItem {
 
 export interface EditableText {
   id: string;
-  page_group: string;
-  description: string;
-  content_default: string | null;
-  content_current: string | null;
+  text: string;
+  page_path: string;
+  component_id: string;
   created_at?: string;
   updated_at?: string;
 }
