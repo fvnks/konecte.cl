@@ -211,7 +211,7 @@ interface GetRequestsActionOptions {
   userId?: string; 
   onlyOpenForCollaboration?: boolean; 
   limit?: number;
-  orderBy?: 'createdAt_desc' | 'relevance';
+  orderBy?: 'createdAt_desc' | 'relevance' | 'random';
   searchTerm?: string;
 }
 
@@ -257,22 +257,16 @@ export async function getRequestsAction(options: GetRequestsActionOptions = {}):
     }
     
     if (whereClauses.length > 0) {
-        sql += ' WHERE ' + whereClauses.join(' AND ');
+        sql += ` WHERE ${whereClauses.join(' AND ')}`;
     }
     
     if (orderBy === 'relevance' && searchTerm) {
-      sql += ` ORDER BY 
-        CASE 
-          WHEN pr.desired_location_city = ? THEN 1
-          WHEN pr.desired_location_city LIKE ? THEN 2
-          WHEN pr.title LIKE ? THEN 3
-          ELSE 4
-        END, 
-        pr.created_at DESC`;
-      const searchTermLike = `%${searchTerm}%`;
-      queryParams.push(searchTerm, searchTermLike, searchTermLike);
+      sql += ` ORDER BY MATCH(pr.title, pr.description) AGAINST (? IN BOOLEAN MODE) DESC, pr.created_at DESC`;
+      queryParams.unshift(searchTerm); 
+    } else if (orderBy === 'random') {
+      sql += ` ORDER BY RAND()`;
     } else {
-        sql += ' ORDER BY pr.created_at DESC';
+      sql += ` ORDER BY pr.created_at DESC`;
     }
     
     if (limit) {

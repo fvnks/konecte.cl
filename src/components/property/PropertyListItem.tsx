@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays, ShieldCheck, Eye } from 'lucide-react';
+import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays, ShieldCheck, Eye, Bot } from 'lucide-react';
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
 import LikeButton from '@/components/ui/LikeButton';
 import AuthorInfoDialog from './AuthorInfoDialog';
@@ -71,6 +71,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
     description,
     createdAt,
     pub_id,
+    source,
   } = property;
 
   const mainImage = images && images.length > 0 ? images[0] : 'https://placehold.co/320x240.png?text=Propiedad';
@@ -87,12 +88,20 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
         </Avatar>
         <div className="text-xs">
           <span className="text-muted-foreground line-clamp-1 group-hover/author:text-primary transition-colors">Por {authorName}</span>
-          {authorRoleDisplay && (
-            <p className="text-muted-foreground/80 flex items-center capitalize">
-              <ShieldCheck className="h-3 w-3 mr-1 text-primary/70"/>
-              {authorRoleDisplay}
-            </p>
-          )}
+          <div className="flex items-center gap-x-2">
+            {authorRoleDisplay && (
+              <p className="text-muted-foreground/80 flex items-center capitalize">
+                <ShieldCheck className="h-3 w-3 mr-1 text-primary/70"/>
+                {authorRoleDisplay}
+              </p>
+            )}
+            {source === 'bot' && (
+              <p className="text-muted-foreground/80 flex items-center text-primary/80">
+                <Bot className="h-3 w-3 mr-1"/>
+                <span>vía Bot</span>
+              </p>
+            )}
+          </div>
           <p className="text-muted-foreground/70 flex items-center mt-0.5">
             <CalendarDays className="h-3 w-3 mr-1" />
             {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}

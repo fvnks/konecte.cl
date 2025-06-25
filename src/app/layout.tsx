@@ -42,9 +42,9 @@ export default function RootLayout({
               disableTransitionOnChange
           >
             <EditModeProvider>
-              <AppLayout>
-                {children}
-              </AppLayout>
+            <AppLayout>
+              {children}
+            </AppLayout>
             </EditModeProvider>
             <Toaster />
           </ThemeProvider>

@@ -39,6 +39,7 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
     id: row.id,
     pub_id: row.pub_id,
     user_id: row.user_id,
+    source: row.source,
     title: row.title,
     slug: row.slug,
     description: row.description,
@@ -121,13 +122,13 @@ export async function submitPropertyAction(
       propertyId, userId, data.title, slug, data.description, data.propertyType, data.category,
       data.price, data.currency, data.address, data.city, data.region, data.country, data.bedrooms, data.bathrooms,
       data.totalAreaSqMeters, 
-      data.usefulAreaSqMeters === '' ? null : (data.usefulAreaSqMeters ?? null),
+      data.usefulAreaSqMeters === null ? null : (data.usefulAreaSqMeters ?? null),
       data.parkingSpaces ?? 0,
       data.petsAllowed ?? false,
       data.furnished ?? false,
       data.commercialUseAllowed ?? false,
       data.hasStorage ?? false,
-      data.orientation === '' ? null : (data.orientation ?? null),
+      data.orientation === null ? null : (data.orientation ?? null),
       imagesJson, featuresJson, pubId
     ];
 
@@ -161,13 +162,13 @@ export async function submitPropertyAction(
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
         totalAreaSqMeters: data.totalAreaSqMeters,
-        usefulAreaSqMeters: data.usefulAreaSqMeters === '' || data.usefulAreaSqMeters === undefined ? undefined : Number(data.usefulAreaSqMeters),
-        parkingSpaces: data.parkingSpaces === '' || data.parkingSpaces === undefined ? undefined : Number(data.parkingSpaces),
+        usefulAreaSqMeters: data.usefulAreaSqMeters === null ? undefined : Number(data.usefulAreaSqMeters),
+        parkingSpaces: data.parkingSpaces === null ? undefined : Number(data.parkingSpaces),
         petsAllowed: data.petsAllowed ?? undefined,
         furnished: data.furnished ?? undefined,
         commercialUseAllowed: data.commercialUseAllowed ?? undefined,
         hasStorage: data.hasStorage ?? undefined,
-        orientation: data.orientation === '' || data.orientation === undefined ? undefined : data.orientation,
+        orientation: data.orientation === null ? undefined : data.orientation,
         features: data.features ? data.features.split(',').map(f => f.trim()).filter(f => f) : [],
       };
       const autoMatches = await findMatchingRequestsForNewProperty(propertyForAIMatch);
@@ -233,7 +234,7 @@ export interface GetPropertiesActionOptions {
   maxPrice?: number;
   minBedrooms?: number;
   minBathrooms?: number;
-  orderBy?: 'createdAt_desc' | 'price_asc' | 'price_desc' | 'popularity_desc';
+  orderBy?: 'createdAt_desc' | 'price_asc' | 'price_desc' | 'popularity_desc' | 'random';
 }
 
 const BASE_PROPERTY_SELECT_SQL = `
@@ -249,7 +250,8 @@ const BASE_PROPERTY_SELECT_SQL = `
     plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
     plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
     plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
-    u.plan_id as author_plan_id
+    u.plan_id as author_plan_id,
+    p.source as source
   FROM properties p
   LEFT JOIN users u ON p.user_id = u.id
   LEFT JOIN roles r ON u.role_id = r.id
@@ -326,21 +328,26 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
       sql += ' WHERE ' + whereClauses.join(' AND ');
     }
 
+    let orderByClause = '';
     switch (orderBy) {
       case 'price_asc':
-        sql += ' ORDER BY p.price ASC, p.created_at DESC';
+        orderByClause = 'ORDER BY p.price ASC';
         break;
       case 'price_desc':
-        sql += ' ORDER BY p.price DESC, p.created_at DESC';
+        orderByClause = 'ORDER BY p.price DESC';
         break;
       case 'popularity_desc':
-        sql += ' ORDER BY p.upvotes DESC, p.comments_count DESC, p.views_count DESC, p.inquiries_count DESC, RAND(DATE_FORMAT(NOW(), \'%Y%m%d\')), p.created_at DESC';
+        orderByClause = 'ORDER BY (p.views_count + p.upvotes * 5 + p.comments_count * 3) DESC';
+        break;
+      case 'random':
+        orderByClause = 'ORDER BY RAND()';
         break;
       case 'createdAt_desc':
       default:
-        sql += ' ORDER BY p.created_at DESC, RAND(DATE_FORMAT(NOW(), \'%Y%m%d\'))';
+        orderByClause = 'ORDER BY p.created_at DESC';
         break;
     }
+    sql += ` ${orderByClause}`;
 
     if (limit !== undefined) {
       const numLimit = parseInt(String(limit), 10);
@@ -492,13 +499,13 @@ export async function adminUpdatePropertyAction(
       data.title, data.description, data.propertyType, data.category,
       data.price, data.currency, data.address, data.city, data.region, data.country,
       data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
-      data.usefulAreaSqMeters === '' || data.usefulAreaSqMeters === undefined ? null : Number(data.usefulAreaSqMeters),
-      data.parkingSpaces === '' || data.parkingSpaces === undefined ? 0 : Number(data.parkingSpaces),
+      data.usefulAreaSqMeters === null ? null : Number(data.usefulAreaSqMeters),
+      data.parkingSpaces === null ? null : Number(data.parkingSpaces),
       data.petsAllowed ?? false,
       data.furnished ?? false,
       data.commercialUseAllowed ?? false,
       data.hasStorage ?? false,
-      data.orientation === '' || data.orientation === 'none' ? null : (data.orientation ?? null),
+      data.orientation === null ? null : (data.orientation ?? null),
       imagesJson, featuresJson,
       propertyId
     ];
@@ -583,13 +590,13 @@ export async function userUpdatePropertyAction(
       data.title, data.description, data.propertyType, data.category,
       data.price, data.currency, data.address, data.city, data.region, data.country,
       data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
-      data.usefulAreaSqMeters === '' || data.usefulAreaSqMeters === undefined ? null : Number(data.usefulAreaSqMeters),
-      data.parkingSpaces === '' || data.parkingSpaces === undefined ? 0 : Number(data.parkingSpaces),
+      data.usefulAreaSqMeters === null ? null : Number(data.usefulAreaSqMeters),
+      data.parkingSpaces === null ? null : Number(data.parkingSpaces),
       data.petsAllowed ?? false,
       data.furnished ?? false,
       data.commercialUseAllowed ?? false,
       data.hasStorage ?? false,
-      data.orientation === '' || data.orientation === 'none' ? null : (data.orientation ?? null),
+      data.orientation === null ? null : (data.orientation ?? null),
       imagesJson, featuresJson,
       propertyId, userId
     ];

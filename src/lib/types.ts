@@ -83,6 +83,8 @@ export type OrientationType = typeof orientationValues[number];
 export interface PropertyListing {
   id: string;
   user_id: string;
+  source?: 'web' | 'bot';
+  pub_id?: string;
   title: string;
   description: string;
   propertyType: PropertyType;
@@ -820,6 +822,18 @@ export interface AIMatch {
   property_slug?: string;
   request_title?: string;
   request_slug?: string;
+}
+
+export interface BugReport {
+  id: string;
+  report_type: string;
+  description: string;
+  user_id?: string | null;
+  user_name?: string | null;
+  user_email?: string | null;
+  created_at: Date;
+  is_read: boolean;
+  is_archived: boolean;
 }
 
 // Esquema para el formulario de agendamiento de visitas por parte de un administrador

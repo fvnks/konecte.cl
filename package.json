@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "db:setup": "tsx ./scripts/setup-db.ts",
     "db:migrate": "tsx ./scripts/run-migrations.mts",
+    "db:add-texts": "tsx ./scripts/add-editable-texts.ts",
     "postinstall": "patch-package"
   },
   "dependencies": {

@@ -282,7 +282,7 @@ export default function Navbar() {
                 <Separator orientation="vertical" className="h-6" />
                 <EditModeToggle />
               </>
-            )}
+             )}
             {isClient ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

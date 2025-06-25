@@ -1,5 +1,5 @@
 // src/lib/db.ts
-import mysql from 'mysql2/promise';
+import * as mysql from 'mysql2/promise';
 import type { Pool, PoolConnection } from 'mysql2/promise';
 import { drizzle } from 'drizzle-orm/mysql2';
 // dotenv.config() is removed as Next.js handles .env files automatically.
@@ -61,6 +61,19 @@ function createPool(): Pool {
 
   try {
     const newPool = mysql.createPool(connectionConfig);
+
+    // Event listener to handle connection acquisition and validation
+    newPool.on('acquire', async (connection: mysql.PoolConnection) => {
+      try {
+        await connection.ping();
+        // console.log(`[DB_EVENT_PING_OK] Ping successful for connection ${connection.threadId}`);
+      } catch (err: any) {
+        console.error(`[DB_EVENT_PING_FAIL] Ping failed for connection ${connection.threadId}, destroying it. Error:`, err.message);
+        // Destroy the problematic connection. The pool will create a new one if needed.
+        connection.destroy();
+      }
+    });
+
     console.log("[DB_INFO] mysql.createPool called. Attempting test connection...");
     // Test the pool immediately (non-blocking for the return of createPool)
     newPool.getConnection()
@@ -122,7 +135,28 @@ export async function query(sql: string, params?: any[]): Promise<any> {
     console.time(`[DB_QUERY_EXEC_TIME-${queryId}]`);
     const [rows] = await connection.execute(sql, params);
     console.timeEnd(`[DB_QUERY_EXEC_TIME-${queryId}]`);
-    console.log(`[DB_QUERY_EXEC_SUCCESS-${queryId}] SQL executed (Conn ID: ${connection.threadId}). Rows: ${Array.isArray(rows) ? rows.length : 'N/A'}`);
+    
+    // Log the raw result object for detailed debugging
+    console.log(`[DB_QUERY_RAW_RESULT-${queryId}]`, rows);
+
+    let resultInfo;
+    if (Array.isArray(rows)) {
+      resultInfo = `Rows returned: ${rows.length}`;
+    } else if (rows && typeof rows === 'object' && 'affectedRows' in rows) {
+      // It's likely a ResultSetHeader
+      const packet = rows as any;
+      resultInfo = `Affected rows: ${packet.affectedRows}, Changed rows: ${packet.changedRows}`;
+    } else {
+      resultInfo = 'Result type not recognized for detailed logging.';
+    }
+    console.log(`[DB_QUERY_EXEC_SUCCESS-${queryId}] SQL executed (Conn ID: ${connection.threadId}). ${resultInfo}`);
+    
+    // Release the connection before returning the result
+    if (connection) {
+      console.log(`[DB_QUERY_RELEASE-${queryId}] Releasing connection (Conn ID: ${connection.threadId})`);
+      connection.release();
+    }
+    
     return rows;
   } catch (error: any) {
     const errorMessage = `Error executing SQL query: ${error.message} (Code: ${error.code}, SQLState: ${error.sqlState})`;
@@ -142,12 +176,13 @@ export async function query(sql: string, params?: any[]): Promise<any> {
       console.error(`[DB_QUERY_ERROR_CRITICAL_CONN-${queryId}] Critical connection error: ${error.code}. Pool may be closed and recreated on next call.`);
       await closeDbPool(); // Close the current (potentially problematic) pool
     }
-    throw new Error(errorMessage); // Re-throw the error to be handled by the caller
-  } finally {
+    
+    // Ensure connection is released even on error
     if (connection) {
-      console.log(`[DB_QUERY_RELEASE-${queryId}] Releasing connection (Conn ID: ${connection.threadId})`);
       connection.release();
     }
+
+    throw error; // Re-throw the original error to preserve the stack trace and detailed info
   }
 }
     

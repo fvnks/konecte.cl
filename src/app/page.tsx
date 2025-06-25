@@ -20,16 +20,15 @@ import InteractiveAIMatching from '@/components/landing/InteractiveAIMatching';
 import PlanDisplayCard from '@/components/plan/PlanDisplayCard';
 import HeroSearchForm from '@/components/landing/HeroSearchForm';
 import HeroSection from '@/components/landing/HeroSection';
-import EditableText from '@/components/ui/EditableText';
+import StaticText from '@/components/ui/StaticText';
 
 
 async function getFeaturedListingsAndRequestsData() {
   const [allProperties, allRequests] = await Promise.all([
-    getPropertiesAction({ limit: 8, orderBy: 'popularity_desc' }),
-    getRequestsAction({ includeInactive: false, limit: 8, orderBy: 'createdAt_desc' }) // Added limit and order
+    getPropertiesAction({ limit: 8, orderBy: 'random' }),
+    getRequestsAction({ includeInactive: false, limit: 8, orderBy: 'random' })
   ]);
   const featuredProperties = allProperties;
-  // Sorting for recentRequests is now handled by orderBy in getRequestsAction if 'createdAt_desc' is default
   const recentRequests = allRequests;
   return { featuredProperties, recentRequests };
 }
@@ -47,20 +46,20 @@ function AIMatchingSection() {
       <CardHeader className="p-6 md:p-8">
         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
           <Brain className="h-8 w-8 mr-3 text-primary" />
-          <EditableText
-            id="home:ai-matching-title"
+          <StaticText
+            id="landing:ai-matching-title"
             textType="span"
           >
-            IA: Describe tu Búsqueda Ideal
-          </EditableText>
+          IA: Describe tu Búsqueda Ideal
+          </StaticText>
         </CardTitle>
         <CardDescription className="text-lg text-muted-foreground mt-2">
-          <EditableText
-            id="home:ai-matching-description"
+          <StaticText
+            id="landing:ai-matching-description"
             textType="span"
           >
-            Escribe lo que buscas (tipo de propiedad, características, ubicación, etc.) y nuestra IA buscará propiedades y solicitudes compatibles en la plataforma.
-          </EditableText>
+          Escribe lo que buscas (tipo de propiedad, características, ubicación, etc.) y nuestra IA buscará propiedades y solicitudes compatibles en la plataforma.
+          </StaticText>
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 md:p-8 pt-0 md:pt-0">
@@ -77,23 +76,23 @@ function AnalisisWhatsBotSectionClient({ initialConfig, initialSheetData }: { in
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-2xl md:text-3xl flex items-center text-muted-foreground">
             <AlertTriangle className="h-7 w-7 mr-3 text-yellow-500" />
-            <EditableText
-              id="home:whatsbot-unconfigured-title"
+            <StaticText
+              id="landing:whatsbot-unconfigured-title"
               textType="span"
             >
-              Análisis WhatsBot
-            </EditableText>
+            Análisis WhatsBot
+            </StaticText>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 md:p-8">
           <p className="text-base text-muted-foreground">
-            <EditableText
-              id="home:whatsbot-unconfigured-description"
+            <StaticText
+              id="landing:whatsbot-unconfigured-description"
               textType="span"
             >
-              Esta sección mostrará datos para el Análisis WhatsBot, pero aún no ha sido configurada.
+            Esta sección mostrará datos para el Análisis WhatsBot, pero aún no ha sido configurada.
               Un administrador puede habilitarla desde el panel de configuración.
-            </EditableText>
+            </StaticText>
             <Link href="/admin/settings" className="text-primary hover:underline font-medium ml-1">panel de configuración</Link>.
           </p>
         </CardContent>
@@ -107,30 +106,30 @@ function AnalisisWhatsBotSectionClient({ initialConfig, initialSheetData }: { in
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
             <Bot className="h-8 w-8 mr-3 text-primary" />
-            <EditableText
-              id="home:whatsbot-error-title"
+            <StaticText
+              id="landing:whatsbot-error-title"
               textType="span"
             >
-              Análisis WhatsBot
-            </EditableText>
+            Análisis WhatsBot
+            </StaticText>
           </CardTitle>
           <CardDescription className="text-lg text-muted-foreground mt-2">
-            <EditableText
-              id="home:whatsbot-error-description"
+            <StaticText
+              id="landing:whatsbot-error-description"
               textType="span"
             >
               No se pudieron cargar los datos. Verifica la configuración y la consola del servidor para más detalles.
-            </EditableText>
+            </StaticText>
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 md:p-8">
           <p className="text-base text-muted-foreground">
-            <EditableText
-              id="home:whatsbot-error-help"
+            <StaticText
+              id="landing:whatsbot-error-help"
               textType="span"
             >
               Asegúrate de que el ID de la hoja, el nombre de la pestaña y las columnas sean correctos, y que la hoja esté compartida públicamente.
-            </EditableText>
+            </StaticText>
           </p>
         </CardContent>
       </Card>
@@ -143,20 +142,20 @@ function AnalisisWhatsBotSectionClient({ initialConfig, initialSheetData }: { in
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
             <Bot className="h-8 w-8 mr-3 text-primary" />
-            <EditableText
-              id="home:whatsbot-empty-title"
+            <StaticText
+              id="landing:whatsbot-empty-title"
               textType="span"
             >
-              Análisis WhatsBot
-            </EditableText>
+            Análisis WhatsBot
+            </StaticText>
           </CardTitle>
           <CardDescription className="text-lg text-muted-foreground mt-2">
-            <EditableText
-              id="home:whatsbot-empty-description"
+            <StaticText
+              id="landing:whatsbot-empty-description"
               textType="span"
             >
               La fuente de datos está configurada pero no contiene filas de datos (solo encabezados).
-            </EditableText>
+            </StaticText>
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 md:p-8">
@@ -172,20 +171,20 @@ function AnalisisWhatsBotSectionClient({ initialConfig, initialSheetData }: { in
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
             <Bot className="h-8 w-8 mr-3 text-primary" />
-            <EditableText
-              id="home:whatsbot-no-headers-title"
+            <StaticText
+              id="landing:whatsbot-no-headers-title"
               textType="span"
             >
-              Análisis WhatsBot
-            </EditableText>
+            Análisis WhatsBot
+            </StaticText>
           </CardTitle>
           <CardDescription className="text-lg text-muted-foreground mt-2">
-            <EditableText
-              id="home:whatsbot-no-headers-description"
+            <StaticText
+              id="landing:whatsbot-no-headers-description"
               textType="span"
             >
               No se encontraron encabezados en la fuente de datos. Verifica la configuración.
-            </EditableText>
+            </StaticText>
           </CardDescription>
         </CardHeader>
       </Card>
@@ -197,20 +196,20 @@ function AnalisisWhatsBotSectionClient({ initialConfig, initialSheetData }: { in
       <CardHeader className="p-6 md:p-8">
         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
           <Bot className="h-8 w-8 mr-3 text-primary" />
-          <EditableText
-            id="home:whatsbot-title"
+          <StaticText
+            id="landing:whatsbot-title"
             textType="span"
           >
-            Análisis WhatsBot
-          </EditableText>
+          Análisis WhatsBot
+          </StaticText>
         </CardTitle>
         <CardDescription className="text-lg text-muted-foreground mt-2">
-          <EditableText
-            id="home:whatsbot-description"
+          <StaticText
+            id="landing:whatsbot-description"
             textType="span"
           >
             Información relevante para el análisis de interacciones del bot.
-          </EditableText>
+          </StaticText>
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 md:p-8">
@@ -230,31 +229,26 @@ function FeaturedPlansSection({ plans }: FeaturedPlansSectionProps) {
         <CardHeader className="p-6 md:p-8">
           <CardTitle className="text-2xl md:text-3xl flex items-center text-muted-foreground">
             <CreditCard className="h-7 w-7 mr-3 text-yellow-500" />
-            <EditableText
-              id="home:plans-empty-title"
+            <StaticText
+              id="landing:plans-empty-title"
               textType="span"
             >
-              Planes Destacados
-            </EditableText>
+            Planes Destacados
+            </StaticText>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 md:p-8">
           <p className="text-base text-muted-foreground">
-            <EditableText
-              id="home:plans-empty-description"
+            <StaticText
+              id="landing:plans-empty-description"
               textType="span"
             >
-              Actualmente no hay planes destacados para mostrar. Visita nuestra página de planes para más información.
-            </EditableText>
+            Actualmente no hay planes destacados para mostrar. Visita nuestra página de planes para más información.
+            </StaticText>
           </p>
           <Button asChild variant="link" className="mt-3 px-0">
             <Link href="/plans">
-              <EditableText
-                id="home:plans-empty-link"
-                textType="span"
-              >
-                Ver todos los planes
-              </EditableText>
+              Ver planes disponibles <ArrowRight className="h-4 w-4 ml-1" />
             </Link>
           </Button>
         </CardContent>
@@ -263,49 +257,38 @@ function FeaturedPlansSection({ plans }: FeaturedPlansSectionProps) {
   }
 
   return (
-    <Card className="shadow-xl rounded-2xl overflow-hidden border bg-card">
-      <CardHeader className="p-6 md:p-8 bg-secondary/30">
+    <Card className="shadow-xl rounded-2xl border bg-card">
+      <CardHeader className="p-6 md:p-8">
         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
           <CreditCard className="h-8 w-8 mr-3 text-primary" />
-          <EditableText
-            id="home:plans-title"
+          <StaticText
+            id="landing:plans-title"
             textType="span"
           >
-            Planes Destacados
-          </EditableText>
+          Planes para Profesionales
+          </StaticText>
         </CardTitle>
         <CardDescription className="text-lg text-muted-foreground mt-2">
-          <EditableText
-            id="home:plans-description"
+          <StaticText
+            id="landing:plans-subtitle"
             textType="span"
           >
-            Descubre nuestros planes y elige el que mejor se adapte a tus necesidades.
-          </EditableText>
+            Potencia tu negocio inmobiliario con nuestras herramientas profesionales.
+          </StaticText>
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6 md:p-8">
-        {/* Grid for plan cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <div key={plan.id} className="flex h-full">
-              <PlanDisplayCard plan={plan} />
-            </div>
-          ))}
-        </div>
-        <div className="mt-10 text-center">
-          <Button asChild size="lg" variant="outline" className="rounded-lg">
-            <Link href="/plans">
-              <EditableText
-                id="home:plans-view-all-button"
-                textType="span"
-              >
-                Ver todos los planes
-              </EditableText>
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
+      <CardContent className="p-6 md:p-8 pt-0 md:pt-0 grid gap-6 md:grid-cols-3">
+        {plans.map((plan) => (
+          <PlanDisplayCard key={plan.id} plan={plan} showActions={false} />
+        ))}
       </CardContent>
+      <CardFooter className="p-6 md:p-8 pt-0 md:pt-0 flex justify-center">
+        <Button asChild variant="outline" size="lg">
+          <Link href="/plans">
+            Ver todos los planes <ArrowRight className="h-4 w-4 ml-2" />
+          </Link>
+        </Button>
+      </CardFooter>
     </Card>
   );
 }
@@ -316,23 +299,23 @@ function FeaturedListingsSection({ featuredProperties, recentRequests }: { featu
       <CardHeader className="p-6 md:p-8">
         <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
           <ListChecks className="h-8 w-8 mr-3 text-primary" />
-          <EditableText
-            id="home:featured-list-requests-title"
+          <StaticText
+            id="landing:featured-listings-title"
             textType="span"
           >
-            Destacados y Recientes
-          </EditableText>
+            Propiedades y Solicitudes Destacadas
+          </StaticText>
         </CardTitle>
         <CardDescription className="text-lg text-muted-foreground mt-2">
-          <EditableText
-            id="home:featured-list-requests-description"
+          <StaticText
+            id="landing:featured-listings-description"
             textType="span"
           >
-            Explora las últimas propiedades y las solicitudes de búsqueda más nuevas.
-          </EditableText>
+          Explora las últimas propiedades y solicitudes agregadas a nuestra plataforma.
+          </StaticText>
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6 md:p-8">
+      <CardContent className="p-6 md:p-8 pt-0 md:pt-0">
         <FeaturedListingsClient featuredProperties={featuredProperties} recentRequests={recentRequests} />
       </CardContent>
     </Card>
@@ -370,7 +353,7 @@ export default function HomePage() {
           gSheetConfigResult
         ] = await Promise.all([
           getSiteSettingsAction(),
-          getEditableTextsByGroupAction('home'),
+          getEditableTextsByGroupAction('landing'),
           getFeaturedListingsAndRequestsData(),
           getFeaturedPlansData(3),
           getGoogleSheetConfigAction()
@@ -403,7 +386,7 @@ export default function HomePage() {
       <div className="container flex flex-col items-center justify-center min-h-[60vh] py-20">
         <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
         <p className="text-lg text-muted-foreground">Cargando contenido...</p>
-      </div>
+        </div>
     );
   }
   
@@ -413,7 +396,7 @@ export default function HomePage() {
         <AlertTriangle className="h-10 w-10 text-destructive mb-4" />
         <h2 className="text-xl font-semibold mb-2">Error al cargar la página</h2>
         <p className="text-muted-foreground">{errorLoading}</p>
-      </div>
+        </div>
     );
   }
   
@@ -428,11 +411,6 @@ export default function HomePage() {
     );
   }
 
-
-  const heroTitle = homeTexts.home_hero_title || DEFAULT_HERO_TITLE;
-  const heroSubtitle = homeTexts.home_hero_subtitle || DEFAULT_HERO_SUBTITLE;
-  const publishPropertyButtonText = homeTexts.home_publish_property_button || DEFAULT_PUBLISH_PROPERTY_BUTTON;
-  const publishRequestButtonText = homeTexts.home_publish_request_button || DEFAULT_PUBLISH_REQUEST_BUTTON;
 
   const showFeaturedListings = siteSettings?.show_featured_listings_section === undefined ? true : siteSettings.show_featured_listings_section;
   const showFeaturedPlans = siteSettings?.show_featured_plans_section === undefined ? true : siteSettings.show_featured_plans_section;
@@ -456,11 +434,11 @@ export default function HomePage() {
 
       {/* Main Content Sections */}
       <div className="container py-12 md:py-16 space-y-12 md:space-y-20">
-        {sectionsOrder.map(key => {
-          const SectionRenderer = sectionComponentsRender[key];
-          return SectionRenderer ? <div key={key}>{SectionRenderer()}</div> : null;
-        })}
-      </div>
+      {sectionsOrder.map(key => {
+        const SectionRenderer = sectionComponentsRender[key];
+        return SectionRenderer ? <div key={key}>{SectionRenderer()}</div> : null;
+      })}
+    </div>
     </main>
   );
 }

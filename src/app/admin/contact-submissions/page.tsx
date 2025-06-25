@@ -1,4 +1,3 @@
-
 // src/app/admin/contact-submissions/page.tsx
 'use client';
 
@@ -9,13 +8,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from "@/hooks/use-toast";
 import type { ContactFormSubmission, User as StoredUserType } from '@/lib/types';
+import { BugReport } from '@/actions/bugReportActions'; // Import BugReport from actions
 import { 
   getContactFormSubmissionsAction, 
   markSubmissionAsActionReadAction, 
   deleteContactSubmissionAction,
   adminRespondToSubmissionAction
 } from '@/actions/contactFormActions';
-import { Loader2, MailWarning, Trash2, Eye, CheckCircle2, RotateCcw, Send, CornerDownLeft } from 'lucide-react';
+import {
+  getBugReportsAction,
+  markBugReportAsReadAction,
+  deleteBugReportAction
+} from '@/actions/bugReportActions';
+import { Loader2, MailWarning, Trash2, Eye, CheckCircle2, RotateCcw, Send, CornerDownLeft, Bug } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -36,26 +41,24 @@ import { Label } from '@/components/ui/label';
 export default function AdminContactSubmissionsPage() {
   const { toast } = useToast();
   const [submissions, setSubmissions] = useState<ContactFormSubmission[]>([]);
+  const [bugReports, setBugReports] = useState<BugReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, startProcessingTransition] = useTransition();
   
-  const [selectedSubmission, setSelectedSubmission] = useState<ContactFormSubmission | null>(null);
+  const [selectedItem, setSelectedItem] = useState<ContactFormSubmission | BugReport | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [adminResponseText, setAdminResponseText] = useState('');
   const [isResponding, setIsResponding] = useState(false);
   const [adminUser, setAdminUser] = useState<StoredUserType | null>(null);
+
+  const isBugReport = (item: any): item is BugReport => item && 'page_url' in item; // A more specific property for bug reports
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
     if (userJson) {
       try {
         const parsedUser: StoredUserType = JSON.parse(userJson);
-        if (parsedUser && parsedUser.id) {
-          setAdminUser(parsedUser);
-        } else {
-          setAdminUser(null);
-          console.warn("Admin user data from localStorage is missing an ID.");
-        }
+        setAdminUser(parsedUser);
       } catch (error) {
         console.error("Error parsing admin user from localStorage", error);
         setAdminUser(null);
@@ -63,33 +66,43 @@ export default function AdminContactSubmissionsPage() {
     }
   }, []);
 
-  const fetchSubmissions = async () => {
+  const fetchAllData = async () => {
     setIsLoading(true);
     try {
-      const fetchedSubmissions = await getContactFormSubmissionsAction();
+      const [fetchedSubmissions, fetchedBugReportsData] = await Promise.all([
+        getContactFormSubmissionsAction(),
+        getBugReportsAction({}) // Fetch all bug reports without pagination/filters for now
+      ]);
       setSubmissions(fetchedSubmissions);
-      // Notify layout to update counts
-      window.dispatchEvent(new CustomEvent('contactSubmissionsUpdated'));
+      setBugReports(fetchedBugReportsData.bugReports);
+      window.dispatchEvent(new CustomEvent('navUpdateCounts'));
     } catch (error) {
-      toast({ title: "Error", description: "No se pudieron cargar los mensajes de contacto.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudieron cargar los mensajes y reportes.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSubmissions();
+    fetchAllData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleMarkAsReadUnread = async (submissionId: string, currentStatus: boolean) => {
+  const handleMarkAsReadUnread = (item: ContactFormSubmission | BugReport) => {
     startProcessingTransition(async () => {
-      const result = await markSubmissionAsActionReadAction(submissionId, !currentStatus);
+      let result;
+      const newStatus = !item.is_read;
+      if (isBugReport(item)) {
+        result = await markBugReportAsReadAction(item.id, newStatus);
+      } else {
+        result = await markSubmissionAsActionReadAction(item.id, newStatus);
+      }
+      
       if (result.success) {
         toast({ title: "Estado Actualizado", description: result.message });
-        fetchSubmissions(); 
-        if (selectedSubmission?.id === submissionId) {
-          setSelectedSubmission(prev => prev ? { ...prev, is_read: !currentStatus } : null);
+        fetchAllData();
+        if (selectedItem?.id === item.id) {
+          setSelectedItem(prev => prev ? { ...prev, is_read: newStatus } : null);
         }
       } else {
         toast({ title: "Error", description: result.message, variant: "destructive" });
@@ -97,133 +110,121 @@ export default function AdminContactSubmissionsPage() {
     });
   };
 
-  const handleDeleteSubmission = async (submissionId: string) => {
+  const handleDelete = (item: ContactFormSubmission | BugReport) => {
     startProcessingTransition(async () => {
-      const result = await deleteContactSubmissionAction(submissionId);
-      if (result.success) {
-        toast({ title: "Mensaje Eliminado", description: result.message });
-        fetchSubmissions(); 
-        setIsViewModalOpen(false); 
-        setSelectedSubmission(null);
+      let result;
+      if (isBugReport(item)) {
+        result = await deleteBugReportAction(item.id);
       } else {
-        toast({ title: "Error al Eliminar", description: result.message, variant: "destructive" });
+        result = await deleteContactSubmissionAction(item.id);
+      }
+
+      if (result.success) {
+        toast({ title: "Elemento Eliminado", description: result.message });
+        fetchAllData();
+        setIsViewModalOpen(false); 
+        setSelectedItem(null);
+      } else {
+        toast({ title: "Error", description: result.message, variant: "destructive" });
       }
     });
   };
 
-  const openViewModal = (submission: ContactFormSubmission) => {
-    setSelectedSubmission(submission);
-    setAdminResponseText(submission.admin_notes || ''); // Pre-fill with existing notes if any
+  const openViewModal = (item: ContactFormSubmission | BugReport) => {
+    setSelectedItem(item);
+    if (!isBugReport(item)) {
+      setAdminResponseText(item.admin_notes || '');
+    }
     setIsViewModalOpen(true);
-    if (!submission.is_read) {
-      handleMarkAsReadUnread(submission.id, false);
+    if (!item.is_read) {
+      handleMarkAsReadUnread(item);
     }
   };
 
   const handleAdminRespond = async () => {
-    if (!selectedSubmission || !adminUser?.id || !adminResponseText.trim()) {
-        toast({ title: "Datos incompletos", description: "Por favor, escribe una respuesta o verifica tu sesión.", variant: "destructive" });
+    if (!selectedItem || isBugReport(selectedItem) || !adminUser?.id || !adminResponseText.trim()) {
+        toast({ title: "Datos incompletos", description: "La respuesta no puede estar vacía.", variant: "destructive" });
         return;
     }
     setIsResponding(true);
-    const result = await adminRespondToSubmissionAction(selectedSubmission.id, adminUser.id, adminResponseText);
+    const result = await adminRespondToSubmissionAction(selectedItem.id, adminUser.id, adminResponseText);
     setIsResponding(false);
 
-    const toastTitle = result.success 
-        ? (result.chatSent ? "Respuesta Enviada" : "Nota Guardada") 
-        : "Error al Procesar";
-
     toast({
-        title: toastTitle,
+        title: result.success ? "Nota Guardada" : "Error",
         description: result.message,
         variant: result.success ? "default" : "destructive",
     });
 
     if (result.success) {
-        // Do not reset adminResponseText here if we want to keep it pre-filled from admin_notes
-        fetchSubmissions(); 
+        fetchAllData();
         setIsViewModalOpen(false);
     }
   };
   
-  if (isLoading && submissions.length === 0) { 
+  if (isLoading && submissions.length === 0 && bugReports.length === 0) { 
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2">Cargando mensajes...</p>
+        <p className="ml-2">Cargando mensajes y reportes...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Contact Form Submissions Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-2xl font-headline flex items-center">
-              <MailWarning className="h-6 w-6 mr-2 text-primary" /> Mensajes del Formulario de Contacto
+              <MailWarning className="h-6 w-6 mr-2 text-primary" /> Mensajes de Contacto
             </CardTitle>
-            <CardDescription>Gestiona los mensajes recibidos a través del formulario de contacto público.</CardDescription>
+            <CardDescription>Gestiona los mensajes recibidos del formulario de contacto público.</CardDescription>
           </div>
-          <Button onClick={fetchSubmissions} variant="outline" size="sm" disabled={isLoading || isProcessing}>
+          <Button onClick={fetchAllData} variant="outline" size="sm" disabled={isLoading || isProcessing}>
             <RotateCcw className={`h-4 w-4 mr-2 ${isLoading || isProcessing ? 'animate-spin' : ''}`} />
             Refrescar
           </Button>
         </CardHeader>
         <CardContent>
-          {isLoading && submissions.length > 0 && <p className="text-sm text-muted-foreground mb-2">Actualizando lista de mensajes...</p>}
           {submissions.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">Estado</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Asunto</TableHead>
-                    <TableHead>Fecha Envío</TableHead>
+                    <TableHead>Fecha</TableHead>
                     <TableHead>Respondido</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {submissions.map((sub) => (
-                    <TableRow key={sub.id} className={`${!sub.is_read ? 'font-semibold bg-primary/5 hover:bg-primary/10' : 'hover:bg-muted/50'} ${sub.replied_at ? 'opacity-70' : ''}`}>
+                    <TableRow key={sub.id} className={`${!sub.is_read ? 'font-semibold bg-primary/5' : ''}`}>
                       <TableCell className="text-center">
                         {!sub.is_read && <Badge variant="destructive" className="h-2 w-2 p-0 rounded-full" title="No leído" />}
                       </TableCell>
-                      <TableCell className="max-w-xs truncate" title={sub.name}>{sub.name}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={sub.email}>{sub.email}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={sub.subject || ''}>{sub.subject || '-'}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {format(new Date(sub.submitted_at), "dd MMM yyyy, HH:mm", { locale: es })}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {sub.replied_at ? format(new Date(sub.replied_at), "dd MMM yy", { locale: es }) : 'No'}
-                      </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" onClick={() => openViewModal(sub)} title="Ver y Responder Mensaje">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                      <TableCell>{sub.name}</TableCell>
+                      <TableCell>{sub.email}</TableCell>
+                      <TableCell>{sub.subject}</TableCell>
+                      <TableCell>{format(new Date(sub.submitted_at), "dd MMM yyyy", { locale: es })}</TableCell>
+                      <TableCell>{sub.replied_at ? 'Sí' : 'No'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openViewModal(sub)}><Eye className="h-4 w-4" /></Button>
                         <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/90" disabled={isProcessing} title="Eliminar Mensaje">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
+                          <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción no se puede deshacer. Eliminarás permanentemente el mensaje de "{sub.name}".
-                              </AlertDialogDescription>
+                              <AlertDialogTitle>¿Eliminar Mensaje?</AlertDialogTitle>
+                              <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteSubmission(sub.id)} disabled={isProcessing} className="bg-destructive hover:bg-destructive/90">
-                                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Sí, eliminar mensaje
-                              </AlertDialogAction>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(sub)}>Eliminar</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -233,71 +234,110 @@ export default function AdminContactSubmissionsPage() {
                 </TableBody>
               </Table>
             </div>
-          ) : (
-            !isLoading && <p className="text-muted-foreground text-center py-4">No hay mensajes de contacto recibidos.</p>
-          )}
+          ) : ( !isLoading && <p className="text-center text-muted-foreground py-4">No hay mensajes.</p> )}
+        </CardContent>
+      </Card>
+      
+      {/* Bug Reports Card */}
+      <Card>
+        <CardHeader>
+            <CardTitle className="text-2xl font-headline flex items-center">
+                <Bug className="h-6 w-6 mr-2 text-destructive" /> Reportes de Fallas
+            </CardTitle>
+            <CardDescription>Reportes de errores o sugerencias enviadas por los usuarios.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {bugReports.length > 0 ? (
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[50px]"></TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead>Usuario</TableHead>
+                                <TableHead>Página</TableHead>
+                                <TableHead>Fecha</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {bugReports.map((report) => (
+                                <TableRow key={report.id} className={`${!report.is_read ? 'font-semibold bg-destructive/5' : ''}`}>
+                                    <TableCell className="text-center">
+                                        {!report.is_read && <Badge variant="destructive" className="h-2 w-2 p-0 rounded-full" title="No leído" />}
+                                    </TableCell>
+                                    <TableCell><Badge variant="outline">{report.status}</Badge></TableCell>
+                                    <TableCell>{report.name || 'Anónimo'}<br/><span className="text-xs text-muted-foreground">{report.email}</span></TableCell>
+                                    <TableCell className="truncate max-w-xs">{report.page_url}</TableCell>
+                                    <TableCell>{format(new Date(report.created_at), "dd MMM yyyy", { locale: es })}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => openViewModal(report)}><Eye className="h-4 w-4" /></Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>¿Eliminar Reporte?</AlertDialogTitle>
+                                                    <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDelete(report)}>Eliminar</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            ) : ( !isLoading && <p className="text-center text-muted-foreground py-4">No hay reportes.</p> )}
         </CardContent>
       </Card>
 
-      {selectedSubmission && (
+      {/* Unified View/Response Modal */}
+      {selectedItem && (
         <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Mensaje de: {selectedSubmission.name}</DialogTitle>
+              <DialogTitle>
+                {isBugReport(selectedItem) ? `Reporte de ${selectedItem.name || 'Anónimo'}` : `Mensaje de: ${selectedItem.name}`}
+              </DialogTitle>
               <DialogDescription>
-                Enviado el {format(new Date(selectedSubmission.submitted_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}
-                {selectedSubmission.replied_at && ` | Respondido el ${format(new Date(selectedSubmission.replied_at), "dd MMM yy", { locale: es })}`}
+                Enviado el {format(new Date(isBugReport(selectedItem) ? selectedItem.created_at : selectedItem.submitted_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto pr-3">
-              <p><strong className="font-medium">Email:</strong> {selectedSubmission.email}</p>
-              {selectedSubmission.phone && <p><strong className="font-medium">Teléfono:</strong> {selectedSubmission.phone}</p>}
-              {selectedSubmission.subject && <p><strong className="font-medium">Asunto:</strong> {selectedSubmission.subject}</p>}
-              <div>
-                <strong className="font-medium block mb-1">Mensaje Original:</strong>
-                <Textarea value={selectedSubmission.message} readOnly className="min-h-[100px] bg-muted/50" />
-              </div>
-              {selectedSubmission.admin_notes && !adminResponseText && ( // Show admin_notes only if adminResponseText is empty initially
-                <div>
-                  <strong className="font-medium block mb-1">Última Respuesta/Nota del Admin:</strong>
-                  <Textarea value={selectedSubmission.admin_notes} readOnly className="min-h-[80px] bg-muted/30 italic" />
-                </div>
+            <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              {isBugReport(selectedItem) ? (
+                <>
+                  <p><strong>Estado:</strong> <Badge variant="default">{selectedItem.status}</Badge></p>
+                  <p><strong>Usuario:</strong> {selectedItem.name} ({selectedItem.email})</p>
+                  <p><strong>Página:</strong> <a href={selectedItem.page_url || ''} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{selectedItem.page_url}</a></p>
+                  <div><p className="font-semibold">Descripción:</p><p className="pl-2 border-l-2">{selectedItem.description}</p></div>
+                  {selectedItem.steps_to_reproduce && <div><p className="font-semibold">Pasos para reproducir:</p><p className="pl-2 border-l-2">{selectedItem.steps_to_reproduce}</p></div>}
+                  {selectedItem.browser_device && <p><strong>Navegador/Dispositivo:</strong> {selectedItem.browser_device}</p>}
+                  {selectedItem.admin_notes && <div><p className="font-semibold">Notas del Admin:</p><p className="pl-2 border-l-2 bg-muted/50 p-2 rounded">{selectedItem.admin_notes}</p></div>}
+                </>
+              ) : (
+                <>
+                  <p><strong>Contacto:</strong> {selectedItem.email} {selectedItem.phone && `| ${selectedItem.phone}`}</p>
+                  <p><strong>Asunto:</strong> {selectedItem.subject || 'N/A'}</p>
+                  <div><p className="font-semibold">Mensaje:</p><p className="pl-2 border-l-2">{selectedItem.message}</p></div>
+                  <div className="space-y-2 pt-4">
+                    <Label htmlFor="admin-response">Respuesta / Notas del Administrador</Label>
+                    <Textarea id="admin-response" placeholder="Escribe tu respuesta o notas internas..." value={adminResponseText} onChange={(e) => setAdminResponseText(e.target.value)} rows={4} disabled={isResponding}/>
+                  </div>
+                </>
               )}
-              <div className="space-y-1.5 pt-3 border-t">
-                <Label htmlFor="admin-response" className="font-medium">Escribir Respuesta / Nota Interna:</Label>
-                <Textarea
-                    id="admin-response"
-                    placeholder={!adminUser?.id ? "Inicia sesión como admin para responder." : "Escribe tu respuesta aquí. Si el email del remitente está registrado, se enviará como un mensaje de chat..."}
-                    value={adminResponseText}
-                    onChange={(e) => setAdminResponseText(e.target.value)}
-                    className="min-h-[100px]"
-                    disabled={isResponding || !adminUser?.id}
-                />
-                {!adminUser?.id && <p className="text-xs text-destructive">Debes estar logueado como admin para responder o tu sesión es inválida.</p>}
-              </div>
             </div>
-            <DialogFooter className="sm:justify-between gap-2 flex-wrap">
-              <Button 
-                variant={selectedSubmission.is_read ? "outline" : "default"} 
-                size="sm"
-                onClick={() => handleMarkAsReadUnread(selectedSubmission.id, selectedSubmission.is_read)} 
-                disabled={isProcessing || isResponding}
-              >
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                {selectedSubmission.is_read ? "Marcar No Leído" : "Marcar Leído"}
-              </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setIsViewModalOpen(false)} disabled={isResponding}>Cerrar</Button>
-                <Button 
-                    size="sm" 
-                    onClick={handleAdminRespond} 
-                    disabled={isResponding || !adminResponseText.trim() || !adminUser?.id}
-                    className="bg-primary hover:bg-primary/90"
-                >
-                    {isResponding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                    Enviar Respuesta / Guardar Nota
-                </Button>
-              </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>Cerrar</Button>
+                {!isBugReport(selectedItem) && (
+                  <Button onClick={handleAdminRespond} disabled={isResponding || !adminResponseText.trim()}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Guardar Nota
+                  </Button>
+                )}
             </DialogFooter>
           </DialogContent>
         </Dialog>

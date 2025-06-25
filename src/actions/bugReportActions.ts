@@ -74,7 +74,7 @@ export async function getBugReportsAction(options: {
   } = options;
   
   const offset = (page - 1) * pageSize;
-  
+
   try {
     // Construir la consulta base
     let whereClause = '';
@@ -179,7 +179,7 @@ export async function markBugReportAsReadAction(id: string): Promise<{ success: 
     );
     
     revalidatePath('/admin/bug-reports');
-    
+
     return { success: true };
   } catch (error) {
     console.error('Error al marcar reporte como leído:', error);
@@ -231,5 +231,61 @@ export async function deleteBugReportAction(id: string): Promise<{ success: bool
       success: false,
       message: "Hubo un problema al eliminar el reporte."
     };
+  }
+}
+
+export async function markBugReportAsActionReadAction(reportId: string, is_read: boolean): Promise<{ success: boolean; message: string }> {
+  try {
+    const isUserAdmin = await isAdmin();
+    if (!isUserAdmin) {
+      return { success: false, message: "No tienes permisos para realizar esta acción." };
+    }
+    await query('UPDATE bug_reports SET is_read = ? WHERE id = ?', [is_read, reportId]);
+    revalidatePath('/admin/bug-reports');
+    return { success: true, message: 'Reporte de error actualizado.' };
+  } catch (error) {
+    console.error('Error al actualizar el reporte de error:', error);
+    return { success: false, message: 'Error al actualizar el reporte de error.' };
+  }
+}
+
+export async function archiveBugReportAction(reportId: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const isUserAdmin = await isAdmin();
+    if (!isUserAdmin) {
+      return { success: false, message: "No tienes permisos para realizar esta acción." };
+    }
+    await query('UPDATE bug_reports SET is_archived = TRUE WHERE id = ?', [reportId]);
+    revalidatePath('/admin/bug-reports');
+    return { success: true, message: 'Reporte de error archivado.' };
+  } catch (error) {
+    console.error('Error al archivar el reporte de error:', error);
+    return { success: false, message: 'Error al archivar el reporte de error.' };
+  }
+}
+
+export async function createBugReportAction(formData: FormData): Promise<{ success: boolean; message: string }> {
+  try {
+    const session = await getSession();
+    
+    const data = {
+      report_type: formData.get('report_type') as string,
+      description: formData.get('description') as string,
+      user_id: session?.id,
+      user_name: session?.name,
+      user_email: session?.email,
+    };
+    
+    await query(
+      'INSERT INTO bug_reports (report_type, description, user_id, user_name, user_email) VALUES (?, ?, ?, ?, ?)',
+      [data.report_type, data.description, data.user_id, data.user_name, data.user_email]
+    );
+    
+    revalidatePath('/reportar-fallas');
+    
+    return { success: true, message: 'Reporte de error enviado con éxito.' };
+  } catch (error) {
+    console.error('Error al crear el reporte de error:', error);
+    return { success: false, message: 'Error al crear el reporte de error.' };
   }
 }

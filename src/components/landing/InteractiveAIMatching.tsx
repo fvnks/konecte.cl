@@ -23,11 +23,13 @@ import { findListingsForFreeTextSearch, type FindListingsForFreeTextSearchInput,
 import { recordUserListingInteractionAction } from '@/actions/interactionActions';
 import type { User as StoredUser, InteractionTypeEnum, PropertyListing, SearchRequest } from '@/lib/types';
 import { useState, useEffect } from "react";
-import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, PlusCircle, ThumbsUp, ThumbsDown, UserCircle as UserIconLucide, MessagesSquare, HeartHandshake } from "lucide-react";
+import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, PlusCircle, ThumbsUp, ThumbsDown, UserCircle as UserIconLucide, MessagesSquare, HeartHandshake, X } from "lucide-react";
 import FeaturedPropertyCard from '@/components/property/FeaturedPropertyCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from "@/components/ui/button"; // Necesario para el botón de Iniciar Sesión
 import EditableText from '@/components/ui/EditableText';
+import StaticText from '@/components/ui/StaticText';
+import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
   userSearchDescription: z.string().min(10, "La descripción de tu búsqueda debe tener al menos 10 caracteres.").max(1000, "Máximo 1000 caracteres."),
@@ -45,7 +47,9 @@ export default function InteractiveAIMatching() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loggedInUser, setLoggedInUser] = useState<StoredUser | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
-
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<FindListingsForFreeTextSearchOutput | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     const userJson = localStorage.getItem('loggedInUser');
@@ -72,6 +76,7 @@ export default function InteractiveAIMatching() {
     setError(null);
     setHasSearched(true);
     setCurrentIndex(0);
+    setIsSearching(true);
     try {
       const input: FindListingsForFreeTextSearchInput = {
         userSearchDescription: values.userSearchDescription,
@@ -81,6 +86,7 @@ export default function InteractiveAIMatching() {
       
       const onlyProperties = result.matches.filter(match => match.type === 'property');
       setPropertiesToShow(onlyProperties);
+      setSearchResults(result);
 
       if (onlyProperties.length > 0) {
         toast({
@@ -104,6 +110,7 @@ export default function InteractiveAIMatching() {
       });
     } finally {
       setIsLoading(false);
+      setIsSearching(false);
     }
   }
 
@@ -171,193 +178,155 @@ export default function InteractiveAIMatching() {
 
   return (
     <div className="space-y-6">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="userSearchDescription"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-md font-medium">
-                  <EditableText id="landing:ai-search-label" textType="span">
-                    Describe la propiedad que buscas:
-                  </EditableText>
-                </FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Ej: Busco un departamento para arriendo en la V Región, mínimo 2 dormitorios, que acepte mascotas y tenga buena conexión a internet. Presupuesto máximo $700.000..."
-                    className="min-h-[100px]"
-                    {...field}
-                    disabled={isLoading}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+      <div className="space-y-2">
+        <Label htmlFor="ai-search-input" className="text-base font-medium">
+          <StaticText id="landing:ai-search-label" textType="span">
+            Describe lo que buscas
+          </StaticText>
+        </Label>
+        <div className="relative">
+          <Textarea
+            id="ai-search-input"
+            placeholder={
+              isSearching
+                ? "Buscando..."
+                : "Ej: Busco un departamento de 2 dormitorios en Providencia cerca del metro, con estacionamiento, máximo 400 UF"
+            }
+            className="min-h-[120px] resize-y pr-12"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            disabled={isSearching}
           />
-          <div className="text-center">
-            <GenerateAIButton type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-              <EditableText id="landing:ai-search-button" textType="span">
-                Buscar Propiedades con IA
-              </EditableText>
-            </GenerateAIButton>
-          </div>
-        </form>
-      </Form>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="absolute right-2 top-2 h-8 w-8 text-muted-foreground hover:text-primary"
+            onClick={() => setSearchQuery("")}
+            disabled={!searchQuery || isSearching}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Clear</span>
+          </Button>
+        </div>
+      </div>
 
-      {isLoading && (
-        <div className="text-center py-6">
-          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="mt-2 text-muted-foreground">
-            <EditableText id="landing:ai-search-loading" textType="span">
-              Analizando y buscando propiedades en la plataforma...
-            </EditableText>
-          </p>
+      <div className="flex justify-end">
+        <Button
+          onClick={() => form.handleSubmit(onSubmit)(form.getValues())}
+          disabled={!searchQuery || isSearching}
+          className="gap-2"
+        >
+          {isSearching ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <StaticText id="landing:ai-searching-button" textType="span">
+                Buscando...
+              </StaticText>
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              <StaticText id="landing:ai-search-button" textType="span">
+                Buscar con IA
+              </StaticText>
+            </>
+          )}
+        </Button>
+      </div>
+
+      {searchResults && (
+        <div className="space-y-6 mt-6 border-t pt-6">
+          <div className="space-y-2">
+            <h3 className="text-lg font-medium">
+              <StaticText id="landing:ai-results-title" textType="span">
+                Resultados de la búsqueda
+              </StaticText>
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              <StaticText id="landing:ai-results-subtitle" textType="span">
+                Hemos encontrado estas propiedades que coinciden con tu búsqueda
+              </StaticText>
+            </p>
+          </div>
+
+          {searchResults.properties.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {searchResults.properties.map((property) => (
+                <Card key={property.id} className="overflow-hidden">
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-base">
+                      <Link
+                        href={`/properties/${property.slug}`}
+                        className="hover:underline"
+                      >
+                        {property.title}
+                      </Link>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 text-sm">
+                    <p className="text-muted-foreground line-clamp-2">
+                      {property.description}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline">
+                        {property.bedrooms} dormitorios
+                      </Badge>
+                      <Badge variant="outline">
+                        {property.bathrooms} baños
+                      </Badge>
+                      <Badge variant="outline">
+                        {property.totalAreaSqMeters} m²
+                      </Badge>
+                    </div>
+                    <div className="mt-2 font-semibold">
+                      {formatCurrency(property.price, property.currency)}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="p-4 pt-0 flex justify-between">
+                    <Button asChild variant="link" className="px-0">
+                      <Link href={`/properties/${property.slug}`}>
+                        <StaticText id="landing:ai-view-details" textType="span">
+                          Ver detalles
+                        </StaticText>
+                      </Link>
+                    </Button>
+                    <Badge className="ml-auto">
+                      {property.propertyType === "rent" ? "Arriendo" : "Venta"}
+                    </Badge>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 bg-muted/30 rounded-lg">
+              <p className="text-muted-foreground">
+                <StaticText id="landing:ai-no-results" textType="span">
+                  No encontramos propiedades que coincidan con tu búsqueda.
+                </StaticText>
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-center mt-4">
+            <Button asChild variant="outline">
+              <Link href="/properties">
+                <StaticText id="landing:ai-view-all-properties" textType="span">
+                  Ver todas las propiedades
+                </StaticText>
+              </Link>
+            </Button>
+          </div>
         </div>
       )}
 
-      {error && !isLoading && (
-        <Card className="border-destructive bg-destructive/10 shadow-sm mt-6">
-          <CardHeader>
-            <CardTitle className="text-destructive flex items-center text-lg">
-              <AlertTriangle className="mr-2 h-5 w-5" />
-              <EditableText id="landing:ai-search-error-title" textType="span">
-                Error al Procesar
-              </EditableText>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-destructive/90 text-sm">{error}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {hasSearched && !isLoading && !error && (
-        <div className="mt-6">
-          {currentPropertyMatch ? (
-            <Card className="bg-card p-4 rounded-xl border flex flex-col shadow-lg items-center max-w-md mx-auto">
-                <div className="w-full flex justify-between items-start mb-2">
-                    <Badge variant={'default'} className="capitalize text-xs">
-                    <Building className="mr-1.5 h-3.5 w-3.5"/>
-                    <EditableText id="landing:ai-search-property-suggested" textType="span">
-                      Propiedad Sugerida
-                    </EditableText> ({currentIndex + 1} de {propertiesToShow.length})
-                    </Badge>
-                    <div className="text-right">
-                    <span className="text-lg font-bold text-accent">
-                        {(currentPropertyMatch.matchScore * 100).toFixed(0)}%
-                    </span>
-                    <p className="text-xs text-muted-foreground -mt-1">
-                      <EditableText id="landing:ai-search-match" textType="span">
-                        Coincidencia
-                      </EditableText>
-                    </p>
-                    </div>
-                </div>
-                <Progress value={currentPropertyMatch.matchScore * 100} className="w-full h-1.5 [&>div]:bg-accent mb-3" />
-                
-                <FeaturedPropertyCard property={currentPropertyMatch.item as PropertyListing} />
-                
-                <div className="mt-3 pt-3 border-t border-dashed w-full">
-                    <h4 className="text-xs font-semibold flex items-center mb-1 text-muted-foreground">
-                    <MessageSquareText className="h-3.5 w-3.5 mr-1.5" />
-                    <EditableText id="landing:ai-search-ia-says" textType="span">
-                      IA Dice:
-                    </EditableText>
-                    </h4>
-                    <p className="text-xs text-muted-foreground/80 bg-secondary/30 p-2 rounded-md whitespace-pre-line italic max-h-20 overflow-y-auto">
-                    {currentPropertyMatch.reason}
-                    </p>
-                </div>
-                
-                <div className="flex gap-2 mt-4 w-full">
-                    <Button 
-                        onClick={() => handleInteraction(currentPropertyMatch.item.id, 'like')} 
-                        className="flex-1 bg-green-500 hover:bg-green-600 text-white"
-                        disabled={isInteracting}
-                    >
-                        <ThumbsUp className="mr-1.5 h-4 w-4" />
-                        <EditableText id="landing:ai-search-like-button" textType="span">
-                          Me Gusta
-                        </EditableText>
-                    </Button>
-                    <Button 
-                        onClick={() => handleInteraction(currentPropertyMatch.item.id, 'dislike')} 
-                        className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-                        disabled={isInteracting}
-                    >
-                        <ThumbsDown className="mr-1.5 h-4 w-4" />
-                        <EditableText id="landing:ai-search-dislike-button" textType="span">
-                          No Me Gusta
-                        </EditableText>
-                    </Button>
-                    <Button 
-                        onClick={() => setCurrentIndex(prevIndex => prevIndex + 1)} 
-                        className="flex-1"
-                        variant="outline"
-                        disabled={isInteracting}
-                    >
-                        <EditableText id="landing:ai-search-skip-button" textType="span">
-                          Omitir
-                        </EditableText>
-                    </Button>
-                </div>
-            </Card>
-          ) : (
-            aiSearchResults.length > 0 ? (
-              <Card className="bg-card p-6 rounded-xl border shadow-lg text-center">
-                <div className="mb-4">
-                  <Sparkles className="h-12 w-12 text-primary mx-auto mb-2" />
-                  <h3 className="text-xl font-bold">
-                    <EditableText id="landing:ai-search-complete-title" textType="span">
-                      ¡Búsqueda Completada!
-                    </EditableText>
-                  </h3>
-                </div>
-                <p className="text-muted-foreground mb-4">
-                  <EditableText id="landing:ai-search-complete-description" textType="span">
-                    Has visto todas las propiedades sugeridas. ¿Quieres buscar algo más?
-                  </EditableText>
-                </p>
-                <Button onClick={() => {
-                  form.reset();
-                  setHasSearched(false);
-                  setAiSearchResults([]);
-                  setPropertiesToShow([]);
-                  setCurrentIndex(0);
-                }} variant="outline" className="w-full">
-                  <EditableText id="landing:ai-search-new-search-button" textType="span">
-                    Nueva Búsqueda
-                  </EditableText>
-                </Button>
-              </Card>
-            ) : (
-              <Card className="bg-card p-6 rounded-xl border shadow-lg text-center">
-                <div className="mb-4">
-                  <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
-                  <h3 className="text-xl font-bold">
-                    <EditableText id="landing:ai-search-no-results-title" textType="span">
-                      No Se Encontraron Coincidencias
-                    </EditableText>
-                  </h3>
-                </div>
-                <p className="text-muted-foreground mb-4">
-                  <EditableText id="landing:ai-search-no-results-description" textType="span">
-                    No pudimos encontrar propiedades que coincidan con tu descripción. Intenta modificar tu búsqueda o usar términos más generales.
-                  </EditableText>
-                </p>
-                <Button onClick={() => {
-                  form.reset();
-                  setHasSearched(false);
-                }} variant="outline" className="w-full">
-                  <EditableText id="landing:ai-search-try-again-button" textType="span">
-                    Intentar Nuevamente
-                  </EditableText>
-                </Button>
-              </Card>
-            )
-          )}
+      {error && (
+        <div className="bg-destructive/10 text-destructive p-4 rounded-lg mt-4">
+          <p className="font-medium">
+            <StaticText id="landing:ai-error-title" textType="span">
+              Error al procesar la búsqueda
+            </StaticText>
+          </p>
+          <p className="text-sm mt-1">{error}</p>
         </div>
       )}
     </div>
