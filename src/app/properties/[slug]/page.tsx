@@ -1,4 +1,3 @@
-
 import { getPropertyBySlugAction } from "@/actions/propertyActions";
 import type { PropertyListing, ListingCategory, User as StoredUserType, OrientationType } from "@/lib/types";
 import Image from "next/image";
@@ -110,16 +109,32 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
             </Badge>
           </div>
           <CardHeader className="p-6 md:p-8">
-            <CardTitle className="text-3xl lg:text-4xl font-headline font-bold">{property.title}</CardTitle>
-            <div className="flex items-center text-muted-foreground mt-2 text-base">
-              <MapPin className="mr-2 h-5 w-5 flex-shrink-0" />
-              <span>{property.address}, {property.city}, {property.country}</span>
+            <div className="flex justify-between items-start gap-6">
+              <div className="flex-grow">
+                <CardTitle className="text-3xl lg:text-4xl font-headline font-bold">{property.title}</CardTitle>
+                <div className="flex items-center text-muted-foreground mt-2 text-base">
+                  <MapPin className="mr-2 h-5 w-5 flex-shrink-0" />
+                  <span>{property.address}, {property.city}, {property.country}</span>
+                </div>
+                <div className="mt-4 text-3xl lg:text-4xl font-bold text-primary">
+                  {formatPrice(property.price, property.currency)}
+                  {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground ml-2">/mes</span>}
+                </div>
+              </div>
+
+              {property.pub_id && (
+                <div className="flex-shrink-0">
+                  <div className="flex flex-col items-center justify-center p-3 border rounded-lg bg-slate-50 text-center h-full">
+                    <span className="text-xs font-semibold text-slate-500 tracking-wider uppercase">Código</span>
+                    <p className="text-xl font-mono font-bold text-slate-800 mt-1">
+                      {property.pub_id}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="mt-3 text-3xl lg:text-4xl font-bold text-primary">
-              {formatPrice(property.price, property.currency)}
-              {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground">/mes</span>}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center mt-4 border-t pt-4">
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 text-center mt-6 border-t pt-6">
               {[
                 { icon: BedDouble, label: `${property.bedrooms} Dorms` },
                 { icon: Bath, label: `${property.bathrooms} Baños` },

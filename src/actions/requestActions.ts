@@ -44,7 +44,7 @@ function mapDbRowToSearchRequest(row: any): SearchRequest {
 
   return {
     id: row.id,
-    pub_id: row.pub_id,
+    pub_id: row.publication_code,
     user_id: row.user_id,
     title: row.title,
     slug: row.slug,
@@ -89,7 +89,7 @@ export async function submitRequestAction(
     const placeholders: string[] = [];
 
     // Campos obligatorios o que siempre se establecen
-    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city', 'desired_location_region', 'is_active', 'created_at', 'updated_at', 'comments_count', 'upvotes', 'pub_id');
+    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city', 'desired_location_region', 'is_active', 'created_at', 'updated_at', 'comments_count', 'upvotes', 'publication_code');
     values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity, data.desiredLocationRegion, true, new Date(), new Date(), 0, 0, pubId); // upvotes defaults to 0
     placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
 
@@ -217,7 +217,7 @@ interface GetRequestsActionOptions {
 
 export async function getRequestsAction(options: GetRequestsActionOptions = {}): Promise<SearchRequest[]> {
   const { 
-    includeInactive = false, 
+    includeInactive = true, 
     userId, 
     onlyOpenForCollaboration = false, 
     limit, 
@@ -251,13 +251,13 @@ export async function getRequestsAction(options: GetRequestsActionOptions = {}):
         whereClauses.push('pr.open_for_broker_collaboration = TRUE');
     }
     if (searchTerm) {
-        whereClauses.push('(pr.title LIKE ? OR pr.description LIKE ? OR pr.desired_location_city LIKE ?)');
-        const searchTermLike = `%${searchTerm}%`;
-        queryParams.push(searchTermLike, searchTermLike, searchTermLike);
+      whereClauses.push('(pr.title LIKE ? OR pr.description LIKE ? OR pr.desired_location_city LIKE ? OR pr.desired_location_region LIKE ? OR pr.publication_code = ?)');
+      const searchTermLike = `%${searchTerm}%`;
+      queryParams.push(searchTermLike, searchTermLike, searchTermLike, searchTermLike, searchTerm);
     }
     
     if (whereClauses.length > 0) {
-        sql += ` WHERE ${whereClauses.join(' AND ')}`;
+        sql += ' WHERE ' + whereClauses.join(' AND ');
     }
     
     if (orderBy === 'relevance' && searchTerm) {
@@ -306,6 +306,33 @@ export async function getRequestBySlugAction(slug: string): Promise<SearchReques
     return mapDbRowToSearchRequest(rows[0]);
   } catch (error: any) {
     console.error(`[RequestAction] Error fetching request by slug ${slug}:`, error);
+    return null;
+  }
+}
+
+export async function getRequestByCodeAction(code: string): Promise<SearchRequest | null> {
+  try {
+    const sql = `
+      SELECT 
+        pr.*, 
+        u.name as author_name, 
+        u.avatar_url as author_avatar_url,
+        u.role_id as author_role_id,
+        r.name as author_role_name
+      FROM property_requests pr
+      LEFT JOIN users u ON pr.user_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      WHERE pr.publication_code = ? 
+      LIMIT 1
+    `;
+    const results = await query(sql, [code]);
+
+    if (results && results.length > 0) {
+      return mapDbRowToSearchRequest(results[0]);
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching request by code ${code}:`, error);
     return null;
   }
 }
@@ -473,10 +500,10 @@ export async function adminUpdateRequestAction(
   }
 }
 
-export async function getRequestsCountAction(activeOnly: boolean = false): Promise<number> {
+export async function getRequestsCountAction(onlyActive: boolean = false): Promise<number> {
   try {
     let sql = 'SELECT COUNT(*) as count FROM property_requests';
-    if (activeOnly) {
+    if (onlyActive) {
       sql += ' WHERE is_active = TRUE';
     }
     const result: any[] = await query(sql);

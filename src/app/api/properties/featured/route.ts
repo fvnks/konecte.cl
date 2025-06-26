@@ -3,119 +3,92 @@ import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-// Datos de ejemplo para mostrar cuando no hay propiedades en la base de datos
-const sampleProperties = [
-  {
-    id: '1',
-    title: 'Departamento en Arriendo en Santiago Centro',
-    description: 'Hermoso departamento de 2 dormitorios en pleno centro de Santiago, cercano a metro y servicios.',
-    price: 450000,
-    listingType: 'rent',
-    bedrooms: 2,
-    bathrooms: 1,
-    squareMeters: 65,
-    location: {
-      city: 'Santiago',
-      region: 'Metropolitana',
-    },
-    images: [
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80',
-    ],
-    user: {
-      id: '101',
-      name: 'Ana Martínez',
-    },
-  },
-  {
-    id: '2',
-    title: 'Casa en Venta en La Reina',
-    description: 'Amplia casa familiar con jardín y piscina, 4 dormitorios y 3 baños, en sector residencial.',
-    price: 280000000,
-    listingType: 'sale',
-    bedrooms: 4,
-    bathrooms: 3,
-    squareMeters: 180,
-    location: {
-      city: 'La Reina',
-      region: 'Metropolitana',
-    },
-    images: [
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2340&q=80',
-    ],
-    user: {
-      id: '102',
-      name: 'Carlos Rodríguez',
-    },
-  },
-  {
-    id: '3',
-    title: 'Oficina en Arriendo en Las Condes',
-    description: 'Moderna oficina implementada en edificio de categoría, con estacionamiento y seguridad 24/7.',
-    price: 850000,
-    listingType: 'rent',
-    bedrooms: 0,
-    bathrooms: 1,
-    squareMeters: 45,
-    location: {
-      city: 'Las Condes',
-      region: 'Metropolitana',
-    },
-    images: [
-      'https://images.unsplash.com/photo-1497366811353-6870744d04b2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2301&q=80',
-    ],
-    user: {
-      id: '103',
-      name: 'María González',
-    },
-  },
-];
+const safeJsonParse = (jsonString: string | null) => {
+  if (!jsonString) return [];
+  try {
+    const parsed = JSON.parse(jsonString);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('Failed to parse images JSON, returning empty array:', jsonString);
+    return [];
+  }
+};
 
 export async function GET() {
   try {
-    // Intentamos una consulta más simple para ver si hay propiedades
+    // Consulta para obtener datos reales de propiedades con información de usuario
     const properties = await query(`
       SELECT 
-        p.*
+        p.*,
+        u.name as user_name,
+        u.avatar_url as user_avatar_url,
+        u.role_id as user_role_id,
+        r.name as role_name
       FROM properties p
-      LIMIT 8
+      LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      ORDER BY p.created_at DESC
+      LIMIT 9
     `);
 
-    // Si no hay propiedades en la base de datos, devolver datos de ejemplo
+    // Si no hay propiedades en la base de datos, devolver array vacío
     if (!properties || properties.length === 0) {
-      console.log('No properties found in database, returning sample data');
-      return NextResponse.json(sampleProperties);
+      console.log('No properties found in database');
+      return NextResponse.json([]);
     }
 
     // Si hay propiedades, las formateamos adecuadamente
     const formattedProperties = properties.map((property: any) => {
-      return {
-        id: property.id,
-        title: property.title || 'Propiedad sin título',
-        description: property.description || 'Sin descripción',
-        price: property.price || 0,
-        listingType: property.listing_type || 'rent',
-        bedrooms: property.bedrooms || 0,
-        bathrooms: property.bathrooms || 0,
-        squareMeters: property.square_meters || 0,
-        location: {
-          city: property.location_city || 'Ciudad no especificada',
-          region: property.location_region || 'Región no especificada',
-        },
-        images: [],
-        user: {
-          id: property.user_id || '0',
-          name: 'Usuario',
-        },
-        createdAt: property.created_at,
-        updatedAt: property.updated_at,
-      };
-    });
+      // Usamos un try-catch aquí para que una propiedad con datos corruptos no rompa toda la lista
+      try {
+        return {
+          id: property.id,
+          title: property.title || 'Propiedad sin título',
+          description: property.description || 'Sin descripción',
+          price: Number(property.price) || 0,
+          listingType: property.property_type || 'sale',
+          bedrooms: property.bedrooms || 0,
+          bathrooms: property.bathrooms || 0,
+          squareMeters: property.square_meters || 0,
+          location: {
+            city: property.city || 'Ciudad no especificada',
+            region: property.region || 'Región no especificada',
+          },
+          images: safeJsonParse(property.images),
+          user: {
+            id: property.user_id || '0',
+            name: property.user_name || 'Anunciante',
+            role_id: property.user_role_id || '1',
+            role_name: property.role_name || getRoleDisplayName(property.user_role_id),
+            avatarUrl: property.user_avatar_url || null,
+          },
+          createdAt: property.created_at,
+          updatedAt: property.updated_at,
+          source: property.source || 'web',
+          slug: property.slug || `${property.title?.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '-').substring(0, 60)}-${property.id}`,
+          pub_id: property.publication_code,
+        };
+      } catch(e) {
+        console.error(`Error processing property ${property.id}, skipping.`, e);
+        return null;
+      }
+    }).filter(Boolean); // Filtramos los nulos que resultan de un error
 
     return NextResponse.json(formattedProperties);
   } catch (error) {
     console.error('Error fetching featured properties:', error);
-    // En caso de error, devolver los datos de ejemplo
-    console.log('Error occurred, returning sample data');
-    return NextResponse.json(sampleProperties);
+    // En caso de error, devolver array vacío
+    return NextResponse.json([]);
+  }
+}
+
+// Función auxiliar para obtener el nombre del rol
+function getRoleDisplayName(roleId?: string): string {
+  if (!roleId) return 'Usuario';
+  switch (roleId) {
+    case '1': return 'Usuario';
+    case '2': return 'Corredor';
+    case '3': return 'Administrador';
+    default: return 'Usuario';
   }
 } 

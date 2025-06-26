@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { users, propertyListings, searchRequests } from '@/lib/db/schema';
+import { users, properties, searchRequests } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -38,9 +38,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     let updated = false;
 
     try {
-        const result = await db.update(propertyListings)
+        const result = await db.update(properties)
             .set(updateData)
-            .where(and(eq(propertyListings.id, id), eq(propertyListings.userId, user.id)));
+            .where(and(eq(properties.id, id), eq(properties.userId, user.id)));
         if (result.rowsAffected > 0) updated = true;
     } catch (e) { /* ignore, try next table */ }
 
@@ -92,7 +92,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         let deleted = false;
 
         try {
-            const result = await db.delete(propertyListings).where(and(eq(propertyListings.id, id), eq(propertyListings.userId, user.id)));
+            const result = await db.delete(properties).where(and(eq(properties.id, id), eq(properties.userId, user.id)));
             if (result.rowsAffected > 0) deleted = true;
         } catch(e) { /* ignore */ }
 

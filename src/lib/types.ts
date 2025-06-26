@@ -122,6 +122,7 @@ export interface PropertyListing {
 export interface SearchRequest {
   id: string;
   user_id: string;
+  pub_id?: string;
   title: string;
   description: string;
   desiredPropertyType: PropertyType[];

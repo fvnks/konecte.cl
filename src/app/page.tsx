@@ -21,6 +21,7 @@ import PlanDisplayCard from '@/components/plan/PlanDisplayCard';
 import HeroSearchForm from '@/components/landing/HeroSearchForm';
 import HeroSection from '@/components/landing/HeroSection';
 import StaticText from '@/components/ui/StaticText';
+import { DEFAULT_SECTIONS_ORDER } from '@/lib/constants';
 
 
 async function getFeaturedListingsAndRequestsData() {
@@ -295,49 +296,20 @@ function FeaturedPlansSection({ plans }: FeaturedPlansSectionProps) {
 
 function FeaturedListingsSection({ featuredProperties, recentRequests }: { featuredProperties: PropertyListing[], recentRequests: SearchRequest[] }) {
   return (
-    <Card className="shadow-xl rounded-2xl overflow-hidden border bg-card">
-      <CardHeader className="p-6 md:p-8">
-        <CardTitle className="text-3xl md:text-4xl font-headline flex items-center text-foreground">
-          <ListChecks className="h-8 w-8 mr-3 text-primary" />
-          <StaticText
-            id="landing:featured-listings-title"
-            textType="span"
-          >
-            Propiedades y Solicitudes Destacadas
-          </StaticText>
-        </CardTitle>
-        <CardDescription className="text-lg text-muted-foreground mt-2">
-          <StaticText
-            id="landing:featured-listings-description"
-            textType="span"
-          >
-          Explora las últimas propiedades y solicitudes agregadas a nuestra plataforma.
-          </StaticText>
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-6 md:p-8 pt-0 md:pt-0">
-        <FeaturedListingsClient featuredProperties={featuredProperties} recentRequests={recentRequests} />
-      </CardContent>
-    </Card>
+    <FeaturedListingsClient featuredProperties={featuredProperties} recentRequests={recentRequests} />
   );
 }
 
-const DEFAULT_SECTIONS_ORDER: LandingSectionKey[] = ["featured_list_requests", "featured_plans", "ai_matching", "analisis_whatsbot"];
-const DEFAULT_HERO_TITLE = "Encuentra Tu Espacio Ideal en konecte";
-const DEFAULT_HERO_SUBTITLE = "Descubre, publica y comenta sobre propiedades en arriendo o venta. Publicaciones ilimitadas, sin costo. ¡O publica lo que estás buscando!";
-const DEFAULT_PUBLISH_PROPERTY_BUTTON = "Publicar Propiedad";
-const DEFAULT_PUBLISH_REQUEST_BUTTON = "Publicar Solicitud";
-
 // --- HomePage Component ---
 export default function HomePage() {
-  const [siteSettings, setSiteSettings] = useState<Awaited<ReturnType<typeof getSiteSettingsAction>> | null>(null);
-  const [homeTexts, setHomeTexts] = useState<Awaited<ReturnType<typeof getEditableTextsByGroupAction>> | null>(null);
-  const [listingsData, setListingsData] = useState<Awaited<ReturnType<typeof getFeaturedListingsAndRequestsData>> | null>(null);
-  const [featuredPlansData, setFeaturedPlansData] = useState<Awaited<ReturnType<typeof getFeaturedPlansData>> | null>(null);
-  const [googleSheetConfig, setGoogleSheetConfig] = useState<Awaited<ReturnType<typeof getGoogleSheetConfigAction>> | null>(null);
-  const [googleSheetData, setGoogleSheetData] = useState<Awaited<ReturnType<typeof fetchGoogleSheetDataAction>> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorLoading, setErrorLoading] = useState<string | null>(null);
+  const [siteSettings, setSiteSettings] = useState<Awaited<ReturnType<typeof getSiteSettingsAction>> | null>(null);
+  const [homeTexts, setHomeTexts] = useState<Awaited<ReturnType<typeof getEditableTextsByGroupAction>> | null>(null);
+  const [listingsData, setListingsData] = useState<{ featuredProperties: PropertyListing[], recentRequests: SearchRequest[] } | null>(null);
+  const [featuredPlansData, setFeaturedPlansData] = useState<Plan[] | null>(null);
+  const [googleSheetConfig, setGoogleSheetConfig] = useState<Awaited<ReturnType<typeof getGoogleSheetConfigAction>> | null>(null);
+  const [googleSheetData, setGoogleSheetData] = useState<Awaited<ReturnType<typeof fetchGoogleSheetDataAction>> | null>(null);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -386,17 +358,17 @@ export default function HomePage() {
       <div className="container flex flex-col items-center justify-center min-h-[60vh] py-20">
         <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
         <p className="text-lg text-muted-foreground">Cargando contenido...</p>
-        </div>
+      </div>
     );
   }
-  
+
   if (errorLoading) {
     return (
       <div className="container flex flex-col items-center justify-center min-h-[60vh] py-20">
         <AlertTriangle className="h-10 w-10 text-destructive mb-4" />
         <h2 className="text-xl font-semibold mb-2">Error al cargar la página</h2>
         <p className="text-muted-foreground">{errorLoading}</p>
-        </div>
+      </div>
     );
   }
   
@@ -410,7 +382,6 @@ export default function HomePage() {
         </div>
     );
   }
-
 
   const showFeaturedListings = siteSettings?.show_featured_listings_section === undefined ? true : siteSettings.show_featured_listings_section;
   const showFeaturedPlans = siteSettings?.show_featured_plans_section === undefined ? true : siteSettings.show_featured_plans_section;
@@ -428,17 +399,13 @@ export default function HomePage() {
   };
   
   return (
-    <main className="flex min-h-screen flex-col">
-      {/* Hero Section with Editable Text */}
+    <div className="space-y-12 md:space-y-20">
       <HeroSection />
-
-      {/* Main Content Sections */}
-      <div className="container py-12 md:py-16 space-y-12 md:space-y-20">
+      
       {sectionsOrder.map(key => {
         const SectionRenderer = sectionComponentsRender[key];
         return SectionRenderer ? <div key={key}>{SectionRenderer()}</div> : null;
       })}
     </div>
-    </main>
   );
 }

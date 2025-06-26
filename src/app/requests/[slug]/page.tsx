@@ -1,4 +1,3 @@
-
 import type { PropertyType, ListingCategory, SearchRequest } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import SocialShareButtons from '@/components/ui/SocialShareButtons';
 import { headers } from 'next/headers';
+import ClientFormattedDate from "@/components/ui/ClientFormattedDate";
 
 const translatePropertyType = (type: PropertyType): string => {
   if (type === 'rent') return 'Arriendo';
@@ -70,7 +70,7 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
                     <p className="text-xl sm:text-2xl font-semibold">{authorName}</p>
                     <p className="text-sm text-muted-foreground flex items-center mt-1">
                         <CalendarDays className="h-4 w-4 mr-1.5"/>
-                        Publicado el {new Date(request.createdAt).toLocaleDateString('es-CL')}
+                        <ClientFormattedDate date={request.createdAt} prefix="Publicado el "/>
                     </p>
                 </div>
                 </div>
@@ -80,10 +80,19 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
                     </Badge>
                 )}
             </div>
-          <CardTitle className="text-3xl lg:text-4xl font-headline font-bold flex items-start">
-            <SearchIcon className="mr-3 h-8 w-8 text-primary flex-shrink-0 mt-1"/>
-            {request.title}
-          </CardTitle>
+            <div className="flex justify-between items-start">
+              <CardTitle className="text-3xl lg:text-4xl font-headline font-bold flex items-center pr-4">
+                <SearchIcon className="mr-3 h-8 w-8 text-primary flex-shrink-0"/>
+                <span>
+                  {request.title}
+                  {request.pub_id && (
+                    <span className="ml-3 text-lg lg:text-xl font-mono text-muted-foreground font-medium tracking-wider">
+                      ({request.pub_id})
+                    </span>
+                  )}
+                </span>
+              </CardTitle>
+            </div>
           <div className="flex justify-between items-center mt-3">
             <CardDescription className="text-base lg:text-lg text-muted-foreground leading-relaxed flex-grow pr-4">
                 {request.description}

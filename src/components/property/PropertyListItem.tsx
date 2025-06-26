@@ -1,4 +1,6 @@
 // src/components/property/PropertyListItem.tsx
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import type { PropertyListing, ListingCategory } from '@/lib/types';
@@ -10,6 +12,7 @@ import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, Cale
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
 import LikeButton from '@/components/ui/LikeButton';
 import AuthorInfoDialog from './AuthorInfoDialog';
+import ClientFormattedDate from '@/components/ui/ClientFormattedDate';
 
 interface PropertyListItemProps {
   property: PropertyListing;
@@ -79,6 +82,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
   const authorAvatar = author?.avatarUrl;
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   const authorRoleDisplay = getRoleDisplayName(author?.role_id, author?.role_name);
+  const whatsappLink = `https://wa.me/56912345678?text=Hola,%20me%20interesa%20la%20propiedad%20con%20código:%20${pub_id}`;
 
   const authorDisplay = (
     <div className="flex items-center gap-2 self-start sm:self-center cursor-pointer group/author rounded-md p-1 -ml-1 hover:bg-accent/50 transition-colors">
@@ -89,22 +93,22 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
         <div className="text-xs">
           <span className="text-muted-foreground line-clamp-1 group-hover/author:text-primary transition-colors">Por {authorName}</span>
           <div className="flex items-center gap-x-2">
-            {authorRoleDisplay && (
-              <p className="text-muted-foreground/80 flex items-center capitalize">
-                <ShieldCheck className="h-3 w-3 mr-1 text-primary/70"/>
-                {authorRoleDisplay}
-              </p>
-            )}
+          {authorRoleDisplay && (
+            <p className="text-muted-foreground/80 flex items-center capitalize">
+              <ShieldCheck className="h-3 w-3 mr-1 text-primary/70"/>
+              {authorRoleDisplay}
+            </p>
+          )}
             {source === 'bot' && (
-              <p className="text-muted-foreground/80 flex items-center text-primary/80">
+              <Link href={whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground/80 flex items-center text-primary/80 hover:underline" onClick={(e) => e.stopPropagation()}>
                 <Bot className="h-3 w-3 mr-1"/>
                 <span>vía Bot</span>
-              </p>
+              </Link>
             )}
           </div>
           <p className="text-muted-foreground/70 flex items-center mt-0.5">
             <CalendarDays className="h-3 w-3 mr-1" />
-            {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short'})}
+            <ClientFormattedDate date={createdAt} options={{day:'2-digit', month:'short'}} />
           </p>
         </div>
       </div>
@@ -126,7 +130,7 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
             {translatePropertyTypeBadge(propertyType)}
           </Badge>
           {pub_id && (
-            <Badge variant="secondary" className="absolute top-2.5 right-2.5 text-xs px-2 py-0.5 shadow-md rounded-md">
+            <Badge variant="outline" className="absolute top-2.5 right-2.5 text-xs px-2 py-0.5 shadow-md rounded-md bg-black/50 text-white backdrop-blur-sm font-mono">
               {pub_id}
             </Badge>
           )}

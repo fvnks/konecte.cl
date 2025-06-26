@@ -72,10 +72,13 @@ export async function POST(req: NextRequest) {
       }
       
       const newPropertyId = uuidv4();
+      const pubId = `P-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
       await db.insert(properties).values({
         id: newPropertyId,
         userId: user.id,
-        source: data.source || 'web',
+        publicationCode: pubId,
+        source: data.source || 'bot',
         title: data.titulo,
         description: data.descripcion,
         propertyType: data.propertyType,
@@ -94,13 +97,16 @@ export async function POST(req: NextRequest) {
         furnished: data.furnished,
         slug: `${data.titulo.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')}-${newPropertyId.substring(0, 8)}`,
       });
-      return NextResponse.json({ success: true, type: 'property', data: { id: newPropertyId } });
+      return NextResponse.json({ success: true, type: 'property', data: { id: newPropertyId, pubId } });
 
     } else if (tipo === 'solicitud') {
         const newRequestId = uuidv4();
+        const pubId = `S-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        
         await db.insert(searchRequests).values({
             id: newRequestId,
             userId: user.id,
+            publicationCode: pubId,
             title: data.titulo,
             description: data.descripcion,
             desiredPropertyType: data.desiredPropertyType,
@@ -109,7 +115,7 @@ export async function POST(req: NextRequest) {
             budgetMax: data.budgetMax ? String(data.budgetMax) : null,
             slug: `${data.titulo.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')}-${newRequestId.substring(0, 8)}`,
         });
-      return NextResponse.json({ success: true, type: 'searchRequest', data: { id: newRequestId } });
+      return NextResponse.json({ success: true, type: 'searchRequest', data: { id: newRequestId, pubId } });
     }
     
     return NextResponse.json({ error: 'Invalid tipo' }, { status: 400 });

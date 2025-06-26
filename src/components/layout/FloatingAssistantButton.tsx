@@ -21,7 +21,7 @@ export default function FloatingAssistantButton() {
         variant="default"
         size="icon"
         className={cn(
-            "fixed bottom-4 right-4 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 z-[70] h-14 w-14 rounded-full shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            "h-14 w-14 rounded-full shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 focus:ring-2 focus:ring-ring focus:ring-offset-2",
             "bg-primary hover:bg-primary/90 text-primary-foreground"
         )}
         aria-label={isChatOpen ? "Cerrar chat con asistente" : "Abrir chat con asistente"}

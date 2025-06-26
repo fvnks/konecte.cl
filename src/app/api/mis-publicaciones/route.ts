@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { users, properties, searchRequests } from '@/lib/db/schema';
 import { eq, or } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const authToken = req.headers.get('authorization')?.split(' ')[1];

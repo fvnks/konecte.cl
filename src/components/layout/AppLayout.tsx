@@ -50,17 +50,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <main
           className={cn(
             "flex-grow",
-            routeNeedsStandardContainerPadding && "container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 pt-20"
+            routeNeedsStandardContainerPadding && "container mx-auto px-0 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 pt-20"
           )}
         >
           {children}
         </main>
         {showFooter && <Footer />}
         {showFloatingAssistant && (
-          <>
-            <FloatingAssistantButton />
+          <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 z-50 flex flex-col items-center gap-4">
             <BackToTopButton />
-          </>
+            <FloatingAssistantButton />
+          </div>
         )}
       </div>
     </>

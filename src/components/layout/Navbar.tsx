@@ -20,7 +20,6 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnnouncementBar from './AnnouncementBar';
 import { useTheme } from "next-themes";
-import EditModeToggle from './EditModeToggle';
 
 
 const navItems = [
@@ -28,6 +27,7 @@ const navItems = [
   { href: '/properties', label: 'Propiedades', icon: <Briefcase /> },
   { href: '/requests', label: 'Solicitudes', icon: <Search /> },
   { href: '/plans', label: 'Planes', icon: <CreditCard /> },
+  { href: '/faq', label: 'FAQ', icon: <MailQuestion /> },
   { href: '/contact', label: 'Contacto', icon: <MailQuestion /> },
   { href: '/reportar-fallas', label: 'Reportar Fallas', icon: <Bug /> },
 ];
@@ -280,7 +280,6 @@ export default function Navbar() {
             {isClient && isUserAdmin && (
               <>
                 <Separator orientation="vertical" className="h-6" />
-                <EditModeToggle />
               </>
              )}
             {isClient ? (

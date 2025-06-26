@@ -37,13 +37,13 @@ function mapDbRowToPropertyListing(row: any): PropertyListing {
 
   return {
     id: row.id,
-    pub_id: row.pub_id,
+    pub_id: row.publication_code,
     user_id: row.user_id,
     source: row.source,
     title: row.title,
     slug: row.slug,
     description: row.description,
-    propertyType: row.property_type,
+    listingType: row.property_type,
     category: row.category,
     price: Number(row.price),
     currency: row.currency,
@@ -114,12 +114,12 @@ export async function submitPropertyAction(
         price, currency, address, city, region, country, bedrooms, bathrooms,
         total_area_sq_meters, useful_area_sq_meters, parking_spaces, 
         pets_allowed, furnished, commercial_use_allowed, has_storage, orientation,
-        images, features, is_active, created_at, updated_at, pub_id
+        images, features, is_active, created_at, updated_at, publication_code
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW(), ?)
     `;
 
     const params = [
-      propertyId, userId, data.title, slug, data.description, data.propertyType, data.category,
+      propertyId, userId, data.title, slug, data.description, data.listingType, data.category,
       data.price, data.currency, data.address, data.city, data.region, data.country, data.bedrooms, data.bathrooms,
       data.totalAreaSqMeters, 
       data.usefulAreaSqMeters === null ? null : (data.usefulAreaSqMeters ?? null),
@@ -151,7 +151,7 @@ export async function submitPropertyAction(
         id: propertyId,
         title: data.title,
         description: data.description,
-        propertyType: data.propertyType,
+        propertyType: data.listingType,
         category: data.category,
         price: data.price,
         currency: data.currency,
@@ -239,7 +239,13 @@ export interface GetPropertiesActionOptions {
 
 const BASE_PROPERTY_SELECT_SQL = `
   SELECT
-    p.*,
+    p.id, p.user_id, p.title, p.slug, p.description, p.property_type, p.category,
+    p.price, p.currency, p.address, p.city, p.region, p.country, p.bedrooms,
+    p.bathrooms, p.total_area_sq_meters, p.useful_area_sq_meters, p.parking_spaces,
+    p.pets_allowed, p.furnished, p.commercial_use_allowed, p.has_storage,
+    p.orientation, p.images, p.features, p.upvotes, p.comments_count,
+    p.views_count, p.inquiries_count, p.is_active, p.created_at, p.updated_at,
+    p.publication_code,
     u.name as author_name,
     u.avatar_url as author_avatar_url,
     u.email as author_email,
@@ -260,7 +266,7 @@ const BASE_PROPERTY_SELECT_SQL = `
 
 export async function getPropertiesAction(options: GetPropertiesActionOptions = {}): Promise<PropertyListing[]> {
   const {
-    includeInactive = false,
+    includeInactive = true,
     limit,
     offset,
     searchTerm,
@@ -274,105 +280,98 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
     orderBy = 'createdAt_desc',
   } = options;
 
+  let sql = BASE_PROPERTY_SELECT_SQL;
+  const params: (string | number | boolean)[] = [];
+
+  const whereConditions: string[] = [];
+
+  if (!includeInactive) {
+    whereConditions.push("p.is_active = TRUE");
+  }
+
+  if (searchTerm) {
+    whereConditions.push("(p.title LIKE ? OR p.description LIKE ? OR p.address LIKE ? OR p.city LIKE ? OR p.region LIKE ? OR p.publication_code = ?)");
+    const searchTermLike = `%${searchTerm}%`;
+    params.push(searchTermLike, searchTermLike, searchTermLike, searchTermLike, searchTermLike, searchTerm);
+  }
+
+  if (propertyType) {
+    whereConditions.push("p.property_type = ?");
+    params.push(propertyType);
+  }
+
+  if (category) {
+    whereConditions.push("p.category = ?");
+    params.push(category);
+  }
+
+  if (city) {
+    whereConditions.push("p.city LIKE ?");
+    params.push(`%${city}%`);
+  }
+
+  if (minPrice !== undefined) {
+    whereConditions.push("p.price >= ?");
+    params.push(minPrice);
+  }
+
+  if (maxPrice !== undefined) {
+    whereConditions.push("p.price <= ?");
+    params.push(maxPrice);
+  }
+
+  if (minBedrooms !== undefined) {
+    whereConditions.push("p.bedrooms >= ?");
+    params.push(minBedrooms);
+  }
+  
+  if (minBathrooms !== undefined) {
+    whereConditions.push("p.bathrooms >= ?");
+    params.push(minBathrooms);
+  }
+
+  if (whereConditions.length > 0) {
+    sql += ` WHERE ${whereConditions.join(" AND ")}`;
+  }
+  
+  switch (orderBy) {
+    case 'price_asc':
+      sql += ' ORDER BY p.price ASC';
+      break;
+    case 'price_desc':
+      sql += ' ORDER BY p.price DESC';
+      break;
+    case 'popularity_desc':
+      sql += ' ORDER BY p.views_count DESC, p.upvotes DESC';
+      break;
+    case 'random':
+      sql += ' ORDER BY RAND()';
+      break;
+    case 'createdAt_desc':
+    default:
+      sql += ' ORDER BY p.created_at DESC';
+      break;
+  }
+
+  if (limit) {
+    sql += ` LIMIT ?`;
+    params.push(limit);
+  }
+  
+  if (offset) {
+    sql += ` OFFSET ?`;
+    params.push(offset);
+  }
+
   try {
-    let sql = BASE_PROPERTY_SELECT_SQL;
-    const queryParams: any[] = [];
-    const whereClauses: string[] = [];
-
-    if (!includeInactive) {
-      whereClauses.push('p.is_active = TRUE');
-    }
-
-    if (searchTerm) {
-      whereClauses.push('(p.title LIKE ? OR p.description LIKE ? OR p.city LIKE ? OR p.address LIKE ? OR p.region LIKE ?)');
-      const searchTermLike = `%${searchTerm}%`;
-      queryParams.push(searchTermLike, searchTermLike, searchTermLike, searchTermLike, searchTermLike);
-    }
-
-    if (propertyType) {
-      whereClauses.push('p.property_type = ?');
-      queryParams.push(propertyType);
-    }
-
-    if (category) {
-      whereClauses.push('p.category = ?');
-      queryParams.push(category);
-    }
-
-    if (city) {
-      whereClauses.push('p.city LIKE ?');
-      queryParams.push(`%${city}%`);
-    }
-
-    if (minPrice !== undefined) {
-      whereClauses.push('p.price >= ?');
-      queryParams.push(minPrice);
-    }
-
-    if (maxPrice !== undefined) {
-      whereClauses.push('p.price <= ?');
-      queryParams.push(maxPrice);
-    }
-
-    if (minBedrooms !== undefined) {
-      whereClauses.push('p.bedrooms >= ?');
-      queryParams.push(minBedrooms);
-    }
-
-    if (minBathrooms !== undefined) {
-      whereClauses.push('p.bathrooms >= ?');
-      queryParams.push(minBathrooms);
-    }
-
-    if (whereClauses.length > 0) {
-      sql += ' WHERE ' + whereClauses.join(' AND ');
-    }
-
-    let orderByClause = '';
-    switch (orderBy) {
-      case 'price_asc':
-        orderByClause = 'ORDER BY p.price ASC';
-        break;
-      case 'price_desc':
-        orderByClause = 'ORDER BY p.price DESC';
-        break;
-      case 'popularity_desc':
-        orderByClause = 'ORDER BY (p.views_count + p.upvotes * 5 + p.comments_count * 3) DESC';
-        break;
-      case 'random':
-        orderByClause = 'ORDER BY RAND()';
-        break;
-      case 'createdAt_desc':
-      default:
-        orderByClause = 'ORDER BY p.created_at DESC';
-        break;
-    }
-    sql += ` ${orderByClause}`;
-
-    if (limit !== undefined) {
-      const numLimit = parseInt(String(limit), 10);
-      if (!isNaN(numLimit) && numLimit >= 0) {
-        if (offset !== undefined) {
-          const numOffset = parseInt(String(offset), 10);
-          if (!isNaN(numOffset) && numOffset >= 0) {
-            sql += ` LIMIT ${numOffset}, ${numLimit}`;
-          } else {
-            sql += ` LIMIT ${numLimit}`;
-          }
-        } else {
-          sql += ` LIMIT ${numLimit}`;
-        }
-      }
-    }
-    
-    const rows = await query(sql, queryParams);
+    const rows = await query(sql, params);
     if (!Array.isArray(rows)) {
-        console.error("[PropertyAction] Expected array from query, got:", typeof rows);
+        console.error("Expected rows to be an array, but got:", rows);
         return [];
     }
     return rows.map(mapDbRowToPropertyListing);
-  } catch (error: any) {
-    console.error("[PropertyAction] Error fetching properties:", error);
+  } catch (error) {
+    console.error("Error in getPropertiesAction:", error);
     return [];
   }
 }
@@ -496,7 +495,7 @@ export async function adminUpdatePropertyAction(
     `;
 
     const params = [
-      data.title, data.description, data.propertyType, data.category,
+      data.title, data.description, data.listingType, data.category,
       data.price, data.currency, data.address, data.city, data.region, data.country,
       data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
       data.usefulAreaSqMeters === null ? null : Number(data.usefulAreaSqMeters),
@@ -587,7 +586,7 @@ export async function userUpdatePropertyAction(
     `;
 
     const params = [
-      data.title, data.description, data.propertyType, data.category,
+      data.title, data.description, data.listingType, data.category,
       data.price, data.currency, data.address, data.city, data.region, data.country,
       data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
       data.usefulAreaSqMeters === null ? null : Number(data.usefulAreaSqMeters),
@@ -704,6 +703,35 @@ export async function searchMyPropertiesAction(
   } catch (error) {
     console.error("[searchMyPropertiesAction] Error searching user's properties:", error);
     return [];
+  }
+}
+
+export async function getPropertyByCodeAction(code: string): Promise<PropertyListing | null> {
+  try {
+    const sql = `
+      SELECT 
+        p.*, 
+        u.name as author_name, 
+        u.email as author_email, 
+        u.phone_number as author_phone_number,
+        u.avatar_url as author_avatar_url,
+        u.role_id as author_role_id,
+        r.name as author_role_name
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      WHERE p.publication_code = ? 
+      LIMIT 1
+    `;
+    const results = await query(sql, [code]);
+
+    if (results && results.length > 0) {
+      return mapDbRowToPropertyListing(results[0]);
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching property by code ${code}:`, error);
+    return null;
   }
 }
     

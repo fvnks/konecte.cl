@@ -35,9 +35,9 @@ const formatPriceCompact = (price: number, currency: string) => {
 
 const getRoleDisplayName = (roleId?: string, roleName?: string): string | null => {
   if (roleName) return roleName;
-  if (roleId === 'user') return 'Usuario';
-  if (roleId === 'broker') return 'Corredor';
-  if (roleId === 'admin') return 'Admin';
+  if (roleId === '1') return 'Usuario';
+  if (roleId === '2') return 'Corredor';
+  if (roleId === '3') return 'Administrador';
   return roleId || null;
 };
 
@@ -65,16 +65,16 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
   const authorRoleDisplay = getRoleDisplayName(author?.role_id, author?.role_name);
 
   const authorDisplay = (
-    <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3.5 cursor-pointer group/author">
-        <Avatar className="h-7 w-7 mt-0.5">
+    <div className="flex items-start gap-2 text-sm text-muted-foreground mb-3.5 cursor-pointer group/author">
+        <Avatar className="h-9 w-9 mt-0.5">
           <AvatarImage src={authorAvatar || `https://placehold.co/28x28.png?text=${authorInitials}`} alt={authorName} data-ai-hint="agente inmobiliario"/>
-          <AvatarFallback className="text-[10px] bg-muted">{authorInitials || <UserIcon className="h-3.5 w-3.5"/>}</AvatarFallback>
+          <AvatarFallback className="text-xs bg-muted">{authorInitials || <UserIcon className="h-4 w-4"/>}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-            <span className="block font-medium text-foreground/90 truncate line-clamp-1 group-hover/author:text-primary transition-colors" title={authorName}>{authorName}</span>
+            <span className="block font-medium text-foreground truncate line-clamp-1 group-hover/author:text-primary transition-colors" title={authorName}>{authorName}</span>
             {authorRoleDisplay && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5 border-primary/30 text-primary/80 capitalize">
-                    <ShieldCheck className="h-2.5 w-2.5 mr-0.5"/>{authorRoleDisplay}
+                <Badge variant="outline" className="text-xs px-2 py-0.5 mt-0.5 border-primary/30 text-primary/80 capitalize">
+                    <ShieldCheck className="h-3 w-3 mr-1"/>{authorRoleDisplay}
                 </Badge>
             )}
         </div>
@@ -102,7 +102,7 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
           </Badge>
         </div>
       </Link>
-      <CardHeader className="p-4 sm:p-5 flex-grow">
+      <CardHeader className="p-4 sm:p-5">
         <Link href={`/properties/${slug}`} className="block">
           <CardTitle className="text-base sm:text-lg font-headline leading-snug hover:text-primary transition-colors line-clamp-2 h-[48px] sm:h-[56px]">
             {title}
@@ -113,7 +113,7 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
           <span className="truncate">{city}</span>
         </div>
       </CardHeader>
-      <CardContent className="p-4 sm:p-5 pt-0">
+      <CardContent className="p-4 sm:p-5 pt-0 flex-grow flex flex-col">
          <div className="text-lg sm:text-xl font-bold text-accent mb-2.5 flex items-center">
           <DollarSign className="h-5 w-5 mr-1.5 text-accent/90" />
           {formatPriceCompact(price, currency)}
@@ -124,6 +124,7 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
             <span className="flex items-center"><Bath className="mr-1 h-3.5 w-3.5 text-primary/70"/>{bathrooms} baños</span>
             <span className="flex items-center"><Home className="mr-1 h-3.5 w-3.5 text-primary/70"/>{totalAreaSqMeters} m²</span>
         </div>
+        <div className="mt-auto pt-4">
         {author ? (
             <AuthorInfoDialog author={author}>
                 {authorDisplay}
@@ -131,8 +132,9 @@ export default function FeaturedPropertyCard({ property }: FeaturedPropertyCardP
         ) : (
             <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3.5 h-[41px]"></div>
         )}
+        </div>
       </CardContent>
-      <CardFooter className="p-4 sm:p-5 pt-0 mt-auto flex flex-wrap items-center justify-center gap-2">
+      <CardFooter className="p-4 sm:p-5 pt-0 flex flex-wrap items-center justify-center gap-2">
         <LikeButton listingId={propertyId} listingType="property" />
         <CustomDetailButton href={`/properties/${slug}`}>
           Ver Detalles

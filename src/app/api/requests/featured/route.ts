@@ -3,78 +3,28 @@ import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-// Datos de ejemplo para mostrar cuando no hay solicitudes en la base de datos
-const sampleRequests = [
-  {
-    id: '1',
-    title: 'Busco departamento en arriendo en Providencia',
-    description: 'Busco departamento de 2 dormitorios en Providencia, idealmente cerca del metro. Presupuesto máximo de 500.000 pesos.',
-    budget: 500000,
-    listingType: 'rent',
-    bedrooms: 2,
-    bathrooms: 1,
-    location: {
-      city: 'Providencia',
-      region: 'Metropolitana',
-    },
-    user: {
-      id: '201',
-      name: 'Roberto Sánchez',
-    },
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Interesado en comprar casa en Viña del Mar',
-    description: 'Familia busca casa en Viña del Mar, mínimo 3 dormitorios, con jardín y cerca de colegios.',
-    budget: 180000000,
-    listingType: 'sale',
-    bedrooms: 3,
-    bathrooms: 2,
-    location: {
-      city: 'Viña del Mar',
-      region: 'Valparaíso',
-    },
-    user: {
-      id: '202',
-      name: 'Patricia Muñoz',
-    },
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    title: 'Busco oficina pequeña en Las Condes',
-    description: 'Profesional independiente busca oficina pequeña en Las Condes, idealmente edificio con buena conectividad.',
-    budget: 400000,
-    listingType: 'rent',
-    bedrooms: 0,
-    bathrooms: 1,
-    location: {
-      city: 'Las Condes',
-      region: 'Metropolitana',
-    },
-    user: {
-      id: '203',
-      name: 'Felipe Torres',
-    },
-    createdAt: new Date().toISOString(),
-  },
-];
-
 export async function GET() {
   try {
-    // Intentamos una consulta más simple para ver si hay solicitudes
+    // Consulta para obtener datos reales de solicitudes con información de usuario
     const requests = await query(`
       SELECT 
-        r.*
+        r.*,
+        u.name as user_name,
+        u.avatar_url as user_avatar_url,
+        u.role_id as user_role_id,
+        ro.name as role_name
       FROM property_requests r
-      LIMIT 5
+      LEFT JOIN users u ON r.user_id = u.id
+      LEFT JOIN roles ro ON u.role_id = ro.id
+      WHERE r.is_active = 1
+      ORDER BY RAND()
+      LIMIT 9
     `);
 
-    // Si no hay solicitudes en la base de datos, devolver datos de ejemplo
+    // Si no hay solicitudes en la base de datos, devolver array vacío
     if (!requests || requests.length === 0) {
-      console.log('No requests found in database, returning sample data');
-      return NextResponse.json(sampleRequests);
+      console.log('No requests found in database');
+      return NextResponse.json([]);
     }
 
     // Si hay solicitudes, las formateamos adecuadamente
@@ -83,28 +33,44 @@ export async function GET() {
         id: request.id,
         title: request.title || 'Solicitud sin título',
         description: request.description || 'Sin descripción',
-        budget: request.price || 0, // Asumiendo que se usa 'price' en lugar de 'budget'
-        listingType: request.listing_type || 'rent',
-        bedrooms: request.bedrooms || 0,
-        bathrooms: request.bathrooms || 0,
+        budget: Number(request.budget_max) || 0,
+        listingType: request.desired_property_type || 'sale',
+        bedrooms: request.min_bedrooms || 0,
+        bathrooms: request.min_bathrooms || 0,
         location: {
-          city: request.location_city || 'Ciudad no especificada',
-          region: request.location_region || 'Región no especificada',
+          city: request.desired_location_city || 'Ciudad no especificada',
+          region: request.desired_location_region || 'Región no especificada',
         },
         user: {
           id: request.user_id || '0',
-          name: 'Usuario',
+          name: request.user_name || 'Solicitante',
+          role_id: request.user_role_id || '1',
+          role_name: request.role_name || getRoleDisplayName(request.user_role_id),
+          avatarUrl: request.user_avatar_url || null,
         },
         createdAt: request.created_at,
         updatedAt: request.updated_at,
+        source: request.source || 'web',
+        slug: request.slug || `${request.title?.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '-').substring(0, 60)}-${request.id}`,
+        pub_id: request.publication_code,
       };
     });
 
     return NextResponse.json(formattedRequests);
   } catch (error) {
     console.error('Error fetching featured requests:', error);
-    // En caso de error, devolver los datos de ejemplo
-    console.log('Error occurred, returning sample data');
-    return NextResponse.json(sampleRequests);
+    // En caso de error, devolver array vacío
+    return NextResponse.json([]);
+  }
+}
+
+// Función auxiliar para obtener el nombre del rol
+function getRoleDisplayName(roleId?: string): string {
+  if (!roleId) return 'Usuario';
+  switch (roleId) {
+    case '1': return 'Usuario';
+    case '2': return 'Corredor';
+    case '3': return 'Administrador';
+    default: return 'Usuario';
   }
 } 

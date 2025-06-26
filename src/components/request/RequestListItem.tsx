@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, MapPin, Tag, DollarSign, SearchIcon, CalendarDays, BedDouble, Bath, Eye, UserCircle as UserIcon, Handshake } from 'lucide-react';
 import AuthorInfoDialog from '../property/AuthorInfoDialog';
+import ClientFormattedDate from '@/components/ui/ClientFormattedDate';
 
 interface RequestListItemProps {
   request: SearchRequest;
@@ -64,14 +65,19 @@ export default function RequestListItem({ request }: RequestListItemProps) {
           <p className="text-sm font-medium line-clamp-1 group-hover/author:text-primary transition-colors" title={authorName}>{authorName}</p>
           <p className="text-xs text-muted-foreground flex items-center">
           <CalendarDays className="h-3 w-3 mr-1" />
-          Publicado el {new Date(createdAt).toLocaleDateString('es-CL', {day:'2-digit', month:'short', year:'numeric'})}
+          <ClientFormattedDate date={createdAt} prefix="Publicado el " options={{day:'2-digit', month:'short', year:'numeric'}}/>
           </p>
       </div>
     </div>
   );
 
   return (
-    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full group border border-border hover:border-primary/30">
+    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full group border border-border hover:border-primary/30 relative">
+       {pub_id && (
+        <Badge variant="outline" className="absolute top-2.5 right-2.5 text-xs px-2 py-0.5 shadow-md rounded-md bg-black/50 text-white backdrop-blur-sm font-mono z-10">
+          {pub_id}
+        </Badge>
+      )}
       <div className="flex flex-1 flex-col p-4 sm:p-5 justify-between">
         <div>
           <CardHeader className="p-0 mb-2 sm:mb-3">
@@ -91,7 +97,6 @@ export default function RequestListItem({ request }: RequestListItemProps) {
               <CardTitle className="text-lg sm:text-xl font-headline leading-tight hover:text-primary transition-colors line-clamp-2">
                 <SearchIcon className="inline-block h-4 w-4 sm:h-5 sm:w-5 mr-1.5 text-primary align-middle" />
                 {title}
-                {pub_id && <Badge variant="outline" className="ml-2 align-middle text-xs">{pub_id}</Badge>}
               </CardTitle>
             </Link>
           </CardHeader>

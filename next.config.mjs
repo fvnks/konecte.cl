@@ -14,6 +14,20 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      // Para imágenes de Unsplash
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+      // Para randomuser.me (avatares de ejemplo)
+      {
+        protocol: 'https',
+        hostname: 'randomuser.me',
+        port: '',
+        pathname: '/**',
+      },
       // Para bukmy.cl (URL original en el código)
       {
         protocol: 'https',
