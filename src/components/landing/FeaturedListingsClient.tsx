@@ -38,6 +38,7 @@ interface Property {
   createdAt?: string;
   source?: 'bot' | 'web' | 'app';
   slug?: string;
+  city?: string;
 }
 
 interface PropertyRequest {
@@ -63,6 +64,7 @@ interface PropertyRequest {
   createdAt?: string;
   source?: 'bot' | 'web' | 'app';
   slug?: string;
+  city?: string;
 }
 
 // Función para generar un slug a partir del título
@@ -286,7 +288,7 @@ function FeaturedPropertyCard({ property }: { property: Property }) {
         <div className="p-4 flex flex-col flex-grow">
           <p className="text-sm text-gray-500 mb-1 flex items-center">
             <MapPin className="h-4 w-4 mr-1.5" />
-            {property.location?.city || 'Ubicación no disponible'}
+            {property.city || 'Ubicación no disponible'}
           </p>
           <h3 className="font-semibold text-lg text-gray-800 group-hover:text-primary transition-colors truncate mb-2">
             {property.title}
@@ -340,7 +342,7 @@ function FeaturedRequestCard({ request }: { request: PropertyRequest }) {
               <div>
                 <p className="text-sm text-gray-500 mb-1 flex items-center">
                   <MapPin className="h-4 w-4 mr-1.5" />
-                  {request.location?.city || 'Ubicación no especificada'}
+                  {request.city || 'Ubicación no especificada'}
                 </p>
                 <h3 className="font-semibold text-lg text-gray-800 group-hover:text-primary transition-colors">
                   {request.title}
