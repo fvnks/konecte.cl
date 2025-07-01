@@ -2,14 +2,16 @@
 'use server';
 
 import type { RequestFormValues, SubmitRequestResult } from "@/lib/types"; 
-import { query } from "@/lib/db";
 import type { SearchRequest, User, PropertyType, ListingCategory } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { findMatchingPropertiesForNewRequest, type NewRequestInput } from '@/ai/flows/find-matching-properties-for-new-request-flow';
 import { getUserByIdAction } from './userActions';
 import { sendGenericWhatsAppMessageAction } from './otpActions';
-
+import { db } from "@/lib/db";
+import { searchRequests, users } from "@/lib/db/schema";
+import { and, eq, count, sql, desc, asc, like, or, gte, lte, SQL } from "drizzle-orm";
+import { SearchRequestOptional } from "@/lib/types";
 
 // Helper function to generate a slug from a title
 const generateSlug = (title: string): string => {
@@ -22,49 +24,56 @@ const generateSlug = (title: string): string => {
 };
 
 function mapDbRowToSearchRequest(row: any): SearchRequest {
+  const p = row;
+  const authorData = row.user;
+  const groupData = authorData?.primaryGroup;
+
   const desiredPropertyType: PropertyType[] = [];
-  if (row.desired_property_type_rent) desiredPropertyType.push('rent');
-  if (row.desired_property_type_sale) desiredPropertyType.push('sale');
+  if (p.desiredPropertyTypeRent) desiredPropertyType.push('rent');
+  if (p.desiredPropertyTypeSale) desiredPropertyType.push('sale');
 
   const desiredCategories: ListingCategory[] = [];
-  if (row.desired_category_apartment) desiredCategories.push('apartment');
-  if (row.desired_category_house) desiredCategories.push('house');
-  if (row.desired_category_condo) desiredCategories.push('condo');
-  if (row.desired_category_land) desiredCategories.push('land');
-  if (row.desired_category_commercial) desiredCategories.push('commercial');
-  if (row.desired_category_other) desiredCategories.push('other');
+  if (p.desiredCategoryApartment) desiredCategories.push('apartment');
+  if (p.desiredCategoryHouse) desiredCategories.push('house');
+  if (p.desiredCategoryCondo) desiredCategories.push('condo');
+  if (p.desiredCategoryLand) desiredCategories.push('land');
+  if (p.desiredCategoryCommercial) desiredCategories.push('commercial');
+  if (p.desiredCategoryOther) desiredCategories.push('other');
   
-  const author: User | undefined = row.author_name ? {
-    id: row.user_id,
-    name: row.author_name,
-    avatarUrl: row.author_avatar_url || undefined,
-    role_id: row.author_role_id || '',
-    phone_number: row.author_phone_number,
+  const author: User | undefined = authorData ? {
+    id: authorData.id,
+    name: authorData.name,
+    avatarUrl: authorData.avatarUrl || undefined,
+    role_id: authorData.roleId || '',
+    phone_number: authorData.phoneNumber,
+    group_name: groupData?.name,
+    group_avatar_url: groupData?.avatarUrl,
+    group_badge_type: groupData?.postBadgeType,
   } : undefined;
 
   return {
-    id: row.id,
-    pub_id: row.publication_code,
-    user_id: row.user_id,
-    title: row.title,
-    slug: row.slug,
-    description: row.description,
+    id: p.id,
+    pub_id: p.publicationCode,
+    user_id: p.userId,
+    title: p.title,
+    slug: p.slug,
+    description: p.description,
     desiredPropertyType,
     desiredCategories,
     desiredLocation: {
-      city: row.desired_location_city,
-      region: row.desired_location_region,
-      neighborhood: row.desired_location_neighborhood || undefined,
+      city: p.desiredLocationCity,
+      region: p.desiredLocationRegion,
+      neighborhood: p.desiredLocationNeighborhood || undefined,
     },
-    minBedrooms: row.min_bedrooms !== null ? Number(row.min_bedrooms) : undefined,
-    minBathrooms: row.min_bathrooms !== null ? Number(row.min_bathrooms) : undefined,
-    budgetMax: row.budget_max !== null ? Number(row.budget_max) : undefined,
-    open_for_broker_collaboration: Boolean(row.open_for_broker_collaboration),
-    commentsCount: Number(row.comments_count),
-    upvotes: Number(row.upvotes || 0), // Ensure upvotes is a number
-    isActive: Boolean(row.is_active),
-    createdAt: new Date(row.created_at).toISOString(),
-    updatedAt: new Date(row.updated_at).toISOString(),
+    minBedrooms: p.minBedrooms !== null ? Number(p.minBedrooms) : undefined,
+    minBathrooms: p.minBathrooms !== null ? Number(p.minBathrooms) : undefined,
+    budgetMax: p.budgetMax !== null ? Number(p.budgetMax) : undefined,
+    open_for_broker_collaboration: Boolean(p.openForBrokerCollaboration),
+    commentsCount: Number(p.commentsCount),
+    upvotes: Number(p.upvotes || 0),
+    isActive: Boolean(p.isActive),
+    createdAt: new Date(p.createdAt).toISOString(),
+    updatedAt: new Date(p.updatedAt).toISOString(),
     author,
   };
 }
@@ -84,52 +93,34 @@ export async function submitRequestAction(
   const pubId = `S-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   
   try {
-    const columns: string[] = [];
-    const values: any[] = [];
-    const placeholders: string[] = [];
-
-    // Campos obligatorios o que siempre se establecen
-    columns.push('id', 'user_id', 'title', 'slug', 'description', 'desired_location_city', 'desired_location_region', 'is_active', 'created_at', 'updated_at', 'comments_count', 'upvotes', 'publication_code');
-    values.push(requestId, userId, data.title, slug, data.description, data.desiredLocationCity, data.desiredLocationRegion, true, new Date(), new Date(), 0, 0, pubId); // upvotes defaults to 0
-    placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
-
-
-    // Campos booleanos para tipos de transacción y categorías
-    // Para cada uno, si es true en `data`, se añade la columna y TRUE, sino se añade y FALSE
-    columns.push('desired_property_type_rent'); values.push(data.desiredPropertyType.includes('rent')); placeholders.push('?');
-    columns.push('desired_property_type_sale'); values.push(data.desiredPropertyType.includes('sale')); placeholders.push('?');
-    columns.push('desired_category_apartment'); values.push(data.desiredCategories.includes('apartment')); placeholders.push('?');
-    columns.push('desired_category_house'); values.push(data.desiredCategories.includes('house')); placeholders.push('?');
-    columns.push('desired_category_condo'); values.push(data.desiredCategories.includes('condo')); placeholders.push('?');
-    columns.push('desired_category_land'); values.push(data.desiredCategories.includes('land')); placeholders.push('?');
-    columns.push('desired_category_commercial'); values.push(data.desiredCategories.includes('commercial')); placeholders.push('?');
-    columns.push('desired_category_other'); values.push(data.desiredCategories.includes('other')); placeholders.push('?');
-    columns.push('open_for_broker_collaboration'); values.push(data.open_for_broker_collaboration || false); placeholders.push('?');
     
-    // Campos opcionales (siempre añadir, pero con valor o NULL)
-    columns.push('desired_location_neighborhood');
-    values.push(data.desiredLocationNeighborhood && data.desiredLocationNeighborhood.trim() !== '' ? data.desiredLocationNeighborhood.trim() : null);
-    placeholders.push('?');
+    await db.insert(searchRequests).values({
+        id: requestId,
+        userId: userId,
+        title: data.title,
+        slug: slug,
+        description: data.description,
+        desiredLocationCity: data.desiredLocationCity,
+        desiredLocationRegion: data.desiredLocationRegion,
+        isActive: true,
+        commentsCount: 0,
+        upvotes: 0,
+        publicationCode: pubId,
+        desiredPropertyTypeRent: data.desiredPropertyType.includes('rent'),
+        desiredPropertyTypeSale: data.desiredPropertyType.includes('sale'),
+        desiredCategoryApartment: data.desiredCategories.includes('apartment'),
+        desiredCategoryHouse: data.desiredCategories.includes('house'),
+        desiredCategoryCondo: data.desiredCategories.includes('condo'),
+        desiredCategoryLand: data.desiredCategories.includes('land'),
+        desiredCategoryCommercial: data.desiredCategories.includes('commercial'),
+        desiredCategoryOther: data.desiredCategories.includes('other'),
+        openForBrokerCollaboration: data.open_for_broker_collaboration || false,
+        desiredLocationNeighborhood: data.desiredLocationNeighborhood && data.desiredLocationNeighborhood.trim() !== '' ? data.desiredLocationNeighborhood.trim() : null,
+        minBedrooms: (data.minBedrooms !== undefined && data.minBedrooms !== '' && data.minBedrooms !== null) ? Number(data.minBedrooms) : null,
+        minBathrooms: (data.minBathrooms !== undefined && data.minBathrooms !== '' && data.minBathrooms !== null) ? Number(data.minBathrooms) : null,
+        budgetMax: (data.budgetMax !== undefined && data.budgetMax !== '' && data.budgetMax !== null) ? Number(data.budgetMax) : null,
+    })
 
-    const minBedroomsValue = (data.minBedrooms !== undefined && data.minBedrooms !== '' && data.minBedrooms !== null) ? Number(data.minBedrooms) : null;
-    columns.push('min_bedrooms'); values.push(minBedroomsValue); placeholders.push('?');
-    
-    const minBathroomsValue = (data.minBathrooms !== undefined && data.minBathrooms !== '' && data.minBathrooms !== null) ? Number(data.minBathrooms) : null;
-    columns.push('min_bathrooms'); values.push(minBathroomsValue); placeholders.push('?');
-    
-    const budgetMaxValue = (data.budgetMax !== undefined && data.budgetMax !== '' && data.budgetMax !== null) ? Number(data.budgetMax) : null;
-    columns.push('budget_max'); values.push(budgetMaxValue); placeholders.push('?');
-
-
-    const sql = `
-      INSERT INTO property_requests (${columns.join(', ')})
-      VALUES (${placeholders.join(', ')})
-    `;
-    
-    console.log(`[RequestAction DEBUG] SQL: ${sql}`);
-    console.log(`[RequestAction DEBUG] Params:`, values);
-
-    await query(sql, values);
     console.log(`[RequestAction] Request submitted successfully. ID: ${requestId}, Slug: ${slug}, PubID: ${pubId}`);
     
     revalidatePath('/');
@@ -153,9 +144,9 @@ export async function submitRequestAction(
         desiredLocationCity: data.desiredLocationCity,
         desiredLocationRegion: data.desiredLocationRegion,
         desiredLocationNeighborhood: data.desiredLocationNeighborhood || undefined,
-        minBedrooms: minBedroomsValue !== null ? minBedroomsValue : undefined,
-        minBathrooms: minBathroomsValue !== null ? minBathroomsValue : undefined,
-        budgetMax: budgetMaxValue !== null ? budgetMaxValue : undefined,
+        minBedrooms: (data.minBedrooms !== undefined && data.minBedrooms !== '' && data.minBedrooms !== null) ? Number(data.minBedrooms) : undefined,
+        minBathrooms: (data.minBathrooms !== undefined && data.minBathrooms !== '' && data.minBathrooms !== null) ? Number(data.minBathrooms) : undefined,
+        budgetMax: (data.budgetMax !== undefined && data.budgetMax !== '' && data.budgetMax !== null) ? Number(data.budgetMax) : undefined,
       };
       const autoMatches = await findMatchingPropertiesForNewRequest(requestForAIMatch);
 
@@ -197,320 +188,327 @@ export async function submitRequestAction(
   } catch (error: any) {
     console.error("[RequestAction] Error submitting request:", error);
     let message = `Error al publicar solicitud: ${error.message}`; 
-     if (error.code === 'ER_DUP_ENTRY' && error.message.includes('property_requests.slug')) {
-        message = "Ya existe una solicitud con un título muy similar (slug duplicado). Intenta con un título ligeramente diferente.";
-    } else if (error.code === 'ER_DUP_ENTRY' && error.message.includes('property_requests.pub_id')) {
-        message = "Error al generar el ID público único. Por favor, intenta de nuevo.";
-    }
-    return { success: false, message, autoMatchesCount: 0 };
+     if (error.code === 'ER_DUP_ENTRY' && error.message.includes('slug')) {
+        message = "Ya existe una solicitud con un título muy similar. Por favor, elige un título único.";
+     }
+    return { success: false, message };
   }
 }
 
-interface GetRequestsActionOptions {
+export interface GetRequestsActionOptions {
   includeInactive?: boolean;
   userId?: string; 
-  onlyOpenForCollaboration?: boolean; 
   limit?: number;
+  offset?: number;
   orderBy?: 'createdAt_desc' | 'relevance' | 'random';
   searchTerm?: string;
+  propertyType?: 'rent' | 'sale';
+  category?: 'apartment' | 'house' | 'condo' | 'land' | 'commercial' | 'other';
+  city?: string;
+  minBedrooms?: number;
+  minBathrooms?: number;
+  maxBudget?: number;
 }
 
-export async function getRequestsAction(options: GetRequestsActionOptions = {}): Promise<SearchRequest[]> {
-  const { 
-    includeInactive = true, 
-    userId, 
-    onlyOpenForCollaboration = false, 
-    limit, 
-    orderBy = 'createdAt_desc', 
-    searchTerm 
-  } = options;
-
+export async function getRequestsAction(options: GetRequestsActionOptions = {}) {
   try {
-    let sql = `
-      SELECT 
-        pr.*, 
-        u.name as author_name, 
-        u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id,
-        u.phone_number as author_phone_number
-      FROM property_requests pr
-      LEFT JOIN users u ON pr.user_id = u.id
-    `;
-    
-    const whereClauses: string[] = [];
-    const queryParams: any[] = [];
+    const {
+      includeInactive = false,
+      userId,
+      limit = 10,
+      offset = 0,
+      orderBy = 'createdAt_desc',
+      searchTerm,
+      propertyType,
+      category,
+      city,
+      minBedrooms,
+      minBathrooms,
+      maxBudget,
+    } = options;
 
+    // Condiciones básicas (siempre se aplican)
+    let baseConditions: (SQL<unknown> | undefined)[] = [];
     if (!includeInactive) {
-      whereClauses.push('pr.is_active = TRUE');
-    }
-    if (userId) {
-        whereClauses.push('pr.user_id = ?');
-        queryParams.push(userId);
-    }
-    if (onlyOpenForCollaboration) {
-        whereClauses.push('pr.open_for_broker_collaboration = TRUE');
-    }
-    if (searchTerm) {
-      whereClauses.push('(pr.title LIKE ? OR pr.description LIKE ? OR pr.desired_location_city LIKE ? OR pr.desired_location_region LIKE ? OR pr.publication_code = ?)');
-      const searchTermLike = `%${searchTerm}%`;
-      queryParams.push(searchTermLike, searchTermLike, searchTermLike, searchTermLike, searchTerm);
+      baseConditions.push(eq(searchRequests.isActive, true));
     }
     
-    if (whereClauses.length > 0) {
-        sql += ' WHERE ' + whereClauses.join(' AND ');
-    }
-    
-    if (orderBy === 'relevance' && searchTerm) {
-      sql += ` ORDER BY MATCH(pr.title, pr.description) AGAINST (? IN BOOLEAN MODE) DESC, pr.created_at DESC`;
-      queryParams.unshift(searchTerm); 
-    } else if (orderBy === 'random') {
-      sql += ` ORDER BY RAND()`;
-    } else {
-      sql += ` ORDER BY pr.created_at DESC`;
-    }
-    
-    if (limit) {
-        sql += ' LIMIT ?';
-        queryParams.push(limit);
+    // Búsqueda por texto (solo si no hay filtros estructurados)
+    if (searchTerm && !city && !category && !propertyType) {
+      const keywords = searchTerm.split(' ').filter(kw => kw.length > 2);
+      if (keywords.length > 0) {
+        const keywordConditions = keywords.map(kw =>
+          or(
+            like(searchRequests.title, `%${kw}%`),
+            like(searchRequests.description, `%${kw}%`)
+          )
+        );
+        baseConditions.push(and(...keywordConditions));
+      }
     }
 
-    const rows = await query(sql, queryParams);
-    if (!Array.isArray(rows)) {
-        console.error("[RequestAction] Expected array from getRequestsAction, got:", typeof rows);
-        return [];
+    // Condiciones para filtros específicos
+    let filterConditions: (SQL<unknown> | undefined)[] = [];
+    
+    // Filtro por tipo de propiedad (rent/sale)
+    if (propertyType === 'rent') {
+      filterConditions.push(eq(searchRequests.desiredPropertyTypeRent, true));
+    } else if (propertyType === 'sale') {
+      filterConditions.push(eq(searchRequests.desiredPropertyTypeSale, true));
     }
-    return rows.map(mapDbRowToSearchRequest);
-  } catch (error: any) {
-    console.error("[RequestAction] Error fetching requests:", error);
+    
+    // Filtro por categoría
+    if (category) {
+      switch (category) {
+        case 'apartment': filterConditions.push(eq(searchRequests.desiredCategoryApartment, true)); break;
+        case 'house': filterConditions.push(eq(searchRequests.desiredCategoryHouse, true)); break;
+        case 'condo': filterConditions.push(eq(searchRequests.desiredCategoryCondo, true)); break;
+        case 'land': filterConditions.push(eq(searchRequests.desiredCategoryLand, true)); break;
+        case 'commercial': filterConditions.push(eq(searchRequests.desiredCategoryCommercial, true)); break;
+        case 'other': filterConditions.push(eq(searchRequests.desiredCategoryOther, true)); break;
+      }
+    }
+    
+    // Condición para ciudad (siempre se aplica si está presente)
+    if (city) {
+      baseConditions.push(sql`LOWER(${searchRequests.desiredLocationCity}) LIKE LOWER(${'%' + city + '%'})`);
+    }
+    
+    // Otras condiciones
+    if (minBedrooms) {
+      baseConditions.push(gte(searchRequests.minBedrooms, minBedrooms));
+    }
+    if (minBathrooms) {
+      baseConditions.push(gte(searchRequests.minBathrooms, minBathrooms));
+    }
+    if (maxBudget) {
+      baseConditions.push(lte(searchRequests.budgetMax, String(maxBudget)));
+    }
+
+    // Construir la consulta
+    const query = db.select({
+      request: searchRequests,
+      user: {
+        id: users.id,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+      },
+    })
+    .from(searchRequests)
+    .leftJoin(users, eq(searchRequests.userId, users.id));
+
+    // Aplicar condiciones de manera flexible:
+    // - Siempre aplicar las condiciones básicas
+    // - Si hay filtros específicos, mostrar resultados que coincidan con AL MENOS UNO de ellos
+    const conditions = [...baseConditions];
+    if (filterConditions.length > 0) {
+      conditions.push(or(...filterConditions));
+    }
+    
+    query.where(and(...conditions.filter(c => c !== undefined)));
+
+    // Ordenamiento
+    switch (orderBy) {
+      case 'relevance':
+        query.orderBy(desc(searchRequests.upvotes));
+        break;
+      case 'random':
+        query.orderBy(sql`RAND()`);
+        break;
+      case 'createdAt_desc':
+      default:
+        query.orderBy(desc(searchRequests.createdAt));
+        break;
+    }
+    
+    const results = await query.limit(limit).offset(offset);
+    return results.map(row => mapDbRowToSearchRequest(row));
+
+  } catch (error) {
+    console.error('Error in getRequestsAction:', error);
     return [];
   }
 }
 
 export async function getRequestBySlugAction(slug: string): Promise<SearchRequest | null> {
-  try {
-    const sql = `
-      SELECT 
-        pr.*, 
-        u.name as author_name, 
-        u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id,
-        u.phone_number as author_phone_number
-      FROM property_requests pr
-      LEFT JOIN users u ON pr.user_id = u.id
-      WHERE pr.slug = ? AND pr.is_active = TRUE
-    `;
-    const rows = await query(sql, [slug]);
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return null;
+    if (!slug) return null;
+    try {
+        const result = await db.select().from(searchRequests).where(eq(searchRequests.slug, slug));
+        if (result.length > 0) {
+            return mapDbRowToSearchRequest(result[0]);
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching request by slug ${slug}:`, error);
+        return null;
     }
-    return mapDbRowToSearchRequest(rows[0]);
-  } catch (error: any) {
-    console.error(`[RequestAction] Error fetching request by slug ${slug}:`, error);
-    return null;
-  }
 }
 
 export async function getRequestByCodeAction(code: string): Promise<SearchRequest | null> {
-  try {
-    const sql = `
-      SELECT 
-        pr.*, 
-        u.name as author_name, 
-        u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id,
-        r.name as author_role_name
-      FROM property_requests pr
-      LEFT JOIN users u ON pr.user_id = u.id
-      LEFT JOIN roles r ON u.role_id = r.id
-      WHERE pr.publication_code = ? 
-      LIMIT 1
-    `;
-    const results = await query(sql, [code]);
-
-    if (results && results.length > 0) {
-      return mapDbRowToSearchRequest(results[0]);
+    if (!code) return null;
+    try {
+        const result = await db.select().from(searchRequests).where(eq(searchRequests.publicationCode, code));
+        if (result.length > 0) {
+            return mapDbRowToSearchRequest(result[0]);
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching request by code ${code}:`, error);
+        return null;
     }
-    return null;
-  } catch (error) {
-    console.error(`Error fetching request by code ${code}:`, error);
-    return null;
-  }
 }
 
 export async function getUserRequestsAction(userId: string): Promise<SearchRequest[]> {
-  return getRequestsAction({ userId, includeInactive: true });
+    if (!userId) return [];
+    try {
+        const results = await db.query.searchRequests.findMany({
+            where: eq(searchRequests.userId, userId),
+            orderBy: [desc(searchRequests.createdAt)],
+            with: {
+                user: {
+                    with: {
+                        primaryGroup: true,
+                    }
+                }
+            }
+        });
+        return results.map(mapDbRowToSearchRequest);
+    } catch (error) {
+        console.error(`Error fetching requests for user ${userId}:`, error);
+        return [];
+    }
 }
 
 export async function updateRequestStatusAction(requestId: string, isActive: boolean): Promise<{ success: boolean; message?: string }> {
-  if (!requestId) {
-    return { success: false, message: "ID de solicitud no proporcionado." };
-  }
-  try {
-    await query('UPDATE property_requests SET is_active = ? WHERE id = ?', [isActive, requestId]);
-    revalidatePath('/admin/requests');
-    revalidatePath('/requests'); 
-    revalidatePath(`/requests/[slug]`, 'layout'); 
-    return { success: true, message: `Solicitud ${isActive ? 'activada' : 'desactivada'} correctamente.` };
-  } catch (error: any) {
-    console.error("Error al cambiar estado de la solicitud:", error);
-    return { success: false, message: `Error al cambiar estado de la solicitud: ${error.message}` };
-  }
+    try {
+        const result = await db.update(searchRequests).set({ isActive }).where(eq(searchRequests.id, requestId));
+        if (result.rowsAffected > 0) {
+            revalidatePath('/requests');
+            revalidatePath('/admin/requests');
+            return { success: true, message: 'Estado de la solicitud actualizado.' };
+        }
+        return { success: false, message: 'No se encontró la solicitud.' };
+    } catch (error: any) {
+        console.error('Error updating request status:', error);
+        return { success: false, message: `Error del servidor: ${error.message}` };
+    }
 }
 
 export async function adminDeleteRequestAction(requestId: string): Promise<{ success: boolean; message?: string }> {
-  if (!requestId) {
-    return { success: false, message: "ID de solicitud no proporcionado." };
-  }
-
-  try {
-    // Primero eliminar comentarios asociados
-    await query('DELETE FROM comments WHERE request_id = ?', [requestId]);
-    // Luego eliminar interacciones de usuario asociadas
-    await query('DELETE FROM user_listing_interactions WHERE listing_id = ? AND listing_type = "request"', [requestId]);
-    // Luego eliminar colaboraciones de broker asociadas
-    await query('DELETE FROM broker_collaborations WHERE property_request_id = ?', [requestId]);
-    // Finalmente, eliminar la solicitud
-    const result: any = await query('DELETE FROM property_requests WHERE id = ?', [requestId]);
-
-    if (result.affectedRows > 0) {
-      revalidatePath('/admin/requests');
-      revalidatePath('/requests');
-      revalidatePath('/'); 
-      revalidatePath(`/requests/[slug]`, 'layout');
-      return { success: true, message: "Solicitud y datos asociados eliminados exitosamente." };
-    } else {
-      return { success: false, message: "La solicitud no fue encontrada o no se pudo eliminar." };
+    if (!requestId) {
+        return { success: false, message: 'ID de solicitud no proporcionado.' };
     }
-  } catch (error: any) {
-    console.error("Error al eliminar solicitud por admin:", error);
-    return { success: false, message: `Error al eliminar solicitud: ${error.message}` };
-  }
+    try {
+        const result = await db.delete(searchRequests).where(eq(searchRequests.id, requestId));
+        if (result.rowsAffected > 0) {
+            revalidatePath('/requests');
+            revalidatePath('/admin/requests');
+            return { success: true, message: 'Solicitud eliminada exitosamente.' };
+        }
+        return { success: false, message: 'No se encontró la solicitud a eliminar.' };
+    } catch (error: any) {
+        console.error(`Error deleting request ${requestId}:`, error);
+        return { success: false, message: `Error del servidor: ${error.message}` };
+    }
 }
 
 export async function getRequestByIdForAdminAction(requestId: string): Promise<SearchRequest | null> {
-  if (!requestId) return null;
-  try {
-    const sql = `
-      SELECT 
-        pr.*, 
-        u.name as author_name, 
-        u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id,
-        u.phone_number as author_phone_number
-      FROM property_requests pr
-      LEFT JOIN users u ON pr.user_id = u.id
-      WHERE pr.id = ?
-    `; 
-    const rows = await query(sql, [requestId]);
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return null;
+    if (!requestId) return null;
+    try {
+        const result = await db.select({
+            ...searchRequests,
+            author_name: users.name,
+            author_avatar_url: users.avatarUrl,
+            author_phone_number: users.phoneNumber,
+        })
+        .from(searchRequests)
+        .leftJoin(users, eq(searchRequests.userId, users.id))
+        .where(eq(searchRequests.id, requestId));
+
+        if (result.length > 0) {
+            return mapDbRowToSearchRequest(result[0]);
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching request by ID ${requestId} for admin:`, error);
+        return null;
     }
-    return mapDbRowToSearchRequest(rows[0]);
-  } catch (error: any) {
-    console.error(`[RequestAction Admin] Error fetching request by ID ${requestId}:`, error);
-    return null;
-  }
 }
 
 export async function adminUpdateRequestAction(
   requestId: string,
   data: RequestFormValues
 ): Promise<{ success: boolean; message?: string; requestSlug?: string }> {
-  console.log("[RequestAction Admin] Request update data received:", data, "RequestID:", requestId);
-
-  if (!requestId) {
-    return { success: false, message: "ID de solicitud no proporcionado para la actualización." };
-  }
-
+  const slug = generateSlug(data.title);
   try {
-    // Similar dynamic query construction as in submitRequestAction
-    const columnsToUpdate: string[] = [];
-    const valuesToUpdate: any[] = [];
+    const result = await db.update(searchRequests).set({
+        title: data.title,
+        slug: slug,
+        description: data.description,
+        desiredLocationCity: data.desiredLocationCity,
+        desiredLocationRegion: data.desiredLocationRegion,
+        desiredPropertyTypeRent: data.desiredPropertyType.includes('rent'),
+        desiredPropertyTypeSale: data.desiredPropertyType.includes('sale'),
+        desiredCategoryApartment: data.desiredCategories.includes('apartment'),
+        desiredCategoryHouse: data.desiredCategories.includes('house'),
+        desiredCategoryCondo: data.desiredCategories.includes('condo'),
+        desiredCategoryLand: data.desiredCategories.includes('land'),
+        desiredCategoryCommercial: data.desiredCategories.includes('commercial'),
+        desiredCategoryOther: data.desiredCategories.includes('other'),
+        openForBrokerCollaboration: data.open_for_broker_collaboration || false,
+        desiredLocationNeighborhood: data.desiredLocationNeighborhood && data.desiredLocationNeighborhood.trim() !== '' ? data.desiredLocationNeighborhood.trim() : null,
+        minBedrooms: (data.minBedrooms !== undefined && data.minBedrooms !== '' && data.minBedrooms !== null) ? Number(data.minBedrooms) : null,
+        minBathrooms: (data.minBathrooms !== undefined && data.minBathrooms !== '' && data.minBathrooms !== null) ? Number(data.minBathrooms) : null,
+        budgetMax: (data.budgetMax !== undefined && data.budgetMax !== '' && data.budgetMax !== null) ? Number(data.budgetMax) : null,
+        updatedAt: new Date(),
+    }).where(eq(searchRequests.id, requestId));
 
-    // Campos que siempre se actualizan si se proporcionan en 'data'
-    if (data.title) { columnsToUpdate.push('title = ?'); valuesToUpdate.push(data.title); }
-    if (data.description) { columnsToUpdate.push('description = ?'); valuesToUpdate.push(data.description); }
-    if (data.desiredLocationCity) { columnsToUpdate.push('desired_location_city = ?'); valuesToUpdate.push(data.desiredLocationCity); }
-    if (data.desiredLocationRegion) { columnsToUpdate.push('desired_location_region = ?'); valuesToUpdate.push(data.desiredLocationRegion); }
-    
-    columnsToUpdate.push('desired_location_neighborhood = ?');
-    valuesToUpdate.push(data.desiredLocationNeighborhood && data.desiredLocationNeighborhood.trim() !== '' ? data.desiredLocationNeighborhood.trim() : null);
-
-    // Booleanos para tipos y categorías
-    columnsToUpdate.push('desired_property_type_rent = ?'); valuesToUpdate.push(data.desiredPropertyType.includes('rent'));
-    columnsToUpdate.push('desired_property_type_sale = ?'); valuesToUpdate.push(data.desiredPropertyType.includes('sale'));
-    columnsToUpdate.push('desired_category_apartment = ?'); valuesToUpdate.push(data.desiredCategories.includes('apartment'));
-    columnsToUpdate.push('desired_category_house = ?'); valuesToUpdate.push(data.desiredCategories.includes('house'));
-    columnsToUpdate.push('desired_category_condo = ?'); valuesToUpdate.push(data.desiredCategories.includes('condo'));
-    columnsToUpdate.push('desired_category_land = ?'); valuesToUpdate.push(data.desiredCategories.includes('land'));
-    columnsToUpdate.push('desired_category_commercial = ?'); valuesToUpdate.push(data.desiredCategories.includes('commercial'));
-    columnsToUpdate.push('desired_category_other = ?'); valuesToUpdate.push(data.desiredCategories.includes('other'));
-    
-    columnsToUpdate.push('open_for_broker_collaboration = ?');
-    valuesToUpdate.push(data.open_for_broker_collaboration || false);
-
-
-    const minBedroomsValue = (data.minBedrooms !== undefined && data.minBedrooms !== '' && data.minBedrooms !== null) ? Number(data.minBedrooms) : null;
-    columnsToUpdate.push('min_bedrooms = ?'); valuesToUpdate.push(minBedroomsValue);
-    
-    const minBathroomsValue = (data.minBathrooms !== undefined && data.minBathrooms !== '' && data.minBathrooms !== null) ? Number(data.minBathrooms) : null;
-    columnsToUpdate.push('min_bathrooms = ?'); valuesToUpdate.push(minBathroomsValue);
-
-    const budgetMaxValue = (data.budgetMax !== undefined && data.budgetMax !== '' && data.budgetMax !== null) ? Number(data.budgetMax) : null;
-    columnsToUpdate.push('budget_max = ?'); valuesToUpdate.push(budgetMaxValue);
-
-    if (columnsToUpdate.length === 0) {
-      return { success: true, message: "No se proporcionaron datos para actualizar." };
+    if (result.rowsAffected > 0) {
+      revalidatePath('/requests');
+      revalidatePath(`/requests/${slug}`);
+      revalidatePath('/admin/requests');
+      return { success: true, message: 'Solicitud actualizada.', requestSlug: slug };
     }
-    
-    columnsToUpdate.push('updated_at = NOW()'); // Siempre actualizar timestamp
-
-    const sql = `
-      UPDATE property_requests SET
-        ${columnsToUpdate.join(', ')}
-      WHERE id = ?
-    `;
-    valuesToUpdate.push(requestId); // Añadir el ID para la cláusula WHERE
-    
-    const result: any = await query(sql, valuesToUpdate);
-
-    if (result.affectedRows === 0) {
-      return { success: false, message: "Solicitud no encontrada o los datos eran los mismos." };
-    }
-    
-    const requestDetails = await getRequestByIdForAdminAction(requestId);
-    const currentSlug = requestDetails?.slug;
-
-    console.log(`[RequestAction Admin] Request updated. ID: ${requestId}, Slug: ${currentSlug}`);
-
-    revalidatePath('/admin/requests');
-    revalidatePath('/requests'); 
-    if (currentSlug) {
-      revalidatePath(`/requests/${currentSlug}`); 
-    } else {
-       revalidatePath(`/requests/[slug]`, 'layout'); 
-    }
-    revalidatePath('/'); 
-
-    return { success: true, message: "Solicitud actualizada exitosamente.", requestSlug: currentSlug };
-
+    return { success: false, message: 'No se encontró la solicitud para actualizar.' };
   } catch (error: any) {
-    console.error(`[RequestAction Admin] Error updating request ${requestId}:`, error);
-    return { success: false, message: `Error al actualizar solicitud: ${error.message}` };
+    console.error(`Error updating request ${requestId}:`, error);
+    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('slug')) {
+      return { success: false, message: 'Ya existe una solicitud con un título muy similar. Elige otro.' };
+    }
+    return { success: false, message: `Error del servidor: ${error.message}` };
   }
 }
 
 export async function getRequestsCountAction(onlyActive: boolean = false): Promise<number> {
-  try {
-    let sql = 'SELECT COUNT(*) as count FROM property_requests';
-    if (onlyActive) {
-      sql += ' WHERE is_active = TRUE';
+    try {
+        const query = db.select({ value: count() }).from(searchRequests);
+        if (onlyActive) {
+            query.where(eq(searchRequests.isActive, true));
+        }
+        const result = await query;
+        return result[0]?.value ?? 0;
+    } catch (error) {
+        console.error('Error getting requests count:', error);
+        return 0;
     }
-    const result: any[] = await query(sql);
-    return Number(result[0].count) || 0;
-  } catch (error) {
-    console.error("Error al obtener el conteo de solicitudes:", error);
-    return 0;
-  }
+}
+
+export async function deleteRequestByUserAction(requestId: string, userId: string): Promise<{ success: boolean; message?: string }> {
+    if (!requestId || !userId) {
+        return { success: false, message: 'Faltan datos para eliminar la solicitud.' };
+    }
+    try {
+        const result = await db.delete(searchRequests).where(and(eq(searchRequests.id, requestId), eq(searchRequests.userId, userId)));
+        if (result.rowsAffected > 0) {
+            revalidatePath('/requests');
+            revalidatePath('/dashboard');
+            revalidatePath('/admin/requests');
+            return { success: true, message: 'Solicitud eliminada exitosamente.' };
+        }
+        return { success: false, message: 'No se encontró tu solicitud para eliminar o no tienes permiso.' };
+    } catch (error: any) {
+        console.error(`Error deleting request ${requestId} by user ${userId}:`, error);
+        return { success: false, message: `Error del servidor: ${error.message}` };
+    }
 }
     
