@@ -19,10 +19,24 @@
 
 # production
 /build
+/dist
+/dist-scripts
+
+# environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env*.local
 
 # misc
 .DS_Store
 *.pem
+.idea/
+.vscode/
+*.swp
+*.swo
 
 # debug
 npm-debug.log*
@@ -37,9 +51,26 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# genkit
 .genkit/*
-.env*
 
 # firebase
 firebase-debug.log
 firestore-debug.log
+ui-debug.log
+
+# logs
+/logs
+*.log
+
+# temp files
+/temp
+/tmp
+/temp_audio
+
+# database
+*.sqlite
+*.db
+
+# IDX
+.idx/
