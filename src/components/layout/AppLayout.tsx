@@ -22,12 +22,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isAdminRoute = pathname.startsWith('/admin');
   const isDashboardRoute = pathname.startsWith('/dashboard');
   const isAuthRoute = pathname.startsWith('/auth');
+  const isHomePage = pathname === '/';
   
   const showNavbar = !isAdminRoute && !isDashboardRoute;
   const showFooter = !isAdminRoute && !isDashboardRoute && !isAuthRoute;
   const showFloatingAssistant = showNavbar; 
   
-  const routeNeedsStandardContainerPadding = !isAdminRoute && !isDashboardRoute && !isAuthRoute;
+  const routeNeedsStandardContainerPadding = !isHomePage && !isAdminRoute && !isDashboardRoute && !isAuthRoute;
 
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +51,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <main
           className={cn(
             "flex-grow",
-            routeNeedsStandardContainerPadding && "container mx-auto px-0 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 pt-20"
+            routeNeedsStandardContainerPadding && "container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 pt-20"
           )}
         >
           {children}

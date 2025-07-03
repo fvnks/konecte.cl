@@ -1,30 +1,24 @@
-
 // src/actions/chatActions.ts
-'use server';
+"use server";
 
-import { query } from '@/lib/db';
-import type { ChatConversation, ChatMessage, ChatConversationListItem, User } from '@/lib/types';
-import { randomUUID } from 'crypto';
-import { revalidatePath } from 'next/cache';
+import { db } from "@/lib/db";
+import {
+  chatConversations,
+  chatMessages,
+  users,
+} from "@/lib/db/schema";
+import type { ChatConversation, ChatMessage, ChatConversationListItem } from "@/lib/types";
+import { and, eq, or, sql, desc, count } from "drizzle-orm";
+import { randomUUID } from "crypto";
+import { revalidatePath } from "next/cache";
+import { alias } from "drizzle-orm/mysql-core";
+
 
 // --- Helper Functions ---
-function mapDbRowToChatMessage(row: any): ChatMessage {
-  return {
-    id: row.id,
-    conversation_id: row.conversation_id,
-    sender_id: row.sender_id,
-    receiver_id: row.receiver_id,
-    content: row.content,
-    created_at: new Date(row.created_at).toISOString(),
-    read_at: row.read_at ? new Date(row.read_at).toISOString() : null,
-    sender: row.sender_name ? { // Assuming sender_name, sender_avatar_url are joined
-      id: row.sender_id,
-      name: row.sender_name,
-      avatarUrl: row.sender_avatar_url || undefined,
-    } : undefined,
-  };
+// These will be removed as we refactor
+function mapDbRowToChatMessage(row: any): any {
+  return {};
 }
-
 function mapDbRowToChatConversation(row: any): ChatConversation {
   return {
     id: row.id,
@@ -46,300 +40,438 @@ function mapDbRowToChatConversation(row: any): ChatConversation {
 export async function getOrCreateConversationAction(
   currentUserId: string,
   targetUserId: string,
-  context?: { propertyId?: string; requestId?: string }
-): Promise<{ success: boolean; message?: string; conversation?: ChatConversation }> {
+  context?: { propertyId?: string; requestId?: string },
+): Promise<{
+  success: boolean;
+  message?: string;
+  conversation?: ChatConversation;
+}> {
   if (currentUserId === targetUserId) {
-    return { success: false, message: 'No puedes iniciar una conversación contigo mismo.' };
+    return {
+      success: false,
+      message: "No puedes iniciar una conversación contigo mismo.",
+    };
   }
   if (context?.propertyId && context?.requestId) {
-    return { success: false, message: 'Una conversación solo puede tener un contexto (propiedad O solicitud), no ambos.' };
+    return {
+      success: false,
+      message:
+        "Una conversación solo puede tener un contexto (propiedad O solicitud), no ambos.",
+    };
   }
 
   const user_a_id = currentUserId < targetUserId ? currentUserId : targetUserId;
   const user_b_id = currentUserId < targetUserId ? targetUserId : currentUserId;
-  const property_id = context?.propertyId || null;
-  const request_id = context?.requestId || null;
+  const property_id = context?.propertyId ?? null;
+  const request_id = context?.requestId ?? null;
 
   try {
-    let existingConversationSql = `
-      SELECT * FROM chat_conversations 
-      WHERE user_a_id = ? AND user_b_id = ?
-    `;
-    const params: (string | null)[] = [user_a_id, user_b_id];
+    const conditions = [
+      eq(chatConversations.userAId, user_a_id),
+      eq(chatConversations.userBId, user_b_id),
+    ];
 
     if (property_id) {
-      existingConversationSql += ' AND property_id = ?';
-      params.push(property_id);
+      conditions.push(eq(chatConversations.propertyId, property_id));
     } else if (request_id) {
-      existingConversationSql += ' AND request_id = ?';
-      params.push(request_id);
+      conditions.push(eq(chatConversations.requestId, request_id));
     } else {
-      existingConversationSql += ' AND property_id IS NULL AND request_id IS NULL';
-    }
-    
-    existingConversationSql += ' LIMIT 1';
-
-    const existingRows: any[] = await query(existingConversationSql, params);
-
-    if (existingRows.length > 0) {
-      return { success: true, conversation: mapDbRowToChatConversation(existingRows[0]) };
+      conditions.push(
+        sql`(property_id IS NULL AND request_id IS NULL)`,
+      );
     }
 
-    // Create new conversation
+    const existingConversation = await db
+      .select()
+      .from(chatConversations)
+      .where(and(...conditions))
+      .limit(1);
+
+    if (existingConversation.length > 0) {
+        const convo = existingConversation[0];
+        return { success: true, conversation: { 
+            ...convo,
+            last_message_at: convo.lastMessageAt?.toISOString() ?? null,
+            created_at: convo.createdAt?.toISOString() ?? '',
+            updated_at: convo.updatedAt?.toISOString() ?? '',
+            user_a_unread_count: convo.userAUnreadCount,
+            user_b_unread_count: convo.userBUnreadCount,
+            property_id: convo.propertyId,
+            request_id: convo.requestId,
+            user_a_id: convo.userAId,
+            user_b_id: convo.userBId
+         }};
+    }
+
     const conversationId = randomUUID();
-    const insertSql = `
-      INSERT INTO chat_conversations (id, user_a_id, user_b_id, property_id, request_id, last_message_at)
-      VALUES (?, ?, ?, ?, ?, NOW())
-    `;
-    // Defaults for user_a_unread_count and user_b_unread_count are 0 in DB schema
-    await query(insertSql, [conversationId, user_a_id, user_b_id, property_id, request_id]);
+    await db.insert(chatConversations).values({
+      id: conversationId,
+      userAId: user_a_id,
+      userBId: user_b_id,
+      propertyId: property_id,
+      requestId: request_id,
+      lastMessageAt: new Date(),
+    });
 
-    const newConversationResult = await query('SELECT * FROM chat_conversations WHERE id = ?', [conversationId]);
-    if (!Array.isArray(newConversationResult) || newConversationResult.length === 0) {
-        return { success: false, message: "Error al crear la conversación, no se pudo recuperar." };
+    const newConversationResult = await db
+      .select()
+      .from(chatConversations)
+      .where(eq(chatConversations.id, conversationId));
+
+    if (newConversationResult.length === 0) {
+      return {
+        success: false,
+        message: "Error al crear la conversación, no se pudo recuperar.",
+      };
     }
-
-    return { success: true, conversation: mapDbRowToChatConversation(newConversationResult[0]) };
-
+    const convo = newConversationResult[0];
+    return {
+      success: true,
+      conversation: {
+        ...convo,
+        last_message_at: convo.lastMessageAt?.toISOString() ?? null,
+        created_at: convo.createdAt?.toISOString() ?? '',
+        updated_at: convo.updatedAt?.toISOString() ?? '',
+        user_a_unread_count: convo.userAUnreadCount,
+        user_b_unread_count: convo.userBUnreadCount,
+        property_id: convo.propertyId,
+        request_id: convo.requestId,
+        user_a_id: convo.userAId,
+        user_b_id: convo.userBId
+     }
+    };
   } catch (error: any) {
-    console.error('[ChatAction DEBUG] Error in getOrCreateConversationAction:', error);
-    return { success: false, message: `Error al obtener o crear conversación: ${error.message}` };
+    console.error(
+      "[ChatAction DEBUG] Error in getOrCreateConversationAction:",
+      error,
+    );
+    return {
+      success: false,
+      message: `Error al obtener o crear conversación: ${error.message}`,
+    };
   }
 }
-
 
 export async function sendMessageAction(
   conversationId: string,
   senderId: string,
   receiverId: string,
-  content: string
+  content: string,
 ): Promise<{ success: boolean; message?: string; chatMessage?: ChatMessage }> {
-  console.log(`[ChatAction DEBUG] sendMessageAction called with: conversationId=${conversationId}, senderId=${senderId}, receiverId=${receiverId}`);
   if (!content.trim()) {
-    return { success: false, message: 'El mensaje no puede estar vacío.' };
+    return { success: false, message: "El mensaje no puede estar vacío." };
   }
 
   try {
-    const conversationCheckSql = 'SELECT id, user_a_id, user_b_id, user_a_unread_count, user_b_unread_count FROM chat_conversations WHERE id = ?';
-    const conversationRows: any[] = await query(conversationCheckSql, [conversationId]);
-    if (conversationRows.length === 0) {
-      console.error(`[ChatAction DEBUG] sendMessageAction: Conversation ${conversationId} not found.`);
-      return { success: false, message: 'Conversación no encontrada.' };
-    }
-    const convo = conversationRows[0];
-    console.log(`[ChatAction DEBUG] sendMessageAction: Conversation found. user_a_id=${convo.user_a_id}, user_b_id=${convo.user_b_id}, user_a_unread=${convo.user_a_unread_count}, user_b_unread=${convo.user_b_unread_count}`);
+    const conversationResult = await db
+      .select({
+        id: chatConversations.id,
+        userAId: chatConversations.userAId,
+        userBId: chatConversations.userBId,
+        userAUnreadCount: chatConversations.userAUnreadCount,
+        userBUnreadCount: chatConversations.userBUnreadCount,
+      })
+      .from(chatConversations)
+      .where(eq(chatConversations.id, conversationId));
 
-
-    if (senderId !== convo.user_a_id && senderId !== convo.user_b_id) {
-      console.error(`[ChatAction DEBUG] sendMessageAction: Sender ${senderId} not part of conversation ${conversationId}.`);
-      return { success: false, message: 'No tienes permiso para enviar mensajes en esta conversación.' };
+    if (conversationResult.length === 0) {
+      return { success: false, message: "Conversación no encontrada." };
     }
-    if (receiverId !== convo.user_a_id && receiverId !== convo.user_b_id) {
-        console.error(`[ChatAction DEBUG] sendMessageAction: Receiver ${receiverId} not part of conversation ${conversationId}.`);
-        return { success: false, message: 'El destinatario no es parte de esta conversación.' };
+    const convo = conversationResult[0];
+
+    if (senderId !== convo.userAId && senderId !== convo.userBId) {
+      return {
+        success: false,
+        message: "No tienes permiso para enviar mensajes en esta conversación.",
+      };
+    }
+    if (receiverId !== convo.userAId && receiverId !== convo.userBId) {
+      return {
+        success: false,
+        message: "El destinatario no es parte de esta conversación.",
+      };
     }
     if (senderId === receiverId) {
-        console.error(`[ChatAction DEBUG] sendMessageAction: Sender and receiver are the same (${senderId}).`);
-        return { success: false, message: 'El remitente y el destinatario no pueden ser el mismo.'};
+      return {
+        success: false,
+        message: "El remitente y el destinatario no pueden ser el mismo.",
+      };
     }
 
     const messageId = randomUUID();
-    const insertMessageSql = `
-      INSERT INTO chat_messages (id, conversation_id, sender_id, receiver_id, content, created_at)
-      VALUES (?, ?, ?, ?, ?, NOW())
-    `;
-    await query(insertMessageSql, [messageId, conversationId, senderId, receiverId, content]);
-    console.log(`[ChatAction DEBUG] sendMessageAction: Message ${messageId} inserted into chat_messages.`);
+    await db.insert(chatMessages).values({
+      id: messageId,
+      conversationId,
+      senderId,
+      receiverId,
+      content,
+      createdAt: new Date(),
+    });
 
-    // Update conversation: last_message_at and unread_count
-    let unreadCountFieldToIncrement: 'user_a_unread_count' | 'user_b_unread_count';
-    if (receiverId === convo.user_a_id) {
-      unreadCountFieldToIncrement = 'user_a_unread_count';
-    } else { // receiverId must be convo.user_b_id due to prior checks
-      unreadCountFieldToIncrement = 'user_b_unread_count';
+    const unreadCountFieldToIncrement =
+      receiverId === convo.userAId
+        ? chatConversations.userAUnreadCount
+        : chatConversations.userBUnreadCount;
+
+    await db
+      .update(chatConversations)
+      .set({
+        lastMessageAt: new Date(),
+        [unreadCountFieldToIncrement.name]: sql`${unreadCountFieldToIncrement} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(chatConversations.id, conversationId));
+
+    const newMessageResult = await db
+      .select({
+        id: chatMessages.id,
+        conversation_id: chatMessages.conversationId,
+        sender_id: chatMessages.senderId,
+        receiver_id: chatMessages.receiverId,
+        content: chatMessages.content,
+        created_at: chatMessages.createdAt,
+        read_at: chatMessages.readAt,
+        sender: {
+          id: users.id,
+          name: users.name,
+          avatarUrl: users.avatarUrl,
+        },
+      })
+      .from(chatMessages)
+      .innerJoin(users, eq(chatMessages.senderId, users.id))
+      .where(eq(chatMessages.id, messageId));
+
+    if (newMessageResult.length === 0) {
+      return {
+        success: false,
+        message: "Error al enviar el mensaje, no se pudo recuperar.",
+      };
     }
-    console.log(`[ChatAction DEBUG] sendMessageAction: Determined unreadCountFieldToIncrement = ${unreadCountFieldToIncrement}`);
-    
-    const updateConversationSql = `
-      UPDATE chat_conversations 
-      SET last_message_at = NOW(), 
-          ${unreadCountFieldToIncrement} = ${unreadCountFieldToIncrement} + 1,
-          updated_at = NOW()
-      WHERE id = ?
-    `;
-    const updateResult = await query(updateConversationSql, [conversationId]);
-    console.log(`[ChatAction DEBUG] sendMessageAction: Conversation update result for ${conversationId}:`, JSON.stringify(updateResult));
-    if (updateResult && (updateResult.affectedRows === 0 || updateResult.changedRows === 0)) {
-        console.warn(`[ChatAction DEBUG] sendMessageAction: Update to chat_conversations table for conversation ${conversationId} did not affect/change any rows. Unread count might not have been incremented.`);
-    }
+
+    revalidatePath(`/dashboard/messages`);
+    revalidatePath(`/dashboard/messages/${conversationId}`);
+
+    const result = newMessageResult[0];
+    const finalMessage: ChatMessage = {
+        ...result,
+        created_at: result.created_at?.toISOString() ?? new Date().toISOString(),
+        read_at: result.read_at?.toISOString() ?? null,
+    };
 
 
-    // Fetch the newly created message with sender details
-    const newMessageResult = await query(
-        `SELECT cm.*, u.name as sender_name, u.avatar_url as sender_avatar_url 
-         FROM chat_messages cm
-         JOIN users u ON cm.sender_id = u.id
-         WHERE cm.id = ?`, [messageId]
-    );
-    if (!Array.isArray(newMessageResult) || newMessageResult.length === 0) {
-        console.error(`[ChatAction DEBUG] sendMessageAction: Could not retrieve newly created message ${messageId}.`);
-        return { success: false, message: "Error al enviar el mensaje, no se pudo recuperar." };
-    }
-    
-    revalidatePath(`/dashboard/messages`); 
-    revalidatePath(`/dashboard/messages/${conversationId}`); 
-
-    return { success: true, message: 'Mensaje enviado.', chatMessage: mapDbRowToChatMessage(newMessageResult[0]) };
-
+    return {
+      success: true,
+      message: "Mensaje enviado.",
+      chatMessage: finalMessage,
+    };
   } catch (error: any) {
-    console.error('[ChatAction DEBUG] Error in sendMessageAction:', error);
-    return { success: false, message: `Error al enviar mensaje: ${error.message}` };
+    console.error("[ChatAction DEBUG] Error in sendMessageAction:", error);
+    return {
+      success: false,
+      message: `Error al enviar mensaje: ${error.message}`,
+    };
   }
 }
 
-export async function markConversationAsReadAction(conversationId: string, currentUserId: string): Promise<{ success: boolean; message?: string }> {
+export async function markConversationAsReadAction(
+  conversationId: string,
+  currentUserId: string,
+): Promise<{ success: boolean; message?: string }> {
   try {
-    const conversationCheckSql = 'SELECT id, user_a_id, user_b_id FROM chat_conversations WHERE id = ?';
-    const conversationRows: any[] = await query(conversationCheckSql, [conversationId]);
+    const conversationResult = await db
+      .select({ id: chatConversations.id, userAId: chatConversations.userAId, userBId: chatConversations.userBId })
+      .from(chatConversations)
+      .where(eq(chatConversations.id, conversationId));
 
-    if (conversationRows.length === 0) {
-      return { success: false, message: 'Conversación no encontrada.' };
+    if (conversationResult.length === 0) {
+      return { success: false, message: "Conversación no encontrada." };
     }
-    const convo = conversationRows[0];
+    const convo = conversationResult[0];
 
-    // Determine which unread count to reset
-    let unreadCountFieldToReset: string | null = null;
-    if (currentUserId === convo.user_a_id) {
-      unreadCountFieldToReset = 'user_a_unread_count';
-    } else if (currentUserId === convo.user_b_id) {
-      unreadCountFieldToReset = 'user_b_unread_count';
+    let unreadCountFieldToReset: typeof chatConversations.userAUnreadCount.name | null = null;
+    if (currentUserId === convo.userAId) {
+        unreadCountFieldToReset = 'userAUnreadCount';
+    } else if (currentUserId === convo.userBId) {
+        unreadCountFieldToReset = 'userBUnreadCount';
     }
 
     if (!unreadCountFieldToReset) {
-      return { success: false, message: 'Usuario actual no es parte de esta conversación.' };
+      return {
+        success: false,
+        message: "Usuario actual no es parte de esta conversación.",
+      };
     }
 
-    // Mark messages as read
-    await query(
-      'UPDATE chat_messages SET read_at = NOW() WHERE conversation_id = ? AND receiver_id = ? AND read_at IS NULL',
-      [conversationId, currentUserId]
-    );
+    await db
+      .update(chatMessages)
+      .set({ readAt: new Date() })
+      .where(
+        and(
+          eq(chatMessages.conversationId, conversationId),
+          eq(chatMessages.receiverId, currentUserId),
+          sql`read_at IS NULL`,
+        ),
+      );
 
-    // Reset unread count for the current user in the conversation
-    await query(
-      `UPDATE chat_conversations SET ${unreadCountFieldToReset} = 0, updated_at = NOW() WHERE id = ?`,
-      [conversationId]
-    );
-    
+    await db
+      .update(chatConversations)
+      .set({ [unreadCountFieldToReset]: 0, updatedAt: new Date() })
+      .where(eq(chatConversations.id, conversationId));
+
     revalidatePath(`/dashboard/messages`);
     revalidatePath(`/dashboard/messages/${conversationId}`);
-    // Potentially revalidate navbar if it shows total unread count
 
-    return { success: true, message: 'Conversación marcada como leída.' };
+    return { success: true, message: "Conversación marcada como leída." };
   } catch (error: any) {
-    console.error('[ChatAction DEBUG] Error in markConversationAsReadAction:', error);
-    return { success: false, message: `Error al marcar como leído: ${error.message}` };
+    console.error(
+      "[ChatAction DEBUG] Error in markConversationAsReadAction:",
+      error,
+    );
+    return {
+      success: false,
+      message: `Error al marcar como leído: ${error.message}`,
+    };
   }
 }
 
-
-export async function getConversationMessagesAction(conversationId: string, currentUserId: string): Promise<ChatMessage[]> {
+export async function getConversationMessagesAction(
+  conversationId: string,
+  currentUserId: string,
+): Promise<ChatMessage[]> {
   try {
-    // Mark as read before fetching
     await markConversationAsReadAction(conversationId, currentUserId);
 
-    const sql = `
-      SELECT 
-        cm.*, 
-        s.name as sender_name, 
-        s.avatar_url as sender_avatar_url
-      FROM chat_messages cm
-      JOIN users s ON cm.sender_id = s.id
-      WHERE cm.conversation_id = ?
-      ORDER BY cm.created_at ASC
-    `;
-    const rows: any[] = await query(sql, [conversationId]);
-    return rows.map(mapDbRowToChatMessage);
+    const messagesResult = await db
+      .select({
+        id: chatMessages.id,
+        conversation_id: chatMessages.conversationId,
+        sender_id: chatMessages.senderId,
+        receiver_id: chatMessages.receiverId,
+        content: chatMessages.content,
+        created_at: chatMessages.createdAt,
+        read_at: chatMessages.readAt,
+        sender: {
+          id: users.id,
+          name: users.name,
+          avatarUrl: users.avatarUrl,
+        },
+      })
+      .from(chatMessages)
+      .innerJoin(users, eq(chatMessages.senderId, users.id))
+      .where(eq(chatMessages.conversationId, conversationId))
+      .orderBy(chatMessages.createdAt);
+
+    return messagesResult.map(m => ({
+        ...m,
+        created_at: m.created_at?.toISOString() ?? new Date().toISOString(),
+        read_at: m.read_at?.toISOString() ?? null
+    }))
+
   } catch (error: any) {
-    console.error(`[ChatAction DEBUG] Error fetching messages for conversation ${conversationId}:`, error);
+    console.error("[ChatAction DEBUG] Error in getConversationMessagesAction:", error);
     return [];
   }
 }
 
 export async function getUserConversationsAction(userId: string): Promise<ChatConversationListItem[]> {
-  try {
-    const sql = `
-      SELECT 
-        c.id,
-        c.property_id,
-        c.request_id,
-        c.user_a_id,
-        c.user_b_id,
-        c.last_message_at,
-        CASE
-          WHEN c.user_a_id = ? THEN c.user_a_unread_count
-          WHEN c.user_b_id = ? THEN c.user_b_unread_count
-          ELSE 0
-        END as unread_count_for_current_user,
-        other_user.id as other_user_id,
-        other_user.name as other_user_name,
-        other_user.avatar_url as other_user_avatar_url,
-        (SELECT content FROM chat_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_content,
-        prop.title as property_title,
-        prop.slug as property_slug,
-        req.title as request_title,
-        req.slug as request_slug
-      FROM chat_conversations c
-      JOIN users other_user ON (other_user.id = IF(c.user_a_id = ?, c.user_b_id, c.user_a_id))
-      LEFT JOIN properties prop ON c.property_id = prop.id
-      LEFT JOIN property_requests req ON c.request_id = req.id
-      WHERE c.user_a_id = ? OR c.user_b_id = ?
-      ORDER BY c.last_message_at DESC
-    `;
-    const params = [userId, userId, userId, userId, userId];
-    const rows: any[] = await query(sql, params);
+    try {
+        const otherUser = alias(users, "otherUser");
 
-    return rows.map(row => ({
-      id: row.id,
-      last_message_at: row.last_message_at ? new Date(row.last_message_at).toISOString() : null,
-      other_user: {
-        id: row.other_user_id,
-        name: row.other_user_name,
-        avatarUrl: row.other_user_avatar_url || undefined,
-      },
-      last_message_content: row.last_message_content,
-      unread_count_for_current_user: Number(row.unread_count_for_current_user),
-      property_id: row.property_id,
-      request_id: row.request_id,
-      context_title: row.property_id ? row.property_title : (row.request_id ? row.request_title : null),
-      context_slug: row.property_id ? row.property_slug : (row.request_id ? row.request_slug : null),
-      context_type: row.property_id ? 'property' : (row.request_id ? 'request' : null),
-    }));
-  } catch (error: any) {
-    console.error(`[ChatAction DEBUG] Error fetching conversations for user ${userId}:`, error);
-    return [];
-  }
+        const conversationsData = await db
+          .select({
+            id: chatConversations.id,
+            propertyId: chatConversations.propertyId,
+            requestId: chatConversations.requestId,
+            otherUserId: sql<string>`CASE WHEN ${chatConversations.userAId} = ${userId} THEN ${chatConversations.userBId} ELSE ${chatConversations.userAId} END`,
+            otherUserName: otherUser.name,
+            otherUserAvatarUrl: otherUser.avatarUrl,
+            lastMessageAt: chatConversations.lastMessageAt,
+            unreadCount: sql<number>`CASE WHEN ${chatConversations.userAId} = ${userId} THEN ${chatConversations.userAUnreadCount} ELSE ${chatConversations.userBUnreadCount} END`.as("unread_count"),
+          })
+          .from(chatConversations)
+          .leftJoin(otherUser, eq(sql`CASE WHEN ${chatConversations.userAId} = ${userId} THEN ${chatConversations.userBId} ELSE ${chatConversations.userAId} END`, otherUser.id))
+          .where(
+              or(eq(chatConversations.userAId, userId), eq(chatConversations.userBId, userId))
+          )
+          .orderBy(desc(chatConversations.lastMessageAt));
+        
+          const conversationIds = conversationsData.map(c => c.id);
+          if (conversationIds.length === 0) return [];
+      
+          // This is a common pattern to get the last message for each conversation.
+          // It's more efficient than joining and ordering in a complex way.
+          const lastMessagesSubquery = db.$with('last_messages').as(
+            db.select({
+                conversationId: chatMessages.conversationId,
+                content: chatMessages.content,
+                rn: sql<number>`ROW_NUMBER() OVER(PARTITION BY ${chatMessages.conversationId} ORDER BY ${chatMessages.createdAt} DESC)`.as('rn')
+            })
+            .from(chatMessages)
+            .where(or(...conversationIds.map(id => eq(chatMessages.conversationId, id))))
+          );
+
+          const lastMessages = await db.with(lastMessagesSubquery).select({
+            conversationId: lastMessagesSubquery.conversationId,
+            content: lastMessagesSubquery.content,
+          }).from(lastMessagesSubquery).where(eq(lastMessagesSubquery.rn, 1));
+          
+          const lastMessageMap = new Map(lastMessages.map(m => [m.conversationId, m.content]));
+      
+          return conversationsData.map(c => ({
+            id: c.id,
+            property_id: c.propertyId,
+            request_id: c.requestId,
+            other_user_id: c.otherUserId,
+            other_user_name: c.otherUserName,
+            other_user_avatar_url: c.otherUserAvatarUrl,
+            last_message_content: lastMessageMap.get(c.id) ?? '',
+            last_message_at: c.lastMessageAt?.toISOString() ?? null,
+            unread_count: c.unreadCount,
+          }));
+
+    } catch (error) {
+        console.error('[ChatAction DEBUG] Error in getUserConversationsAction:', error);
+        return [];
+    }
 }
 
+
 export async function getTotalUnreadMessagesCountAction(userId: string): Promise<number> {
-  try {
-    const sql = `
-      SELECT 
-        SUM(CASE
-              WHEN user_a_id = ? THEN user_a_unread_count
-              WHEN user_b_id = ? THEN user_b_unread_count
-              ELSE 0
-            END) as total_unread
-      FROM chat_conversations
-      WHERE user_a_id = ? OR user_b_id = ?;
-    `;
-    const rows: any[] = await query(sql, [userId, userId, userId, userId]);
-    console.log(`[ChatAction DEBUG] getTotalUnreadMessagesCountAction for user ${userId} - Raw DB result for SUM:`, JSON.stringify(rows));
-    return rows.length > 0 ? Number(rows[0].total_unread || 0) : 0;
-  } catch (error: any) {
-    console.error(`[ChatAction DEBUG] Error fetching total unread messages for user ${userId}:`, error);
-    return 0;
-  }
+    try {
+        const result = await db.select({
+            total: count()
+        })
+        .from(chatConversations)
+        .where(
+            or(
+                and(
+                    eq(chatConversations.userAId, userId), 
+                    sql`${chatConversations.userAUnreadCount} > 0`
+                ),
+                and(
+                    eq(chatConversations.userBId, userId),
+                    sql`${chatConversations.userBUnreadCount} > 0`
+                )
+            )
+        );
+
+        const totalUnreadConversations = result[0]?.total ?? 0;
+
+        // The above counts conversations with unread messages. If we need total unread messages, the query is different.
+        // Let's sum the counts.
+
+        const sumResult = await db.select({
+            total: sql<number>`SUM(CASE WHEN user_a_id = ${userId} THEN user_a_unread_count ELSE user_b_unread_count END)`.as('total')
+        })
+        .from(chatConversations)
+        .where(or(eq(chatConversations.userAId, userId), eq(chatConversations.userBId, userId)));
+
+
+        return Number(sumResult[0]?.total ?? 0);
+    } catch (error) {
+        console.error('[ChatAction DEBUG] Error in getTotalUnreadMessagesCountAction:', error);
+        return 0;
+    }
 }
 
     

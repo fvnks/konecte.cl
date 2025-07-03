@@ -51,7 +51,7 @@ export interface User {
   phone_otp?: string | null;
   phone_otp_expires_at?: string | null; // ISO string format
   role_id: string;
-  role_name?: string;
+  role_name?: 'admin' | 'broker' | 'user' | string;
   role_permissions?: AppPermission[] | null;
   plan_id?: string | null;
   plan_name?: string | null; 
@@ -63,6 +63,12 @@ export interface User {
   plan_automated_alerts_enabled?: boolean;
   plan_advanced_dashboard_access?: boolean;
   plan_whatsapp_integration_enabled?: boolean;
+  primaryGroup?: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+    postBadgeType: 'logo' | 'name' | 'none';
+  };
 
   company_name?: string | null;
   main_operating_region?: string | null;
@@ -72,6 +78,10 @@ export interface User {
 
   created_at?: string;
   updated_at?: string;
+
+  group_name?: string;
+  group_avatar_url?: string;
+  group_badge_type?: 'logo' | 'name' | 'none';
 }
 
 export type PropertyType = 'rent' | 'sale';
@@ -122,6 +132,7 @@ export interface PropertyListing {
 export interface SearchRequest {
   id: string;
   user_id: string;
+  source?: 'web' | 'bot';
   pub_id?: string;
   title: string;
   description: string;
@@ -193,17 +204,17 @@ export interface SiteSettings {
   id?: number;
   siteTitle: string | null;
   logoUrl: string | null;
-  show_featured_listings_section?: boolean;
-  show_ai_matching_section?: boolean;
-  show_google_sheet_section?: boolean;
-  show_featured_plans_section?: boolean; 
-  landing_sections_order?: LandingSectionKey[] | null;
-  announcement_bar_text?: string | null;
-  announcement_bar_link_url?: string | null;
-  announcement_bar_link_text?: string | null;
-  announcement_bar_is_active?: boolean;
-  announcement_bar_bg_color?: string | null;
-  announcement_bar_text_color?: string | null;
+  showFeaturedListingsSection?: boolean;
+  showAiMatchingSection?: boolean;
+  showGoogleSheetSection?: boolean;
+  showFeaturedPlansSection?: boolean; 
+  landingSectionsOrder?: LandingSectionKey[] | null;
+  announcementBarText?: string | null;
+  announcementBarLinkUrl?: string | null;
+  announcementBarLinkText?: string | null;
+  announcementBarIsActive?: boolean;
+  announcementBarBgColor?: string | null;
+  announcementBarTextColor?: string | null;
   updated_at?: string;
 }
 
@@ -513,7 +524,8 @@ export interface ChatConversationListItem {
 
 export interface EditableText {
   id: string;
-  text: string;
+  content_default?: string | null;
+  content_current?: string | null;
   page_path: string;
   component_id: string;
   created_at?: string;

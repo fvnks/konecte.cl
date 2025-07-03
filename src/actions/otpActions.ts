@@ -1,9 +1,10 @@
 // src/actions/otpActions.ts
 'use server';
 
-import { query } from '@/lib/db';
-import { z } from 'zod';
-import type { User, SendMessageToBotPayload, WhatsAppMessage } from '@/lib/types';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import type { SendMessageToBotPayload, WhatsAppMessage } from '@/lib/types';
 import { addMessageToConversation } from '@/lib/whatsappBotStore';
 
 const OTP_LENGTH = 4;
@@ -35,8 +36,7 @@ export async function sendGenericWhatsAppMessageAction(
 ): Promise<{ success: boolean; message?: string }> {
   console.log(`[WhatsAppAction] Attempting to send message to user ${userId} (phone: ${phoneNumber}).`);
 
-  // TODO: Revert this to use process.env.WHATSAPP_BOT_UBUNTU_WEBHOOK_URL once the environment variable is corrected in Vercel.
-  const ubuntuBotWebhookUrl = 'https://konecte.fedestore.cl/api/webhooks/konecte-incoming';
+  const ubuntuBotWebhookUrl = process.env.WHATSAPP_BOT_UBUNTU_WEBHOOK_URL;
   
   if (!ubuntuBotWebhookUrl) {
     const errorMessage = "[WhatsAppAction CRITICAL] La URL del webhook del bot no está configurada.";
@@ -94,28 +94,34 @@ export async function generateAndSendOtpAction(
   userId: string
 ): Promise<{ success: boolean; message?: string; phone_number_ending?: string }> {
   try {
-    const users: User[] = await query('SELECT id, phone_number, name FROM users WHERE id = ?', [userId]);
-    if (users.length === 0) {
+    const userResult = await db.select({
+        id: users.id,
+        phoneNumber: users.phoneNumber,
+        name: users.name
+    }).from(users).where(eq(users.id, userId));
+
+    if (userResult.length === 0) {
       return { success: false, message: 'Usuario no encontrado.' };
     }
-    const user = users[0];
+    const user = userResult[0];
 
-    if (!user.phone_number) {
+    if (!user.phoneNumber) {
       return { success: false, message: 'El usuario no tiene un número de teléfono registrado.' };
     }
 
     const otp = generateOtpCode();
     const expiresAt = new Date(Date.now() + OTP_EXPIRATION_MINUTES * 60 * 1000);
 
-    await query(
-      'UPDATE users SET phone_otp = ?, phone_otp_expires_at = ?, phone_verified = FALSE WHERE id = ?',
-      [otp, expiresAt, userId]
-    );
+    await db.update(users).set({
+        phoneOtp: otp,
+        phoneOtpExpiresAt: expiresAt,
+        phoneVerified: false
+    }).where(eq(users.id, userId));
     
-    const phoneNumberEnding = user.phone_number.length >= 4 ? user.phone_number.slice(-4) : user.phone_number;
+    const phoneNumberEnding = user.phoneNumber.length >= 4 ? user.phoneNumber.slice(-4) : user.phoneNumber;
 
     const otpMessageText = `Hola ${user.name}, tu código de verificación para Konecte es: ${otp}. Este código expira en ${OTP_EXPIRATION_MINUTES} minutos.`;
-    const sendResult = await sendGenericWhatsAppMessageAction(user.phone_number, otpMessageText, user.id);
+    const sendResult = await sendGenericWhatsAppMessageAction(user.phoneNumber, otpMessageText, user.id);
 
     if (!sendResult.success) {
       console.error(`[OTP_ACTION_ERROR] OTP stored for user ${userId}, but failed to send via webhook: ${sendResult.message}`);
@@ -143,39 +149,43 @@ export async function verifyOtpAction(
   otpEntered: string
 ): Promise<{ success: boolean; message?: string }> {
   try {
-    const users: User[] = await query(
-      'SELECT id, phone_otp, phone_otp_expires_at, phone_verified FROM users WHERE id = ?',
-      [userId]
-    );
-    if (users.length === 0) {
+    const userResult = await db.select({
+        id: users.id,
+        phoneOtp: users.phoneOtp,
+        phoneOtpExpiresAt: users.phoneOtpExpiresAt,
+        phoneVerified: users.phoneVerified
+    }).from(users).where(eq(users.id, userId));
+
+    if (userResult.length === 0) {
       return { success: false, message: 'Usuario no encontrado.' };
     }
-    const user = users[0];
+    const user = userResult[0];
 
-    if (user.phone_verified) {
+    if (user.phoneVerified) {
       return { success: true, message: 'El número de teléfono ya ha sido verificado.' };
     }
 
-    if (!user.phone_otp || !user.phone_otp_expires_at) {
-      await query('UPDATE users SET phone_otp = NULL, phone_otp_expires_at = NULL WHERE id = ?', [userId]);
+    if (!user.phoneOtp || !user.phoneOtpExpiresAt) {
+      await db.update(users).set({ phoneOtp: null, phoneOtpExpiresAt: null }).where(eq(users.id, userId));
       return { success: false, message: 'No hay un OTP pendiente para este usuario. Por favor, solicita uno nuevo.' };
     }
 
-    if (new Date(user.phone_otp_expires_at) < new Date()) {
-      await query('UPDATE users SET phone_otp = NULL, phone_otp_expires_at = NULL WHERE id = ?', [userId]);
+    if (user.phoneOtpExpiresAt < new Date()) {
+      await db.update(users).set({ phoneOtp: null, phoneOtpExpiresAt: null }).where(eq(users.id, userId));
       return { success: false, message: 'El código OTP ha expirado. Por favor, solicita uno nuevo.' };
     }
 
-    if (user.phone_otp !== otpEntered) {
+    if (user.phoneOtp !== otpEntered) {
       // Optional: Implement attempt tracking here to prevent brute-forcing
       return { success: false, message: 'El código OTP ingresado es incorrecto.' };
     }
 
     // OTP is correct and not expired
-    await query(
-      'UPDATE users SET phone_verified = TRUE, phone_otp = NULL, phone_otp_expires_at = NULL WHERE id = ?',
-      [userId]
-    );
+    await db.update(users).set({
+        phoneVerified: true,
+        phoneOtp: null,
+        phoneOtpExpiresAt: null
+    }).where(eq(users.id, userId));
 
     return { success: true, message: '¡Número de teléfono verificado exitosamente!' };
 

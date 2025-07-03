@@ -111,13 +111,13 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
           <CardHeader className="p-6 md:p-8">
             <div className="flex justify-between items-start gap-6">
               <div className="flex-grow">
-                <CardTitle className="text-3xl lg:text-4xl font-headline font-bold">{property.title}</CardTitle>
-                <div className="flex items-center text-muted-foreground mt-2 text-base">
-                  <MapPin className="mr-2 h-5 w-5 flex-shrink-0" />
-                  <span>{property.address}, {property.city}, {property.country}</span>
-                </div>
+            <CardTitle className="text-3xl lg:text-4xl font-headline font-bold">{property.title}</CardTitle>
+            <div className="flex items-center text-muted-foreground mt-2 text-base">
+              <MapPin className="mr-2 h-5 w-5 flex-shrink-0" />
+              <span>{property.address}, {property.city}, {property.country}</span>
+            </div>
                 <div className="mt-4 text-3xl lg:text-4xl font-bold text-primary">
-                  {formatPrice(property.price, property.currency)}
+              {formatPrice(property.price, property.currency)}
                   {property.propertyType === 'rent' && <span className="text-lg font-normal text-muted-foreground ml-2">/mes</span>}
                 </div>
               </div>

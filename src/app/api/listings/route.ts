@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { users, properties, searchRequests } from '@/lib/db/schema';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, like } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { revalidatePath } from 'next/cache';
 
 const publicationSchema = z.object({
   telefono: z.string(),
@@ -51,20 +52,36 @@ export async function POST(req: NextRequest) {
 
     const { telefono, tipo, ...data } = validation.data;
 
-    // Buscar al usuario con y sin el prefijo '+' para asegurar la coincidencia
-    const phoneWithPlus = `+${telefono}`;
+    console.log(`[DEBUG] /api/listings - Recibida solicitud de tipo: ${tipo}`);
+    console.log(`[DEBUG] /api/listings - Título: "${data.titulo}"`);
+    
+    // Asegurarnos de que no hay fechas futuras en el título
+    const currentYear = new Date().getFullYear();
+    if (data.titulo.includes(String(currentYear + 1)) || 
+        data.titulo.includes(String(currentYear + 2)) || 
+        data.titulo.includes(String(currentYear + 3))) {
+      console.log(`[DEBUG] /api/listings - ADVERTENCIA: El título contiene un año futuro`);
+    }
+
+    // Extraer los últimos 9 dígitos para una búsqueda más flexible
+    const last9Digits = telefono.slice(-9);
+
     const userResult = await db.select({ id: users.id }).from(users).where(
-      or(
-        eq(users.phoneNumber, telefono),
-        eq(users.phoneNumber, phoneWithPlus)
-      )
+      like(users.phoneNumber, `%${last9Digits}`)
     ).limit(1);
 
     const user = userResult[0];
 
     if (!user) {
+      console.log(`[DEBUG] /api/listings - ERROR: Usuario no encontrado para teléfono: ${telefono}`);
       return NextResponse.json({ error: `User with phone ${telefono} not found` }, { status: 404 });
     }
+
+    console.log(`[DEBUG] /api/listings - Usuario encontrado: ${user.id}`);
+
+    // Obtener la fecha actual para usar en created_at
+    const now = new Date();
+    console.log(`[DEBUG] /api/listings - Fecha actual: ${now.toISOString()}`);
 
     if (tipo === 'publicacion') {
       if (!data.propertyType || !data.category) {
@@ -74,6 +91,8 @@ export async function POST(req: NextRequest) {
       const newPropertyId = uuidv4();
       const pubId = `P-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
+      const slug = `${data.titulo.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')}-${newPropertyId.substring(0, 8)}`;
+      
       await db.insert(properties).values({
         id: newPropertyId,
         userId: user.id,
@@ -95,13 +114,26 @@ export async function POST(req: NextRequest) {
         hasStorage: data.hasStorage,
         petsAllowed: data.petsAllowed,
         furnished: data.furnished,
-        slug: `${data.titulo.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')}-${newPropertyId.substring(0, 8)}`,
+        slug: slug,
+        isActive: true, // Asegurarnos de que isActive sea true
+        createdAt: now, // Establecer la fecha actual
+        updatedAt: now, // Establecer la fecha actual
       });
-      return NextResponse.json({ success: true, type: 'property', data: { id: newPropertyId, pubId } });
+      
+      console.log(`[DEBUG] /api/listings - Propiedad creada con ID: ${newPropertyId}, pubId: ${pubId}`);
+      console.log(`[DEBUG] /api/listings - Revalidando rutas...`);
+      
+      // Revalidar la página principal y las páginas de propiedades para mostrar inmediatamente la nueva publicación
+      revalidatePath('/');
+      revalidatePath('/properties');
+      
+      return NextResponse.json({ success: true, type: 'property', data: { id: newPropertyId, pubId, slug } });
 
     } else if (tipo === 'solicitud') {
         const newRequestId = uuidv4();
         const pubId = `S-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        
+        const slug = `${data.titulo.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')}-${newRequestId.substring(0, 8)}`;
         
         await db.insert(searchRequests).values({
             id: newRequestId,
@@ -113,9 +145,20 @@ export async function POST(req: NextRequest) {
             desiredCategories: data.desiredCategories,
             desiredLocation: data.desiredLocation,
             budgetMax: data.budgetMax ? String(data.budgetMax) : null,
-            slug: `${data.titulo.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')}-${newRequestId.substring(0, 8)}`,
+            slug: slug,
+            isActive: true, // Asegurarnos de que isActive sea true
+            createdAt: now, // Establecer la fecha actual
+            updatedAt: now, // Establecer la fecha actual
         });
-      return NextResponse.json({ success: true, type: 'searchRequest', data: { id: newRequestId, pubId } });
+        
+        console.log(`[DEBUG] /api/listings - Solicitud creada con ID: ${newRequestId}, pubId: ${pubId}`);
+        console.log(`[DEBUG] /api/listings - Revalidando rutas...`);
+        
+        // Revalidar la página principal y las páginas de solicitudes para mostrar inmediatamente la nueva solicitud
+        revalidatePath('/');
+        revalidatePath('/requests');
+        
+      return NextResponse.json({ success: true, type: 'searchRequest', data: { id: newRequestId, pubId, slug } });
     }
     
     return NextResponse.json({ error: 'Invalid tipo' }, { status: 400 });

@@ -1,9 +1,10 @@
-
 'use server';
 
-import { query } from '@/lib/db';
 import { getUserByIdAction } from './userActions';
 import type { WhatsAppMessage } from '@/lib/types';
+import { db } from '@/lib/db';
+import { whatsappMessages } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 
 interface ActionResult<T> {
   success: boolean;
@@ -35,17 +36,19 @@ export async function getWhatsappConversationAction(userId: string): Promise<Act
     }
 
     // 2. Obtener la conversación de la base de datos
-    const sql = `
-      SELECT id, telefono, text, sender, timestamp, status, sender_id_override
-      FROM whatsapp_messages
-      WHERE telefono = ?
-      ORDER BY timestamp DESC
-      LIMIT 50
-    `;
-    const messages: WhatsAppMessage[] = await query(sql, [user.phone_number]);
+    const messages = await db.select()
+        .from(whatsappMessages)
+        .where(eq(whatsappMessages.telefono, user.phone_number))
+        .orderBy(desc(whatsappMessages.timestamp))
+        .limit(50);
+    
+    const formattedMessages: WhatsAppMessage[] = messages.map(m => ({
+        ...m,
+        timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : new Date().toISOString()
+    }))
 
     // Devolvemos los mensajes en orden cronológico (los más antiguos primero)
-    return { success: true, data: messages.reverse() };
+    return { success: true, data: formattedMessages.reverse() };
 
   } catch (error) {
     console.error(`[WHATSAPP_ACTION_ERROR] getConversation:`, error);
@@ -110,15 +113,20 @@ export async function sendWhatsappMessageAction(senderUserId: string, messageTex
         }
 
         // 3. Insertar el mensaje saliente en nuestra propia DB para mantener el historial
-        const insertSql = `
-            INSERT INTO whatsapp_messages (telefono, text, sender, timestamp, status, sender_id_override)
-            VALUES (?, ?, 'user', ?, 'sent_from_web', ?)
-        `;
         const timestamp = new Date();
-        const result: any = await query(insertSql, [user.phone_number, messageText, timestamp, senderUserId]);
+        const result = await db.insert(whatsappMessages).values({
+            telefono: user.phone_number,
+            text: messageText,
+            sender: 'user',
+            timestamp: timestamp,
+            status: 'sent_from_web',
+            senderIdOverride: senderUserId,
+        });
 
-        if (result.insertId) {
-            return { success: true, data: { messageId: result.insertId.toString() } };
+        const messageId = result.insertId;
+
+        if (messageId) {
+            return { success: true, data: { messageId: messageId.toString() } };
         } else {
             return { success: false, message: 'El mensaje fue enviado pero no se pudo guardar en el historial.' };
         }
@@ -146,10 +154,9 @@ export async function deleteWhatsappConversationAction(userId: string): Promise<
         }
 
         // 2. Ejecutar la sentencia DELETE
-        const sql = 'DELETE FROM whatsapp_messages WHERE telefono = ?';
-        const result: any = await query(sql, [user.phone_number]);
+        const result = await db.delete(whatsappMessages).where(eq(whatsappMessages.telefono, user.phone_number));
 
-        const deletedCount = result.affectedRows || 0;
+        const deletedCount = result.rowsAffected || 0;
         console.log(`[WHATSAPP_ACTION] Conversación eliminada para el usuario ${userId} (teléfono: ${user.phone_number}). Mensajes eliminados: ${deletedCount}`);
 
         return { success: true, data: { deletedCount } };

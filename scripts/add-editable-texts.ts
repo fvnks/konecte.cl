@@ -34,8 +34,8 @@ const editableTexts = [
   { id: 'landing:ai-matching-subtitle', content_current: 'Nuestra inteligencia artificial encontrará las mejores opciones para ti', page_path: 'landing', component_id: 'ai-matching-subtitle' },
   { id: 'landing:plans-title', content_current: 'Planes para Profesionales', page_path: 'landing', component_id: 'plans-title' },
   { id: 'landing:plans-subtitle', content_current: 'Potencia tu negocio inmobiliario con nuestras herramientas', page_path: 'landing', component_id: 'plans-subtitle' },
-  { id: 'landing:whatsbot-title', content_current: 'Publica desde WhatsApp', page_path: 'landing', component_id: 'whatsbot-title' },
-  { id: 'landing:whatsbot-subtitle', content_current: 'Gestiona tus propiedades fácilmente desde tu teléfono', page_path: 'landing', component_id: 'whatsbot-subtitle' },
+  { id: 'landing:whatsbot-title', content_current: 'Publica y busca con nuestro bot de WhatsApp', page_path: 'landing', component_id: 'whatsbot-title' },
+  { id: 'landing:whatsbot-subtitle', content_current: 'Una forma rápida y fácil de interactuar con nuestra plataforma.', page_path: 'landing', component_id: 'whatsbot-subtitle' },
   
   // Header
   { id: 'header:login-button', content_current: 'Iniciar Sesión', page_path: 'header', component_id: 'login-button' },

@@ -2,7 +2,9 @@
 'use server';
 
 import type { GoogleSheetConfig } from "@/lib/types";
-import { query } from '@/lib/db';
+import { db } from '@/lib/db';
+import { googleSheetConfigs } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from "next/cache";
 
 export async function saveGoogleSheetConfigAction(config: Omit<GoogleSheetConfig, 'id' | 'isConfigured'> & {isConfigured?: boolean}): Promise<{ success: boolean; message?: string }> {
@@ -10,21 +12,24 @@ export async function saveGoogleSheetConfigAction(config: Omit<GoogleSheetConfig
     const { sheetId, sheetName, columnsToDisplay } = config;
     const isConfigured = config.isConfigured === undefined ? !!(sheetId && sheetName && columnsToDisplay) : config.isConfigured;
 
-    // En la tabla google_sheet_configs, siempre actualizaremos la fila con id=1
-    // o la insertaremos si no existe.
-    const sql = `
-      INSERT INTO google_sheet_configs (id, sheet_id, sheet_name, columns_to_display, is_configured)
-      VALUES (1, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE
-        sheet_id = VALUES(sheet_id),
-        sheet_name = VALUES(sheet_name),
-        columns_to_display = VALUES(columns_to_display),
-        is_configured = VALUES(is_configured),
-        updated_at = CURRENT_TIMESTAMP
-    `;
-    await query(sql, [sheetId || null, sheetName || null, columnsToDisplay || null, isConfigured]);
+    await db.insert(googleSheetConfigs)
+      .values({
+        id: 1, // Always operate on the single config row
+        sheetId: sheetId || null,
+        sheetName: sheetName || null,
+        columnsToDisplay: columnsToDisplay || null,
+        isConfigured: isConfigured,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          sheetId: sheetId || null,
+          sheetName: sheetName || null,
+          columnsToDisplay: columnsToDisplay || null,
+          isConfigured: isConfigured,
+        }
+      });
     
-    revalidatePath('/'); // Para que la página de inicio recargue los datos de la hoja
+    revalidatePath('/'); // To reload sheet data on the homepage
     revalidatePath('/admin/settings');
     return { success: true, message: "Configuración de Google Sheet guardada exitosamente." };
   } catch (error: any) {
@@ -35,15 +40,18 @@ export async function saveGoogleSheetConfigAction(config: Omit<GoogleSheetConfig
 
 export async function getGoogleSheetConfigAction(): Promise<GoogleSheetConfig | null> {
   try {
-    const result = await query('SELECT id, sheet_id as sheetId, sheet_name as sheetName, columns_to_display as columnsToDisplay, is_configured as isConfigured FROM google_sheet_configs WHERE id = 1');
-    if (result && result.length > 0) {
-      const config = result[0];
+    const result = await db.query.googleSheetConfigs.findFirst({
+      where: eq(googleSheetConfigs.id, 1),
+    });
+    
+    if (result) {
       return {
-        ...config,
-        isConfigured: Boolean(config.isConfigured) // Asegurar que sea booleano
+        ...result,
+        isConfigured: Boolean(result.isConfigured) // Ensure it's a boolean
       };
     }
-    // Si no hay configuración, devolvemos un objeto por defecto no configurado
+    
+    // If no config, return a default non-configured object
     return {
       id: 1,
       sheetId: null,

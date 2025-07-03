@@ -1,6 +1,8 @@
 // src/app/api/bot-reply/route.ts
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { addMessageToConversation } from '@/lib/whatsappBotStore';
 import type { User } from '@/lib/types';
 
@@ -23,14 +25,14 @@ export async function POST(request: Request) {
     }
 
     // Query DB to find the user's phone number from their ID
-    const userRows: User[] = await query('SELECT phone_number FROM users WHERE id = ?', [userId]);
+    const userResult = await db.select({ phoneNumber: users.phoneNumber }).from(users).where(eq(users.id, userId));
 
-    if (userRows.length === 0 || !userRows[0].phone_number) {
+    if (userResult.length === 0 || !userResult[0].phoneNumber) {
       console.error(`[API BotReply] Error: No se encontró usuario o número de teléfono para el userId: ${userId}`);
       return NextResponse.json({ success: false, message: `Usuario con ID ${userId} no encontrado o no tiene número de teléfono.` }, { status: 404 });
     }
     
-    const userPhoneNumber = userRows[0].phone_number;
+    const userPhoneNumber = userResult[0].phoneNumber;
     console.log(`[API BotReply] Found phone number ${userPhoneNumber} for userId ${userId}.`);
 
     // Add the bot's reply to the correct conversation history using the phone number

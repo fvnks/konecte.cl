@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays, ShieldCheck, Eye, Bot } from 'lucide-react';
+import { MessageCircle, MapPin, BedDouble, Bath, HomeIcon, Tag, DollarSign, CalendarDays, ShieldCheck, Eye, Bot, Users } from 'lucide-react';
 import CustomDetailButton from '@/components/ui/CustomDetailButton';
 import LikeButton from '@/components/ui/LikeButton';
 import AuthorInfoDialog from './AuthorInfoDialog';
@@ -82,6 +82,10 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
   const authorAvatar = author?.avatarUrl;
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   const authorRoleDisplay = getRoleDisplayName(author?.role_id, author?.role_name);
+  
+  // Use the actual group name from the author object
+  const authorGroupName = author?.group_name || null;
+  
   const whatsappLink = `https://wa.me/56912345678?text=Hola,%20me%20interesa%20la%20propiedad%20con%20código:%20${pub_id}`;
 
   const authorDisplay = (
@@ -92,13 +96,13 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
         </Avatar>
         <div className="text-xs">
           <span className="text-muted-foreground line-clamp-1 group-hover/author:text-primary transition-colors">Por {authorName}</span>
-          <div className="flex items-center gap-x-2">
-          {authorRoleDisplay && (
-            <p className="text-muted-foreground/80 flex items-center capitalize">
-              <ShieldCheck className="h-3 w-3 mr-1 text-primary/70"/>
-              {authorRoleDisplay}
-            </p>
-          )}
+          <div className="flex items-center gap-x-2 flex-wrap">
+            {authorRoleDisplay && (
+              <p className="text-muted-foreground/80 flex items-center capitalize">
+                <ShieldCheck className="h-3 w-3 mr-1 text-primary/70"/>
+                {authorRoleDisplay}
+              </p>
+            )}
             {source === 'bot' && (
               <Link href={whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground/80 flex items-center text-primary/80 hover:underline" onClick={(e) => e.stopPropagation()}>
                 <Bot className="h-3 w-3 mr-1"/>
@@ -129,8 +133,9 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
           <Badge variant="default" className="absolute top-2.5 left-2.5 capitalize text-xs px-2.5 py-1 shadow-md bg-primary/90 text-primary-foreground rounded-md">
             {translatePropertyTypeBadge(propertyType)}
           </Badge>
+          
           {pub_id && (
-            <Badge variant="outline" className="absolute top-2.5 right-2.5 text-xs px-2 py-0.5 shadow-md rounded-md bg-black/50 text-white backdrop-blur-sm font-mono">
+            <Badge className="absolute top-2.5 right-2.5 text-xs px-2 py-0.5 shadow-md bg-blue-500/90 text-white rounded-md">
               {pub_id}
             </Badge>
           )}
@@ -140,11 +145,21 @@ export default function PropertyListItem({ property }: PropertyListItemProps) {
       <div className="flex flex-1 flex-col p-4 sm:p-5 justify-between">
         <div>
           <CardHeader className="p-0 mb-1.5 sm:mb-2">
-            <Link href={`/properties/${slug}`} className="block">
-              <CardTitle className="text-lg sm:text-xl font-headline leading-tight hover:text-primary transition-colors line-clamp-2">
-                {title}
-              </CardTitle>
-            </Link>
+            <div className="flex items-center justify-between mb-1">
+              <Link href={`/properties/${slug}`} className="block">
+                <CardTitle className="text-lg sm:text-xl font-headline leading-tight hover:text-primary transition-colors line-clamp-2">
+                  {pub_id && <span className="text-primary mr-2 font-mono text-base align-middle">{pub_id}</span>}
+                  {title}
+                </CardTitle>
+              </Link>
+              
+              {/* Insignia del grupo - solo mostrar si hay un nombre de grupo */}
+              {authorGroupName && (
+                <Badge className="text-xs py-0.5 px-2 font-normal bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border-0 whitespace-nowrap">
+                  {authorGroupName}
+                </Badge>
+              )}
+            </div>
             <div className="flex items-center text-xs sm:text-sm text-muted-foreground mt-1">
               <MapPin className="mr-1.5 h-4 w-4 flex-shrink-0 text-primary/80" />
               <span className="truncate">{city}</span>

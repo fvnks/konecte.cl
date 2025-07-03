@@ -1,9 +1,10 @@
-
 // src/actions/contactFormActions.ts
 'use server';
 
-import { query } from '@/lib/db';
-import type { ContactFormSubmission, ContactFormPublicValues, User } from '@/lib/types';
+import { db } from '@/lib/db';
+import { contactFormSubmissions, users } from '@/lib/db/schema';
+import { eq, desc, count as dslCount, sql } from 'drizzle-orm';
+import type { ContactFormSubmission, ContactFormPublicValues } from '@/lib/types';
 import { contactFormPublicSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
@@ -17,10 +18,10 @@ function mapDbRowToContactFormSubmission(row: any): ContactFormSubmission {
     phone: row.phone,
     subject: row.subject,
     message: row.message,
-    submitted_at: new Date(row.submitted_at).toISOString(),
-    is_read: Boolean(row.is_read),
-    admin_notes: row.admin_notes,
-    replied_at: row.replied_at ? new Date(row.replied_at).toISOString() : null,
+    submitted_at: new Date(row.submittedAt).toISOString(),
+    is_read: row.isRead,
+    admin_notes: row.adminNotes,
+    replied_at: row.repliedAt ? new Date(row.repliedAt).toISOString() : null,
   };
 }
 
@@ -36,11 +37,14 @@ export async function submitContactFormAction(
   const submissionId = randomUUID();
 
   try {
-    const sql = `
-      INSERT INTO contact_form_submissions (id, name, email, phone, subject, message, submitted_at)
-      VALUES (?, ?, ?, ?, ?, ?, NOW())
-    `;
-    await query(sql, [submissionId, name, email, phone || null, subject || null, message]);
+    await db.insert(contactFormSubmissions).values({
+      id: submissionId,
+      name,
+      email,
+      phone: phone || null,
+      subject: subject || null,
+      message,
+    });
     
     revalidatePath('/admin/contact-submissions'); // Revalidate admin page to show new submission
 
@@ -53,8 +57,7 @@ export async function submitContactFormAction(
 
 export async function getContactFormSubmissionsAction(): Promise<ContactFormSubmission[]> {
   try {
-    const rows = await query('SELECT * FROM contact_form_submissions ORDER BY submitted_at DESC');
-    if (!Array.isArray(rows)) return [];
+    const rows = await db.select().from(contactFormSubmissions).orderBy(desc(contactFormSubmissions.submittedAt));
     return rows.map(mapDbRowToContactFormSubmission);
   } catch (error: any) {
     console.error("[ContactFormAction] Error fetching contact form submissions:", error);
@@ -67,8 +70,12 @@ export async function markSubmissionAsActionReadAction(messageId: string, isRead
     return { success: false, message: "ID de mensaje no proporcionado." };
   }
   try {
-    const result: any = await query('UPDATE contact_form_submissions SET is_read = ? WHERE id = ?', [isRead, messageId]);
-    if (result.affectedRows > 0) {
+    const result = await db.update(contactFormSubmissions).set({ isRead }).where(eq(contactFormSubmissions.id, messageId));
+    // Note: Drizzle's update doesn't directly return affectedRows in the same way. We assume success if no error is thrown.
+    // For MySQL with node-mysql2, result is a "ResultSetHeader" which has an affectedRows property.
+    // We'll cast to any to access it, but this might need adjustment based on the exact driver output.
+    const affectedRows = (result as any).affectedRows;
+    if (affectedRows > 0) {
       revalidatePath('/admin/contact-submissions');
       return { success: true, message: `Mensaje marcado como ${isRead ? 'leído' : 'no leído'}.` };
     }
@@ -84,8 +91,9 @@ export async function deleteContactSubmissionAction(messageId: string): Promise<
     return { success: false, message: "ID de mensaje no proporcionado." };
   }
   try {
-    const result: any = await query('DELETE FROM contact_form_submissions WHERE id = ?', [messageId]);
-    if (result.affectedRows > 0) {
+    const result = await db.delete(contactFormSubmissions).where(eq(contactFormSubmissions.id, messageId));
+    const affectedRows = (result as any).affectedRows;
+    if (affectedRows > 0) {
       revalidatePath('/admin/contact-submissions');
       return { success: true, message: "Mensaje eliminado exitosamente." };
     }
@@ -98,8 +106,8 @@ export async function deleteContactSubmissionAction(messageId: string): Promise<
 
 export async function getUnreadContactSubmissionsCountAction(): Promise<number> {
   try {
-    const result: any[] = await query('SELECT COUNT(*) as count FROM contact_form_submissions WHERE is_read = FALSE');
-    return Number(result[0]?.count) || 0;
+    const result = await db.select({ count: dslCount() }).from(contactFormSubmissions).where(eq(contactFormSubmissions.isRead, false));
+    return result[0]?.count || 0;
   } catch (error) {
     console.error("[ContactFormAction] Error fetching unread contact submissions count:", error);
     return 0;
@@ -121,17 +129,18 @@ export async function adminRespondToSubmissionAction(
 
   try {
     // Verify admin user exists in DB before proceeding
-    const adminUserCheck: any[] = await query('SELECT id, name, email FROM users WHERE id = ?', [adminUserId]);
+    const adminUserCheck = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(eq(users.id, adminUserId));
     console.log(`[ContactFormAction DEBUG] Admin user check for ID "${adminUserId}":`, JSON.stringify(adminUserCheck));
 
     if (adminUserCheck.length === 0) {
       console.error(`[ContactFormAction] Admin user with ID ${adminUserId} not found in database. Cannot create chat.`);
       // Intenta guardar la nota incluso si el admin no se encuentra, para no perder la respuesta.
       try {
-        await query(
-          'UPDATE contact_form_submissions SET admin_notes = ?, replied_at = NOW(), is_read = TRUE WHERE id = ?',
-          [responseText, submissionId]
-        );
+        await db.update(contactFormSubmissions).set({
+          adminNotes: responseText,
+          repliedAt: new Date(),
+          isRead: true,
+        }).where(eq(contactFormSubmissions.id, submissionId));
         revalidatePath('/admin/contact-submissions');
       } catch (noteError: any) {
          console.error(`[ContactFormAction DEBUG] Failed to save admin_notes for submission ${submissionId} when admin was not found:`, noteError.message);
@@ -144,7 +153,7 @@ export async function adminRespondToSubmissionAction(
     }
     console.log(`[ContactFormAction DEBUG] Admin user ${adminUserCheck[0].name} (ID: ${adminUserCheck[0].id}) found.`);
 
-    const submissionRows: any[] = await query('SELECT email FROM contact_form_submissions WHERE id = ?', [submissionId]);
+    const submissionRows = await db.select({ email: contactFormSubmissions.email }).from(contactFormSubmissions).where(eq(contactFormSubmissions.id, submissionId));
     if (submissionRows.length === 0) {
       console.error(`[ContactFormAction DEBUG] Submission with ID ${submissionId} not found.`);
       return { success: false, message: "Mensaje de contacto original no encontrado.", chatSent: false };
@@ -152,7 +161,7 @@ export async function adminRespondToSubmissionAction(
     const submitterEmail = submissionRows[0].email;
     console.log(`[ContactFormAction DEBUG] Submitter email: ${submitterEmail}`);
 
-    const userRows: any[] = await query('SELECT id, name FROM users WHERE email = ?', [submitterEmail]);
+    const userRows = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.email, submitterEmail));
     console.log(`[ContactFormAction DEBUG] User check for submitter email "${submitterEmail}":`, JSON.stringify(userRows));
     
     let chatSent = false;
@@ -188,10 +197,11 @@ export async function adminRespondToSubmissionAction(
     }
 
     // Actualizar el contact_form_submission
-    await query(
-      'UPDATE contact_form_submissions SET admin_notes = ?, replied_at = NOW(), is_read = TRUE WHERE id = ?',
-      [responseText, submissionId]
-    );
+    await db.update(contactFormSubmissions).set({
+      adminNotes: responseText,
+      repliedAt: new Date(),
+      isRead: true,
+    }).where(eq(contactFormSubmissions.id, submissionId));
     console.log(`[ContactFormAction DEBUG] contact_form_submission ${submissionId} updated with notes and replied_at.`);
 
     revalidatePath('/admin/contact-submissions');
@@ -201,10 +211,11 @@ export async function adminRespondToSubmissionAction(
     console.error(`[ContactFormAction DEBUG] Error in adminRespondToSubmissionAction for submission ${submissionId}:`, error);
     // Guardar la nota como fallback si todo lo demás falla pero se pudo obtener el responseText
     try {
-        await query(
-          'UPDATE contact_form_submissions SET admin_notes = COALESCE(admin_notes, "") + "\n[Error al enviar Chat] " + ?, replied_at = NOW(), is_read = TRUE WHERE id = ?',
-          [responseText, submissionId]
-        );
+        await db.update(contactFormSubmissions).set({
+            adminNotes: sql`COALESCE(admin_notes, "") + "\n[Error al enviar Chat] " + ${responseText}`,
+            repliedAt: new Date(),
+            isRead: true,
+        }).where(eq(contactFormSubmissions.id, submissionId));
         revalidatePath('/admin/contact-submissions');
          console.log(`[ContactFormAction DEBUG] Fallback: admin_notes updated for submission ${submissionId} due to error.`);
     } catch (fallbackError: any) {

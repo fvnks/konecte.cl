@@ -1,8 +1,9 @@
-
 // src/actions/roleActions.ts
 'use server';
 
-import { query } from '@/lib/db';
+import { db } from '@/lib/db';
+import { roles, users } from '@/lib/db/schema';
+import { eq, asc, count } from 'drizzle-orm';
 import type { Role } from '@/lib/types';
 import { ALL_APP_PERMISSIONS, type AppPermission } from '@/lib/permissions'; // Import AppPermission related items
 import { revalidatePath } from 'next/cache';
@@ -34,8 +35,7 @@ function mapDbRowToRole(row: any): Role {
 
 export async function getRolesAction(): Promise<Role[]> {
   try {
-    const rows = await query('SELECT id, name, description, permissions FROM roles ORDER BY name ASC');
-    if (!Array.isArray(rows)) return [];
+    const rows = await db.select().from(roles).orderBy(asc(roles.name));
     return rows.map(mapDbRowToRole);
   } catch (error) {
     console.error("Error al obtener roles:", error);
@@ -46,7 +46,7 @@ export async function getRolesAction(): Promise<Role[]> {
 export async function getRoleByIdAction(roleId: string): Promise<Role | null> {
   if (!roleId) return null;
   try {
-    const rows: any[] = await query('SELECT id, name, description, permissions FROM roles WHERE id = ?', [roleId]);
+    const rows = await db.select().from(roles).where(eq(roles.id, roleId));
     if (rows.length === 0) return null;
     return mapDbRowToRole(rows[0]);
   } catch (error) {
@@ -54,7 +54,6 @@ export async function getRoleByIdAction(roleId: string): Promise<Role | null> {
     return null;
   }
 }
-
 
 export async function addRoleAction(formData: FormData): Promise<{ success: boolean; message?: string; role?: Role }> {
   const id = formData.get('id') as string;
@@ -74,9 +73,12 @@ export async function addRoleAction(formData: FormData): Promise<{ success: bool
   }
 
   try {
-    await query('INSERT INTO roles (id, name, description, permissions) VALUES (?, ?, ?, ?)', 
-      [id, name, description || null, permissionsJson]
-    );
+    await db.insert(roles).values({
+        id,
+        name,
+        description,
+        permissions: permissionsJson,
+    });
     revalidatePath('/admin/roles');
     revalidatePath('/admin/users'); // Roles affect user display/management
     
@@ -114,8 +116,8 @@ export async function updateRolePermissionsAction(
   const permissionsJson = JSON.stringify(validPermissions);
 
   try {
-    const result: any = await query('UPDATE roles SET permissions = ?, updated_at = NOW() WHERE id = ?', [permissionsJson, roleId]);
-    if (result.affectedRows > 0) {
+    const result = await db.update(roles).set({ permissions: permissionsJson }).where(eq(roles.id, roleId));
+    if (result.rowsAffected > 0) {
       revalidatePath('/admin/roles');
       revalidatePath(`/admin/roles/${roleId}/edit`); // Revalidate specific edit page
       
@@ -130,33 +132,28 @@ export async function updateRolePermissionsAction(
   }
 }
 
-
 export async function deleteRoleAction(roleId: string): Promise<{ success: boolean; message?: string }> {
   if (!roleId) {
     return { success: false, message: "ID de rol no proporcionado." };
   }
 
   if (roleId === 'admin' || roleId === 'user' || roleId === 'broker') {
-    const existingRole = await query('SELECT id FROM roles WHERE id = ?', [roleId]);
-    if (existingRole && existingRole.length > 0) {
-        const usersWithRole = await query('SELECT COUNT(*) as count FROM users WHERE role_id = ?', [roleId]);
-        if (usersWithRole && usersWithRole[0].count > 0) {
-            return { success: false, message: `No se puede eliminar el rol "${roleId}" porque está asignado a ${usersWithRole[0].count} usuario(s).` };
-        }
-    }
+      const usersWithRole = await db.select({ value: count() }).from(users).where(eq(users.roleId, roleId));
+      if (usersWithRole[0].value > 0) {
+          return { success: false, message: `No se puede eliminar el rol "${roleId}" porque está asignado a ${usersWithRole[0].value} usuario(s).` };
+      }
   }
 
   try {
-    const result: any = await query('DELETE FROM roles WHERE id = ?', [roleId]);
-    if (result.affectedRows > 0) {
+    const result = await db.delete(roles).where(eq(roles.id, roleId));
+    if (result.rowsAffected > 0) {
       revalidatePath('/admin/roles');
       revalidatePath('/admin/users');
       return { success: true, message: "Rol eliminado exitosamente." };
     } else {
       return { success: false, message: "El rol no fue encontrado o no se pudo eliminar." };
     }
-  } catch (error: any)
-{
+  } catch (error: any) {
     console.error("Error al eliminar rol:", error);
      if (error.code === 'ER_ROW_IS_REFERENCED_2') { 
         return { success: false, message: "No se puede eliminar el rol porque está asignado a uno o más usuarios." };

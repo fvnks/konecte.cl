@@ -5,19 +5,42 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, PlusCircle, ListTree, Building, FileSearch, AlertTriangle, ToggleLeft, ToggleRight, Search as SearchIcon } from 'lucide-react'; // Removed Edit3
+import { Loader2, PlusCircle, ListTree, Building, FileSearch, AlertTriangle, ToggleLeft, ToggleRight, Search as SearchIcon, Trash2 } from 'lucide-react'; // Removed Edit3
 import PropertyListItem from '@/components/property/PropertyListItem';
 import RequestListItem from '@/components/request/RequestListItem';
 import type { PropertyListing, SearchRequest, User as StoredUserType } from '@/lib/types';
 import { useEffect, useState, useTransition, useCallback } from 'react';
-import { getUserPropertiesAction, updatePropertyStatusAction } from '@/actions/propertyActions';
-import { getUserRequestsAction, updateRequestStatusAction } from '@/actions/requestActions';
+import { getUserPropertiesAction, updatePropertyStatusAction, deletePropertyByUserAction } from '@/actions/propertyActions';
+import { getUserRequestsAction, updateRequestStatusAction, deleteRequestByUserAction } from '@/actions/requestActions';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input'; 
 import StyledEditButton from '@/components/ui/StyledEditButton'; // Import new button
 import { useRouter } from 'next/navigation'; // Import useRouter
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
+const StyledDeleteButton = ({ onClick, title }: { onClick: () => void; title: string }) => (
+    <Button
+        variant="outline"
+        size="icon"
+        className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-colors duration-200 h-9 w-9"
+        onClick={onClick}
+        title={title}
+    >
+        <Trash2 className="h-4 w-4" />
+    </Button>
+);
 
 export default function MyListingsPage() {
   const [loggedInUser, setLoggedInUser] = useState<StoredUserType | null>(null);
@@ -25,6 +48,7 @@ export default function MyListingsPage() {
   const [userRequests, setUserRequests] = useState<SearchRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTogglingStatus, startToggleTransition] = useTransition();
+  const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState(''); 
   const router = useRouter(); // Initialize router
@@ -91,6 +115,32 @@ export default function MyListingsPage() {
         );
       } else {
         toast({ title: "Error", description: result.message, variant: "destructive" });
+      }
+    });
+  };
+
+  const handleDeleteProperty = async (propertyId: string) => {
+    if (!loggedInUser) return;
+    startDeleteTransition(async () => {
+      const result = await deletePropertyByUserAction(propertyId, loggedInUser.id);
+      if (result.success) {
+        toast({ title: "Propiedad Eliminada", description: result.message });
+        setUserProperties(prev => prev.filter(p => p.id !== propertyId));
+      } else {
+        toast({ title: "Error al Eliminar", description: result.message, variant: "destructive" });
+      }
+    });
+  };
+
+  const handleDeleteRequest = async (requestId: string) => {
+    if (!loggedInUser) return;
+    startDeleteTransition(async () => {
+      const result = await deleteRequestByUserAction(requestId, loggedInUser.id);
+      if (result.success) {
+        toast({ title: "Solicitud Eliminada", description: result.message });
+        setUserRequests(prev => prev.filter(r => r.id !== requestId));
+      } else {
+        toast({ title: "Error al Eliminar", description: result.message, variant: "destructive" });
       }
     });
   };
@@ -196,10 +246,36 @@ export default function MyListingsPage() {
                                 {property.isActive ? 'Activa' : 'Inactiva'}
                            </Badge>
                         </div>
+                        <div className="flex items-center gap-2">
                         <StyledEditButton
                            onClick={() => router.push(`/dashboard/my-listings/property/${property.id}/edit`)}
                            title="Editar propiedad"
                         />
+                            <AlertDialog>
+                               <AlertDialogTrigger asChild>
+                                  <StyledDeleteButton onClick={() => {}} title="Eliminar propiedad" />
+                               </AlertDialogTrigger>
+                               <AlertDialogContent>
+                                 <AlertDialogHeader>
+                                   <AlertDialogTitle>¿Estás seguro de que quieres eliminar esta propiedad?</AlertDialogTitle>
+                                   <AlertDialogDescription>
+                                     Esta acción no se puede deshacer. Se eliminará permanentemente de nuestros servidores.
+                                   </AlertDialogDescription>
+                                 </AlertDialogHeader>
+                                 <AlertDialogFooter>
+                                   <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                   <AlertDialogAction
+                                     onClick={() => handleDeleteProperty(property.id)}
+                                     disabled={isDeleting}
+                                     className="bg-red-600 hover:bg-red-700"
+                                   >
+                                     {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                     Eliminar
+                                   </AlertDialogAction>
+                                 </AlertDialogFooter>
+                               </AlertDialogContent>
+                             </AlertDialog>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -239,10 +315,36 @@ export default function MyListingsPage() {
                                 {request.isActive ? 'Activa' : 'Inactiva'}
                            </Badge>
                         </div>
+                        <div className="flex items-center gap-2">
                         <StyledEditButton
                            onClick={() => router.push(`/admin/requests/${request.id}/edit`)} // TODO: Usar /dashboard/my-listings/request/${request.id}/edit cuando esté
                            title="Editar solicitud"
                         />
+                            <AlertDialog>
+                               <AlertDialogTrigger asChild>
+                                  <StyledDeleteButton onClick={() => {}} title="Eliminar solicitud" />
+                               </AlertDialogTrigger>
+                               <AlertDialogContent>
+                                 <AlertDialogHeader>
+                                   <AlertDialogTitle>¿Estás seguro de que quieres eliminar esta solicitud?</AlertDialogTitle>
+                                   <AlertDialogDescription>
+                                     Esta acción no se puede deshacer. Se eliminará permanentemente de nuestros servidores.
+                                   </AlertDialogDescription>
+                                 </AlertDialogHeader>
+                                 <AlertDialogFooter>
+                                   <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                   <AlertDialogAction
+                                     onClick={() => handleDeleteRequest(request.id)}
+                                     disabled={isDeleting}
+                                     className="bg-red-600 hover:bg-red-700"
+                                   >
+                                     {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                     Eliminar
+                                   </AlertDialogAction>
+                                 </AlertDialogFooter>
+                               </AlertDialogContent>
+                             </AlertDialog>
+                        </div>
                       </div>
                     </div>
                   ))}

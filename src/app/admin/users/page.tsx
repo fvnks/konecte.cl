@@ -231,12 +231,20 @@ export default function AdminUsersPage() {
 
   return (
     <div className="w-full space-y-6">
+       <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-headline flex items-center">
+          <Users className="h-6 w-6 mr-2 text-primary" /> Gestión de Usuarios
+        </h1>
+        <AdminCreateUserDialog roles={roles} plans={activePlans} onUserCreated={handleUserCreated}>
+            <Button disabled={isLoadingData || roles.length === 0 || !loggedInAdmin} className="mt-2 sm:mt-0">
+              <PlusCircle className="h-4 w-4 mr-2" /> Añadir Usuario
+            </Button>
+        </AdminCreateUserDialog>
+      </div>
+
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex-1">
-            <CardTitle className="text-2xl font-headline flex items-center">
-              <Users className="h-6 w-6 mr-2 text-primary" /> Gestión de Usuarios
-            </CardTitle>
             <CardDescription>Busca, administra y asigna roles o planes a los usuarios de la plataforma.</CardDescription>
             
             <div className="relative mt-4">
@@ -251,11 +259,6 @@ export default function AdminUsersPage() {
               />
             </div>
           </div>
-          <AdminCreateUserDialog roles={roles} plans={activePlans} onUserCreated={handleUserCreated}>
-            <Button disabled={isLoadingData || roles.length === 0 || !loggedInAdmin} className="mt-2 sm:mt-0">
-              <PlusCircle className="h-4 w-4 mr-2" /> Añadir Usuario
-            </Button>
-          </AdminCreateUserDialog>
         </CardHeader>
         <CardContent>
           {isSearching ? (
@@ -339,8 +342,8 @@ export default function AdminUsersPage() {
                       </TableCell>
                       <TableCell className="text-center">
                         {user.phone_verified ? (
-                          <TooltipProvider><Tooltip><TooltipTrigger>
-                            <ShieldCheckIcon className="h-5 w-5 text-green-600" />
+                          <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                            <span><ShieldCheckIcon className="h-5 w-5 text-green-600" /></span>
                           </TooltipTrigger><TooltipContent><p>Teléfono verificado</p></TooltipContent></Tooltip></TooltipProvider>
                         ) : (
                           <TooltipProvider><Tooltip><TooltipTrigger asChild>

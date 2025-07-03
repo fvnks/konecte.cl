@@ -1,30 +1,37 @@
 'use server';
 
-import { query } from '@/lib/db';
 import type { PropertyVisit, RequestVisitFormValues, UpdateVisitStatusFormValues, PropertyVisitStatus } from '@/lib/types';
 import { requestVisitFormSchema, updateVisitStatusFormSchema, adminScheduleVisitFormSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
+import { db } from '@/lib/db';
+import { propertyViewings, properties, users } from '@/lib/db/schema';
+import { eq, and, or, sql, count, desc, asc } from 'drizzle-orm';
 
 // Helper function to map DB row to PropertyVisit type
 function mapDbRowToPropertyVisit(row: any): PropertyVisit {
+  const visit = row.property_viewings;
+  const property = row.properties;
+  const visitor = row.visitor;
+  const owner = row.owner;
+
   return {
-    id: row.id,
-    property_id: row.property_id,
-    visitor_id: row.visitor_id,
-    owner_id: row.owner_id,
-    proposed_datetime: new Date(row.proposed_datetime).toISOString(),
-    confirmed_datetime: row.confirmed_datetime ? new Date(row.confirmed_datetime).toISOString() : null,
-    status: row.status,
-    visitor_notes: row.visitor_notes,
-    owner_notes: row.owner_notes,
-    created_at: new Date(row.created_at).toISOString(),
-    updated_at: new Date(row.updated_at).toISOString(),
-    created_by_admin: !!row.created_by_admin,
-    property_title: row.property_title,
-    property_slug: row.property_slug,
-    visitor_name: row.visitor_name,
-    owner_name: row.owner_name,
+    id: visit.id,
+    property_id: visit.propertyId,
+    visitor_id: visit.visitorId,
+    owner_id: visit.ownerId,
+    proposed_datetime: new Date(visit.proposedDatetime).toISOString(),
+    confirmed_datetime: visit.confirmedDatetime ? new Date(visit.confirmedDatetime).toISOString() : null,
+    status: visit.status,
+    visitor_notes: visit.visitorNotes,
+    owner_notes: visit.ownerNotes,
+    created_at: new Date(visit.createdAt).toISOString(),
+    updated_at: new Date(visit.updatedAt).toISOString(),
+    created_by_admin: !!visit.createdByAdmin,
+    property_title: property.title,
+    property_slug: property.slug,
+    visitor_name: visitor.name,
+    owner_name: owner.name,
   };
 }
 
@@ -43,11 +50,15 @@ export async function requestVisitAction(
 
   try {
     const visitId = randomUUID();
-    const sql = `
-      INSERT INTO property_viewings (id, visitor_id, property_id, owner_id, proposed_datetime, visitor_notes, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending_confirmation')
-    `;
-    await query(sql, [visitId, userId, propertyId, ownerId, proposed_datetime, visitorNotes || null]);
+    await db.insert(propertyViewings).values({
+        id: visitId,
+        visitorId: userId,
+        propertyId: propertyId,
+        ownerId: ownerId,
+        proposedDatetime: proposed_datetime,
+        visitorNotes: visitorNotes || null,
+        status: 'pending_confirmation',
+    })
     
     revalidatePath('/dashboard/visits');
     return { success: true, message: 'Solicitud de visita enviada. El propietario ha sido notificado.' };
@@ -67,26 +78,23 @@ export async function updateVisitStatusAction(
     const { visitId, newStatus, userRole, notes, confirmed_datetime } = validation.data;
 
     try {
-        let sql = 'UPDATE property_viewings SET status = ?, updated_at = NOW()';
-        const params: (string | Date | null)[] = [newStatus];
+        const updateData: Partial<{ status: PropertyVisitStatus, ownerNotes: string | null, visitorNotes: string | null, confirmedDatetime: Date | null, updatedAt: Date }> = {
+            status: newStatus,
+            updatedAt: new Date(),
+        };
 
         if (userRole === 'owner') {
-            sql += ', owner_notes = ?';
-            params.push(notes || null);
+            updateData.ownerNotes = notes || null;
         } else {
-            sql += ', visitor_notes = ?';
-            params.push(notes || null);
+            updateData.visitorNotes = notes || null;
         }
 
         if (newStatus === 'confirmed' && confirmed_datetime) {
-            sql += ', confirmed_datetime = ?';
-            params.push(confirmed_datetime);
+            updateData.confirmedDatetime = confirmed_datetime;
         }
 
-        sql += ' WHERE id = ?';
-        params.push(visitId);
+        await db.update(propertyViewings).set(updateData).where(eq(propertyViewings.id, visitId));
 
-        await query(sql, params);
         revalidatePath('/dashboard/visits');
         revalidatePath('/admin/visits');
         return { success: true, message: "Estado de la visita actualizado." };
@@ -111,25 +119,26 @@ export async function scheduleVisitByAdminAction(
   proposed_datetime.setHours(hours, minutes);
 
   try {
-    const propertyOwnerResult: any[] = await query(
-      'SELECT user_id FROM properties WHERE id = ?', [propertyId]
-    );
+    const propertyOwnerResult = await db.select({ ownerId: properties.userId }).from(properties).where(eq(properties.id, propertyId));
 
     if (propertyOwnerResult.length === 0) {
       return { success: false, message: 'La propiedad no fue encontrada.' };
     }
-    const ownerId = propertyOwnerResult[0].user_id;
+    const ownerId = propertyOwnerResult[0].ownerId;
     if (ownerId === userId) {
       return { success: false, message: 'Un usuario no puede agendar una visita a su propia propiedad.' };
     }
 
-    const sql = `
-      INSERT INTO property_viewings (
-        id, visitor_id, property_id, owner_id, proposed_datetime, status, created_by_admin
-      ) VALUES (?, ?, ?, ?, ?, ?, TRUE)
-    `;
     const visitId = randomUUID();
-    await query(sql, [visitId, userId, propertyId, ownerId, proposed_datetime, 'confirmed']);
+    await db.insert(propertyViewings).values({
+        id: visitId,
+        visitorId: userId,
+        propertyId: propertyId,
+        ownerId: ownerId,
+        proposedDatetime: proposed_datetime,
+        status: 'confirmed',
+        createdByAdmin: true,
+    });
 
     revalidatePath('/admin/visits');
     return { success: true, message: 'Visita agendada exitosamente.' };
@@ -150,33 +159,34 @@ export interface GetAllVisitsAdminOptions {
 
 export async function getAllVisitsForAdminAction(options: GetAllVisitsAdminOptions = {}): Promise<PropertyVisit[]> {
   const { filterStatus, orderBy = 'created_at_desc' } = options;
-  let sql = `
-    SELECT 
-        pv.id, pv.visitor_id, visitor.name as visitor_name, pv.owner_id, owner.name as owner_name,
-        pv.property_id, p.title as property_title, p.slug as property_slug, pv.proposed_datetime,
-        pv.confirmed_datetime, pv.status, pv.visitor_notes, pv.owner_notes, pv.created_at, pv.updated_at,
-        pv.created_by_admin
-    FROM property_viewings pv
-    JOIN users visitor ON pv.visitor_id = visitor.id
-    JOIN users owner ON pv.owner_id = owner.id
-    JOIN properties p ON pv.property_id = p.id
-  `;
-  const params: (string | number)[] = [];
-
-  if (filterStatus) {
-    sql += ` WHERE pv.status = ?`;
-    params.push(filterStatus);
-  }
-
-  const orderByMapping: Record<AdminVisitsOrderBy, string> = {
-    created_at_desc: 'pv.created_at DESC', created_at_asc: 'pv.created_at ASC',
-    proposed_datetime_desc: 'pv.proposed_datetime DESC', proposed_datetime_asc: 'pv.proposed_datetime ASC',
-    status_asc: 'pv.status ASC', status_desc: 'pv.status DESC',
+  
+  const orderByMapping: Record<AdminVisitsOrderBy, any> = {
+    created_at_desc: desc(propertyViewings.createdAt), created_at_asc: asc(propertyViewings.createdAt),
+    proposed_datetime_desc: desc(propertyViewings.proposedDatetime), proposed_datetime_asc: asc(propertyViewings.proposedDatetime),
+    status_asc: asc(propertyViewings.status), status_desc: desc(propertyViewings.status),
   };
-  sql += ` ORDER BY ${orderByMapping[orderBy]}`;
+
+  const visitorUser = db.alias(users, 'visitor');
+  const ownerUser = db.alias(users, 'owner');
   
   try {
-    const rows: any[] = await query(sql, params);
+    const query = db.select({
+        property_viewings: propertyViewings,
+        properties: properties,
+        visitor: visitorUser,
+        owner: ownerUser
+    })
+    .from(propertyViewings)
+    .innerJoin(visitorUser, eq(propertyViewings.visitorId, visitorUser.id))
+    .innerJoin(ownerUser, eq(propertyViewings.ownerId, ownerUser.id))
+    .innerJoin(properties, eq(propertyViewings.propertyId, properties.id))
+    .orderBy(orderByMapping[orderBy]);
+
+    if (filterStatus) {
+        query.where(eq(propertyViewings.status, filterStatus));
+    }
+
+    const rows = await query;
     return rows.map(mapDbRowToPropertyVisit);
   } catch (error) {
     console.error("Error fetching all visits for admin:", error);
@@ -189,8 +199,11 @@ export async function getVisitCountsByStatusForAdmin(): Promise<Record<PropertyV
     const counts: Record<PropertyVisitStatus, number> = {} as any;
 
     try {
-        const sql = `SELECT status, COUNT(*) as count FROM property_viewings GROUP BY status`;
-        const results: { status: PropertyVisitStatus, count: number }[] = await query(sql);
+        const results = await db.select({
+            status: propertyViewings.status,
+            count: count()
+        }).from(propertyViewings).groupBy(propertyViewings.status);
+        
         const countsMap = new Map(results.map(r => [r.status, r.count]));
         for (const status of statusValues) {
             counts[status] = countsMap.get(status) || 0;
@@ -206,32 +219,25 @@ export async function getVisitCountsByStatusForAdmin(): Promise<Record<PropertyV
 }
 
 export async function getVisitsForUserAction(userId: string): Promise<PropertyVisit[]> {
-  if (!userId) {
-    console.error("getVisitsForUserAction called without a userId.");
-    return [];
-  }
-
+  const visitorUser = db.alias(users, 'visitor');
+  const ownerUser = db.alias(users, 'owner');
   try {
-    const sql = `
-      SELECT 
-          pv.id, pv.visitor_id, visitor.name as visitor_name, pv.owner_id, owner.name as owner_name,
-          pv.property_id, p.title as property_title, p.slug as property_slug, pv.proposed_datetime,
-          pv.confirmed_datetime, pv.status, pv.visitor_notes, pv.owner_notes, pv.created_at, pv.updated_at,
-          pv.created_by_admin
-      FROM property_viewings pv
-      JOIN users visitor ON pv.visitor_id = visitor.id
-      JOIN users owner ON pv.owner_id = owner.id
-      JOIN properties p ON pv.property_id = p.id
-      WHERE pv.visitor_id = ? OR pv.owner_id = ?
-      ORDER BY pv.proposed_datetime DESC
-    `;
+    const rows = await db.select({
+        property_viewings: propertyViewings,
+        properties: properties,
+        visitor: visitorUser,
+        owner: ownerUser
+    })
+    .from(propertyViewings)
+    .innerJoin(visitorUser, eq(propertyViewings.visitorId, visitorUser.id))
+    .innerJoin(ownerUser, eq(propertyViewings.ownerId, ownerUser.id))
+    .innerJoin(properties, eq(propertyViewings.propertyId, properties.id))
+    .where(or(eq(propertyViewings.visitorId, userId), eq(propertyViewings.ownerId, userId)))
+    .orderBy(desc(propertyViewings.proposedDatetime));
     
-    const rows: any[] = await query(sql, [userId, userId]);
     return rows.map(mapDbRowToPropertyVisit);
-
   } catch (error) {
     console.error(`Error fetching visits for user ${userId}:`, error);
-    // Devuelve un array vacío en caso de error para no romper el frontend.
     return [];
   }
 } 

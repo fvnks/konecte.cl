@@ -1,12 +1,12 @@
-
 // src/actions/leadTrackingActions.ts
 'use server';
 
-import { query } from '@/lib/db';
+import { db } from '@/lib/db';
+import { properties, propertyInquiries, propertyViews } from '@/lib/db/schema';
 import type { PropertyInquiryFormValues } from '@/lib/types';
 import { propertyInquiryFormSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
-import { revalidatePath } from 'next/cache';
+import { sql, eq, sum, count } from 'drizzle-orm';
 
 // --- Record Property View ---
 export async function recordPropertyViewAction(
@@ -20,19 +20,17 @@ export async function recordPropertyViewAction(
   }
 
   try {
-    const viewId = randomUUID();
-    await query(
-      'INSERT INTO property_views (id, property_id, user_id, ip_address, user_agent, viewed_at) VALUES (?, ?, ?, ?, ?, NOW())',
-      [viewId, propertyId, userId || null, ipAddress || null, userAgent || null]
-    );
-
-    // Incrementar el contador de vistas en la tabla properties
-    await query('UPDATE properties SET views_count = IFNULL(views_count, 0) + 1 WHERE id = ?', [propertyId]);
+    await db.insert(propertyViews).values({
+      id: randomUUID(),
+      propertyId: propertyId,
+      userId: userId,
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
     
-    // No es necesario revalidar la ruta para una simple vista, a menos que se muestre el contador en tiempo real.
-    // Revalidar si el contador de vistas se muestra en la página de propiedades o listados:
-    // revalidatePath(`/properties/${propertySlug}`); // Asumiendo que tienes propertySlug
-    // revalidatePath('/properties');
+    await db.update(properties)
+      .set({ viewsCount: sql`${properties.viewsCount} + 1` })
+      .where(eq(properties.id, propertyId));
 
     return { success: true, message: 'Vista registrada.' };
   } catch (error: any) {
@@ -60,18 +58,21 @@ export async function submitPropertyInquiryAction(
   const { name, email, phone, message } = validation.data;
 
   try {
-    const inquiryId = randomUUID();
-    await query(
-      'INSERT INTO property_inquiries (id, property_id, property_owner_id, user_id, name, email, phone, message, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
-      [inquiryId, propertyId, propertyOwnerId, userId || null, name, email, phone || null, message]
-    );
+    await db.insert(propertyInquiries).values({
+      id: randomUUID(),
+      propertyId,
+      propertyOwnerId,
+      userId: userId,
+      name,
+      email,
+      phone: phone,
+      message,
+    });
 
-    // Incrementar el contador de consultas en la tabla properties
-    await query('UPDATE properties SET inquiries_count = IFNULL(inquiries_count, 0) + 1 WHERE id = ?', [propertyId]);
+    await db.update(properties)
+      .set({ inquiriesCount: sql`${properties.inquiriesCount} + 1` })
+      .where(eq(properties.id, propertyId));
     
-    // Revalidar si el contador de consultas se muestra
-    // revalidatePath(`/properties/${propertySlug}`); // Asumiendo que tienes propertySlug
-
     return { success: true, message: 'Consulta enviada exitosamente.' };
   } catch (error: any) {
     console.error('[LeadTrackingAction] Error submitting property inquiry:', error);
@@ -81,8 +82,8 @@ export async function submitPropertyInquiryAction(
 
 export async function getTotalPropertyViewsAction(): Promise<number> {
   try {
-    const result: any[] = await query('SELECT COUNT(*) as count FROM property_views');
-    return Number(result[0].count) || 0;
+    const result = await db.select({ count: count() }).from(propertyViews);
+    return result[0].count || 0;
   } catch (error) {
     console.error("Error al obtener el conteo total de vistas de propiedades:", error);
     return 0;
@@ -91,8 +92,8 @@ export async function getTotalPropertyViewsAction(): Promise<number> {
 
 export async function getTotalPropertyInquiriesAction(): Promise<number> {
   try {
-    const result: any[] = await query('SELECT COUNT(*) as count FROM property_inquiries');
-    return Number(result[0].count) || 0;
+    const result = await db.select({ count: count() }).from(propertyInquiries);
+    return result[0].count || 0;
   } catch (error) {
     console.error("Error al obtener el conteo total de consultas de propiedades:", error);
     return 0;
@@ -103,10 +104,10 @@ export async function getTotalPropertyInquiriesAction(): Promise<number> {
 export async function getUserTotalPropertyViewsAction(userId: string): Promise<number> {
   if (!userId) return 0;
   try {
-    const result: any[] = await query(
-      'SELECT SUM(views_count) as totalViews FROM properties WHERE user_id = ?',
-      [userId]
-    );
+    const result = await db.select({ totalViews: sum(properties.viewsCount) })
+      .from(properties)
+      .where(eq(properties.userId, userId));
+    
     return Number(result[0]?.totalViews) || 0;
   } catch (error) {
     console.error(`Error fetching total property views for user ${userId}:`, error);
@@ -117,10 +118,10 @@ export async function getUserTotalPropertyViewsAction(userId: string): Promise<n
 export async function getUserTotalPropertyInquiriesAction(userId: string): Promise<number> {
   if (!userId) return 0;
   try {
-    const result: any[] = await query(
-      'SELECT SUM(inquiries_count) as totalInquiries FROM properties WHERE user_id = ?',
-      [userId]
-    );
+    const result = await db.select({ totalInquiries: sum(properties.inquiriesCount) })
+      .from(properties)
+      .where(eq(properties.userId, userId));
+
     return Number(result[0]?.totalInquiries) || 0;
   } catch (error) {
     console.error(`Error fetching total property inquiries for user ${userId}:`, error);

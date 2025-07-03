@@ -84,14 +84,14 @@ export default async function RequestDetailPage({ params }: { params: { slug: st
               <CardTitle className="text-3xl lg:text-4xl font-headline font-bold flex items-center pr-4">
                 <SearchIcon className="mr-3 h-8 w-8 text-primary flex-shrink-0"/>
                 <span>
-                  {request.title}
+            {request.title}
                   {request.pub_id && (
                     <span className="ml-3 text-lg lg:text-xl font-mono text-muted-foreground font-medium tracking-wider">
                       ({request.pub_id})
                     </span>
                   )}
                 </span>
-              </CardTitle>
+          </CardTitle>
             </div>
           <div className="flex justify-between items-center mt-3">
             <CardDescription className="text-base lg:text-lg text-muted-foreground leading-relaxed flex-grow pr-4">

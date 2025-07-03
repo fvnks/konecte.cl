@@ -19,16 +19,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { findListingsForFreeTextSearch, type FindListingsForFreeTextSearchInput, type FindListingsForFreeTextSearchOutput, type FoundMatch } from '@/ai/flows/find-listings-for-free-text-search-flow';
+import { performAiSearchAction } from '@/actions/aiActions'; // IMPORTAR LA NUEVA SERVER ACTION
+import type { FindListingsForFreeTextSearchInput, FindListingsForFreeTextSearchOutput, FoundMatch } from '@/ai/flows/find-listings-for-free-text-search-flow'; // Mantener los tipos
 import { recordUserListingInteractionAction } from '@/actions/interactionActions';
 import type { User as StoredUser, InteractionTypeEnum, PropertyListing, SearchRequest } from '@/lib/types';
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { Loader2, Sparkles, MessageSquareText, AlertTriangle, SearchIcon, Building, PlusCircle, ThumbsUp, ThumbsDown, UserCircle as UserIconLucide, MessagesSquare, HeartHandshake, X } from "lucide-react";
 import FeaturedPropertyCard from '@/components/property/FeaturedPropertyCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from "@/components/ui/button"; // Necesario para el botón de Iniciar Sesión
 import EditableText from '@/components/ui/EditableText';
-import StaticText from '@/components/ui/StaticText';
 import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
@@ -37,7 +37,15 @@ const formSchema = z.object({
 
 type AiMatchingFormValues = z.infer<typeof formSchema>;
 
-export default function InteractiveAIMatching() {
+interface InteractiveAIMatchingProps {
+  searchLabel: ReactNode;
+  resultsTitle: ReactNode;
+}
+
+export default function InteractiveAIMatching({
+  searchLabel,
+  resultsTitle,
+}: InteractiveAIMatchingProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [aiSearchResults, setAiSearchResults] = useState<FoundMatch[]>([]); 
@@ -81,7 +89,16 @@ export default function InteractiveAIMatching() {
       const input: FindListingsForFreeTextSearchInput = {
         userSearchDescription: values.userSearchDescription,
       };
-      const result = await findListingsForFreeTextSearch(input);
+
+      // LLAMAR A LA NUEVA SERVER ACTION
+      const actionResult = await performAiSearchAction(input);
+
+      if (!actionResult.success || !actionResult.data) {
+        throw new Error(actionResult.error || 'La búsqueda con IA falló.');
+      }
+      
+      const result = actionResult.data; // Usar los datos de la acción
+
       setAiSearchResults(result.matches); 
       
       const onlyProperties = result.matches.filter(match => match.type === 'property');
@@ -180,12 +197,10 @@ export default function InteractiveAIMatching() {
     <div className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="ai-search-input" className="text-base font-medium">
-          <StaticText id="landing:ai-search-label" textType="span">
-            Describe lo que buscas
-          </StaticText>
+          {searchLabel}
         </Label>
         <div className="relative">
-          <Textarea
+                  <Textarea
             id="ai-search-input"
             placeholder={
               isSearching
@@ -219,16 +234,12 @@ export default function InteractiveAIMatching() {
           {isSearching ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              <StaticText id="landing:ai-searching-button" textType="span">
-                Buscando...
-              </StaticText>
+              <span>Buscando...</span>
             </>
           ) : (
             <>
               <Sparkles className="h-4 w-4" />
-              <StaticText id="landing:ai-search-button" textType="span">
-                Buscar con IA
-              </StaticText>
+              <span>Buscar con IA</span>
             </>
           )}
         </Button>
@@ -238,14 +249,10 @@ export default function InteractiveAIMatching() {
         <div className="space-y-6 mt-6 border-t pt-6">
           <div className="space-y-2">
             <h3 className="text-lg font-medium">
-              <StaticText id="landing:ai-results-title" textType="span">
-                Resultados de la búsqueda
-              </StaticText>
+              {resultsTitle}
             </h3>
             <p className="text-sm text-muted-foreground">
-              <StaticText id="landing:ai-results-subtitle" textType="span">
-                Hemos encontrado estas propiedades que coinciden con tu búsqueda
-              </StaticText>
+              Hemos encontrado estas propiedades que coinciden con tu búsqueda
             </p>
           </div>
 
@@ -261,8 +268,8 @@ export default function InteractiveAIMatching() {
                       >
                         {property.title}
                       </Link>
-                    </CardTitle>
-                  </CardHeader>
+            </CardTitle>
+          </CardHeader>
                   <CardContent className="p-4 pt-0 text-sm">
                     <p className="text-muted-foreground line-clamp-2">
                       {property.description}
@@ -270,7 +277,7 @@ export default function InteractiveAIMatching() {
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="outline">
                         {property.bedrooms} dormitorios
-                      </Badge>
+                    </Badge>
                       <Badge variant="outline">
                         {property.bathrooms} baños
                       </Badge>
@@ -280,14 +287,12 @@ export default function InteractiveAIMatching() {
                     </div>
                     <div className="mt-2 font-semibold">
                       {formatCurrency(property.price, property.currency)}
-                    </div>
+                </div>
                   </CardContent>
                   <CardFooter className="p-4 pt-0 flex justify-between">
                     <Button asChild variant="link" className="px-0">
                       <Link href={`/properties/${property.slug}`}>
-                        <StaticText id="landing:ai-view-details" textType="span">
-                          Ver detalles
-                        </StaticText>
+                        Ver detalles
                       </Link>
                     </Button>
                     <Badge className="ml-auto">
@@ -296,23 +301,19 @@ export default function InteractiveAIMatching() {
                   </CardFooter>
                 </Card>
               ))}
-            </div>
+                </div>
           ) : (
             <div className="text-center py-6 bg-muted/30 rounded-lg">
               <p className="text-muted-foreground">
-                <StaticText id="landing:ai-no-results" textType="span">
-                  No encontramos propiedades que coincidan con tu búsqueda.
-                </StaticText>
+                No encontramos propiedades que coincidan con tu búsqueda.
               </p>
-            </div>
+                </div>
           )}
 
           <div className="flex justify-center mt-4">
             <Button asChild variant="outline">
               <Link href="/properties">
-                <StaticText id="landing:ai-view-all-properties" textType="span">
-                  Ver todas las propiedades
-                </StaticText>
+                Ver todas las propiedades
               </Link>
             </Button>
           </div>
@@ -322,9 +323,7 @@ export default function InteractiveAIMatching() {
       {error && (
         <div className="bg-destructive/10 text-destructive p-4 rounded-lg mt-4">
           <p className="font-medium">
-            <StaticText id="landing:ai-error-title" textType="span">
-              Error al procesar la búsqueda
-            </StaticText>
+            Error al procesar la búsqueda
           </p>
           <p className="text-sm mt-1">{error}</p>
         </div>

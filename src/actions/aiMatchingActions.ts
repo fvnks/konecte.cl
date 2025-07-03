@@ -1,12 +1,19 @@
 // src/actions/aiMatchingActions.ts
 'use server';
 
-import { query } from '@/lib/db';
+import { db } from '@/lib/db';
+import { aiMatches, properties, searchRequests } from '@/lib/db/schema';
 import type { AIMatch } from '@/lib/types';
+import { desc, eq, getTableColumns } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 
 function mapDbRowToAIMatch(row: any): AIMatch {
+  const property_title = row.property ? row.property.title : row.property_title;
+  const property_slug = row.property ? row.property.slug : row.property_slug;
+  const request_title = row.request ? row.request.title : row.request_title;
+  const request_slug = row.request ? row.request.slug : row.request_slug;
+
   return {
     id: row.id,
     property_id: row.property_id,
@@ -14,11 +21,10 @@ function mapDbRowToAIMatch(row: any): AIMatch {
     match_score: Number(row.match_score),
     reason: row.reason,
     last_calculated_at: new Date(row.last_calculated_at).toISOString(),
-    // These will be joined in the get actions
-    property_title: row.property_title,
-    property_slug: row.property_slug,
-    request_title: row.request_title,
-    request_slug: row.request_slug,
+    property_title,
+    property_slug,
+    request_title,
+    request_slug,
   };
 }
 
@@ -29,17 +35,24 @@ export async function saveOrUpdateAiMatchAction(
   reason: string
 ): Promise<{ success: boolean; message?: string }> {
   try {
-    const matchId = randomUUID();
-    const sql = `
-      INSERT INTO ai_matches (id, property_id, request_id, match_score, reason, last_calculated_at)
-      VALUES (?, ?, ?, ?, ?, NOW())
-      ON DUPLICATE KEY UPDATE
-        match_score = VALUES(match_score),
-        reason = VALUES(reason),
-        last_calculated_at = NOW()
-    `;
-    await query(sql, [matchId, propertyId, requestId, matchScore, reason]);
-    // Revalidate the matching page when a match is updated/created
+    await db
+      .insert(aiMatches)
+      .values({
+        id: randomUUID(),
+        property_id: propertyId,
+        request_id: requestId,
+        match_score: matchScore,
+        reason: reason,
+        last_calculated_at: new Date(),
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          match_score: matchScore,
+          reason: reason,
+          last_calculated_at: new Date(),
+        },
+      });
+
     revalidatePath('/ai-matching');
     return { success: true, message: "Coincidencia de IA guardada." };
   } catch (error: any) {
@@ -51,17 +64,19 @@ export async function saveOrUpdateAiMatchAction(
 export async function getMatchesForPropertyAction(propertyId: string): Promise<AIMatch[]> {
   if (!propertyId) return [];
   try {
-    const sql = `
-      SELECT 
-        m.*,
-        r.title as request_title,
-        r.slug as request_slug
-      FROM ai_matches m
-      JOIN property_requests r ON m.request_id = r.id
-      WHERE m.property_id = ?
-      ORDER BY m.match_score DESC
-    `;
-    const rows = await query(sql, [propertyId]);
+    const rows = await db.query.aiMatches.findMany({
+        where: eq(aiMatches.property_id, propertyId),
+        with: {
+            request: {
+                columns: {
+                    title: true,
+                    slug: true,
+                }
+            }
+        },
+        orderBy: [desc(aiMatches.match_score)]
+    });
+    
     return rows.map(mapDbRowToAIMatch);
   } catch (error: any) {
     console.error(`[AIMatchingAction] Error fetching matches for property ${propertyId}:`, error);
@@ -70,19 +85,21 @@ export async function getMatchesForPropertyAction(propertyId: string): Promise<A
 }
 
 export async function getMatchesForRequestAction(requestId: string): Promise<AIMatch[]> {
-   if (!requestId) return [];
+  if (!requestId) return [];
   try {
-    const sql = `
-      SELECT 
-        m.*,
-        p.title as property_title,
-        p.slug as property_slug
-      FROM ai_matches m
-      JOIN properties p ON m.property_id = p.id
-      WHERE m.request_id = ?
-      ORDER BY m.match_score DESC
-    `;
-    const rows = await query(sql, [requestId]);
+    const rows = await db.query.aiMatches.findMany({
+        where: eq(aiMatches.request_id, requestId),
+        with: {
+            property: {
+                columns: {
+                    title: true,
+                    slug: true,
+                }
+            }
+        },
+        orderBy: [desc(aiMatches.match_score)]
+    });
+    
     return rows.map(mapDbRowToAIMatch);
   } catch (error: any) {
     console.error(`[AIMatchingAction] Error fetching matches for request ${requestId}:`, error);

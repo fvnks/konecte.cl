@@ -1,18 +1,26 @@
 // src/components/landing/FeaturedListingsClient.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import Link from 'next/link';
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Building, FileSearch, ArrowRight, Loader2, Home, MapPin, BedDouble, Bath, Maximize2, Search, Bot, ShieldCheck } from 'lucide-react';
-import StaticText from '@/components/ui/StaticText';
-import { getPropertiesCountAction } from '@/actions/propertyActions';
-import { getRequestsCountAction } from '@/actions/requestActions';
 
 // Definir las interfaces para los tipos
+interface Author {
+  id?: string;
+  name?: string;
+  avatarUrl?: string;
+  role_id?: string;
+  role_name?: string;
+  group_name?: string; 
+  group_avatar_url?: string;
+  group_badge_type?: 'logo' | 'name' | 'none';
+}
+
 interface Property {
   id: string;
   pub_id?: string;
@@ -28,13 +36,7 @@ interface Property {
     region?: string;
   };
   images?: string[];
-  author?: {
-    id?: string;
-    name?: string;
-    avatarUrl?: string;
-    role_id?: string;
-    role_name?: string;
-  };
+  author?: Author;
   createdAt?: string;
   source?: 'bot' | 'web' | 'app';
   slug?: string;
@@ -54,13 +56,7 @@ interface PropertyRequest {
     city?: string;
     region?: string;
   };
-  author?: {
-    id?: string;
-    name?: string;
-    avatarUrl?: string;
-    role_id?: string;
-    role_name?: string;
-  };
+  author?: Author;
   createdAt?: string;
   source?: 'bot' | 'web' | 'app';
   slug?: string;
@@ -86,13 +82,28 @@ function getRoleDisplayName(role_id?: string, role_name?: string): string | null
   return role_id || null;
 }
 
-export default function FeaturedListingsClient({ featuredProperties: initialProperties, recentRequests: initialRequests }: { featuredProperties: Property[], recentRequests: PropertyRequest[] }) {
+export default function FeaturedListingsClient({ 
+  featuredProperties: initialProperties, 
+  recentRequests: initialRequests,
+  propertyCount,
+  requestCount,
+  noPropertiesMessage,
+  noRequestsMessage,
+  viewAllPropertiesText,
+  viewAllRequestsText,
+}: { 
+  featuredProperties: Property[], 
+  recentRequests: PropertyRequest[],
+  propertyCount: number,
+  requestCount: number,
+  noPropertiesMessage: ReactNode,
+  noRequestsMessage: ReactNode,
+  viewAllPropertiesText: ReactNode,
+  viewAllRequestsText: ReactNode,
+}) {
   const [activeTab, setActiveTab] = useState<'properties' | 'requests'>('properties');
   const [properties, setProperties] = useState<Property[]>(initialProperties);
   const [requests, setRequests] = useState<PropertyRequest[]>(initialRequests);
-  const [propertyCount, setPropertyCount] = useState(0);
-  const [requestCount, setRequestCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -102,44 +113,15 @@ export default function FeaturedListingsClient({ featuredProperties: initialProp
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
-  useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const [
-          totalProperties,
-          totalRequests
-        ] = await Promise.all([
-          getPropertiesCountAction(true),
-          getRequestsCountAction(true)
-        ]);
-        setPropertyCount(totalProperties);
-        setRequestCount(totalRequests);
-      } catch (error) {
-        console.error('Error fetching counts:', error);
-        setPropertyCount(0);
-        setRequestCount(0);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    // Si tenemos datos iniciales, solo buscamos los contadores
-    if (initialProperties.length > 0 || initialRequests.length > 0) {
-        fetchCounts();
-    } else {
-        // Si no, podríamos buscar todo (aunque la página principal ya lo hace)
-        setIsLoading(false);
-    }
-  }, [initialProperties, initialRequests]);
-
   const displayedProperties = isMobile ? properties.slice(0, 4) : properties;
   const displayedRequests = isMobile ? requests.slice(0, 4) : requests;
+  const isLoading = false; // Data is now pre-loaded
 
   return (
     <section className="py-6">
       <div className="text-center mb-8">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Propiedades y Solicitudes Destacadas</h2>
-          <p className="text-sm sm:text-base md:text-lg text-muted-foreground mt-2">Explora las últimas propiedades y solicitudes agregadas a nuestra plataforma.</p>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Propiedades y Solicitudes</h2>
+          <p className="text-sm sm:text-base md:text-lg text-muted-foreground mt-2">Explora las propiedades y solicitudes agregadas a nuestra plataforma.</p>
       </div>
       <div className="bg-slate-200 rounded-xl p-4 sm:p-6 md:p-8 mt-0">
         <div className="flex justify-center mb-6 sm:mb-8">
@@ -200,9 +182,7 @@ export default function FeaturedListingsClient({ featuredProperties: initialProp
                 <Home className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-medium mb-2">
-                <StaticText id="landing:no-properties" textType="span">
-                  No hay propiedades destacadas
-                </StaticText>
+                {noPropertiesMessage}
               </h3>
               <p className="text-muted-foreground">
                 Las propiedades destacadas aparecerán aquí pronto.
@@ -221,9 +201,7 @@ export default function FeaturedListingsClient({ featuredProperties: initialProp
               <Search className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="text-xl font-medium mb-2">
-              <StaticText id="landing:no-requests" textType="span">
-                No hay solicitudes destacadas
-              </StaticText>
+              {noRequestsMessage}
             </h3>
             <p className="text-muted-foreground">
               Las solicitudes destacadas aparecerán aquí pronto.
@@ -234,9 +212,7 @@ export default function FeaturedListingsClient({ featuredProperties: initialProp
         <div className="flex justify-center gap-4 mt-8">
           <Button asChild variant="outline" size="lg" className="rounded-full bg-white hover:bg-white/90">
             <Link href={activeTab === 'properties' ? "/properties" : "/requests"}>
-              <StaticText id={activeTab === 'properties' ? "landing:view-all-properties" : "landing:view-all-requests"} textType="span">
-                {activeTab === 'properties' ? "Ver Todas las Propiedades" : "Ver Todas las Solicitudes"}
-              </StaticText>
+              {activeTab === 'properties' ? viewAllPropertiesText : viewAllRequestsText}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -251,6 +227,10 @@ function FeaturedPropertyCard({ property }: { property: Property }) {
   const authorName = property.author?.name || "Anunciante";
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   const authorRoleDisplay = getRoleDisplayName(property.author?.role_id, property.author?.role_name);
+  const group = property.author;
+  
+  // Mantenemos el log para futura depuración si es necesario
+  // console.log('FeaturedPropertyCard property:', property);
 
   return (
     <Link href={`/properties/${propertySlug}`} className="block group">
@@ -268,60 +248,78 @@ function FeaturedPropertyCard({ property }: { property: Property }) {
               <Home className="h-16 w-16 text-gray-400" />
             </div>
           )}
-          <div className="absolute top-2 left-2 flex flex-col gap-2">
-            {property.listingType && (
-              <Badge variant="secondary" className="capitalize">{property.listingType === 'rent' ? 'Arriendo' : 'Venta'}</Badge>
+          
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-2">
+            {property.pub_id && (
+              <Badge variant="secondary" className="bg-blue-500/80 text-white backdrop-blur-sm hover:bg-blue-600">
+                {property.pub_id}
+              </Badge>
             )}
           </div>
-          <div className="absolute top-2 right-2 flex flex-col gap-2">
-            {property.pub_id && <Badge variant="default">{property.pub_id}</Badge>}
+
+          <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
+            <Badge variant="default" className="capitalize">{property.listingType === 'rent' ? 'Arriendo' : 'Venta'}</Badge>
           </div>
-          {property.source === 'bot' && (
-             <div className="absolute bottom-2 right-2">
-                <Badge variant="outline" className="bg-white/80 backdrop-blur-sm">
-                  <Bot className="h-4 w-4 mr-1.5 text-blue-600"/>
-                  WhatsApp
-                </Badge>
-              </div>
-          )}
-        </div>
-        <div className="p-4 flex flex-col flex-grow">
-          <p className="text-sm text-gray-500 mb-1 flex items-center">
-            <MapPin className="h-4 w-4 mr-1.5" />
-            {property.city || 'Ubicación no disponible'}
-          </p>
-          <h3 className="font-semibold text-lg text-gray-800 group-hover:text-primary transition-colors truncate mb-2">
-            {property.title}
-          </h3>
-          <div className="text-xl font-bold text-primary mb-3">
-            {property.price ? `$ ${property.price.toLocaleString('es-CL')}` : 'Precio no disponible'}
-            {property.listingType === 'rent' && <span className="text-sm font-normal text-gray-500">/mes</span>}
-          </div>
-          <div className="flex-grow" />
-          <div className="flex items-center gap-4 text-sm text-gray-600 border-t pt-3 mt-3">
-             {property.bedrooms !== null && 
-                <span className="inline-flex items-center"><BedDouble className="h-4 w-4 mr-1.5 text-gray-500" /> {property.bedrooms}</span>
-             }
-             {property.bathrooms !== null && 
-                <span className="inline-flex items-center"><Bath className="h-4 w-4 mr-1.5 text-gray-500" /> {property.bathrooms}</span>
-             }
-             {property.squareMeters !== null && 
-                <span className="inline-flex items-center"><Maximize2 className="h-4 w-4 mr-1.5 text-gray-500" /> {property.squareMeters} m²</span>
-             }
+          
+          <div className="absolute bottom-2 right-2 flex items-center gap-2">
+            {/* CORRECCIÓN: Mostrar el badge si el nombre del grupo existe */}
+            {group?.group_name && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 backdrop-blur-sm">
+                {group.group_name}
+              </Badge>
+            )}
+            
+            {property.source === 'bot' && (
+              <Badge variant="default" className="bg-green-600/90 text-white backdrop-blur-sm flex items-center gap-1.5 hover:bg-green-700">
+                <Bot size={14} />
+                WhatsApp
+              </Badge>
+            )}
           </div>
         </div>
-        <div className="bg-gray-50 px-4 py-3 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarImage src={property.author?.avatarUrl} alt={authorName} />
-                    <AvatarFallback>{authorInitials}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{authorName}</p>
-                    {authorRoleDisplay && <p className="text-xs text-gray-500 truncate">{authorRoleDisplay}</p>}
-                </div>
+        
+        <div className="p-4 flex-grow flex flex-col">
+          <div className="flex-grow">
+            <div className="flex justify-between items-start">
+              <h3 className="font-bold text-lg text-gray-800 group-hover:text-primary transition-colors pr-2 flex-1">
+                {property.title}
+              </h3>
+              <p className="font-semibold text-lg text-gray-900 whitespace-nowrap">
+                {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(property.price || 0)}
+              </p>
             </div>
-            {property.author?.role_id === '2' && <ShieldCheck className="h-5 w-5 text-green-600 flex-shrink-0" />}
+            
+            <div className="flex items-center text-sm text-gray-500 mt-1">
+              <MapPin className="h-4 w-4 mr-1.5" />
+              <span>{property.city}, {property.location?.region}</span>
+            </div>
+          </div>
+          
+          <div className="border-t pt-3 mt-3">
+            <div className="flex justify-between text-sm text-gray-600">
+              <span className="flex items-center"><BedDouble className="h-4 w-4 mr-1.5 text-primary/80"/> {property.bedrooms} Dorm.</span>
+              <span className="flex items-center"><Bath className="h-4 w-4 mr-1.5 text-primary/80"/> {property.bathrooms} Baños</span>
+              {property.squareMeters && (
+                <span className="flex items-center"><Maximize2 className="h-4 w-4 mr-1.5 text-primary/80"/> {property.squareMeters} m²</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 pb-3 flex items-center justify-between">
+           <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={property.author?.avatarUrl} alt={authorName} />
+              <AvatarFallback>{authorInitials}</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-sm font-medium text-gray-700">{authorName}</p>
+              {authorRoleDisplay && <p className="text-xs text-gray-500">{authorRoleDisplay}</p>}
+            </div>
+          </div>
+          {property.author?.role_id === 'broker' && (
+            <ShieldCheck className="h-5 w-5 text-blue-500" title="Corredor verificado" />
+          )}
         </div>
       </div>
     </Link>
@@ -333,63 +331,78 @@ function FeaturedRequestCard({ request }: { request: PropertyRequest }) {
   const authorName = request.author?.name || "Usuario";
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   const authorRoleDisplay = getRoleDisplayName(request.author?.role_id, request.author?.role_name);
-  
+  const group = request.author;
+
   return (
     <Link href={`/requests/${requestSlug}`} className="block group">
       <div className="bg-white rounded-xl shadow-lg overflow-hidden h-full transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1 flex flex-col">
-        <div className="p-4 flex-grow">
-           <div className="flex justify-between items-start mb-2">
-              <div>
-                <p className="text-sm text-gray-500 mb-1 flex items-center">
-                  <MapPin className="h-4 w-4 mr-1.5" />
-                  {request.city || 'Ubicación no especificada'}
-                </p>
-                <h3 className="font-semibold text-lg text-gray-800 group-hover:text-primary transition-colors">
-                  {request.title}
-                </h3>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                {request.listingType && (
-                    <Badge variant="secondary" className="capitalize">{request.listingType === 'rent' ? 'Busca Arriendo' : 'Busca Compra'}</Badge>
-                )}
-                {request.pub_id && <Badge variant="default">{request.pub_id}</Badge>}
-              </div>
+        <div className="relative w-full h-48 bg-gray-200 flex items-center justify-center">
+            <FileSearch className="h-16 w-16 text-gray-400" />
+
+            <div className="absolute top-2 right-2 flex flex-col items-end gap-2">
+              {request.pub_id && (
+                <Badge variant="secondary" className="bg-blue-500/80 text-white backdrop-blur-sm hover:bg-blue-600">
+                  {request.pub_id}
+                </Badge>
+              )}
             </div>
 
-            {request.budget ? (
-                <div className="text-lg font-bold text-primary mb-3">
-                    Presupuesto: ${request.budget.toLocaleString('es-CL')}
-                </div>
-            ) : null}
-
-            {request.description && <p className="text-sm text-gray-600 mt-2 mb-3 line-clamp-2">{request.description}</p>}
-
-            <div className="flex items-center gap-4 text-sm text-gray-600 border-t pt-3 mt-auto">
-              {request.bedrooms && 
-                  <span className="inline-flex items-center"><BedDouble className="h-4 w-4 mr-1.5 text-gray-500" /> {request.bedrooms}+</span>
-              }
-              {request.bathrooms && 
-                  <span className="inline-flex items-center"><Bath className="h-4 w-4 mr-1.5 text-gray-500" /> {request.bathrooms}+</span>
-              }
+            <div className="absolute top-2 left-2 flex flex-col items-start gap-2">
+                <Badge variant="default" className="capitalize">{request.listingType === 'rent' ? 'Busca Arriendo' : 'Busca Compra'}</Badge>
+            </div>
+            
+            {/* Badges de grupo y WhatsApp en la esquina inferior derecha */}
+            <div className="absolute bottom-2 right-2 flex items-center gap-2">
+              {group && group.group_name && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 backdrop-blur-sm">
+                  {group.group_name}
+                </Badge>
+              )}
+              
+              {request.source === 'bot' && (
+                <Badge variant="default" className="bg-green-600/90 text-white backdrop-blur-sm flex items-center gap-1.5 hover:bg-green-700">
+                  <Bot size={14} />
+                  WhatsApp
+                </Badge>
+              )}
             </div>
         </div>
-        <div className="bg-gray-50 px-4 py-3 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <Avatar className="h-8 w-8 flex-shrink-0">
-                <AvatarImage src={request.author?.avatarUrl} alt={authorName} />
-                <AvatarFallback>{authorInitials}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{authorName}</p>
-                 {authorRoleDisplay && <p className="text-xs text-gray-500 truncate">{authorRoleDisplay}</p>}
-              </div>
+        
+        <div className="p-4 flex-grow flex flex-col">
+          <div className="flex-grow">
+            <h3 className="font-bold text-lg text-gray-800 group-hover:text-primary transition-colors">
+              {request.title}
+            </h3>
+            
+            <div className="flex items-center text-sm text-gray-500 mt-1">
+              <MapPin className="h-4 w-4 mr-1.5" />
+              <span>{request.location?.city}, {request.location?.region}</span>
             </div>
-            {request.source === 'bot' && (
-              <Badge variant="outline" className="bg-white/80 backdrop-blur-sm flex-shrink-0">
-                <Bot className="h-4 w-4 mr-1.5 text-blue-600"/>
-                WhatsApp
-              </Badge>
-            )}
+          </div>
+          
+          <div className="border-t pt-3 mt-3">
+            <div className="flex justify-between items-center text-sm text-gray-600">
+                <span>
+                    Presupuesto: <span className="font-semibold">{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(request.budget || 0)}</span>
+                </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 pb-3 flex items-center justify-between">
+           <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={request.author?.avatarUrl} alt={authorName} />
+              <AvatarFallback>{authorInitials}</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="text-sm font-medium text-gray-700">{authorName}</p>
+              {authorRoleDisplay && <p className="text-xs text-gray-500">{authorRoleDisplay}</p>}
+            </div>
+          </div>
+          {request.author?.role_id === 'broker' && (
+            <ShieldCheck className="h-5 w-5 text-blue-500" title="Corredor verificado" />
+          )}
         </div>
       </div>
     </Link>

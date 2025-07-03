@@ -1,4 +1,3 @@
-
 // src/app/dashboard/crm/page.tsx
 'use client';
 
@@ -72,32 +71,32 @@ export default function CrmPage() {
 
   useEffect(() => {
     async function fetchContacts() {
-      if (loggedInUser?.id) {
-        setIsLoadingContacts(true);
-        try {
-          const fetchedContacts = await getUserContactsAction(loggedInUser.id);
-          setContacts(fetchedContacts); 
-        } catch (error) {
-          console.error("Error fetching contacts:", error);
-          toast({
-            title: 'Error al Cargar Contactos',
-            description: 'No se pudieron obtener tus contactos. Intenta de nuevo más tarde.',
-            variant: 'destructive',
-          });
-        } finally {
-          setIsLoadingContacts(false);
-        }
-      } else if (!localStorage.getItem('loggedInUser')) {
-         setIsLoadingContacts(false);
+      if (!loggedInUser?.id) {
+        // No hay usuario, así que nos aseguramos de que la carga se detenga.
+        setIsLoadingContacts(false);
+        setContacts([]);
+        return;
+      }
+      
+      setIsLoadingContacts(true);
+      try {
+        const fetchedContacts = await getUserContactsAction(loggedInUser.id);
+        setContacts(fetchedContacts);
+      } catch (error) {
+        console.error("Error fetching contacts:", error);
+        toast({
+          title: 'Error al Cargar Contactos',
+          description: 'No se pudieron obtener tus contactos. Intenta de nuevo más tarde.',
+          variant: 'destructive',
+        });
+        setContacts([]); // Limpiar contactos en caso de error
+      } finally {
+        setIsLoadingContacts(false);
       }
     }
-    
-    if (loggedInUser && contacts.length === 0 && !isLoadingContacts) {
-        fetchContacts();
-    } else if (!loggedInUser && !isLoadingContacts) {
-        setContacts([]); 
-    }
-  }, [loggedInUser, toast]);
+
+    fetchContacts();
+  }, [loggedInUser?.id, toast]);
 
   useEffect(() => {
     let tempContacts = [...contacts];

@@ -1,0 +1,2 @@
+ALTER TABLE `users` ADD `primary_group_id` varchar(255);
+ALTER TABLE `users` ADD CONSTRAINT `users_primary_group_id_fk` FOREIGN KEY (`primary_group_id`) REFERENCES `groups`(`id`) ON DELETE set null ON UPDATE no action;

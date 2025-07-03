@@ -1,30 +1,31 @@
-
 // src/actions/commentActions.ts
 'use server';
 
-import { query } from '@/lib/db';
-import type { Comment, AddCommentFormValues, User, CommentInteractionDetails } from '@/lib/types';
+import { db } from '@/lib/db';
+import { comments, properties, searchRequests, users, userCommentInteractions } from '@/lib/db/schema';
+import type { Comment, AddCommentFormValues, CommentInteractionDetails } from '@/lib/types';
 import { addCommentFormSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
+import { and, eq, desc, sql } from 'drizzle-orm';
 
 function mapDbRowToComment(row: any): Comment {
-  const author: Pick<User, 'id' | 'name' | 'avatarUrl'> | undefined = row.author_id ? {
-    id: row.author_id,
-    name: row.author_name,
-    avatarUrl: row.author_avatar_url || undefined,
+  const author = row.author ? {
+    id: row.author.id,
+    name: row.author.name,
+    avatarUrl: row.author.avatarUrl || undefined,
   } : undefined;
 
   return {
     id: row.id,
-    user_id: row.user_id,
-    property_id: row.property_id,
-    request_id: row.request_id,
+    user_id: row.userId,
+    property_id: row.propertyId,
+    request_id: row.requestId,
     content: row.content,
-    parent_id: row.parent_id,
+    parent_id: row.parentId,
     upvotes: Number(row.upvotes),
-    created_at: new Date(row.created_at).toISOString(),
-    updated_at: new Date(row.updated_at).toISOString(),
+    created_at: new Date(row.createdAt).toISOString(),
+    updated_at: new Date(row.updatedAt).toISOString(),
     author,
   };
 }
@@ -40,64 +41,56 @@ export async function addCommentAction(
   if (!target.propertyId && !target.requestId) {
     return { success: false, message: 'Se requiere un ID de propiedad o solicitud.' };
   }
-  if (target.propertyId && target.requestId) {
-    return { success: false, message: 'Un comentario solo puede pertenecer a una propiedad O a una solicitud, no a ambas.' };
-  }
 
   const validation = addCommentFormSchema.safeParse(values);
   if (!validation.success) {
-    const errorMessages = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-    return { success: false, message: `Datos inválidos: ${errorMessages}` };
+      const errorMessages = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      return { success: false, message: `Datos inválidos: ${errorMessages}` };
   }
 
   const { content, parentId } = validation.data;
   const commentId = randomUUID();
 
   try {
-    // Insertar el comentario
-    const commentSql = `
-      INSERT INTO comments (id, user_id, content, parent_id, property_id, request_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
-    `;
-    await query(commentSql, [
-      commentId,
-      userId,
+    await db.insert(comments).values({
+      id: commentId,
+      userId: userId,
       content,
-      parentId || null,
-      target.propertyId || null,
-      target.requestId || null,
-    ]);
+      parentId: parentId || undefined,
+      propertyId: target.propertyId || undefined,
+      requestId: target.requestId || undefined,
+    });
 
-    // Actualizar el contador de comentarios en la tabla correspondiente
     if (target.propertyId) {
-      await query('UPDATE properties SET comments_count = comments_count + 1 WHERE id = ?', [target.propertyId]);
+        await db.update(properties).set({ commentsCount: sql`${properties.commentsCount} + 1` }).where(eq(properties.id, target.propertyId));
     } else if (target.requestId) {
-      await query('UPDATE property_requests SET comments_count = comments_count + 1 WHERE id = ?', [target.requestId]);
-    }
-
-    // Revalidar rutas
-    if (target.propertySlug) {
-      revalidatePath(`/properties/${target.propertySlug}`);
-    }
-    if (target.requestSlug) {
-      revalidatePath(`/requests/${target.requestSlug}`);
+        await db.update(searchRequests).set({ commentsCount: sql`${searchRequests.commentsCount} + 1` }).where(eq(searchRequests.id, target.requestId));
     }
     
-    const newCommentResult = await query(
-        `SELECT c.*, u.id as author_id, u.name as author_name, u.avatar_url as author_avatar_url
-         FROM comments c
-         JOIN users u ON c.user_id = u.id
-         WHERE c.id = ?`, [commentId]
-    );
+    if (target.propertySlug) revalidatePath(`/properties/${target.propertySlug}`);
+    if (target.requestSlug) revalidatePath(`/requests/${target.requestSlug}`);
+    
+    const newCommentQuery = await db.query.comments.findFirst({
+        where: eq(comments.id, commentId),
+        with: {
+            author: {
+                columns: {
+                    id: true,
+                    name: true,
+                    avatarUrl: true,
+                }
+            }
+        }
+    });
 
-    if (!Array.isArray(newCommentResult) || newCommentResult.length === 0) {
+    if (!newCommentQuery) {
       return { success: false, message: 'Error al añadir el comentario, no se pudo recuperar.' };
     }
     
     return {
       success: true,
       message: 'Comentario añadido exitosamente.',
-      comment: mapDbRowToComment(newCommentResult[0]),
+      comment: mapDbRowToComment(newCommentQuery),
     };
 
   } catch (error: any) {
@@ -106,49 +99,29 @@ export async function addCommentAction(
   }
 }
 
-
 export async function getCommentsAction(
   target: { propertyId?: string; requestId?: string }
 ): Promise<Comment[]> {
-  if (!target.propertyId && !target.requestId) {
-    console.warn("[CommentAction] getCommentsAction called without propertyId or requestId.");
-    return [];
-  }
-  if (target.propertyId && target.requestId) {
-    console.warn("[CommentAction] getCommentsAction called with both propertyId and requestId. Choose one.");
-    return [];
-  }
+  if (!target.propertyId && !target.requestId) return [];
 
   try {
-    let sql = `
-      SELECT 
-        c.*, 
-        u.id as author_id, 
-        u.name as author_name, 
-        u.avatar_url as author_avatar_url
-      FROM comments c
-      JOIN users u ON c.user_id = u.id
-    `;
-    const params: string[] = [];
+    const queryResult = await db.query.comments.findMany({
+        where: target.propertyId ? eq(comments.propertyId, target.propertyId) : eq(comments.requestId, target.requestId!),
+        with: {
+            author: {
+                columns: {
+                    id: true,
+                    name: true,
+                    avatarUrl: true
+                }
+            }
+        },
+        orderBy: [desc(comments.createdAt)]
+    });
 
-    if (target.propertyId) {
-      sql += ' WHERE c.property_id = ?';
-      params.push(target.propertyId);
-    } else if (target.requestId) {
-      sql += ' WHERE c.request_id = ?';
-      params.push(target.requestId);
-    }
-    
-    sql += ' ORDER BY c.created_at DESC'; 
-
-    const rows = await query(sql, params);
-    if (!Array.isArray(rows)) {
-      console.error('[CommentAction] Expected array from getCommentsAction query, got:', typeof rows);
-      return [];
-    }
-    return rows.map(mapDbRowToComment);
+    return queryResult.map(mapDbRowToComment);
   } catch (error: any) {
-    console.error(`[CommentAction] Error fetching comments for ${target.propertyId ? 'property' : 'request'} ${target.propertyId || target.requestId}:`, error);
+    console.error(`[CommentAction] Error fetching comments:`, error);
     return [];
   }
 }
@@ -157,27 +130,24 @@ export async function getCommentInteractionDetailsAction(
   commentId: string,
   userId?: string
 ): Promise<CommentInteractionDetails> {
-  if (!commentId) {
-    throw new Error("commentId is required.");
-  }
-
-  let totalLikes = 0;
-  let currentUserLiked = false;
+  if (!commentId) throw new Error("commentId is required.");
 
   try {
-    const likesResult: any[] = await query(
-      'SELECT upvotes FROM comments WHERE id = ?',
-      [commentId]
-    );
-    if (likesResult.length > 0) {
-      totalLikes = Number(likesResult[0].upvotes) || 0;
-    }
-
+    const commentResult = await db.query.comments.findFirst({
+        where: eq(comments.id, commentId),
+        columns: {
+            upvotes: true
+        }
+    });
+    const totalLikes = commentResult?.upvotes ?? 0;
+    
+    let currentUserLiked = false;
     if (userId) {
-      const userInteractionResult: any[] = await query(
-        'SELECT id FROM user_comment_interactions WHERE user_id = ? AND comment_id = ? AND interaction_type = "like"',
-        [userId, commentId]
-      );
+      const userInteractionResult = await db.select().from(userCommentInteractions).where(and(
+          eq(userCommentInteractions.userId, userId),
+          eq(userCommentInteractions.commentId, commentId),
+          eq(userCommentInteractions.interactionType, 'like')
+      ));
       currentUserLiked = userInteractionResult.length > 0;
     }
     return { totalLikes, currentUserLiked };
@@ -196,32 +166,40 @@ export async function toggleCommentLikeAction(
   }
 
   try {
-    const existingInteraction: any[] = await query(
-      'SELECT id FROM user_comment_interactions WHERE user_id = ? AND comment_id = ? AND interaction_type = "like"',
-      [userId, commentId]
-    );
+    const existingInteraction = await db.query.userCommentInteractions.findFirst({
+        where: and(
+            eq(userCommentInteractions.userId, userId),
+            eq(userCommentInteractions.commentId, commentId),
+            eq(userCommentInteractions.interactionType, 'like')
+        )
+    });
 
     let userNowLikes: boolean;
-    let newUpvotesCount: number;
 
-    if (existingInteraction.length > 0) {
-      // User has liked, so unlike
-      await query('DELETE FROM user_comment_interactions WHERE id = ?', [existingInteraction[0].id]);
-      await query('UPDATE comments SET upvotes = GREATEST(0, upvotes - 1) WHERE id = ?', [commentId]);
+    if (existingInteraction) {
+      // Unlike
+      await db.delete(userCommentInteractions).where(eq(userCommentInteractions.id, existingInteraction.id));
+      await db.update(comments).set({ upvotes: sql`${comments.upvotes} - 1` }).where(eq(comments.id, commentId));
       userNowLikes = false;
     } else {
-      // User has not liked, so like
-      const interactionId = randomUUID();
-      await query(
-        'INSERT INTO user_comment_interactions (id, user_id, comment_id, interaction_type) VALUES (?, ?, ?, "like")',
-        [interactionId, userId, commentId]
-      );
-      await query('UPDATE comments SET upvotes = upvotes + 1 WHERE id = ?', [commentId]);
+      // Like
+      await db.insert(userCommentInteractions).values({
+          id: randomUUID(),
+          userId,
+          commentId,
+          interactionType: 'like'
+      });
+      await db.update(comments).set({ upvotes: sql`${comments.upvotes} + 1` }).where(eq(comments.id, commentId));
       userNowLikes = true;
     }
 
-    const updatedComment: any[] = await query('SELECT upvotes FROM comments WHERE id = ?', [commentId]);
-    newUpvotesCount = updatedComment.length > 0 ? Number(updatedComment[0].upvotes) : 0;
+    const updatedComment = await db.query.comments.findFirst({
+        where: eq(comments.id, commentId),
+        columns: {
+            upvotes: true
+        }
+    });
+    const newUpvotesCount = updatedComment?.upvotes ?? 0;
 
     return {
       success: true,

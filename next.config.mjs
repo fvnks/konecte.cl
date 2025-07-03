@@ -62,24 +62,23 @@ const nextConfig = {
         pathname: '/**', 
       }
     ],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    formats: ['image/webp'],
   },
-  serverExternalPackages: [
-    'handlebars',
-    'dotprompt',
-    '@genkit-ai/core',
-    'genkit', 
-    '@genkit-ai/googleai',
-    'mysql2',
-    'bcryptjs',
-  ],
+  experimental: {
+    serverComponentsExternalPackages: [
+      'handlebars',
+      'dotprompt',
+      '@genkit-ai/core',
+      'genkit', 
+      '@genkit-ai/googleai',
+      'mysql2',
+      'bcryptjs',
+    ],
+  },
   compiler: {
     styledComponents: true,
-  },
-  // Allow requests from the Firebase Studio development environment
-  experimental: {
-    allowedDevOrigins: [
-        "https://9000-firebase-studio-1749651587478.cluster-vpxjqdstfzgs6qeiaf7rdlsqrc.cloudworkstations.dev"
-    ],
   },
 };
 

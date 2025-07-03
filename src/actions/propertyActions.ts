@@ -2,13 +2,17 @@
 'use server';
 
 import type { PropertyFormValues } from "@/lib/types"; 
-import { query } from "@/lib/db";
-import type { PropertyListing, User, PropertyType, ListingCategory, SubmitPropertyResult, OrientationType } from "@/lib/types";
+import { db } from "@/lib/db";
+import { properties } from "@/lib/db/schema";
+import { eq, and, or, desc, gte, lte, like, count, sql } from "drizzle-orm";
+import type { PropertyListing, PropertyType, ListingCategory, SubmitPropertyResult, OrientationType } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { findMatchingRequestsForNewProperty, type NewPropertyInput } from '@/ai/flows/find-matching-requests-for-new-property-flow';
 import { getUserByIdAction } from './userActions';
 import { sendGenericWhatsAppMessageAction } from './otpActions';
+import { users, groups, roles, comments, plans } from '@/lib/db/schema';
+import { asc } from 'drizzle-orm';
 
 // Helper function to generate a slug from a title
 const generateSlug = (title: string): string => {
@@ -21,70 +25,81 @@ const generateSlug = (title: string): string => {
 };
 
 function mapDbRowToPropertyListing(row: any): PropertyListing {
-  const parseJsonString = (jsonString: string | null): string[] => {
-    if (!jsonString) return [];
-    try {
-      const parsed = JSON.parse(jsonString);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      console.warn("Failed to parse JSON string:", jsonString, e);
-      return [];
-    }
-  };
+  // This function now maps from a nested Drizzle result
+  const p = row; // The row is the property object
+  const authorData = row.user;
+  const roleData = authorData?.role;
+  const planData = authorData?.plan;
+  const groupData = authorData?.primaryGroup;
   
-  const authorPlanName = row.author_plan_name_from_db;
-  const authorIsBroker = row.author_role_id === 'broker';
+  const authorIsBroker = roleData?.id === 'broker';
+  const authorPlanName = planData?.name;
+
+  // Asegurarnos de que el nombre del grupo se asigne correctamente
+  const groupName = groupData?.name || null;
+  console.log('mapDbRowToPropertyListing - row structure:', JSON.stringify({
+    hasUser: !!authorData,
+    hasPrimaryGroup: !!groupData,
+    groupName
+  }, null, 2));
+  
+  if (groupData) {
+    console.log('Group data found:', JSON.stringify(groupData, null, 2));
+  }
 
   return {
-    id: row.id,
-    pub_id: row.publication_code,
-    user_id: row.user_id,
-    source: row.source,
-    title: row.title,
-    slug: row.slug,
-    description: row.description,
-    listingType: row.property_type,
-    category: row.category,
-    price: Number(row.price),
-    currency: row.currency,
-    address: row.address,
-    city: row.city,
-    region: row.region,
-    country: row.country,
-    bedrooms: Number(row.bedrooms),
-    bathrooms: Number(row.bathrooms),
-    totalAreaSqMeters: Number(row.total_area_sq_meters), // Renamed
-    usefulAreaSqMeters: row.useful_area_sq_meters !== null ? Number(row.useful_area_sq_meters) : null,
-    parkingSpaces: row.parking_spaces !== null ? Number(row.parking_spaces) : 0,
-    petsAllowed: Boolean(row.pets_allowed),
-    furnished: Boolean(row.furnished),
-    commercialUseAllowed: Boolean(row.commercial_use_allowed),
-    hasStorage: Boolean(row.has_storage),
-    orientation: row.orientation as OrientationType | null,
-    images: parseJsonString(row.images), 
-    features: parseJsonString(row.features),
-    upvotes: Number(row.upvotes),
-    commentsCount: Number(row.comments_count),
-    views_count: Number(row.views_count),
-    inquiries_count: Number(row.inquiries_count),
-    isActive: Boolean(row.is_active),
-    createdAt: new Date(row.created_at).toISOString(),
-    updatedAt: new Date(row.updated_at).toISOString(),
-    author: row.author_name ? {
-      id: row.user_id, 
-      name: row.author_name,
-      avatarUrl: row.author_avatar_url || undefined,
-      email: row.author_email, 
-      phone_number: row.author_phone_number, 
-      role_id: row.author_role_id || '',
-      role_name: row.author_role_name || undefined,
-      plan_id: row.author_plan_id,
+    id: p.id,
+    pub_id: p.publicationCode,
+    user_id: p.userId,
+    source: p.source,
+    title: p.title,
+    slug: p.slug,
+    description: p.description,
+    listingType: p.propertyType,
+    category: p.category,
+    price: p.price ? Number(p.price) : 0,
+    currency: p.currency,
+    address: p.address,
+    city: p.city,
+    region: p.region,
+    country: p.country,
+    bedrooms: p.bedrooms,
+    bathrooms: p.bathrooms,
+    totalAreaSqMeters: p.totalAreaSqMeters ? Number(p.totalAreaSqMeters) : 0,
+    usefulAreaSqMeters: p.usefulAreaSqMeters ? Number(p.usefulAreaSqMeters) : null,
+    parkingSpaces: p.parkingSpaces,
+    petsAllowed: p.petsAllowed,
+    furnished: p.furnished,
+    commercialUseAllowed: p.commercialUseAllowed,
+    hasStorage: p.hasStorage,
+    orientation: p.orientation as OrientationType | null,
+    images: Array.isArray(p.images) ? p.images : [], 
+    features: Array.isArray(p.features) ? p.features : [],
+    upvotes: p.upvotes,
+    commentsCount: p.commentsCount,
+    views_count: p.viewsCount,
+    inquiries_count: p.inquiriesCount,
+    isActive: p.isActive,
+    createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : '',
+    updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : '',
+    author: authorData ? {
+      id: authorData.id, 
+      name: authorData.name,
+      avatarUrl: authorData.avatarUrl || undefined,
+      email: authorData.email, 
+      phone_number: authorData.phoneNumber, 
+      role_id: authorData.roleId,
+      role_name: roleData?.name,
+      plan_id: authorData.planId,
       plan_name: authorPlanName,
       plan_is_pro_or_premium: authorIsBroker && (authorPlanName?.toLowerCase().includes('pro') || authorPlanName?.toLowerCase().includes('premium')),
-      plan_allows_contact_view: !!row.author_plan_can_view_contact_data,
+      plan_allows_contact_view: !!planData?.can_view_contact_data,
       plan_is_premium_broker: authorIsBroker && authorPlanName?.toLowerCase().includes('premium'),
-      plan_automated_alerts_enabled: !!row.author_plan_automated_alerts_enabled,
-      plan_advanced_dashboard_access: !!row.author_plan_advanced_dashboard_access,
+      plan_automated_alerts_enabled: !!planData?.automated_alerts_enabled,
+      plan_advanced_dashboard_access: !!planData?.advanced_dashboard_access,
+      group_name: groupName,
+      group_avatar_url: groupData?.avatarUrl || null,
+      group_badge_type: groupData?.postBadgeType || null,
     } : undefined,
   };
 }
@@ -105,34 +120,38 @@ export async function submitPropertyAction(
   const pubId = `P-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   
   try {
-    const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
-    const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
+    const imagesJson = data.images && data.images.length > 0 ? data.images : [];
+    const featuresJson = data.features ? data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0) : [];
 
-    const sql = `
-      INSERT INTO properties (
-        id, user_id, title, slug, description, property_type, category,
-        price, currency, address, city, region, country, bedrooms, bathrooms,
-        total_area_sq_meters, useful_area_sq_meters, parking_spaces, 
-        pets_allowed, furnished, commercial_use_allowed, has_storage, orientation,
-        images, features, is_active, created_at, updated_at, publication_code
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW(), NOW(), ?)
-    `;
-
-    const params = [
-      propertyId, userId, data.title, slug, data.description, data.listingType, data.category,
-      data.price, data.currency, data.address, data.city, data.region, data.country, data.bedrooms, data.bathrooms,
-      data.totalAreaSqMeters, 
-      data.usefulAreaSqMeters === null ? null : (data.usefulAreaSqMeters ?? null),
-      data.parkingSpaces ?? 0,
-      data.petsAllowed ?? false,
-      data.furnished ?? false,
-      data.commercialUseAllowed ?? false,
-      data.hasStorage ?? false,
-      data.orientation === null ? null : (data.orientation ?? null),
-      imagesJson, featuresJson, pubId
-    ];
-
-    await query(sql, params);
+    await db.insert(properties).values({
+      id: propertyId,
+      userId: userId,
+      title: data.title,
+      slug,
+      description: data.description,
+      propertyType: data.listingType,
+      category: data.category,
+      price: data.price.toString(),
+      currency: data.currency,
+      address: data.address,
+      city: data.city,
+      region: data.region,
+      country: data.country,
+      bedrooms: data.bedrooms,
+      bathrooms: data.bathrooms,
+      totalAreaSqMeters: data.totalAreaSqMeters.toString(),
+      usefulAreaSqMeters: data.usefulAreaSqMeters?.toString(),
+      parkingSpaces: data.parkingSpaces,
+      petsAllowed: data.petsAllowed,
+      furnished: data.furnished,
+      commercialUseAllowed: data.commercialUseAllowed,
+      hasStorage: data.hasStorage,
+      orientation: data.orientation,
+      images: imagesJson,
+      features: featuresJson,
+      isActive: true,
+      publicationCode: pubId,
+    });
     console.log(`[PropertyAction] Property submitted successfully. ID: ${propertyId}, Slug: ${slug}, PubID: ${pubId}`);
 
     revalidatePath('/');
@@ -237,38 +256,11 @@ export interface GetPropertiesActionOptions {
   orderBy?: 'createdAt_desc' | 'price_asc' | 'price_desc' | 'popularity_desc' | 'random';
 }
 
-const BASE_PROPERTY_SELECT_SQL = `
-  SELECT
-    p.id, p.user_id, p.title, p.slug, p.description, p.property_type, p.category,
-    p.price, p.currency, p.address, p.city, p.region, p.country, p.bedrooms,
-    p.bathrooms, p.total_area_sq_meters, p.useful_area_sq_meters, p.parking_spaces,
-    p.pets_allowed, p.furnished, p.commercial_use_allowed, p.has_storage,
-    p.orientation, p.images, p.features, p.upvotes, p.comments_count,
-    p.views_count, p.inquiries_count, p.is_active, p.created_at, p.updated_at,
-    p.publication_code,
-    u.name as author_name,
-    u.avatar_url as author_avatar_url,
-    u.email as author_email,
-    u.phone_number as author_phone_number,
-    u.role_id as author_role_id,
-    r.name as author_role_name,
-    plan_author.name AS author_plan_name_from_db,
-    plan_author.can_view_contact_data AS author_plan_can_view_contact_data,
-    plan_author.automated_alerts_enabled AS author_plan_automated_alerts_enabled,
-    plan_author.advanced_dashboard_access AS author_plan_advanced_dashboard_access,
-    u.plan_id as author_plan_id,
-    p.source as source
-  FROM properties p
-  LEFT JOIN users u ON p.user_id = u.id
-  LEFT JOIN roles r ON u.role_id = r.id
-  LEFT JOIN plans plan_author ON u.plan_id = plan_author.id
-`;
-
 export async function getPropertiesAction(options: GetPropertiesActionOptions = {}): Promise<PropertyListing[]> {
   const {
-    includeInactive = true,
-    limit,
-    offset,
+    limit = 10,
+    offset = 0,
+    includeInactive = false,
     searchTerm,
     propertyType,
     category,
@@ -280,266 +272,241 @@ export async function getPropertiesAction(options: GetPropertiesActionOptions = 
     orderBy = 'createdAt_desc',
   } = options;
 
-  let sql = BASE_PROPERTY_SELECT_SQL;
-  const params: (string | number | boolean)[] = [];
-
-  const whereConditions: string[] = [];
-
-  if (!includeInactive) {
-    whereConditions.push("p.is_active = TRUE");
-  }
-
-  if (searchTerm) {
-    whereConditions.push("(p.title LIKE ? OR p.description LIKE ? OR p.address LIKE ? OR p.city LIKE ? OR p.region LIKE ? OR p.publication_code = ?)");
-    const searchTermLike = `%${searchTerm}%`;
-    params.push(searchTermLike, searchTermLike, searchTermLike, searchTermLike, searchTermLike, searchTerm);
-  }
-
-  if (propertyType) {
-    whereConditions.push("p.property_type = ?");
-    params.push(propertyType);
-  }
-
-  if (category) {
-    whereConditions.push("p.category = ?");
-    params.push(category);
-  }
-
-  if (city) {
-    whereConditions.push("p.city LIKE ?");
-    params.push(`%${city}%`);
-  }
-
-  if (minPrice !== undefined) {
-    whereConditions.push("p.price >= ?");
-    params.push(minPrice);
-  }
-
-  if (maxPrice !== undefined) {
-    whereConditions.push("p.price <= ?");
-    params.push(maxPrice);
-  }
-
-  if (minBedrooms !== undefined) {
-    whereConditions.push("p.bedrooms >= ?");
-    params.push(minBedrooms);
-  }
-  
-  if (minBathrooms !== undefined) {
-    whereConditions.push("p.bathrooms >= ?");
-    params.push(minBathrooms);
-  }
-
-  if (whereConditions.length > 0) {
-    sql += ` WHERE ${whereConditions.join(" AND ")}`;
-  }
-  
-  switch (orderBy) {
-    case 'price_asc':
-      sql += ' ORDER BY p.price ASC';
-      break;
-    case 'price_desc':
-      sql += ' ORDER BY p.price DESC';
-      break;
-    case 'popularity_desc':
-      sql += ' ORDER BY p.views_count DESC, p.upvotes DESC';
-      break;
-    case 'random':
-      sql += ' ORDER BY RAND()';
-      break;
-    case 'createdAt_desc':
-    default:
-      sql += ' ORDER BY p.created_at DESC';
-      break;
-  }
-
-  if (limit) {
-    sql += ` LIMIT ?`;
-    params.push(limit);
-  }
-  
-  if (offset) {
-    sql += ` OFFSET ?`;
-    params.push(offset);
-  }
-
   try {
-    const rows = await query(sql, params);
-    if (!Array.isArray(rows)) {
-        console.error("Expected rows to be an array, but got:", rows);
-        return [];
+    const query = db
+      .select({
+        // Select all fields from properties and the related tables
+        ...properties,
+        user: users,
+        role: roles,
+        plan: plans,
+        primaryGroup: groups,
+      })
+      .from(properties)
+      .leftJoin(users, eq(properties.userId, users.id))
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(plans, eq(users.planId, plans.id))
+      .leftJoin(groups, eq(users.primaryGroupId, groups.id));
+
+    const conditions = [];
+    if (!includeInactive) {
+      conditions.push(eq(properties.isActive, true));
     }
-    return rows.map(mapDbRowToPropertyListing);
+    if (searchTerm) {
+        const keywords = searchTerm.split(' ').filter(kw => kw.length > 2);
+        if (keywords.length > 0) {
+            const keywordConditions = keywords.map(kw => 
+                or(
+                    like(properties.title, `%${kw}%`),
+                    like(properties.description, `%${kw}%`)
+                )
+            );
+            conditions.push(and(...keywordConditions));
+        }
+    }
+    if (propertyType) {
+      conditions.push(eq(properties.propertyType, propertyType));
+    }
+    if (category) {
+      conditions.push(eq(properties.category, category));
+    }
+    if (city) {
+      conditions.push(eq(properties.city, city));
+    }
+    if (minPrice !== undefined) {
+      conditions.push(gte(properties.price, String(minPrice)));
+    }
+    if (maxPrice !== undefined) {
+      conditions.push(lte(properties.price, String(maxPrice)));
+    }
+    if (minBedrooms !== undefined) {
+      conditions.push(gte(properties.bedrooms, minBedrooms));
+    }
+    if (minBathrooms !== undefined) {
+      conditions.push(gte(properties.bathrooms, minBathrooms));
+    }
+
+    if (conditions.length > 0) {
+      query.where(and(...conditions));
+    }
+    
+    // Sorting logic
+    if (orderBy === 'random') {
+      query.orderBy(sql`RAND()`);
+    } else if (orderBy === 'popularity_desc') {
+      query.orderBy(desc(properties.upvotes), desc(properties.viewsCount));
+    } else {
+      // Default sorting for price and createdAt
+      const [field, direction] = orderBy.split('_');
+      const column = properties[field as keyof typeof properties];
+      if (column) {
+         // The price is stored as a string, so we need to cast it to a number for correct sorting
+         if (field === 'price') {
+            const priceColumn = sql`CAST(${properties.price} AS DECIMAL(15,2))`;
+            query.orderBy(direction === 'asc' ? asc(priceColumn) : desc(priceColumn));
+         } else {
+            query.orderBy(direction === 'asc' ? asc(column) : desc(column));
+         }
+      } else {
+        query.orderBy(desc(properties.createdAt)); // Default sort
+      }
+    }
+
+    if (limit !== undefined) {
+      query.limit(limit);
+    }
+    if (offset !== undefined) {
+      query.offset(offset);
+    }
+
+    const rows = await query.execute();
+    
+    return rows.map(row => mapDbRowToPropertyListing(row));
+    
   } catch (error) {
     console.error("Error in getPropertiesAction:", error);
-    return [];
+    throw new Error(`Failed to fetch properties: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 export async function getPropertyBySlugAction(slug: string): Promise<PropertyListing | null> {
+  if (!slug) {
+    return null;
+  }
+
   try {
-    let sql = BASE_PROPERTY_SELECT_SQL;
-    sql += ' WHERE p.slug = ? AND p.is_active = TRUE'; 
-    
-    const rows = await query(sql, [slug]);
-    if (!Array.isArray(rows) || rows.length === 0) {
+    const result = await db.query.properties.findFirst({
+      where: eq(properties.slug, slug),
+      with: {
+        user: {
+          with: {
+            role: true,
+            plan: true,
+            primaryGroup: true,
+          }
+        }
+      }
+    });
+
+    if (!result) {
       return null;
     }
-    return mapDbRowToPropertyListing(rows[0]);
+    
+    return mapDbRowToPropertyListing(result);
+
   } catch (error: any) {
-    console.error(`[PropertyAction] Error fetching property by slug ${slug}:`, error);
+    console.error(`[DB_ERROR] Failed to get property by slug ${slug}:`, error);
     return null;
   }
 }
 
 export async function getUserPropertiesAction(userId: string): Promise<PropertyListing[]> {
-  if (!userId) return [];
   try {
-    let sql = BASE_PROPERTY_SELECT_SQL;
-    sql += ' WHERE p.user_id = ? ORDER BY p.created_at DESC';
-    
-    const rows = await query(sql, [userId]);
-    if (!Array.isArray(rows)) {
-        console.error("[PropertyAction] Expected array from getUserPropertiesAction, got:", typeof rows);
-        return [];
-    }
-    return rows.map(mapDbRowToPropertyListing);
-  } catch (error: any) {
-    console.error(`[PropertyAction] Error fetching properties for user ${userId}:`, error);
+    const userProperties = await db.query.properties.findMany({
+      where: eq(properties.userId, userId),
+      orderBy: [desc(properties.createdAt)],
+      with: {
+        user: {
+          with: {
+            role: true,
+            plan: true,
+            primaryGroup: true,
+          }
+        }
+      }
+    });
+    return userProperties.map(mapDbRowToPropertyListing);
+  } catch (error) {
+    console.error(`[DB_ERROR] Failed to get user properties for user ${userId}:`, error);
     return [];
   }
 }
 
 export async function updatePropertyStatusAction(propertyId: string, isActive: boolean): Promise<{ success: boolean; message?: string }> {
-  if (!propertyId) {
-    return { success: false, message: "ID de propiedad no proporcionado." };
-  }
   try {
-    await query('UPDATE properties SET is_active = ? WHERE id = ?', [isActive, propertyId]);
-    revalidatePath('/admin/properties');
+    await db.update(properties).set({ isActive }).where(eq(properties.id, propertyId));
+    revalidatePath('/');
     revalidatePath('/properties');
-    revalidatePath(`/properties/[slug]`, 'layout');
-    revalidatePath('/dashboard/my-listings');
-    return { success: true, message: `Propiedad ${isActive ? 'activada' : 'desactivada'} correctamente.` };
+    revalidatePath('/dashboard');
+    return { success: true, message: `Estado de la propiedad actualizado a ${isActive ? 'activa' : 'inactiva'}.` };
   } catch (error: any) {
-    console.error("Error al cambiar estado de la propiedad:", error);
-    return { success: false, message: `Error al cambiar estado de la propiedad: ${error.message}` };
+    return { success: false, message: `Error al actualizar la propiedad: ${error.message}` };
   }
 }
 
 export async function deletePropertyByAdminAction(propertyId: string): Promise<{ success: boolean; message?: string }> {
-  if (!propertyId) {
-    return { success: false, message: "ID de propiedad no proporcionado." };
-  }
-
   try {
-    const result: any = await query('DELETE FROM properties WHERE id = ?', [propertyId]);
-    if (result.affectedRows > 0) {
-      revalidatePath('/admin/properties');
-      revalidatePath('/properties');
-      revalidatePath('/');
-      revalidatePath(`/properties/[slug]`, 'layout');
-      return { success: true, message: "Propiedad eliminada exitosamente." };
-    } else {
-      return { success: false, message: "La propiedad no fue encontrada o no se pudo eliminar." };
+    const result = await db.delete(properties).where(eq(properties.id, propertyId));
+    if (result.rowsAffected > 0) {
+        revalidatePath('/');
+        revalidatePath('/properties');
+        revalidatePath('/dashboard');
+        revalidatePath('/admin/properties');
+        return { success: true, message: "Propiedad eliminada exitosamente." };
     }
+    return { success: false, message: "No se encontró la propiedad para eliminar." };
   } catch (error: any) {
-    console.error("Error al eliminar propiedad por admin:", error);
-    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-        return { success: false, message: "Error de referencia: No se puede eliminar la propiedad porque aún está referenciada en otra tabla. Contacte al administrador." };
-    }
-    return { success: false, message: `Error al eliminar propiedad: ${error.message}` };
+    return { success: false, message: `Error al eliminar la propiedad: ${error.message}` };
   }
 }
 
 export async function getPropertyByIdForAdminAction(propertyId: string): Promise<PropertyListing | null> {
-  if (!propertyId) return null;
-  try {
-    let sql = BASE_PROPERTY_SELECT_SQL;
-    sql += ' WHERE p.id = ?'; 
-    
-    const rows = await query(sql, [propertyId]);
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return null;
+    if (!propertyId) return null;
+    try {
+        const row = await db.query.properties.findFirst({
+            where: eq(properties.id, propertyId),
+            with: { user: { with: { role: true, plan: true, primaryGroup: true } } }
+        });
+        return row ? mapDbRowToPropertyListing(row) : null;
+    } catch (error: any) {
+        console.error(`[PropertyAction] Error fetching property by ID ${propertyId}:`, error);
+        return null;
     }
-    return mapDbRowToPropertyListing(rows[0]);
-  } catch (error: any) {
-    console.error(`[PropertyAction Admin] Error fetching property by ID ${propertyId}:`, error);
-    return null;
-  }
 }
 
 export async function adminUpdatePropertyAction(
   propertyId: string,
   data: PropertyFormValues 
 ): Promise<SubmitPropertyResult> { 
-  console.log("[PropertyAction Admin] Property update data received on server:", data, "PropertyID:", propertyId);
-
-  if (!propertyId) {
-    return { success: false, message: "ID de propiedad no proporcionado para la actualización." };
-  }
-
   try {
-    const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
-    const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
+    const imagesJson = data.images && data.images.length > 0 ? data.images : [];
+    const featuresJson = data.features ? data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0) : [];
+    
+    await db.update(properties).set({
+      title: data.title,
+      description: data.description,
+      propertyType: data.listingType,
+      category: data.category,
+      price: data.price.toString(),
+      currency: data.currency,
+      address: data.address,
+      city: data.city,
+      region: data.region,
+      country: data.country,
+      bedrooms: data.bedrooms,
+      bathrooms: data.bathrooms,
+      totalAreaSqMeters: data.totalAreaSqMeters.toString(),
+      usefulAreaSqMeters: data.usefulAreaSqMeters?.toString(),
+      parkingSpaces: data.parkingSpaces,
+      petsAllowed: data.petsAllowed,
+      furnished: data.furnished,
+      commercialUseAllowed: data.commercialUseAllowed,
+      hasStorage: data.hasStorage,
+      orientation: data.orientation,
+      images: imagesJson,
+      features: featuresJson,
+    }).where(eq(properties.id, propertyId));
 
-    const sql = `
-      UPDATE properties SET
-        title = ?, description = ?, property_type = ?, category = ?,
-        price = ?, currency = ?, address = ?, city = ?, region = ?, country = ?,
-        bedrooms = ?, bathrooms = ?, total_area_sq_meters = ?, useful_area_sq_meters = ?,
-        parking_spaces = ?, pets_allowed = ?, furnished = ?, commercial_use_allowed = ?, has_storage = ?, orientation = ?,
-        images = ?, features = ?,
-        updated_at = NOW()
-      WHERE id = ?
-    `;
-
-    const params = [
-      data.title, data.description, data.listingType, data.category,
-      data.price, data.currency, data.address, data.city, data.region, data.country,
-      data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
-      data.usefulAreaSqMeters === null ? null : Number(data.usefulAreaSqMeters),
-      data.parkingSpaces === null ? null : Number(data.parkingSpaces),
-      data.petsAllowed ?? false,
-      data.furnished ?? false,
-      data.commercialUseAllowed ?? false,
-      data.hasStorage ?? false,
-      data.orientation === null ? null : (data.orientation ?? null),
-      imagesJson, featuresJson,
-      propertyId
-    ];
-
-    const result: any = await query(sql, params);
-
-    if (result.affectedRows === 0) {
-      return { success: false, message: "Propiedad no encontrada o los datos eran los mismos." };
-    }
-
-    const propertyDetails = await getPropertyByIdForAdminAction(propertyId);
-    const currentSlug = propertyDetails?.slug;
-
-    console.log(`[PropertyAction Admin] Property updated successfully. ID: ${propertyId}, Slug: ${currentSlug}`);
-
+    revalidatePath('/');
+    revalidatePath('/properties');
+    revalidatePath(`/properties/${data.slug}`);
+    revalidatePath('/dashboard');
     revalidatePath('/admin/properties');
-    revalidatePath('/properties'); 
-    if (currentSlug) {
-      revalidatePath(`/properties/${currentSlug}`); 
-    } else {
-      revalidatePath(`/properties/[slug]`, 'layout'); 
-    }
-    revalidatePath('/'); 
 
-    return { success: true, message: "Propiedad actualizada exitosamente.", propertyId, propertySlug: currentSlug };
-
+    return { success: true, message: "Propiedad actualizada exitosamente.", propertyId, propertySlug: data.slug };
   } catch (error: any) {
-    console.error(`[PropertyAction Admin] Error updating property ${propertyId}:`, error);
-    let message = "Error al actualizar propiedad."; 
-    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('properties.slug')) {
-        message = "Error: Ya existe una propiedad con un título muy similar (slug duplicado).";
-    } else if (error.message) {
-      message = error.message;
-    }
-    return { success: false, message: `Error al actualizar propiedad: ${message}` };
+    console.error(`[PropertyAction] Error updating property by admin:`, error);
+    return { success: false, message: `Error del servidor: ${error.message}` };
   }
 }
 
@@ -548,190 +515,153 @@ export async function userUpdatePropertyAction(
   propertyId: string,
   data: PropertyFormValues 
 ): Promise<SubmitPropertyResult> {
-  console.log("[PropertyAction User] Update request for property:", propertyId, "by user:", userId, "Data:", data);
-
-  if (!userId) {
-    return { success: false, message: "Usuario no autenticado." };
-  }
-  if (!propertyId) {
-    return { success: false, message: "ID de propiedad no proporcionado." };
-  }
-
   try {
-    const propertyCheckSql = 'SELECT user_id, slug FROM properties WHERE id = ?';
-    const propertyRows: any[] = await query(propertyCheckSql, [propertyId]);
+    const existingProperty = await db.query.properties.findFirst({
+      where: and(eq(properties.id, propertyId), eq(properties.userId, userId))
+    });
 
-    if (propertyRows.length === 0) {
-      return { success: false, message: "Propiedad no encontrada." };
+    if (!existingProperty) {
+      return { success: false, message: "No tienes permiso para editar esta propiedad o no existe." };
     }
-    if (propertyRows[0].user_id !== userId) {
-      console.warn(`[PropertyAction User] User ${userId} attempted to edit property ${propertyId} owned by ${propertyRows[0].user_id}. Denied.`);
-      return { success: false, message: "No tienes permiso para editar esta propiedad." };
-    }
+
+    const imagesJson = data.images && data.images.length > 0 ? data.images : [];
+    const featuresJson = data.features ? data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0) : [];
     
-    const currentSlug = propertyRows[0].slug;
+    await db.update(properties).set({
+      title: data.title,
+      description: data.description,
+      propertyType: data.listingType,
+      category: data.category,
+      price: data.price.toString(),
+      currency: data.currency,
+      address: data.address,
+      city: data.city,
+      region: data.region,
+      country: data.country,
+      bedrooms: data.bedrooms,
+      bathrooms: data.bathrooms,
+      totalAreaSqMeters: data.totalAreaSqMeters.toString(),
+      usefulAreaSqMeters: data.usefulAreaSqMeters?.toString(),
+      parkingSpaces: data.parkingSpaces,
+      petsAllowed: data.petsAllowed,
+      furnished: data.furnished,
+      commercialUseAllowed: data.commercialUseAllowed,
+      hasStorage: data.hasStorage,
+      orientation: data.orientation,
+      images: imagesJson,
+      features: featuresJson,
+    }).where(eq(properties.id, propertyId));
 
-    const imagesJson = data.images && data.images.length > 0 ? JSON.stringify(data.images) : null;
-    const featuresJson = data.features ? JSON.stringify(data.features.split(',').map(feat => feat.trim()).filter(feat => feat.length > 0)) : null;
-
-    const updateSql = `
-      UPDATE properties SET
-        title = ?, description = ?, property_type = ?, category = ?,
-        price = ?, currency = ?, address = ?, city = ?, region = ?, country = ?,
-        bedrooms = ?, bathrooms = ?, total_area_sq_meters = ?, useful_area_sq_meters = ?,
-        parking_spaces = ?, pets_allowed = ?, furnished = ?, commercial_use_allowed = ?, has_storage = ?, orientation = ?,
-        images = ?, features = ?,
-        updated_at = NOW()
-      WHERE id = ? AND user_id = ? 
-    `;
-
-    const params = [
-      data.title, data.description, data.listingType, data.category,
-      data.price, data.currency, data.address, data.city, data.region, data.country,
-      data.bedrooms, data.bathrooms, data.totalAreaSqMeters,
-      data.usefulAreaSqMeters === null ? null : Number(data.usefulAreaSqMeters),
-      data.parkingSpaces === null ? null : Number(data.parkingSpaces),
-      data.petsAllowed ?? false,
-      data.furnished ?? false,
-      data.commercialUseAllowed ?? false,
-      data.hasStorage ?? false,
-      data.orientation === null ? null : (data.orientation ?? null),
-      imagesJson, featuresJson,
-      propertyId, userId
-    ];
-
-    const result: any = await query(updateSql, params);
-
-    if (result.affectedRows === 0) {
-      return { success: false, message: "No se realizaron cambios en la propiedad o no se pudo actualizar." };
-    }
-
-    console.log(`[PropertyAction User] Property ${propertyId} updated successfully by user ${userId}.`);
-
-    revalidatePath('/dashboard/my-listings');
+    revalidatePath('/');
     revalidatePath('/properties');
-    if (currentSlug) {
-      revalidatePath(`/properties/${currentSlug}`);
-    }
-    
-    return { success: true, message: "Propiedad actualizada exitosamente.", propertyId, propertySlug: currentSlug };
+    revalidatePath(`/properties/${data.slug}`);
+    revalidatePath('/dashboard');
 
+    return { success: true, message: "Propiedad actualizada exitosamente.", propertyId, propertySlug: data.slug };
   } catch (error: any) {
-    console.error(`[PropertyAction User] Error updating property ${propertyId} for user ${userId}:`, error);
-    return { success: false, message: `Error al actualizar propiedad: ${error.message}` };
+    console.error(`[PropertyAction] Error updating property by user:`, error);
+    return { success: false, message: `Error del servidor: ${error.message}` };
   }
 }
 
+export async function deletePropertyByUserAction(propertyId: string, userId: string): Promise<{ success: boolean; message?: string }> {
+    try {
+        const result = await db.delete(properties).where(and(eq(properties.id, propertyId), eq(properties.userId, userId)));
+        if (result.rowsAffected > 0) {
+            revalidatePath('/');
+            revalidatePath('/properties');
+            revalidatePath('/dashboard/my-listings');
+            return { success: true, message: "Propiedad eliminada exitosamente." };
+        }
+        return { success: false, message: "No se pudo eliminar la propiedad. O no fue encontrada o no tienes permiso." };
+    } catch (error: any) {
+        console.error(`[PropertyAction] Error deleting property by user ${userId}:`, error);
+        return { success: false, message: `Error del servidor: ${error.message}` };
+    }
+}
 
 export async function getPropertiesCountAction(activeOnly: boolean = false): Promise<number> {
-  const statusCondition = activeOnly ? "WHERE is_active = TRUE" : "";
-  const sql = `SELECT COUNT(*) as count FROM properties ${statusCondition}`;
-  const result = await query(sql);
-  return result[0].count;
+    try {
+        const query = db.select({ value: count() }).from(properties);
+        if (activeOnly) {
+            query.where(eq(properties.isActive, true));
+        }
+        const result = await query;
+        return result[0]?.value ?? 0;
+    } catch (error) {
+        console.error("Error al obtener el conteo de propiedades:", error);
+        return 0;
+    }
 }
 
-/**
- * Searches for properties by title or address (for admin usage).
- * Returns a simplified list for autocomplete fields.
- */
 export async function searchPropertiesAction(
   searchTerm: string
 ): Promise<{ id: string; title: string; address: string }[]> {
-  if (!searchTerm.trim()) {
-    return [];
-  }
-
   try {
-    const sql = `
-      SELECT id, title, address
-      FROM properties
-      WHERE (title LIKE ? OR address LIKE ?) AND is_active = TRUE
-      ORDER BY title
-      LIMIT 15
-    `;
-    
-    const searchTermWithWildcards = `%${searchTerm}%`;
-    const rows = await query(sql, [searchTermWithWildcards, searchTermWithWildcards]);
-    
-    return rows.map((row: any) => ({
-      id: row.id,
-      title: row.title,
-      address: row.address,
-    }));
-
+    const results = await db.select({
+      id: properties.id,
+      title: properties.title,
+      address: properties.address,
+    })
+    .from(properties)
+    .where(
+      and(
+        eq(properties.isActive, true),
+        or(
+          like(properties.title, `%${searchTerm}%`),
+          like(properties.description, `%${searchTerm}%`),
+          like(properties.address, `%${searchTerm}%`),
+          like(properties.city, `%${searchTerm}%`)
+        )
+      )
+    )
+    .limit(10);
+    return results;
   } catch (error) {
-    console.error("[searchPropertiesAction] Error searching properties:", error);
+    console.error("Error al buscar propiedades:", error);
     return [];
   }
 }
 
-/**
- * Searches for properties owned by a specific user by title or address.
- * Returns a simplified list for autocomplete fields.
- */
 export async function searchMyPropertiesAction(
   userId: string,
   searchTerm: string
 ): Promise<{ id: string; title: string; address: string }[]> {
-  if (!userId) {
-    console.error("[searchMyPropertiesAction] Error: userId is required.");
-    return [];
-  }
-  
-  if (!searchTerm.trim()) {
-    return [];
-  }
-
   try {
-    const sql = `
-      SELECT id, title, address
-      FROM properties
-      WHERE user_id = ? AND (title LIKE ? OR address LIKE ?) AND is_active = TRUE
-      ORDER BY title
-      LIMIT 15
-    `;
-    
-    const searchTermWithWildcards = `%${searchTerm}%`;
-    const rows = await query(sql, [userId, searchTermWithWildcards, searchTermWithWildcards]);
-    
-    return rows.map((row: any) => ({
-      id: row.id,
-      title: row.title,
-      address: row.address,
-    }));
-
+    const results = await db.select({
+      id: properties.id,
+      title: properties.title,
+      address: properties.address,
+    })
+    .from(properties)
+    .where(
+      and(
+        eq(properties.userId, userId),
+        or(
+          like(properties.title, `%${searchTerm}%`),
+          like(properties.description, `%${searchTerm}%`),
+          like(properties.address, `%${searchTerm}%`),
+          like(properties.city, `%${searchTerm}%`)
+        )
+      )
+    )
+    .limit(10);
+    return results;
   } catch (error) {
-    console.error("[searchMyPropertiesAction] Error searching user's properties:", error);
+    console.error("Error al buscar mis propiedades:", error);
     return [];
   }
 }
 
 export async function getPropertyByCodeAction(code: string): Promise<PropertyListing | null> {
   try {
-    const sql = `
-      SELECT 
-        p.*, 
-        u.name as author_name, 
-        u.email as author_email, 
-        u.phone_number as author_phone_number,
-        u.avatar_url as author_avatar_url,
-        u.role_id as author_role_id,
-        r.name as author_role_name
-      FROM properties p
-      LEFT JOIN users u ON p.user_id = u.id
-      LEFT JOIN roles r ON u.role_id = r.id
-      WHERE p.publication_code = ? 
-      LIMIT 1
-    `;
-    const results = await query(sql, [code]);
-
-    if (results && results.length > 0) {
-      return mapDbRowToPropertyListing(results[0]);
-    }
-    return null;
-  } catch (error) {
-    console.error(`Error fetching property by code ${code}:`, error);
-    return null;
+      const row = await db.query.properties.findFirst({
+          where: eq(properties.publicationCode, code),
+          with: { user: { with: { role: true, plan: true, primaryGroup: true } } }
+      });
+      return row ? mapDbRowToPropertyListing(row) : null;
+  } catch (error: any) {
+      console.error(`[PropertyAction] Error fetching property by code ${code}:`, error);
+      return null;
   }
 }
-    

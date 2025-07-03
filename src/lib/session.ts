@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
 import { db } from './db';
+import { sessions, users } from './db/schema';
+import { eq } from 'drizzle-orm';
 
 export interface SessionUser {
   id: string;
@@ -16,22 +18,32 @@ export async function getSession(): Promise<SessionUser | null> {
   }
   
   try {
-    const session = await db.query.sessions.findFirst({
-      where: (sessions, { eq }) => eq(sessions.token, sessionToken),
-      with: {
-        user: true
-      }
-    });
+    const results = await db
+      .select()
+      .from(sessions)
+      .leftJoin(users, eq(sessions.userId, users.id))
+      .where(eq(sessions.token, sessionToken))
+      .limit(1);
     
-    if (!session || new Date(session.expires) < new Date()) {
+    if (results.length === 0) {
+      return null;
+    }
+
+    const { sessions: sessionData, users: userData } = results[0];
+
+    if (!sessionData || !userData || new Date(sessionData.expires) < new Date()) {
+      // Limpiar cookie expirada
+      if (sessionData && new Date(sessionData.expires) < new Date()) {
+        cookies().set('session_token', '', { expires: new Date(0), path: '/' });
+      }
       return null;
     }
     
     return {
-      id: session.user.id,
-      email: session.user.email,
-      name: session.user.name,
-      role: session.user.role
+      id: userData.id,
+      email: userData.email,
+      name: userData.name,
+      role: userData.roleId, // Asumiendo que roleId contiene el string del rol
     };
   } catch (error) {
     console.error('Error getting session:', error);

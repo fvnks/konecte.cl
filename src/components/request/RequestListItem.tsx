@@ -73,11 +73,6 @@ export default function RequestListItem({ request }: RequestListItemProps) {
 
   return (
     <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl w-full group border border-border hover:border-primary/30 relative">
-       {pub_id && (
-        <Badge variant="outline" className="absolute top-2.5 right-2.5 text-xs px-2 py-0.5 shadow-md rounded-md bg-black/50 text-white backdrop-blur-sm font-mono z-10">
-          {pub_id}
-        </Badge>
-      )}
       <div className="flex flex-1 flex-col p-4 sm:p-5 justify-between">
         <div>
           <CardHeader className="p-0 mb-2 sm:mb-3">
@@ -95,6 +90,7 @@ export default function RequestListItem({ request }: RequestListItemProps) {
             </div>
             <Link href={`/requests/${slug}`} className="block">
               <CardTitle className="text-lg sm:text-xl font-headline leading-tight hover:text-primary transition-colors line-clamp-2">
+                {pub_id && <span className="text-primary mr-2 font-mono text-base align-middle">{pub_id}</span>}
                 <SearchIcon className="inline-block h-4 w-4 sm:h-5 sm:w-5 mr-1.5 text-primary align-middle" />
                 {title}
               </CardTitle>

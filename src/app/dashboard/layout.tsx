@@ -28,7 +28,8 @@ const baseNavItemsDefinition = [
   { href: '/dashboard', label: 'Resumen', icon: <LayoutDashboard /> },
   { href: '/dashboard/my-listings', label: 'Mis Publicaciones', icon: <ListTree /> },
   { href: '/dashboard/messages', label: 'Mensajes', icon: <MessageSquare />, id: 'messagesLink' },
-  { href: '/dashboard/crm', label: 'Mi CRM', icon: <Users /> },
+  { href: '/dashboard/crm', label: 'Mi CRM', icon: <Handshake /> },
+  { href: '/dashboard/my-groups', label: 'Mis Grupos', icon: <Users /> },
   { href: '/dashboard/visits', label: 'Mis Visitas', icon: <Edit /> },
   { href: '/ai-matching', label: 'Coincidencias con IA', icon: <Sparkles /> },
 ];

@@ -1,13 +1,15 @@
 // src/actions/bugReportActions.ts
 'use server';
 
-import { query } from '@/lib/db';
+import { db } from '@/lib/db';
+import { bugReports } from '@/lib/db/schema';
 import { revalidatePath } from 'next/cache';
 import { BugReportFormValues } from '@/lib/types';
 import { getSession, isAdmin } from '@/lib/session';
+import { and, count, desc, eq } from 'drizzle-orm';
 
 export interface BugReport {
-  id: string;
+  id: number;
   name: string | null;
   email: string | null;
   page_url: string | null;
@@ -28,20 +30,15 @@ export async function submitBugReportAction(formData: BugReportFormValues): Prom
     const userId = currentUser?.id || null;
 
     // Insertar el reporte de error en la base de datos
-    await query(
-      `INSERT INTO bug_reports 
-      (name, email, page_url, description, steps_to_reproduce, browser_device, user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        formData.name || null,
-        formData.email || null,
-        formData.pageUrl || null,
-        formData.description,
-        formData.stepsToReproduce || null,
-        formData.browserDevice || null,
-        userId
-      ]
-    );
+    await db.insert(bugReports).values({
+        name: formData.name || null,
+        email: formData.email || null,
+        page_url: formData.pageUrl || null,
+        description: formData.description,
+        steps_to_reproduce: formData.stepsToReproduce || null,
+        browser_device: formData.browserDevice || null,
+        user_id: userId
+      });
 
     return {
       success: true,
@@ -76,39 +73,26 @@ export async function getBugReportsAction(options: {
   const offset = (page - 1) * pageSize;
 
   try {
-    // Construir la consulta base
-    let whereClause = '';
-    const params: any[] = [];
-    
+    const conditions = [];
     if (status) {
-      whereClause += 'WHERE status = ?';
-      params.push(status);
+        conditions.push(eq(bugReports.status, status as any));
     }
-    
     if (isRead !== undefined) {
-      whereClause += whereClause ? ' AND is_read = ?' : 'WHERE is_read = ?';
-      params.push(isRead);
+        conditions.push(eq(bugReports.is_read, isRead));
     }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     
     // Obtener el recuento total para la paginación
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM bug_reports ${whereClause}`,
-      params
-    );
+    const countResult = await db.select({ value: count() }).from(bugReports).where(whereClause);
     
-    const totalCount = countResult[0].total;
+    const totalCount = countResult[0].value;
     const totalPages = Math.ceil(totalCount / pageSize);
     
     // Obtener los reportes de errores con paginación
-    const bugReportsResult = await query(
-      `SELECT * FROM bug_reports ${whereClause}
-       ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, pageSize, offset]
-    );
+    const bugReportsResult = await db.select().from(bugReports).where(whereClause).orderBy(desc(bugReports.created_at)).limit(pageSize).offset(offset);
     
     return {
-      bugReports: bugReportsResult as BugReport[],
+      bugReports: bugReportsResult.map(r => ({ ...r, created_at: r.created_at?.toISOString() ?? '', updated_at: r.updated_at?.toISOString() ?? '' })) as unknown as BugReport[],
       totalCount,
       totalPages
     };
@@ -137,18 +121,12 @@ export async function updateBugReportStatusAction(
       };
     }
     
-    // Actualizar el estado del reporte
+    let setData: { status: BugReport['status'], admin_notes?: string } = { status: status };
     if (adminNotes) {
-      await query(
-        'UPDATE bug_reports SET status = ?, admin_notes = ? WHERE id = ?',
-        [status, adminNotes, id]
-      );
-    } else {
-      await query(
-        'UPDATE bug_reports SET status = ? WHERE id = ?',
-        [status, id]
-      );
+        setData.admin_notes = adminNotes;
     }
+    
+    await db.update(bugReports).set(setData).where(eq(bugReports.id, parseInt(id, 10)));
     
     revalidatePath('/admin/bug-reports');
     
@@ -173,10 +151,7 @@ export async function markBugReportAsReadAction(id: string): Promise<{ success: 
       return { success: false };
     }
     
-    await query(
-      'UPDATE bug_reports SET is_read = TRUE WHERE id = ?',
-      [id]
-    );
+    await db.update(bugReports).set({ is_read: true }).where(eq(bugReports.id, parseInt(id, 10)));
     
     revalidatePath('/admin/bug-reports');
 
@@ -195,11 +170,9 @@ export async function getUnreadBugReportsCountAction(): Promise<number> {
       return 0;
     }
     
-    const result = await query(
-      'SELECT COUNT(*) as count FROM bug_reports WHERE is_read = FALSE'
-    );
+    const result = await db.select({ value: count() }).from(bugReports).where(eq(bugReports.is_read, false));
     
-    return result[0].count || 0;
+    return result[0].value || 0;
   } catch (error) {
     console.error('Error al obtener conteo de reportes no leídos:', error);
     return 0;
@@ -217,7 +190,7 @@ export async function deleteBugReportAction(id: string): Promise<{ success: bool
       };
     }
     
-    await query('DELETE FROM bug_reports WHERE id = ?', [id]);
+    await db.delete(bugReports).where(eq(bugReports.id, parseInt(id, 10)));
     
     revalidatePath('/admin/bug-reports');
     
@@ -240,52 +213,11 @@ export async function markBugReportAsActionReadAction(reportId: string, is_read:
     if (!isUserAdmin) {
       return { success: false, message: "No tienes permisos para realizar esta acción." };
     }
-    await query('UPDATE bug_reports SET is_read = ? WHERE id = ?', [is_read, reportId]);
+    await db.update(bugReports).set({ is_read: is_read }).where(eq(bugReports.id, parseInt(reportId, 10)));
     revalidatePath('/admin/bug-reports');
     return { success: true, message: 'Reporte de error actualizado.' };
   } catch (error) {
     console.error('Error al actualizar el reporte de error:', error);
     return { success: false, message: 'Error al actualizar el reporte de error.' };
-  }
-}
-
-export async function archiveBugReportAction(reportId: string): Promise<{ success: boolean; message: string }> {
-  try {
-    const isUserAdmin = await isAdmin();
-    if (!isUserAdmin) {
-      return { success: false, message: "No tienes permisos para realizar esta acción." };
-    }
-    await query('UPDATE bug_reports SET is_archived = TRUE WHERE id = ?', [reportId]);
-    revalidatePath('/admin/bug-reports');
-    return { success: true, message: 'Reporte de error archivado.' };
-  } catch (error) {
-    console.error('Error al archivar el reporte de error:', error);
-    return { success: false, message: 'Error al archivar el reporte de error.' };
-  }
-}
-
-export async function createBugReportAction(formData: FormData): Promise<{ success: boolean; message: string }> {
-  try {
-    const session = await getSession();
-    
-    const data = {
-      report_type: formData.get('report_type') as string,
-      description: formData.get('description') as string,
-      user_id: session?.id,
-      user_name: session?.name,
-      user_email: session?.email,
-    };
-    
-    await query(
-      'INSERT INTO bug_reports (report_type, description, user_id, user_name, user_email) VALUES (?, ?, ?, ?, ?)',
-      [data.report_type, data.description, data.user_id, data.user_name, data.user_email]
-    );
-    
-    revalidatePath('/reportar-fallas');
-    
-    return { success: true, message: 'Reporte de error enviado con éxito.' };
-  } catch (error) {
-    console.error('Error al crear el reporte de error:', error);
-    return { success: false, message: 'Error al crear el reporte de error.' };
   }
 }

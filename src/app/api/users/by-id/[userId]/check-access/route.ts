@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { db } from '@/lib/db';
+import { users, plans } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import type { User } from '@/lib/types';
 
 interface UserWithPlan extends User {
@@ -17,22 +19,21 @@ export async function GET(
     }
 
     try {
-        const sql = `
-            SELECT u.*, p.whatsapp_integration as plan_whatsapp_integration_enabled
-            FROM users u
-            LEFT JOIN plans p ON u.plan_id = p.id
-            WHERE u.id = ?
-        `;
-        
-        const users: UserWithPlan[] = await query(sql, [userId]);
+        const results = await db.select({
+            user: users,
+            plan_whatsapp_integration_enabled: plans.whatsappIntegration
+        })
+        .from(users)
+        .leftJoin(plans, eq(users.planId, plans.id))
+        .where(eq(users.id, userId));
 
-        if (users.length === 0) {
+        if (results.length === 0) {
             return NextResponse.json({ success: false, hasWhatsAppAccess: false, reason: 'Usuario no encontrado con ese ID.' }, { status: 404 });
         }
 
-        const user = users[0];
+        const { user, plan_whatsapp_integration_enabled } = results[0];
 
-        if (user.plan_whatsapp_integration_enabled) {
+        if (plan_whatsapp_integration_enabled) {
             return NextResponse.json({ success: true, hasWhatsAppAccess: true, userId: user.id });
         } else {
             return NextResponse.json({ success: false, hasWhatsAppAccess: false, reason: 'El plan del usuario no incluye acceso a WhatsApp.' }, { status: 403 });

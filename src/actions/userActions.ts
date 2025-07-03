@@ -1,33 +1,42 @@
 // src/actions/userActions.ts
 'use server';
 
-import { query } from '@/lib/db';
 import type { User, AdminCreateUserFormValues, AdminEditUserFormValues, UserProfileFormValues } from '@/lib/types';
 import { adminCreateUserFormSchema, adminEditUserFormSchema, userProfileFormSchema } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
+import { eq, like, count, or, and, not } from 'drizzle-orm';
+import { users, roles, plans } from '@/lib/db/schema';
+import { getSession } from '@/lib/session';
+import { db } from '@/lib/db';
 
 export async function getUsersAction(): Promise<User[]> {
   try {
-    const users = await query(`
-      SELECT 
-        u.id, u.name, u.email, u.avatar_url, 
-        u.role_id, r.name as role_name,
-        u.plan_id, p.name as plan_name, u.plan_expires_at,
-        u.phone_verified,
-        u.created_at, u.updated_at 
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN plans p ON u.plan_id = p.id
-      ORDER BY u.name ASC
-    `);
-    return users.map((user: any) => ({
+    const result = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+      roleId: users.roleId,
+      roleName: roles.name,
+      planId: users.planId,
+      planName: plans.name,
+      planExpiresAt: users.planExpiresAt,
+      phoneVerified: users.phoneVerified,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    }).from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(plans, eq(users.planId, plans.id))
+      .orderBy(users.name);
+      
+    return result.map((user: any) => ({
         ...user,
-        phone_verified: Boolean(user.phone_verified),
-        created_at: user.created_at ? new Date(user.created_at).toISOString() : undefined,
-        updated_at: user.updated_at ? new Date(user.updated_at).toISOString() : undefined,
-        plan_expires_at: user.plan_expires_at ? new Date(user.plan_expires_at).toISOString() : null,
+        phone_verified: Boolean(user.phoneVerified),
+        created_at: user.createdAt ? new Date(user.createdAt).toISOString() : undefined,
+        updated_at: user.updatedAt ? new Date(user.updatedAt).toISOString() : undefined,
+        plan_expires_at: user.planExpiresAt ? new Date(user.planExpiresAt).toISOString() : null,
     })) as User[];
   } catch (error) {
     console.error("Error al obtener usuarios:", error);
@@ -38,33 +47,43 @@ export async function getUsersAction(): Promise<User[]> {
 export async function getUserByIdAction(userId: string): Promise<User | null> {
   if (!userId) return null;
   try {
-    const userRows: any[] = await query(
-      `SELECT 
-         u.id, u.name, u.email, u.avatar_url,
-         u.rut_tin, u.phone_number, u.phone_verified,
-         u.role_id, r.name as role_name,
-         u.plan_id, p.name as plan_name, u.plan_expires_at,
-         p.automated_alerts_enabled as plan_whatsapp_integration_enabled,
-         u.company_name, u.main_operating_region, u.main_operating_commune,
-         u.properties_in_portfolio_count, u.website_social_media_link,
-         u.created_at, u.updated_at
-       FROM users u
-       LEFT JOIN roles r ON u.role_id = r.id
-       LEFT JOIN plans p ON u.plan_id = p.id
-       WHERE u.id = ?`,
-      [userId]
-    );
+    const userRows = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+      rutTin: users.rutTin,
+      phoneNumber: users.phoneNumber,
+      phoneVerified: users.phoneVerified,
+      roleId: users.roleId,
+      roleName: roles.name,
+      planId: users.planId,
+      planName: plans.name,
+      planExpiresAt: users.planExpiresAt,
+      planWhatsappIntegrationEnabled: plans.whatsappIntegration,
+      companyName: users.companyName,
+      mainOperatingRegion: users.mainOperatingRegion,
+      mainOperatingCommune: users.mainOperatingCommune,
+      propertiesInPortfolioCount: users.propertiesInPortfolioCount,
+      websiteSocialMediaLink: users.websiteSocialMediaLink,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    }).from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(plans, eq(users.planId, plans.id))
+      .where(eq(users.id, userId));
+
     if (userRows.length === 0) {
       return null;
     }
     const user = userRows[0];
     return {
       ...user,
-      phone_verified: Number(user.phone_verified) === 1,
-      plan_whatsapp_integration_enabled: Number(user.plan_whatsapp_integration_enabled) === 1,
-      created_at: user.created_at ? new Date(user.created_at).toISOString() : undefined,
-      updated_at: user.updated_at ? new Date(user.updated_at).toISOString() : undefined,
-      plan_expires_at: user.plan_expires_at ? new Date(user.plan_expires_at).toISOString() : null,
+      phone_verified: Boolean(user.phoneVerified),
+      plan_whatsapp_integration_enabled: Boolean(user.planWhatsappIntegrationEnabled),
+      created_at: user.createdAt ? new Date(user.createdAt).toISOString() : undefined,
+      updated_at: user.updatedAt ? new Date(user.updatedAt).toISOString() : undefined,
+      plan_expires_at: user.planExpiresAt ? new Date(user.planExpiresAt).toISOString() : null,
     } as User;
   } catch (error) {
     console.error(`Error al obtener usuario con ID ${userId}:`, error);
@@ -79,9 +98,8 @@ export async function updateUserRoleAction(userId: string, newRoleId: string): P
   }
 
   try {
-    // Futura mejora: verificar si el admin intenta cambiarse su propio rol a no-admin.
-    const result: any = await query('UPDATE users SET role_id = ? WHERE id = ?', [newRoleId, userId]);
-    if (result.affectedRows > 0) {
+    const result = await db.update(users).set({ roleId: newRoleId }).where(eq(users.id, userId));
+    if (result.rowsAffected > 0) {
       revalidatePath('/admin/users');
       return { success: true, message: "Rol del usuario actualizado exitosamente." };
     } else {
@@ -100,8 +118,8 @@ export async function updateUserPlanAction(userId: string, newPlanId: string | n
   const planIdToSet = newPlanId === '' ? null : newPlanId;
 
   try {
-    const result: any = await query('UPDATE users SET plan_id = ? WHERE id = ?', [planIdToSet, userId]);
-    if (result.affectedRows > 0) {
+    const result = await db.update(users).set({ planId: planIdToSet }).where(eq(users.id, userId));
+    if (result.rowsAffected > 0) {
       revalidatePath('/admin/users');
       return { success: true, message: "Plan del usuario actualizado exitosamente." };
     } else {
@@ -126,25 +144,26 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
   } = validation.data;
 
   try {
-    const existingUserRows: any[] = await query('SELECT id FROM users WHERE email = ?', [email]);
-    if (existingUserRows.length > 0) {
+    const existingUser = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
+    if (existingUser.length > 0) {
       return { success: false, message: "Ya existe un usuario con este correo electrónico." };
     }
     
-    const existingPhoneRows: any[] = await query('SELECT id FROM users WHERE phone_number = ?', [phone_number]);
-    if (existingPhoneRows.length > 0) {
-      return { success: false, message: "Este número de teléfono ya está en uso." };
+    if(phone_number) {
+        const existingPhone = await db.select({ id: users.id }).from(users).where(eq(users.phoneNumber, phone_number));
+        if (existingPhone.length > 0) {
+            return { success: false, message: "Este número de teléfono ya está en uso." };
+        }
     }
 
-
-    const roleExistsRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [role_id]);
-    if (roleExistsRows.length === 0) {
+    const roleExists = await db.select({ id: roles.id }).from(roles).where(eq(roles.id, role_id));
+    if (roleExists.length === 0) {
       return { success: false, message: "El rol seleccionado no es válido." };
     }
     
     if (plan_id) {
-        const planExistsRows: any[] = await query('SELECT id FROM plans WHERE id = ?', [plan_id]);
-        if (planExistsRows.length === 0) {
+        const planExists = await db.select({ id: plans.id }).from(plans).where(eq(plans.id, plan_id));
+        if (planExists.length === 0) {
             return { success: false, message: "El plan seleccionado no es válido." };
         }
     }
@@ -152,37 +171,39 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = randomUUID();
 
-    const insertSql = `
-      INSERT INTO users (
-        id, name, email, password_hash, role_id, plan_id, phone_number, rut_tin,
-        company_name, main_operating_region, main_operating_commune,
-        properties_in_portfolio_count, website_social_media_link,
-        phone_verified
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
-    `;
-
-     const params = [
-      userId, name, email, hashedPassword, role_id, plan_id || null,
-      phone_number, rut_tin,
-      role_id === 'broker' ? (company_name || null) : null,
-      role_id === 'broker' ? (main_operating_region || null) : null,
-      role_id === 'broker' ? (main_operating_commune || null) : null,
-      role_id === 'broker' ? (properties_in_portfolio_count ?? null) : null,
-      role_id === 'broker' ? (website_social_media_link || null) : null
-    ];
-
-    await query(insertSql, params);
+    await db.insert(users).values({
+      id: userId,
+      name,
+      email,
+      passwordHash: hashedPassword,
+      roleId: role_id,
+      planId: plan_id || null,
+      phoneNumber: phone_number,
+      rutTin: rut_tin,
+      companyName: role_id === 'broker' ? (company_name || null) : null,
+      mainOperatingRegion: role_id === 'broker' ? (main_operating_region || null) : null,
+      mainOperatingCommune: role_id === 'broker' ? (main_operating_commune || null) : null,
+      propertiesInPortfolioCount: role_id === 'broker' ? (properties_in_portfolio_count ?? null) : null,
+      websiteSocialMediaLink: role_id === 'broker' ? (website_social_media_link || null) : null,
+      phoneVerified: true,
+    });
     
-    const newUserRows: any[] = await query(
-        `SELECT u.id, u.name, u.email, u.avatar_url, 
-                u.role_id, r.name as role_name,
-                u.plan_id, p.name as plan_name, u.plan_expires_at,
-                u.created_at, u.updated_at
-         FROM users u
-         LEFT JOIN roles r ON u.role_id = r.id
-         LEFT JOIN plans p ON u.plan_id = p.id
-         WHERE u.id = ?`, [userId]
-    );
+    const newUserRows = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+      roleId: users.roleId,
+      roleName: roles.name,
+      planId: users.planId,
+      planName: plans.name,
+      planExpiresAt: users.planExpiresAt,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    }).from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(plans, eq(users.planId, plans.id))
+      .where(eq(users.id, userId));
 
     if (newUserRows.length === 0) {
         return { success: false, message: "Error al recuperar el usuario recién creado." };
@@ -190,23 +211,22 @@ export async function adminCreateUserAction(values: AdminCreateUserFormValues): 
     
     const newUser: User = {
         ...newUserRows[0],
-        created_at: newUserRows[0].created_at ? new Date(newUserRows[0].created_at).toISOString() : undefined,
-        updated_at: newUserRows[0].updated_at ? new Date(newUserRows[0].updated_at).toISOString() : undefined,
-        plan_expires_at: newUserRows[0].plan_expires_at ? new Date(newUserRows[0].plan_expires_at).toISOString() : null,
+        created_at: newUserRows[0].createdAt ? new Date(newUserRows[0].createdAt).toISOString() : undefined,
+        updated_at: newUserRows[0].updatedAt ? new Date(newUserRows[0].updatedAt).toISOString() : undefined,
+        plan_expires_at: newUserRows[0].planExpiresAt ? new Date(newUserRows[0].planExpiresAt).toISOString() : null,
     };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password_hash, ...userToReturn } = newUser;
 
     revalidatePath('/admin/users');
-    return { success: true, message: "Usuario creado exitosamente.", user: userToReturn };
+    return { success: true, message: "Usuario creado exitosamente.", user: newUser };
 
   } catch (error: any) {
     console.error("[UserAction Admin] Error in adminCreateUserAction:", error);
+    // This is a specific check for mysql/planetscale driver
     if (error.code === 'ER_DUP_ENTRY') {
-        if (error.message.includes('users.email')) {
+        if (error.message.includes('users.email_unique')) {
             return { success: false, message: "Ya existe un usuario con este correo electrónico." };
         }
-        if (error.message.includes('uq_users_phone_number')) {
+        if (error.message.includes('users.phone_number_unique')) {
             return { success: false, message: "Este número de teléfono ya está registrado." };
         }
     }
@@ -224,115 +244,98 @@ export async function adminUpdateUserAction(
     return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const { name, email, role_id, plan_id } = validation.data;
+  const { name, email, role_id, plan_id, phone_number, rut_tin, company_name, main_operating_region, main_operating_commune, properties_in_portfolio_count, website_social_media_link } = validation.data;
 
   try {
-    // Verificar si el email cambió y si el nuevo email ya existe para OTRO usuario
-    const currentUserArr: any[] = await query('SELECT email FROM users WHERE id = ?', [userId]);
-    if (currentUserArr.length === 0) {
+    const currentUser = await db.select({ email: users.email, phoneNumber: users.phoneNumber }).from(users).where(eq(users.id, userId));
+    if (currentUser.length === 0) {
       return { success: false, message: "Usuario no encontrado." };
     }
-    const currentUserEmail = currentUserArr[0].email;
 
-    if (email !== currentUserEmail) {
-      const existingUserWithNewEmail: any[] = await query('SELECT id FROM users WHERE email = ? AND id != ?', [email, userId]);
+    if (email !== currentUser[0].email) {
+      const existingUserWithNewEmail = await db.select({ id: users.id }).from(users).where(and(eq(users.email, email), not(eq(users.id, userId))));
       if (existingUserWithNewEmail.length > 0) {
         return { success: false, message: "El nuevo correo electrónico ya está en uso por otro usuario." };
       }
     }
 
-    // Verificar si el rol existe
-    const roleExistsRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [role_id]);
-    if (roleExistsRows.length === 0) {
+    if (phone_number && phone_number !== currentUser[0].phoneNumber) {
+      const existingUserWithNewPhone = await db.select({ id: users.id }).from(users).where(and(eq(users.phoneNumber, phone_number), not(eq(users.id, userId))));
+      if (existingUserWithNewPhone.length > 0) {
+        return { success: false, message: "El nuevo número de teléfono ya está en uso por otro usuario." };
+      }
+    }
+
+    const roleExists = await db.select({ id: roles.id }).from(roles).where(eq(roles.id, role_id));
+    if (roleExists.length === 0) {
       return { success: false, message: "El rol seleccionado no es válido." };
     }
     
-    // Verificar si el plan existe (si se proporciona uno)
     if (plan_id) {
-        const planExistsRows: any[] = await query('SELECT id FROM plans WHERE id = ?', [plan_id]);
-        if (planExistsRows.length === 0) {
-            return { success: false, message: "El plan seleccionado no es válido." };
-        }
+      const planExists = await db.select({ id: plans.id }).from(plans).where(eq(plans.id, plan_id));
+      if (planExists.length === 0) {
+        return { success: false, message: "El plan seleccionado no es válido." };
+      }
     }
 
-    // Actualizar usuario
-    await query(
-      'UPDATE users SET name = ?, email = ?, role_id = ?, plan_id = ?, updated_at = NOW() WHERE id = ?',
-      [name, email, role_id, plan_id || null, userId]
-    );
-    
-    const updatedUserRows: any[] = await query(
-        `SELECT u.id, u.name, u.email, u.avatar_url, 
-                u.role_id, r.name as role_name,
-                u.plan_id, p.name as plan_name, u.plan_expires_at,
-                u.created_at, u.updated_at
-         FROM users u
-         LEFT JOIN roles r ON u.role_id = r.id
-         LEFT JOIN plans p ON u.plan_id = p.id
-         WHERE u.id = ?`, [userId]
-    );
+    await db.update(users).set({
+      name,
+      email,
+      roleId: role_id,
+      planId: plan_id || null,
+      phoneNumber: phone_number,
+      rutTin: rut_tin,
+      companyName: company_name,
+      mainOperatingRegion: main_operating_region,
+      mainOperatingCommune: main_operating_commune,
+      propertiesInPortfolioCount: properties_in_portfolio_count,
+      websiteSocialMediaLink: website_social_media_link,
+    }).where(eq(users.id, userId));
 
-    if (updatedUserRows.length === 0) {
-        // Esto no debería ocurrir si la actualización fue exitosa, pero es una verificación de seguridad
-        return { success: false, message: "Error al recuperar el usuario después de la actualización." };
-    }
+    const updatedUser = await getUserByIdAction(userId);
     
-    const updatedUser: User = {
-        ...updatedUserRows[0],
-        created_at: updatedUserRows[0].created_at ? new Date(updatedUserRows[0].created_at).toISOString() : undefined,
-        updated_at: updatedUserRows[0].updated_at ? new Date(updatedUserRows[0].updated_at).toISOString() : undefined,
-        plan_expires_at: updatedUserRows[0].plan_expires_at ? new Date(updatedUserRows[0].plan_expires_at).toISOString() : null,
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password_hash, ...userToReturn } = updatedUser;
-
     revalidatePath('/admin/users');
-    return { success: true, message: "Usuario actualizado exitosamente.", user: userToReturn };
+    revalidatePath(`/admin/users/${userId}/edit`);
+    return { success: true, message: "Usuario actualizado exitosamente.", user: updatedUser || undefined };
 
   } catch (error: any) {
-    console.error(`[UserAction Admin] Error in adminUpdateUserAction for user ${userId}:`, error);
-    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('users.email')) {
-        return { success: false, message: "El correo electrónico ya está en uso por otro usuario." };
+    console.error("[UserAction Admin] Error in adminUpdateUserAction:", error);
+    if (error.code === 'ER_DUP_ENTRY') {
+        if (error.message.includes('users.email_unique')) {
+            return { success: false, message: "El nuevo correo electrónico ya está en uso por otro usuario." };
+        }
+        if (error.message.includes('users.phone_number_unique')) {
+            return { success: false, message: "El nuevo número de teléfono ya está en uso por otro usuario." };
+        }
     }
     return { success: false, message: `Error al actualizar usuario: ${error.message}` };
   }
 }
 
-
 export async function adminDeleteUserAction(userIdToDelete: string, currentAdminUserId: string): Promise<{ success: boolean; message?: string }> {
-  if (!userIdToDelete || !currentAdminUserId) {
-    return { success: false, message: "Se requiere el ID del usuario a eliminar y del administrador." };
-  }
-
   if (userIdToDelete === currentAdminUserId) {
     return { success: false, message: "No puedes eliminar tu propia cuenta de administrador." };
   }
 
-  // Adicionalmente, podrías querer prevenir la eliminación del último administrador o un admin "root".
-  // Por ahora, solo prevenimos la auto-eliminación.
-
   try {
-    // La base de datos se encargará de eliminar en cascada propiedades, solicitudes, comentarios, etc.
-    // debido a las restricciones FOREIGN KEY con ON DELETE CASCADE.
-    const result: any = await query('DELETE FROM users WHERE id = ?', [userIdToDelete]);
+    const result = await db.delete(users).where(eq(users.id, userIdToDelete));
 
-    if (result.affectedRows > 0) {
+    if (result.rowsAffected > 0) {
       revalidatePath('/admin/users');
-      return { success: true, message: "Usuario eliminado exitosamente. Todos sus datos asociados (propiedades, solicitudes, comentarios, CRM) también han sido eliminados." };
+      return { success: true, message: "Usuario eliminado exitosamente." };
     } else {
-      return { success: false, message: "Usuario no encontrado o no se pudo eliminar." };
+      return { success: false, message: "Usuario no encontrado." };
     }
   } catch (error: any) {
-    console.error(`[UserAction Admin] Error deleting user ${userIdToDelete}:`, error);
-    // Podría haber errores si, por alguna razón, ON DELETE CASCADE falla o hay otras restricciones.
+    console.error("Error al eliminar usuario:", error);
     return { success: false, message: `Error al eliminar usuario: ${error.message}` };
   }
 }
 
 export async function getUsersCountAction(): Promise<number> {
   try {
-    const result: any[] = await query('SELECT COUNT(*) as count FROM users');
-    return Number(result[0].count) || 0;
+    const result = await db.select({ value: count() }).from(users);
+    return result[0]?.value ?? 0;
   } catch (error) {
     console.error("Error al obtener el conteo de usuarios:", error);
     return 0;
@@ -343,147 +346,148 @@ export async function updateUserProfileAction(
   userId: string,
   values: UserProfileFormValues
 ): Promise<{ success: boolean; message?: string; updatedUser?: User }> {
-  if (!userId) {
-    return { success: false, message: 'Usuario no autenticado.' };
-  }
+    const session = await getSession();
+    if (!session || session.user?.id !== userId) {
+        return { success: false, message: 'No autorizado.' };
+    }
 
   const validation = userProfileFormSchema.safeParse(values);
   if (!validation.success) {
-    const errorMessages = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-    return { success: false, message: `Datos inválidos: ${errorMessages}` };
+    return { success: false, message: "Datos inválidos: " + validation.error.errors.map(e => e.message).join(', ') };
   }
 
-  const {
-    name,
-    phone_number,
-    avatarUrl,
-    company_name,
-    main_operating_region,
-    main_operating_commune,
-    properties_in_portfolio_count,
-    website_social_media_link
-  } = validation.data;
+  const { name, email, phone_number, company_name, main_operating_region, main_operating_commune, properties_in_portfolio_count, website_social_media_link, avatar_url } = validation.data;
 
   try {
-    // Check if phone number is being changed to one that already exists for another user
-    if (phone_number) {
-        const existingPhoneRows: any[] = await query(
-            'SELECT id FROM users WHERE phone_number = ? AND id != ?',
-            [phone_number, userId]
-        );
-        if (existingPhoneRows.length > 0) {
-            return { success: false, message: 'Este número de teléfono ya está en uso por otro usuario.' };
+    const currentUser = await db.select({ email: users.email, phoneNumber: users.phoneNumber }).from(users).where(eq(users.id, userId));
+    if (currentUser.length === 0) {
+      return { success: false, message: "Usuario no encontrado." };
+    }
+
+    if (email !== currentUser[0].email) {
+      const existingUser = await db.select({ id: users.id }).from(users).where(and(eq(users.email, email), not(eq(users.id, userId))));
+      if (existingUser.length > 0) {
+        return { success: false, message: "El correo electrónico ya está en uso." };
+      }
+    }
+    
+    if (phone_number && phone_number !== currentUser[0].phoneNumber) {
+        const existingUserWithNewPhone = await db.select({ id: users.id }).from(users).where(and(eq(users.phoneNumber, phone_number), not(eq(users.id, userId))));
+        if (existingUserWithNewPhone.length > 0) {
+            return { success: false, message: "Este número de teléfono ya está en uso por otro usuario." };
         }
     }
 
-    const updateSql = `
-      UPDATE users SET
-        name = ?,
-        phone_number = ?,
-        avatar_url = ?,
-        company_name = ?,
-        main_operating_region = ?,
-        main_operating_commune = ?,
-        properties_in_portfolio_count = ?,
-        website_social_media_link = ?,
-        updated_at = NOW()
-      WHERE id = ?
-    `;
-
-    const params = [
+    await db.update(users).set({
       name,
-      phone_number,
-      avatarUrl || null,
-      company_name || null,
-      main_operating_region || null,
-      main_operating_commune || null,
-      properties_in_portfolio_count !== undefined && properties_in_portfolio_count !== null ? properties_in_portfolio_count : null,
-      website_social_media_link || null,
-      userId
-    ];
+      email,
+      phoneNumber: phone_number,
+      companyName: company_name,
+      mainOperatingRegion: main_operating_region,
+      mainOperatingCommune: main_operating_commune,
+      propertiesInPortfolioCount: properties_in_portfolio_count,
+      websiteSocialMediaLink: website_social_media_link,
+      avatarUrl: avatar_url,
+    }).where(eq(users.id, userId));
 
-    const result: any = await query(updateSql, params);
-
-    if (result.affectedRows === 0) {
-        return { success: false, message: 'No se pudo actualizar el perfil o no se encontraron cambios.' };
-    }
-    
-    // Fetch the full updated user details to return
     const updatedUser = await getUserByIdAction(userId);
-    if (!updatedUser) {
-        return { success: false, message: 'Perfil actualizado, pero no se pudo recuperar la información actualizada.' };
-    }
-    
-    revalidatePath('/profile');
-    revalidatePath(`/dashboard`); // User info might be shown on dashboard
 
-    return { success: true, message: 'Perfil actualizado exitosamente.', updatedUser: updatedUser };
+    revalidatePath(`/dashboard/profile`);
+    return { success: true, message: 'Perfil actualizado exitosamente.', updatedUser: updatedUser || undefined };
 
   } catch (error: any) {
-    console.error(`[UserAction] Error updating profile for user ${userId}:`, error);
-    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('uq_users_phone_number')) {
-        return { success: false, message: "Este número de teléfono ya está en uso por otro usuario." };
+    console.error("Error al actualizar el perfil del usuario:", error);
+    if (error.code === 'ER_DUP_ENTRY') {
+        if (error.message.includes('users.email_unique')) {
+            return { success: false, message: "El correo electrónico ya está en uso." };
+        }
+        if (error.message.includes('users.phone_number_unique')) {
+            return { success: false, message: "Este número de teléfono ya está en uso por otro usuario." };
+        }
     }
     return { success: false, message: `Error al actualizar el perfil: ${error.message}` };
   }
 }
 
 export async function adminVerifyUserPhoneAction(userId: string): Promise<{ success: boolean; message?: string }> {
-  if (!userId) {
-    return { success: false, message: "ID de usuario no proporcionado." };
-  }
-  try {
-    const result: any = await query('UPDATE users SET phone_verified = TRUE WHERE id = ?', [userId]);
-    if (result.affectedRows > 0) {
-      revalidatePath('/admin/users');
-      return { success: true, message: 'Teléfono verificado.' };
+    try {
+        const result = await db.update(users).set({ phoneVerified: true, phoneOtp: null, phoneOtpExpiresAt: null }).where(eq(users.id, userId));
+        if (result.rowsAffected > 0) {
+            revalidatePath('/admin/users');
+            return { success: true, message: 'Teléfono verificado exitosamente.' };
+        } else {
+            return { success: false, message: 'Usuario no encontrado.' };
+        }
+    } catch (error: any) {
+        console.error('Error al verificar el teléfono del usuario:', error);
+        return { success: false, message: `Error del servidor: ${error.message}` };
     }
-    return { success: false, message: 'Usuario no encontrado.' };
-  } catch (error: any) {
-    return { success: false, message: `Error al verificar: ${error.message}` };
-  }
 }
 
-/**
- * Busca usuarios por nombre o email.
- * @param searchTerm El término de búsqueda.
- * @returns Una promesa que resuelve a un array de usuarios que coinciden.
- */
+
 export async function searchUsersAction(searchTerm: string): Promise<User[]> {
-  if (!searchTerm || searchTerm.trim().length < 2) {
-    // No buscar si el término es muy corto para evitar resultados masivos
-    return [];
-  }
+    if (!searchTerm.trim()) {
+        return [];
+    }
 
-  const trimmedSearchTerm = searchTerm.trim();
-  const likePattern = `%${trimmedSearchTerm}%`;
+    try {
+        const results = await db.select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            avatarUrl: users.avatarUrl,
+            roleId: users.roleId,
+            roleName: roles.name,
+            planId: users.planId,
+            planName: plans.name,
+        }).from(users)
+        .leftJoin(roles, eq(users.roleId, roles.id))
+        .leftJoin(plans, eq(users.planId, plans.id))
+        .where(
+            or(
+                like(users.name, `%${searchTerm}%`),
+                like(users.email, `%${searchTerm}%`),
+                like(users.phoneNumber, `%${searchTerm}%`)
+            )
+        )
+        .limit(10);
+        
+        return results.map(user => ({
+            ...user,
+            role_id: user.roleId,
+            role_name: user.roleName,
+            plan_id: user.planId,
+            plan_name: user.planName,
+        })) as User[];
 
-  try {
-    const users = await query(
-      `
-      SELECT 
-        u.id, u.name, u.email, u.avatar_url, 
-        u.role_id, r.name as role_name,
-        u.plan_id, p.name as plan_name,
-        u.created_at
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN plans p ON u.plan_id = p.id
-      WHERE u.name LIKE ? OR u.email LIKE ?
-      ORDER BY u.name ASC
-      LIMIT 20
-    `,
-      [likePattern, likePattern]
-    );
+    } catch (error) {
+        console.error("Error al buscar usuarios:", error);
+        return [];
+    }
+}
 
-    return users.map((user: any) => ({
-      ...user,
-      phone_verified: Boolean(user.phone_verified), // Asegurar que sea booleano, aunque no se seleccione
-      created_at: user.created_at ? new Date(user.created_at).toISOString() : undefined,
-    })) as User[];
+export async function findUserByEmailAction(email: string): Promise<{ success: boolean; message: string; user?: { id: string; name: string; email: string; avatarUrl: string | null; }; }> {
+    const session = await getSession();
+    if (!session) {
+        return { success: false, message: "No autenticado." };
+    }
+    if (!email) {
+        return { success: false, message: "El correo electrónico es requerido." };
+    }
+    try {
+        const userResult = await db.select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            avatarUrl: users.avatarUrl,
+        }).from(users).where(eq(users.email, email));
 
-  } catch (error) {
-    console.error("Error al buscar usuarios:", error);
-    return [];
-  }
+        if (userResult.length === 0) {
+            return { success: false, message: "Usuario no encontrado." };
+        }
+        return { success: true, message: "Usuario encontrado.", user: userResult[0] };
+    } catch (error: any) {
+        console.error("Error al buscar usuario por email:", error);
+        return { success: false, message: `Error del servidor: ${error.message}` };
+    }
 }

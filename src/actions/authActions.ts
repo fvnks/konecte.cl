@@ -1,14 +1,17 @@
-
 // src/actions/authActions.ts
 'use server';
 
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { query } from '@/lib/db';
 import type { User } from '@/lib/types';
 import { signUpSchema } from '@/lib/types';
 import { randomUUID } from 'crypto';
 import { generateAndSendOtpAction } from './otpActions'; // Import the OTP action
+import { cookies } from 'next/headers';
+import { db } from '@/lib/db';
+import { sessions, users, roles, plans } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { redirect } from 'next/navigation';
 
 // --- Sign Up ---
 export type SignUpFormValues = z.infer<typeof signUpSchema>;
@@ -28,14 +31,14 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
   console.log(`[AuthAction] Attempting sign-up for email: ${email}, type: ${accountType}`);
 
   try {
-    const existingUserRows: any[] = await query('SELECT id FROM users WHERE email = ?', [email]);
+    const existingUserRows = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
     if (existingUserRows.length > 0) {
       console.log(`[AuthAction] Sign-up failed: Email ${email} already exists.`);
       return { success: false, message: "Ya existe un usuario con este correo electrónico." };
     }
     
     // Check for existing phone number
-    const existingPhoneRows: any[] = await query('SELECT id FROM users WHERE phone_number = ?', [phone_number]);
+    const existingPhoneRows = await db.select({ id: users.id }).from(users).where(eq(users.phone_number, phone_number));
     if (existingPhoneRows.length > 0) {
         return { success: false, message: "Este número de teléfono ya está registrado." };
     }
@@ -45,34 +48,28 @@ export async function signUpAction(values: SignUpFormValues): Promise<{ success:
     const userId = randomUUID();
     const roleId = accountType === 'broker' ? 'broker' : 'user';
 
-    const userRoleRows: any[] = await query('SELECT id FROM roles WHERE id = ?', [roleId]);
+    const userRoleRows = await db.select({ id: roles.id }).from(roles).where(eq(roles.id, roleId));
     if (userRoleRows.length === 0) {
         console.error(`[AuthAction] CRITICAL Sign-up Error: Role '${roleId}' not found in DB.`);
         return { success: false, message: "Error de configuración del sistema: No se pudo asignar el rol. Contacte al administrador."};
     }
 
-    const insertSql = `
-      INSERT INTO users (
-        id, name, email, password_hash, role_id,
-        phone_number, rut_tin,
-        company_name, main_operating_region, main_operating_commune,
-        properties_in_portfolio_count, website_social_media_link,
-        phone_verified
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)
-    `;
-
-    const params = [
-      userId, name, email, hashedPassword, roleId,
+    await db.insert(users).values({
+      id: userId,
+      name,
+      email,
+      passwordHash: hashedPassword,
+      roleId,
       phone_number,
       rut_tin,
-      accountType === 'broker' ? (company_name || null) : null,
-      accountType === 'broker' ? (main_operating_region || null) : null,
-      accountType === 'broker' ? (main_operating_commune || null) : null,
-      accountType === 'broker' ? (properties_in_portfolio_count !== undefined && properties_in_portfolio_count !== null ? properties_in_portfolio_count : null) : null,
-      accountType === 'broker' ? (website_social_media_link || null) : null,
-    ];
+      company_name: accountType === 'broker' ? (company_name || null) : null,
+      main_operating_region: accountType === 'broker' ? (main_operating_region || null) : null,
+      main_operating_commune: accountType === 'broker' ? (main_operating_commune || null) : null,
+      properties_in_portfolio_count: accountType === 'broker' ? (properties_in_portfolio_count !== undefined && properties_in_portfolio_count !== null ? properties_in_portfolio_count : null) : null,
+      website_social_media_link: accountType === 'broker' ? (website_social_media_link || null) : null,
+      phoneVerified: false,
+    });
 
-    await query(insertSql, params);
     console.log(`[AuthAction] Sign-up successful for email: ${email}, userID: ${userId}, roleId: ${roleId}`);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -147,67 +144,65 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
   console.log(`[AuthAction] Attempting sign-in for email: ${email}`);
 
   try {
-    const usersFound: any[] = await query(
-        `SELECT
-            u.id, u.name, u.email, u.password_hash,
-            u.rut_tin, u.phone_number, u.avatar_url,
-            u.role_id, r.name as role_name,
-            u.plan_id, p.name as plan_name_from_db, u.plan_expires_at,
-            p.can_view_contact_data,
-            p.automated_alerts_enabled,
-            p.advanced_dashboard_access,
-            u.company_name,
-            u.main_operating_commune, u.properties_in_portfolio_count, u.website_social_media_link,
-            u.phone_verified
-         FROM users u
-         JOIN roles r ON u.role_id = r.id
-         LEFT JOIN plans p ON u.plan_id = p.id
-         WHERE u.email = ?`,
-        [email]
-    );
+    const results = await db
+      .select()
+      .from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .leftJoin(plans, eq(users.planId, plans.id))
+      .where(eq(users.email, email))
+      .limit(1);
 
-    if (usersFound.length === 0) {
+    if (results.length === 0) {
       console.log(`[AuthAction] Sign-in failed: User not found for email: ${email}`);
       return { success: false, message: "Credenciales inválidas." };
     }
 
-    const userFromDb = usersFound[0] as User & {
-        password_hash: string;
-        plan_name_from_db?: string | null;
-        can_view_contact_data?: boolean | null;
-        automated_alerts_enabled?: boolean | null;
-        advanced_dashboard_access?: boolean | null;
-        phone_verified: boolean | number; // Can be boolean or 0/1 from DB
-    };
-    console.log(`[AuthAction] User found: ${userFromDb.email}. Stored hash: ${userFromDb.password_hash ? userFromDb.password_hash.substring(0, 10) + "..." : "NOT FOUND"}, Length: ${userFromDb.password_hash?.length}`);
+    const { users: userFromDb, roles: roleInfo, plans: planInfo } = results[0];
 
-
-    if (!userFromDb.password_hash) {
-        console.error(`[AuthAction] CRITICAL Sign-in Error: password_hash is missing for user ${userFromDb.email}.`);
-        return { success: false, message: "Error de cuenta de usuario. Contacte al administrador." };
-    }
-
-    const passwordMatch = await bcrypt.compare(password, userFromDb.password_hash);
-    console.log(`[AuthAction] Password match result for ${userFromDb.email}: ${passwordMatch}`);
-
-    if (!passwordMatch) {
-      console.log(`[AuthAction] Sign-in failed: Password mismatch for ${userFromDb.email}`);
+    if (!userFromDb || !userFromDb.passwordHash) {
+      console.log(`[AuthAction] Sign-in failed: User found but password hash missing for email: ${email}`);
       return { success: false, message: "Credenciales inválidas." };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password_hash, plan_name_from_db, ...userToReturnBase } = userFromDb;
+    const passwordMatch = await bcrypt.compare(password, userFromDb.passwordHash);
+    if (!passwordMatch) {
+      console.log(`[AuthAction] Sign-in failed: Invalid password for email: ${email}`);
+      return { success: false, message: "Credenciales inválidas." };
+    }
+
+    // --- SESSION CREATION ---
+    const sessionToken = randomUUID();
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await db.insert(sessions).values({
+      userId: userFromDb.id,
+      token: sessionToken,
+      expires,
+    });
+
+    cookies().set('session_token', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      expires,
+      path: '/',
+    });
+    // --- END SESSION CREATION ---
+
+    const { passwordHash, ...userBase } = userFromDb;
 
     const finalUser: User = {
-      ...userToReturnBase,
-      phone_number: userFromDb.phone_number,
-      plan_name: plan_name_from_db || null,
-      plan_is_pro_or_premium: (plan_name_from_db?.toLowerCase().includes('pro') || plan_name_from_db?.toLowerCase().includes('premium')) && userFromDb.role_id === 'broker',
-      plan_is_premium_broker: plan_name_from_db?.toLowerCase().includes('premium') && userFromDb.role_id === 'broker',
-      plan_allows_contact_view: !!userFromDb.can_view_contact_data,
-      plan_automated_alerts_enabled: !!userFromDb.automated_alerts_enabled,
-      plan_advanced_dashboard_access: !!userFromDb.advanced_dashboard_access,
-      phone_verified: Number(userFromDb.phone_verified) === 1,
+        ...userBase,
+        password_hash: undefined, // Asegurar que el hash no se incluya
+        role_id: userBase.roleId as string,
+        role_name: roleInfo?.name,
+        plan_id: userBase.planId,
+        plan_name: planInfo?.name ?? null,
+        plan_is_pro_or_premium: (planInfo?.name?.toLowerCase().includes('pro') || planInfo?.name?.toLowerCase().includes('premium')) && userBase.roleId === 'broker',
+        plan_is_premium_broker: planInfo?.name?.toLowerCase().includes('premium') && userBase.roleId === 'broker',
+        plan_allows_contact_view: !!planInfo?.can_view_contact_data,
+        plan_automated_alerts_enabled: !!planInfo?.automated_alerts_enabled,
+        plan_advanced_dashboard_access: !!planInfo?.advanced_dashboard_access,
+        phone_verified: Number(userBase.phoneVerified) === 1,
     };
 
     console.log(`[AuthAction] Sign-in successful for ${finalUser.email}. Phone verified: ${finalUser.phone_verified}`);
@@ -218,8 +213,28 @@ export async function signInAction(values: SignInFormValues): Promise<{ success:
     }
 
     return { success: true, user: finalUser, verificationPending };
+
   } catch (error: any) {
     console.error("[AuthAction] Error in signInAction:", error);
     return { success: false, message: `Error al iniciar sesión: ${error.message}` };
   }
+}
+
+// --- Sign Out ---
+export async function signOutAction(): Promise<void> {
+    const sessionToken = cookies().get('session_token')?.value;
+
+    if (sessionToken) {
+        try {
+            await db.delete(sessions).where(eq(sessions.token, sessionToken));
+        } catch (error) {
+            console.error('Error deleting session from DB:', error);
+            // No detenerse, la cookie debe ser eliminada de todos modos.
+        }
+        // Invalidar la cookie
+        cookies().set('session_token', '', { expires: new Date(0), path: '/' });
+    }
+
+    // Redirigir al login en cualquier caso
+    redirect('/login');
 }

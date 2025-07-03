@@ -1,8 +1,9 @@
-
 // src/actions/planActions.ts
 'use server';
 
-import { query } from '@/lib/db';
+import { db } from '@/lib/db';
+import { plans } from '@/lib/db/schema';
+import { and, asc, eq } from 'drizzle-orm';
 import type { Plan } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
@@ -43,25 +44,20 @@ function mapDbRowToPlan(row: any): Plan {
   };
 }
 
-
 export async function getPlansAction(options: { showAllAdmin?: boolean } = {}): Promise<Plan[]> {
   const { showAllAdmin = false } = options;
   try {
-    let sql = 'SELECT * FROM plans';
-    const whereClauses: string[] = [];
+    const whereCondition = !showAllAdmin
+      ? and(
+          eq(plans.is_active, true),
+          eq(plans.is_publicly_visible, true)
+        )
+      : undefined;
 
-    if (!showAllAdmin) {
-      whereClauses.push('is_active = TRUE');
-      whereClauses.push('is_publicly_visible = TRUE');
-    }
-    
-    if (whereClauses.length > 0) {
-        sql += ' WHERE ' + whereClauses.join(' AND ');
-    }
+    const rows = await db.select().from(plans)
+      .where(whereCondition)
+      .orderBy(asc(plans.price_monthly), asc(plans.name));
 
-    sql += ' ORDER BY price_monthly ASC, name ASC';
-    
-    const rows = await query(sql);
     return rows.map(mapDbRowToPlan);
   } catch (error) {
     console.error("Error al obtener planes:", error);
@@ -74,7 +70,7 @@ export async function getPlanByIdAction(planId: string): Promise<Plan | null> {
     return null;
   }
   try {
-    const rows = await query('SELECT * FROM plans WHERE id = ?', [planId]);
+    const rows = await db.select().from(plans).where(eq(plans.id, planId));
     if (rows.length > 0) {
       return mapDbRowToPlan(rows[0]);
     }
@@ -137,22 +133,28 @@ export async function addPlanAction(formData: FormData): Promise<{ success: bool
 
   try {
     const planId = randomUUID();
-    const sql = `
-      INSERT INTO plans (
-        id, name, description, price_monthly, price_currency,
-        max_properties_allowed, max_requests_allowed, property_listing_duration_days, can_feature_properties,
-        can_view_contact_data, manual_searches_daily_limit, automated_alerts_enabled, max_ai_searches_monthly,
-        advanced_dashboard_access, daily_profile_views_limit, weekly_matches_reveal_limit,
-        is_active, is_publicly_visible, is_enterprise_plan
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    await query(sql, [
-      planId, name, description || null, price_monthly, price_currency,
-      max_properties_allowed, max_requests_allowed, property_listing_duration_days, can_feature_properties,
-      can_view_contact_data, manual_searches_daily_limit, automated_alerts_enabled, max_ai_searches_monthly,
-      advanced_dashboard_access, daily_profile_views_limit, weekly_matches_reveal_limit,
-      is_active, is_publicly_visible, is_enterprise_plan
-    ]);
+    
+    await db.insert(plans).values({
+      id: planId,
+      name,
+      description,
+      price_monthly: price_monthly.toString(),
+      price_currency,
+      max_properties_allowed,
+      max_requests_allowed,
+      property_listing_duration_days,
+      can_feature_properties,
+      can_view_contact_data,
+      manual_searches_daily_limit,
+      automated_alerts_enabled,
+      max_ai_searches_monthly,
+      advanced_dashboard_access,
+      daily_profile_views_limit,
+      weekly_matches_reveal_limit,
+      is_active,
+      is_publicly_visible,
+      is_enterprise_plan,
+    });
     
     revalidatePath('/admin/plans');
     revalidatePath('/admin/users'); 
@@ -229,29 +231,34 @@ export async function updatePlanAction(planId: string, formData: FormData): Prom
   }
   
   try {
-    const sql = `
-      UPDATE plans SET
-        name = ?, description = ?, price_monthly = ?, price_currency = ?,
-        max_properties_allowed = ?, max_requests_allowed = ?, property_listing_duration_days = ?, can_feature_properties = ?,
-        can_view_contact_data = ?, manual_searches_daily_limit = ?, automated_alerts_enabled = ?, max_ai_searches_monthly = ?,
-        advanced_dashboard_access = ?, daily_profile_views_limit = ?, weekly_matches_reveal_limit = ?,
-        is_active = ?, is_publicly_visible = ?, is_enterprise_plan = ?, updated_at = NOW()
-      WHERE id = ?
-    `;
-    const result: any = await query(sql, [
-      name, description || null, price_monthly, price_currency,
-      max_properties_allowed, max_requests_allowed, property_listing_duration_days, can_feature_properties,
-      can_view_contact_data, manual_searches_daily_limit, automated_alerts_enabled, max_ai_searches_monthly,
-      advanced_dashboard_access, daily_profile_views_limit, weekly_matches_reveal_limit,
-      is_active, is_publicly_visible, is_enterprise_plan, planId
-    ]);
+    const result = await db.update(plans).set({
+        name,
+        description,
+        price_monthly: price_monthly.toString(),
+        price_currency,
+        max_properties_allowed,
+        max_requests_allowed,
+        property_listing_duration_days,
+        can_feature_properties,
+        can_view_contact_data,
+        manual_searches_daily_limit,
+        automated_alerts_enabled,
+        max_ai_searches_monthly,
+        advanced_dashboard_access,
+        daily_profile_views_limit,
+        weekly_matches_reveal_limit,
+        is_active,
+        is_publicly_visible,
+        is_enterprise_plan,
+    }).where(eq(plans.id, planId));
 
-    if (result.affectedRows === 0) {
+    if (result.rowsAffected === 0) {
         return { success: false, message: "Plan no encontrado o los datos eran los mismos." };
     }
     
     revalidatePath('/admin/plans');
-    revalidatePath('/admin/users');
+    revalidatePath(`/admin/plans/${planId}/edit`);
+    revalidatePath('/admin/users'); 
     revalidatePath('/plans');
 
     const updatedPlan = await getPlanByIdAction(planId);
@@ -261,74 +268,57 @@ export async function updatePlanAction(planId: string, formData: FormData): Prom
 
     return { success: true, message: "Plan actualizado exitosamente.", plan: updatedPlan };
   } catch (error: any) {
-    console.error(`Error al actualizar plan ${planId}:`, error);
+    console.error(`Error al actualizar el plan con ID ${planId}:`, error);
     if (error.code === 'ER_DUP_ENTRY' && error.message.includes("'plans.name'")) {
       return { success: false, message: "Error: Ya existe otro plan con ese nombre." };
     }
-    return { success: false, message: `Error al actualizar plan: ${error.message}` };
+    return { success: false, message: `Error al actualizar el plan: ${error.message}` };
   }
 }
-
 
 export async function deletePlanAction(planId: string): Promise<{ success: boolean; message?: string }> {
   if (!planId) {
     return { success: false, message: "ID de plan no proporcionado." };
   }
-
+  
   try {
-    // Primero, desvincular usuarios del plan (establecer plan_id a NULL)
-    await query('UPDATE users SET plan_id = NULL WHERE plan_id = ?', [planId]);
-    // Luego, desvincular registros de uso del plan (establecer plan_id_at_usage a NULL)
-    await query('UPDATE user_usage_metrics SET plan_id_at_usage = NULL WHERE plan_id_at_usage = ?', [planId]);
+    const result = await db.delete(plans).where(eq(plans.id, planId));
 
-    const result: any = await query('DELETE FROM plans WHERE id = ?', [planId]);
-    if (result.affectedRows > 0) {
-      revalidatePath('/admin/plans');
-      revalidatePath('/admin/users');
-      revalidatePath('/plans');
-      return { success: true, message: "Plan eliminado exitosamente y usuarios/registros de uso desvinculados." };
-    } else {
-      return { success: false, message: "El plan no fue encontrado o no se pudo eliminar." };
+    if (result.rowsAffected === 0) {
+      return { success: false, message: "Plan no encontrado." };
     }
-  } catch (error: any)
-{
-    console.error("Error al eliminar plan:", error);
-    // ER_ROW_IS_REFERENCED_2 es un código de error común para FK violations.
-    if (error.code === 'ER_ROW_IS_REFERENCED_2' || (error.sqlState === '23000' && error.message && error.message.includes('foreign key constraint fails'))) { 
-        // Este error puede ocurrir si todavía hay una FK en user_usage_metrics que no se pudo setear a NULL
-        // o si hay otras tablas que referencian `plans` y no se manejaron.
-        return { success: false, message: "Error de referencia: No se puede eliminar el plan porque aún está referenciado en alguna tabla (posiblemente user_usage_metrics). Contacte al administrador o asegúrese que todas las dependencias se hayan actualizado para permitir NULL." };
+
+    revalidatePath('/admin/plans');
+    revalidatePath('/admin/users');
+    revalidatePath('/plans');
+    return { success: true, message: "Plan eliminado exitosamente." };
+  } catch (error: any) {
+    console.error(`Error al eliminar el plan con ID ${planId}:`, error);
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+       return { success: false, message: 'No se puede eliminar el plan porque hay usuarios asignados a él.' };
     }
-    return { success: false, message: `Error al eliminar plan: ${error.message}` };
+    return { success: false, message: 'Error al eliminar el plan.' };
   }
 }
 
 export async function togglePlanStatusAction(planId: string, isActive: boolean): Promise<{ success: boolean; message?: string }> {
-  if (!planId) {
-    return { success: false, message: "ID de plan no proporcionado." };
-  }
   try {
-    await query('UPDATE plans SET is_active = ? WHERE id = ?', [isActive, planId]);
+    await db.update(plans).set({ is_active: isActive }).where(eq(plans.id, planId));
     revalidatePath('/admin/plans');
-    revalidatePath('/plans');
-    return { success: true, message: `Plan ${isActive ? 'activado' : 'desactivado'} correctamente.` };
-  } catch (error: any) {
-    console.error("Error al cambiar estado del plan:", error);
-    return { success: false, message: `Error al cambiar estado del plan: ${error.message}` };
+    return { success: true, message: `Estado del plan actualizado a ${isActive ? 'Activo' : 'Inactivo'}.` };
+  } catch (error) {
+    console.error('Error al cambiar el estado del plan:', error);
+    return { success: false, message: 'Error al cambiar el estado del plan.' };
   }
 }
 
 export async function togglePlanVisibilityAction(planId: string, isVisible: boolean): Promise<{ success: boolean; message?: string }> {
-  if (!planId) {
-    return { success: false, message: "ID de plan no proporcionado." };
-  }
   try {
-    await query('UPDATE plans SET is_publicly_visible = ? WHERE id = ?', [isVisible, planId]);
+    await db.update(plans).set({ is_publicly_visible: isVisible }).where(eq(plans.id, planId));
     revalidatePath('/admin/plans');
-    revalidatePath('/plans');
-    return { success: true, message: `Visibilidad pública del plan ${isVisible ? 'activada' : 'desactivada'}.` };
-  } catch (error: any) {
-    console.error("Error al cambiar visibilidad del plan:", error);
-    return { success: false, message: `Error al cambiar visibilidad del plan: ${error.message}` };
+    return { success: true, message: `Visibilidad del plan actualizada a ${isVisible ? 'Público' : 'Privado'}.` };
+  } catch (error) {
+    console.error('Error al cambiar la visibilidad del plan:', error);
+    return { success: false, message: 'Error al cambiar la visibilidad del plan.' };
   }
 }

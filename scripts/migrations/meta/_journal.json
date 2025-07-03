@@ -5,8 +5,15 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1750878336725,
-      "tag": "0000_legal_goblin_queen",
+      "when": 1751233713686,
+      "tag": "0000_lethal_killmonger",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1751236122373,
+      "tag": "0001_deep_talon",
       "breakpoints": true
     }
   ]

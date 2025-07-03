@@ -1,4 +1,3 @@
-
 // src/components/property/PropertyAuthorContactInfoClient.tsx
 'use client';
 
@@ -10,7 +9,7 @@ import { Mail, Phone, UserCircle, ShieldCheck, CalendarDays, Eye, Lock, MessageS
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import RequestVisitButtonClient from './RequestVisitButtonClient';
+import AddToContactsButton from '../crm/AddToContactsButton';
 
 interface PropertyAuthorContactInfoClientProps {
   author: StoredUser; // Author object now includes plan flags like plan_is_pro_or_premium
@@ -138,11 +137,7 @@ export default function PropertyAuthorContactInfoClient({
           )}
         </div>
         {!isOwner(viewerUser, author) && (
-          <RequestVisitButtonClient 
-            propertyId={propertyId}
-            propertyOwnerId={author.id}
-            propertyTitle={propertyTitle}
-          />
+          <AddToContactsButton author={author} viewerId={viewerUser?.id} />
         )}
       </div>
     </div>
